@@ -6,7 +6,7 @@ use rust_rule_engine::engine::{
     dependency::{DependencyAnalyzer, DependencyAnalysisResult},
     rule::{Rule, Condition, ConditionGroup},
 };
-use rust_rule_engine::types::{ActionType, ComparisonOperator, Value};
+use rust_rule_engine::types::{ActionType, Operator, Value};
 use std::collections::HashMap;
 
 fn main() {
@@ -16,17 +16,17 @@ fn main() {
     // Demo 1: Real Field Detection vs Old Hard-coded Detection
     demo_real_vs_hardcoded_detection();
     
-    println!("\n" + "=".repeat(60).as_str() + "\n");
+    println!("\n{}\n", "=".repeat(60));
     
     // Demo 2: Complex Rule Dependencies
     demo_complex_dependencies();
     
-    println!("\n" + "=".repeat(60).as_str() + "\n");
+    println!("\n{}\n", "=".repeat(60));
     
     // Demo 3: Function Call Analysis
     demo_function_call_analysis();
     
-    println!("\n" + "=".repeat(60).as_str() + "\n");
+    println!("\n{}\n", "=".repeat(60));
     
     // Demo 4: Compound Condition Analysis
     demo_compound_conditions();
@@ -45,7 +45,7 @@ fn demo_real_vs_hardcoded_detection() {
             "ValidateUserAge".to_string(),
             ConditionGroup::Single(Condition::new(
                 "User.Age".to_string(),
-                ComparisonOperator::GreaterThanOrEqual,
+                Operator::GreaterThanOrEqual,
                 Value::Integer(18),
             )),
             vec![ActionType::Log {
@@ -58,7 +58,7 @@ fn demo_real_vs_hardcoded_detection() {
             "CheckCountryEligibility".to_string(),
             ConditionGroup::Single(Condition::new(
                 "User.Country".to_string(),
-                ComparisonOperator::Equal,
+                Operator::Equal,
                 Value::String("US".to_string()),
             )),
             vec![ActionType::Log {
@@ -72,13 +72,13 @@ fn demo_real_vs_hardcoded_detection() {
             ConditionGroup::Compound {
                 left: Box::new(ConditionGroup::Single(Condition::new(
                     "User.Age".to_string(),
-                    ComparisonOperator::GreaterThan,
+                    Operator::GreaterThan,
                     Value::Integer(21),
                 ))),
                 operator: rust_rule_engine::types::LogicalOperator::And,
                 right: Box::new(ConditionGroup::Single(Condition::new(
                     "User.Country".to_string(),
-                    ComparisonOperator::Equal,
+                    Operator::Equal,
                     Value::String("US".to_string()),
                 ))),
             },
@@ -93,7 +93,7 @@ fn demo_real_vs_hardcoded_detection() {
             "DetermineVIPStatus".to_string(),
             ConditionGroup::Single(Condition::new(
                 "User.EligibilityScore".to_string(),
-                ComparisonOperator::GreaterThanOrEqual,
+                Operator::GreaterThanOrEqual,
                 Value::Integer(80),
             )),
             vec![ActionType::Set {
@@ -134,7 +134,7 @@ fn demo_complex_dependencies() {
             "CalculateBaseScore".to_string(),
             ConditionGroup::Single(Condition::new(
                 "Order.Amount".to_string(),
-                ComparisonOperator::GreaterThan,
+                Operator::GreaterThan,
                 Value::Number(0.0),
             )),
             vec![ActionType::Call {
@@ -149,13 +149,13 @@ fn demo_complex_dependencies() {
             ConditionGroup::Compound {
                 left: Box::new(ConditionGroup::Single(Condition::new(
                     "User.Level".to_string(),
-                    ComparisonOperator::GreaterThan,
+                    Operator::GreaterThan,
                     Value::Integer(1),
                 ))),
                 operator: rust_rule_engine::types::LogicalOperator::And,
                 right: Box::new(ConditionGroup::Single(Condition::new(
                     "Order.BaseScore".to_string(),
-                    ComparisonOperator::GreaterThan,
+                    Operator::GreaterThan,
                     Value::Number(0.0),
                 ))),
             },
@@ -175,7 +175,7 @@ fn demo_complex_dependencies() {
             "CalculateFinalDiscount".to_string(),
             ConditionGroup::Single(Condition::new(
                 "Order.AdjustedScore".to_string(),
-                ComparisonOperator::GreaterThanOrEqual,
+                Operator::GreaterThanOrEqual,
                 Value::Number(80.0),
             )),
             vec![ActionType::MethodCall {
@@ -190,7 +190,7 @@ fn demo_complex_dependencies() {
             "ApplyFinalDiscount".to_string(),
             ConditionGroup::Single(Condition::new(
                 "Order.DiscountRate".to_string(),
-                ComparisonOperator::GreaterThan,
+                Operator::GreaterThan,
                 Value::Number(0.0),
             )),
             vec![ActionType::Set {
@@ -230,7 +230,7 @@ fn demo_function_call_analysis() {
             "ProcessUserData".to_string(),
             ConditionGroup::Single(Condition::new(
                 "User.Status".to_string(),
-                ComparisonOperator::Equal,
+                Operator::Equal,
                 Value::String("active".to_string()),
             )),
             vec![
@@ -255,13 +255,13 @@ fn demo_function_call_analysis() {
             ConditionGroup::Compound {
                 left: Box::new(ConditionGroup::Single(Condition::new(
                     "User.Score".to_string(),
-                    ComparisonOperator::GreaterThan,
+                    Operator::GreaterThan,
                     Value::Integer(80),
                 ))),
                 operator: rust_rule_engine::types::LogicalOperator::And,
                 right: Box::new(ConditionGroup::Single(Condition::new(
                     "VIP.Status".to_string(),
-                    ComparisonOperator::Equal,
+                    Operator::Equal,
                     Value::Boolean(true),
                 ))),
             },
@@ -307,20 +307,20 @@ fn demo_compound_conditions() {
         left: Box::new(ConditionGroup::Compound {
             left: Box::new(ConditionGroup::Single(Condition::new(
                 "User.Age".to_string(),
-                ComparisonOperator::GreaterThan,
+                Operator::GreaterThan,
                 Value::Integer(21),
             ))),
             operator: rust_rule_engine::types::LogicalOperator::And,
             right: Box::new(ConditionGroup::Single(Condition::new(
                 "User.Country".to_string(),
-                ComparisonOperator::Equal,
+                Operator::Equal,
                 Value::String("US".to_string()),
             ))),
         }),
         operator: rust_rule_engine::types::LogicalOperator::Or,
         right: Box::new(ConditionGroup::Not(Box::new(ConditionGroup::Single(Condition::new(
             "User.IsBlacklisted".to_string(),
-            ComparisonOperator::Equal,
+            Operator::Equal,
             Value::Boolean(true),
         ))))),
     };
@@ -364,7 +364,7 @@ mod tests {
             "TestRule".to_string(),
             ConditionGroup::Single(Condition::new(
                 "TestField".to_string(),
-                ComparisonOperator::Equal,
+                Operator::Equal,
                 Value::String("test".to_string()),
             )),
             vec![ActionType::Set {

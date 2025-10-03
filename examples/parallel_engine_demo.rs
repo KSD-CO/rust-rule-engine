@@ -249,68 +249,68 @@ fn create_large_scale_kb(rule_count: usize) -> Result<KnowledgeBase, Box<dyn std
 }
 
 fn register_test_functions(engine: &mut RustRuleEngine) {
-    engine.register_function("validateAge", Box::new(|args: &[Value], _facts| {
+    engine.register_function("validateAge", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {
             println!("     ✅ Age validation: {}", msg);
         }
         Ok(Value::Null)
-    }));
+    });
 
-    engine.register_function("processCountry", Box::new(|args: &[Value], _facts| {
+    engine.register_function("processCountry", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {
             println!("     🌎 Country processing: {}", msg);
         }
         Ok(Value::Null)
-    }));
+    });
 
-    engine.register_function("analyzeSpending", Box::new(|args: &[Value], _facts| {
+    engine.register_function("analyzeSpending", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {
             println!("     💰 Spending analysis: {}", msg);
         }
         Ok(Value::Null)
-    }));
+    });
 
-    engine.register_function("checkVIPStatus", Box::new(|args: &[Value], _facts| {
+    engine.register_function("checkVIPStatus", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {
             println!("     ⭐ VIP check: {}", msg);
         }
         Ok(Value::Null)
-    }));
+    });
 
-    engine.register_function("processCategory", Box::new(|args: &[Value], _facts| {
+    engine.register_function("processCategory", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {
             println!("     📂 Category processing: {}", msg);
         }
         Ok(Value::Null)
-    }));
+    });
 
-    engine.register_function("validateOrder", Box::new(|args: &[Value], _facts| {
+    engine.register_function("validateOrder", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {
             println!("     🛒 Order validation: {}", msg);
         }
         Ok(Value::Null)
-    }));
+    });
 
-    engine.register_function("checkItemCount", Box::new(|args: &[Value], _facts| {
+    engine.register_function("checkItemCount", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {
             println!("     📦 Item count check: {}", msg);
         }
         Ok(Value::Null)
-    }));
+    });
 
-    engine.register_function("processElectronics", Box::new(|args: &[Value], _facts| {
+    engine.register_function("processElectronics", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {
             println!("     ⚡ Electronics processing: {}", msg);
         }
         Ok(Value::Null)
-    }));
+    });
 
-    engine.register_function("processRule", Box::new(|args: &[Value], _facts| {
+    engine.register_function("processRule", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {
             println!("     🔧 {}", msg);
         }
         Ok(Value::Null)
-    }));
+    });
 }
 
 fn register_test_functions_parallel(engine: &mut ParallelRuleEngine) {

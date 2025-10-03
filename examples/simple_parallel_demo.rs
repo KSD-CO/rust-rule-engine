@@ -1,128 +1,99 @@
-use rust_rule_engine::engine::facts::Facts;
-use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
-use rust_rule_engine::engine::ParallelConfig;
-use rust_rule_engine::engine::ParallelRuleEngine;
-use rust_rule_engine::types::Value;
-use std::collections::HashMap;
+/// Demo: Parallel Rule Execution
+/// This example shows parallel rule execution capabilities.
+
+use rust_rule_engine::engine::{
+    parallel::{ParallelRuleEngine, ParallelConfig},
+    rule::{Rule, Condition, ConditionGroup},
+    facts::Facts,
+    knowledge_base::KnowledgeBase,
+};
+use rust_rule_engine::types::{ActionType, Operator, Value};
 use std::time::Instant;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🚀 Simple Parallel Rule Engine Demo");
-    println!("====================================\n");
+fn main() {
+    println!("🛡️  PARALLEL RULE EXECUTION DEMO");
+    println!("=================================\n");
 
-    // Create test data
-    let facts = create_simple_facts();
-    let kb = create_simple_kb()?;
-
-    println!("🔧 Created {} rules for testing", kb.get_rules().len());
-
-    // Test parallel execution with different configurations
-    test_parallel_configs(&kb, &facts)?;
-
-    println!("\n✅ Parallel execution concept demonstrated!");
-    println!("🎯 Next steps for full implementation:");
-    println!("   - 🔧 Integrate with actual condition evaluation");
-    println!("   - 🚀 Add real action execution");
-    println!("   - 📊 Optimize threading strategy");
-    println!("   - 🔍 Add dependency analysis");
-
-    Ok(())
+    // Demo: Simple parallel execution
+    demo_parallel_execution();
 }
 
-fn create_simple_facts() -> Facts {
-    let facts = Facts::new();
-    facts.set("User", {
-        let mut user = HashMap::new();
-        user.insert("Age".to_string(), Value::Number(25.0));
-        user.insert("Country".to_string(), Value::String("US".to_string()));
-        user.insert("IsActive".to_string(), Value::Boolean(true));
-        Value::Object(user)
-    });
-    facts
-}
-
-fn create_simple_kb() -> Result<KnowledgeBase, Box<dyn std::error::Error>> {
-    let mut kb = KnowledgeBase::new("SimpleTestKB");
-
+fn demo_parallel_execution() {
+    println!("📊 Parallel Rule Execution Test\n");
+    
+    // Create knowledge base with test rules
+    let mut kb = KnowledgeBase::new("ParallelDemo");
+    
+    // Add some independent rules
     let rules = vec![
-        r#"rule "Rule1" salience 10 {
-            when User.Age >= 18
-            then log("Rule1 fired");
-        }"#,
-        r#"rule "Rule2" salience 10 {
-            when User.Country == "US"
-            then log("Rule2 fired");
-        }"#,
-        r#"rule "Rule3" salience 9 {
-            when User.IsActive == true
-            then log("Rule3 fired");
-        }"#,
-        r#"rule "Rule4" salience 8 {
-            when User.Age > 20
-            then log("Rule4 fired");
-        }"#,
-        r#"rule "Rule5" salience 8 {
-            when User.Country != "UK"
-            then log("Rule5 fired");
-        }"#,
+        Rule::new(
+            "CheckAge".to_string(),
+            ConditionGroup::Single(Condition::new(
+                "User.Age".to_string(),
+                Operator::GreaterThanOrEqual,
+                Value::Integer(18),
+            )),
+            vec![ActionType::Log { 
+                message: "User is adult".to_string() 
+            }],
+        ),
+        Rule::new(
+            "CheckCountry".to_string(),
+            ConditionGroup::Single(Condition::new(
+                "User.Country".to_string(),
+                Operator::Equal,
+                Value::String("US".to_string()),
+            )),
+            vec![ActionType::Log { 
+                message: "User is from US".to_string() 
+            }],
+        ),
+        Rule::new(
+            "CheckEmail".to_string(),
+            ConditionGroup::Single(Condition::new(
+                "User.Email".to_string(),
+                Operator::Contains,
+                Value::String("@test.com".to_string()),
+            )),
+            vec![ActionType::Log { 
+                message: "User has test email".to_string() 
+            }],
+        ),
     ];
 
-    for rule_str in rules {
-        kb.add_rules_from_grl(rule_str)?;
+    for rule in rules {
+        kb.add_rule(rule).unwrap();
     }
-
-    Ok(kb)
-}
-
-fn test_parallel_configs(
-    kb: &KnowledgeBase, 
-    facts: &Facts
-) -> Result<(), Box<dyn std::error::Error>> {
-    let configs = vec![
-        ("Single Thread", ParallelConfig {
-            enabled: true,
-            max_threads: 1,
-            min_rules_per_thread: 1,
-            dependency_analysis: false,
-        }),
-        ("Multi Thread", ParallelConfig {
-            enabled: true,
-            max_threads: 4,
-            min_rules_per_thread: 1,
-            dependency_analysis: false,
-        }),
-        ("Default Config", ParallelConfig::default()),
-        ("Disabled", ParallelConfig {
-            enabled: false,
-            ..Default::default()
-        }),
-    ];
-
-    for (name, config) in configs {
-        println!("\n🧪 Testing {} configuration:", name);
-        println!("   Enabled: {}", config.enabled);
-        println!("   Max threads: {}", config.max_threads);
-        
-        let start = Instant::now();
-        let engine = ParallelRuleEngine::new(config);
-        let result = engine.execute_parallel(kb, facts, true)?;
-        let execution_time = start.elapsed();
-
-        println!("   ⏱️  Execution time: {:?}", execution_time);
-        println!("   📊 Rules evaluated: {}", result.total_rules_evaluated);
-        println!("   🔥 Rules fired: {}", result.total_rules_fired);
-        println!("   📈 Theoretical speedup: {:.2}x", result.parallel_speedup);
-        
-        // Show per-salience execution
-        let mut salience_counts = HashMap::new();
-        for context in &result.execution_contexts {
-            *salience_counts.entry(context.rule.salience).or_insert(0) += 1;
+    
+    // Create facts
+    let facts = Facts::new();
+    facts.set("User.Age", Value::Integer(25));
+    facts.set("User.Country", Value::String("US".to_string()));
+    facts.set("User.Email", Value::String("user@test.com".to_string()));
+    
+    // Configure parallel engine
+    let config = ParallelConfig {
+        enabled: true,
+        max_threads: 4,
+        min_rules_per_thread: 1,
+        dependency_analysis: true,
+    };
+    
+    let engine = ParallelRuleEngine::new(config);
+    
+    // Execute rules
+    let start = Instant::now();
+    match engine.execute_parallel(&kb, &facts, true) {
+        Ok(result) => {
+            let duration = start.elapsed();
+            println!("✅ Parallel execution completed!");
+            println!("   Rules evaluated: {}", result.total_rules_evaluated);
+            println!("   Rules fired: {}", result.total_rules_fired);
+            println!("   Execution time: {:?}", duration);
+            println!("   Parallel speedup: {:.2}x", result.parallel_speedup);
         }
-        
-        for (&salience, &count) in &salience_counts {
-            println!("     📋 Salience {}: {} rules", salience, count);
+        Err(e) => {
+            println!("❌ Execution failed: {}", e);
         }
     }
-
-    Ok(())
 }
