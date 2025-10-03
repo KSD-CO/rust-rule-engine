@@ -1,0 +1,34 @@
+rule "SpeedUp" salience 10 {
+    when
+        TestCar.SpeedUp == true && TestCar.Speed < TestCar.MaxSpeed
+    then
+        TestCar.setSpeed(TestCar.Speed + TestCar.SpeedIncrement);
+        log("Speed increased to " + TestCar.Speed);
+        update(TestCar);
+}
+
+rule "SlowDown" salience 8 {
+    when
+        TestCar.SpeedUp == false && TestCar.Speed > 0
+    then
+        TestCar.setSpeed(TestCar.Speed - TestCar.SpeedIncrement);
+        log("Speed decreased to " + TestCar.Speed);
+        update(TestCar);
+}
+
+rule "MaxSpeedReached" salience 15 {
+    when
+        TestCar.Speed >= TestCar.MaxSpeed
+    then
+        TestCar.setSpeedUp(false);
+        log("Maximum speed reached, stopping acceleration");
+}
+
+rule "MinSpeedReached" salience 12 {
+    when
+        TestCar.Speed <= 0
+    then
+        TestCar.setSpeedUp(true);
+        TestCar.setSpeed(0);
+        log("Minimum speed reached, starting acceleration");
+}

@@ -1,0 +1,53 @@
+rule "HighAmountAlert" salience 10 {
+    when
+        Transaction.Amount > Account.DailyLimit
+    then
+        addAlert("HIGH_AMOUNT", "Transaction exceeds daily limit");
+        updateFraudScore(Alert.FraudScore, 25.0);
+        log("HIGH AMOUNT ALERT: Transaction exceeds daily limit");
+}
+
+rule "ForeignLocationAlert" salience 8 {
+    when
+        Transaction.Location == "FOREIGN" && Account.LastLoginLocation == "DOMESTIC"
+    then
+        addAlert("FOREIGN_LOCATION", "Foreign transaction detected");
+        updateFraudScore(Alert.FraudScore, 30.0);
+        log("LOCATION ALERT: Foreign transaction detected");
+}
+
+rule "HighRiskMerchantAlert" salience 7 {
+    when
+        Transaction.MerchantCategory == "CASINO" || Transaction.MerchantCategory == "GAMBLING"
+    then
+        addAlert("HIGH_RISK_MERCHANT", "High-risk merchant category");
+        Alert.setFraudScore(40.0);
+        log("MERCHANT ALERT: High-risk merchant category");
+}
+
+rule "LateNightAlert" salience 6 {
+    when
+        Transaction.Time >= "22:00" || Transaction.Time <= "06:00"
+    then
+        addAlert("LATE_NIGHT", "Late night transaction");
+        Alert.setFraudScore(20.0);
+        log("TIME ALERT: Late night transaction");
+}
+
+rule "InsufficientFundsAlert" salience 9 {
+    when
+        Transaction.Amount > Account.Balance
+    then
+        addAlert("INSUFFICIENT_FUNDS", "Transaction exceeds account balance");
+        updateFraudScore(Alert.FraudScore, 35.0);
+        log("BALANCE ALERT: Insufficient funds");
+}
+
+rule "CriticalFraudAlert" salience 15 {
+    when
+        Alert.FraudScore >= 80.0
+    then
+        Alert.setStatus("BLOCKED");
+        sendCriticalAlert("CRITICAL FRAUD DETECTED", Transaction.Amount);
+        log("CRITICAL ALERT: High fraud score detected");
+}

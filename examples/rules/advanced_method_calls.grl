@@ -1,0 +1,35 @@
+rule "AdvancedSpeedControl" salience 20 {
+    when
+        TestCar.Speed > 80.0 && TestCar.IsRunning == true
+    then
+        TestCar.setWarningLight(true);
+        calculateFuelConsumption(TestCar.Speed, TestCar.Engine);
+        log("Advanced speed control activated");
+}
+
+rule "EngineOptimization" salience 15 {
+    when
+        TestCar.Speed > 50.0 && TestCar.Speed < 80.0
+    then
+        optimizeEngineEfficiency(TestCar.Engine, TestCar.Speed);
+        TestCar.setEcoMode(true);
+        log("Engine optimization enabled");
+}
+
+rule "SafetyProtocol" salience 25 {
+    when
+        TestCar.Speed > TestCar.MaxSpeed * 0.9
+    then
+        activateSafetyProtocol(TestCar.Speed, TestCar.MaxSpeed);
+        TestCar.setWarningLight(true);
+        log("Safety protocol activated");
+}
+
+rule "FuelAlert" salience 10 {
+    when
+        TestCar.FuelLevel < 20.0
+    then
+        sendFuelAlert(TestCar.FuelLevel);
+        TestCar.setEcoMode(true);
+        log("Low fuel alert triggered");
+}
