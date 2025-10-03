@@ -1,0 +1,35 @@
+rule "FunctionCallDemo1" salience 20 {
+    when
+        Data.Value > 50
+    then
+        sum(Data.Value, 25);
+        max(Data.Value, Data.MaxValue);
+        log("Mathematical functions executed");
+}
+
+rule "FunctionCallDemo2" salience 15 {
+    when
+        Data.Text != ""
+    then
+        uppercase(Data.Text);
+        contains(Data.Text, "test");
+        log("String functions executed");
+}
+
+rule "FunctionCallDemo3" salience 10 {
+    when
+        Data.Count > 0
+    then
+        round(Data.Value);
+        avg(Data.Value, Data.Count);
+        log("Utility functions executed");
+}
+
+rule "FunctionCallDemo4" salience 5 {
+    when
+        Data.Active == true
+    then
+        timestamp();
+        random(100);
+        log("System functions executed");
+}

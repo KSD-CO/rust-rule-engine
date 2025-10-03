@@ -1,0 +1,51 @@
+rule "NewCustomerDiscount" salience 25 {
+    when
+        Customer.IsNew == true && Order.Total > 50.0
+    then
+        Order.setDiscountRate(0.10);
+        Order.setDiscountType("welcome");
+        Customer.setWelcomeEmailSent(true);
+        log("New customer welcome discount applied");
+}
+
+rule "PremiumMemberBenefits" salience 20 {
+    when
+        Customer.Membership == "premium" && Order.Total > 100.0
+    then
+        Order.setDiscountRate(0.15);
+        Order.setFreeShipping(true);
+        log("Premium member benefits applied");
+}
+
+rule "VIPUpgrade" salience 30 {
+    when
+        Customer.TotalSpent > 1000.0 && Customer.Membership != "VIP"
+    then
+        Customer.setMembership("VIP");
+        Order.setDiscountRate(0.25);
+        log("Customer upgraded to VIP membership");
+}
+
+rule "FreeShippingLargeOrders" salience 15 {
+    when
+        Order.Total >= 100.0
+    then
+        Order.setFreeShipping(true);
+        log("Free shipping applied for large order");
+}
+
+rule "BulkDiscount" salience 12 {
+    when
+        Order.ItemCount >= 5
+    then
+        applyBulkDiscount(Order.DiscountRate, 0.10);
+        log("Bulk discount applied");
+}
+
+rule "SeasonalPromotion" salience 10 {
+    when
+        Promotion.Active == true && Order.Category == "clothing"
+    then
+        applySeasonalDiscount(Order.DiscountRate, Promotion.SeasonalDiscount);
+        log("Seasonal promotion applied");
+}

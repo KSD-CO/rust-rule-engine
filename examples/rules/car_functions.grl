@@ -1,0 +1,45 @@
+rule "SpeedLimitCheck" salience 20 {
+    when
+        Car.Speed > 80.0
+    then
+        checkSpeedLimit(Car.Speed, 80.0);
+        sendAlert("Speed limit exceeded!", Driver.Name);
+        log("Speed violation detected");
+}
+
+rule "DriverValidation" salience 15 {
+    when
+        Driver.License == "VALID"
+    then
+        validateDriver(Driver.Name, Driver.Experience);
+        calculateInsurance(Driver.Experience, Car.Engine);
+        log("Driver validation completed");
+}
+
+rule "EngineDiagnostics" salience 10 {
+    when
+        Car.IsRunning == true
+    then
+        performDiagnostics(Car.Engine, Car.Speed);
+        optimizePerformance(Car.Speed, Car.MaxSpeed);
+        log("Engine diagnostics completed");
+}
+
+rule "EmergencyShutdown" salience 25 {
+    when
+        Car.Speed > Car.MaxSpeed
+    then
+        emergencyStop(Car.Speed);
+        sendAlert("EMERGENCY: Speed exceeded maximum!", Driver.Name);
+        Car.setIsRunning(false);
+        log("Emergency shutdown activated");
+}
+
+rule "MaintenanceCheck" salience 5 {
+    when
+        Car.IsRunning == true && Driver.Experience >= 5
+    then
+        scheduleMaintenanceCheck(Car.Engine, Driver.Experience);
+        updateMaintenanceRecord(Driver.Name, Car.Engine);
+        log("Maintenance check scheduled");
+}

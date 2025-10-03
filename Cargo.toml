@@ -1,0 +1,65 @@
+[package]
+name = "rust-rule-engine"
+version = "0.3.0"
+edition = "2021"
+description = "A high-performance rule engine for Rust with GRL support, AST-based dependency analysis, parallel execution, file-based rules, custom functions, and method calls"
+authors = ["James Vu <ttvuhm@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/KSD-CO/rust-rule-engine"  # TODO: Update with your real repo
+homepage = "https://github.com/KSD-CO/rust-rule-engine"    # TODO: Update with your real repo
+documentation = "https://docs.rs/rust-rule-engine"
+readme = "README.md"
+keywords = ["rule-engine", "grule", "business-rules", "dependency-analysis", "parallel"]
+categories = ["algorithms", "data-structures", "parsing", "science"]
+exclude = [
+    "tests/*",
+    ".github/*",
+    "benchmarks/*",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+regex = "1.0"
+thiserror = "1.0"
+num_cpus = "1.0"
+tokio = { version = "1.0", features = ["full"], optional = true }
+futures = { version = "0.3", optional = true }
+fastrand = "2.0"
+
+[features]
+default = []
+streaming = ["tokio", "futures"]
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+tokio = { version = "1.0", features = ["full"] }
+
+[[bench]]
+name = "rule_engine_benchmarks"
+harness = false
+
+[[bench]]
+name = "parallel_benchmarks"
+harness = false
+
+[[example]]
+name = "ecommerce"
+path = "examples/ecommerce.rs"
+
+[[example]]
+name = "fraud_detection"
+path = "examples/fraud_detection.rs"
+
+[[example]]
+name = "grule_demo"
+path = "examples/grule_demo.rs"
+
+[[example]]
+name = "realtime_trading_stream"
+path = "examples/realtime_trading_stream.rs"
+required-features = ["streaming"]

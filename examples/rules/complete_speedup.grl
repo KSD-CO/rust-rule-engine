@@ -1,0 +1,27 @@
+rule "SpeedUpOptimized" salience 10 {
+    when
+        TestCar.SpeedUp == true && TestCar.Speed < TestCar.MaxSpeed
+    then
+        TestCar.setSpeed(TestCar.Speed + TestCar.SpeedIncrement);
+        DistanceRecord.setTotalDistance(DistanceRecord.TotalDistance + TestCar.Speed);
+        updatePerformanceMetrics(TestCar.Speed, DistanceRecord.TotalDistance);
+        log("Optimized speed increase executed");
+}
+
+rule "DistanceTracking" salience 8 {
+    when
+        TestCar.Speed > 0
+    then
+        trackDistance(TestCar.Speed, DistanceRecord.TotalDistance);
+        DistanceRecord.setCurrentDistance(TestCar.Speed * 0.1);
+        log("Distance tracking updated");
+}
+
+rule "PerformanceAnalysis" salience 5 {
+    when
+        DistanceRecord.TotalDistance > 1000.0
+    then
+        analyzePerformance(TestCar.Speed, DistanceRecord.TotalDistance);
+        generatePerformanceReport(TestCar);
+        log("Performance analysis completed");
+}

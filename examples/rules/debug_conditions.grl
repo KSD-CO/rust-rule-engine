@@ -1,0 +1,26 @@
+rule "DebugCondition1" salience 15 {
+    when
+        User.Age >= 18 && User.Country == "US"
+    then
+        User.setIsAdult(true);
+        debugLog("User qualified as adult", User.Name);
+        log("Adult verification completed");
+}
+
+rule "DebugCondition2" salience 10 {
+    when
+        User.IsAdult == true && User.Income > 50000
+    then
+        User.setCategory("HighIncome");
+        debugLog("High income category assigned", User.Income);
+        log("Income category updated");
+}
+
+rule "DebugCondition3" salience 5 {
+    when
+        User.Category == "HighIncome" && User.Age > 25
+    then
+        User.setEligible(true);
+        debugLog("User eligible for premium service", User.Category);
+        log("Premium eligibility confirmed");
+}

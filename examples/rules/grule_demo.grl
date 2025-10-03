@@ -1,0 +1,43 @@
+rule "AdultCheck" salience 10 {
+    when
+        User.Age >= 18 && User.Country == "US"
+    then
+        User.setIsAdult(true);
+        User.setCategory("Adult");
+        log("User qualified as adult");
+}
+
+rule "VIPCheck" salience 20 {
+    when
+        User.Age >= 21 && User.IsAdult == true && User.SpendingTotal > 1000
+    then
+        User.setIsVIP(true);
+        User.setDiscountRate(0.15);
+        log("User upgraded to VIP");
+}
+
+rule "SeniorDiscount" salience 15 {
+    when
+        User.Age >= 65
+    then
+        User.setDiscountRate(0.20);
+        User.setCategory("Senior");
+        log("Senior discount applied");
+}
+
+rule "NewCustomerWelcome" salience 8 {
+    when
+        Customer.IsNew == true && Order.Amount > 100.0
+    then
+        Order.setDiscountPercent(10.0);
+        Customer.setLoyaltyPoints(100);
+        log("New customer discount applied");
+}
+
+rule "CalculateFinalAmount" salience 5 {
+    when
+        Order.DiscountPercent > 0.0
+    then
+        calculateFinalOrderAmount(Order.Amount, Order.DiscountPercent);
+        log("Final amount calculated with discount");
+}
