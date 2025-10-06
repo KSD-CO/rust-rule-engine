@@ -6,6 +6,20 @@ A powerful, high-performance rule engine for Rust supporting **GRL (Grule Rule L
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## 📋 Table of Contents
+
+- [🌟 Key Features](#-key-features)
+- [🚀 Quick Start](#-quick-start)
+- [📚 Examples](#-examples)
+- [🌐 REST API](#-rest-api-with-monitoring)
+- [⚡ Parallel Processing](#-parallel-rule-execution)
+- [🌐 Distributed & Cloud](#-distributed--cloud-features)
+- [🧪 All Examples](#-all-examples)
+- [🌊 Streaming](#-streaming-rule-engine-v020)
+- [📊 Analytics](#-advanced-analytics)
+- [🔧 API Reference](#-api-reference)
+- [📋 Changelog](#-changelog)
+
 ## 🌟 Key Features
 
 - **🔥 GRL-Only Support**: Pure Grule Rule Language syntax (no JSON)
@@ -21,10 +35,25 @@ A powerful, high-performance rule engine for Rust supporting **GRL (Grule Rule L
 - **📈 Execution Statistics**: Detailed performance metrics and debugging
 - **🔍 Smart Dependency Analysis**: AST-based field dependency detection and conflict resolution
 - **🚀 Parallel Processing**: Multi-threaded rule execution with automatic dependency management
+- **🌐 Distributed Architecture**: Scale across multiple nodes for high-performance processing
 - **📊 Rule Templates**: Parameterized rule templates for scalable rule generation
 - **🌊 Stream Processing**: Real-time event processing with time windows (optional)
 - **📊 Analytics**: Built-in aggregations and trend analysis
 - **🚨 Action Handlers**: Custom action execution for rule consequences
+- **📈 Advanced Analytics**: Production-ready performance monitoring and optimization insights
+
+## 📋 Changelog
+
+### v0.3.1 (October 2025) - REST API with Monitoring
+- **🌐 Production REST API**: Complete web API with advanced analytics integration
+  - Comprehensive endpoints for rule execution and monitoring
+  - Real-time analytics dashboard with performance insights
+  - Health monitoring and system status endpoints
+  - CORS support and proper error handling
+  - Sample requests and complete API documentation
+  - Production-ready demo script for testing
+
+### v0.3.0 (October 2025) - AST-Based Dependency Analysis & Advanced Analytics
 
 ## 🚀 Quick Start
 
@@ -32,10 +61,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.3.0"
+rust-rule-engine = "0.3.1"
 
 # For streaming features
-rust-rule-engine = { version = "0.3.0", features = ["streaming"] }
+rust-rule-engine = { version = "0.3.1", features = ["streaming"] }
 ```
 
 ### 📄 File-Based Rules
@@ -276,6 +305,102 @@ rule "MaintenanceDue" salience 10 {
 }
 ```
 
+## 🌐 REST API with Monitoring
+
+The engine provides a production-ready REST API with comprehensive analytics monitoring.
+
+### Quick Start
+
+```bash
+# Run the REST API server with full analytics monitoring
+cargo run --example rest_api_monitoring
+
+# Or use the demo script for testing
+./demo_rest_api.sh
+```
+
+### Available Endpoints
+
+**Rule Execution:**
+- `POST /api/v1/rules/execute` - Execute rules with provided facts
+- `POST /api/v1/rules/batch` - Execute rules in batch mode
+
+**Analytics & Monitoring:**
+- `GET /api/v1/analytics/dashboard` - Comprehensive analytics dashboard
+- `GET /api/v1/analytics/stats` - Overall performance statistics  
+- `GET /api/v1/analytics/recent` - Recent execution activity
+- `GET /api/v1/analytics/recommendations` - Performance optimization recommendations
+- `GET /api/v1/analytics/rules/{rule_name}` - Rule-specific analytics
+
+**System:**
+- `GET /` - API documentation
+- `GET /api/v1/health` - Health check
+- `GET /api/v1/status` - System status
+
+### Example Requests
+
+**Execute Rules:**
+```bash
+curl -X POST "http://localhost:3000/api/v1/rules/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "facts": {
+      "Customer": {
+        "Age": 35,
+        "IsNew": false,
+        "OrderCount": 75,
+        "TotalSpent": 15000.0,
+        "YearsActive": 3,
+        "Email": "customer@example.com"
+      },
+      "Order": {
+        "Amount": 750.0,
+        "CustomerEmail": "customer@example.com"
+      }
+    }
+  }'
+```
+
+**Analytics Dashboard:**
+```bash
+curl "http://localhost:3000/api/v1/analytics/dashboard"
+```
+
+**Sample Response:**
+```json
+{
+  "overall_stats": {
+    "total_executions": 1250,
+    "avg_execution_time_ms": 2.3,
+    "success_rate": 99.8,
+    "rules_per_second": 435.2,
+    "uptime_hours": 24.5
+  },
+  "top_performing_rules": [
+    {
+      "name": "VIPCustomerRule",
+      "execution_count": 340,
+      "avg_duration_ms": 1.8,
+      "success_rate": 100.0
+    }
+  ],
+  "recommendations": [
+    "Consider caching customer data to improve performance",
+    "Rule 'ComplexValidation' shows high execution time"
+  ]
+}
+```
+
+### Production Configuration
+
+The REST API includes:
+- **Real-time Analytics**: Live performance monitoring
+- **Health Checks**: Comprehensive system health monitoring
+- **CORS Support**: Cross-origin resource sharing
+- **Error Handling**: Proper HTTP status codes and error messages
+- **Sampling**: Configurable analytics sampling for high-volume scenarios
+- **Memory Management**: Automatic cleanup and retention policies
+
 ## ⚡ Performance & Architecture
 
 ### Benchmarks
@@ -500,6 +625,157 @@ cargo run --example simple_parallel_demo
 cargo run --example financial_stress_test
 ```
 
+## 🌐 Distributed & Cloud Features
+
+Scale your rule engine across multiple nodes for high-performance distributed processing:
+
+### Architecture Overview
+
+```
+                    ┌─────────────────────┐
+                    │   Load Balancer     │
+                    │   (Route Requests)  │
+                    └──────────┬──────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+   ┌─────────┐            ┌─────────┐            ┌─────────┐
+   │ Node 1  │            │ Node 2  │            │ Node 3  │
+   │Validation│           │ Pricing │            │ Loyalty │
+   │  Rules  │            │  Rules  │            │  Rules  │
+   └─────────┘            └─────────┘            └─────────┘
+        │                      │                      │
+        └──────────────────────┼──────────────────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │   Shared Data       │
+                    │ (Redis/PostgreSQL)  │
+                    └─────────────────────┘
+```
+
+### Performance Benefits
+
+- **⚡ 3x Performance**: Parallel processing across specialized nodes
+- **🛡️ Fault Tolerance**: If one node fails, others continue operation
+- **📈 Horizontal Scaling**: Add nodes to increase capacity
+- **🌍 Geographic Distribution**: Deploy closer to users for reduced latency
+
+### Quick Demo
+
+```bash
+# Compare single vs distributed processing
+cargo run --example distributed_concept_demo
+```
+
+**Results:**
+```
+Single Node:    1.4 seconds (sequential)
+Distributed:    0.47 seconds (parallel)
+→ 3x Performance Improvement!
+```
+
+### Implementation Guide
+
+See our comprehensive guides:
+- 📚 [Distributed Architecture Guide](docs/distributed_features_guide.md)
+- 🚀 [Real-world Examples](docs/distributed_explained.md)
+- 🔧 [Implementation Roadmap](docs/distributed_architecture.md)
+
+### Cloud Deployment
+
+Deploy on major cloud platforms:
+
+**Kubernetes:**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rule-engine-workers
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rule-engine
+```
+
+**Docker:**
+```dockerfile
+FROM rust:alpine
+COPY target/release/rust-rule-engine /app/
+EXPOSE 8080
+CMD ["/app/rust-rule-engine"]
+```
+
+### When to Use Distributed Architecture
+
+✅ **Recommended for:**
+- High traffic (>10,000 requests/day)
+- Complex rule sets (>500 rules)
+- High availability requirements
+- Geographic distribution needs
+
+❌ **Not needed for:**
+- Simple applications (<100 rules)
+- Low traffic scenarios
+- Development/prototyping
+- Limited infrastructure budget
+
+## 🧪 All Examples
+
+### Core Features
+```bash
+# Basic rule execution
+cargo run --example grule_demo
+
+# E-commerce rules
+cargo run --example ecommerce
+
+# Custom functions
+cargo run --example custom_functions_demo
+
+# Method calls
+cargo run --example method_calls_demo
+```
+
+### Performance & Scaling
+```bash
+# Parallel processing comparison
+cargo run --example simple_parallel_demo
+
+# Financial stress testing
+cargo run --example financial_stress_test
+
+# Distributed architecture demo
+cargo run --example distributed_concept_demo
+```
+
+### Advanced Features
+```bash
+# REST API with analytics
+cargo run --example rest_api_monitoring
+
+# Analytics and monitoring
+cargo run --example analytics_demo
+
+# Rule file processing
+cargo run --example rule_file_functions_demo
+
+# Advanced dependency analysis
+cargo run --example advanced_dependency_demo
+```
+
+### Production Examples
+```bash
+# Fraud detection system
+cargo run --example fraud_detection
+
+# Complete speedup demo
+cargo run --example complete_speedup_demo
+
+# Debug conditions
+cargo run --example debug_conditions
+```
+
 ## 🌊 Streaming Rule Engine (v0.2.0+)
 
 For real-time event processing, enable the `streaming` feature:
@@ -712,9 +988,141 @@ rule "FlashSaleOpportunity" {
 
 See [docs/STREAMING.md](docs/STREAMING.md) for complete documentation and examples.
 
+## 📊 Advanced Analytics & Performance Monitoring (v0.3.0+)
+
+Get deep insights into your rule engine performance with built-in analytics and monitoring:
+
+### 🔧 Quick Analytics Setup
+
+```rust
+use rust_rule_engine::{RustRuleEngine, AnalyticsConfig, RuleAnalytics};
+
+// Configure analytics for production use
+let analytics_config = AnalyticsConfig {
+    track_execution_time: true,
+    track_memory_usage: true,
+    track_success_rate: true,
+    sampling_rate: 0.8,  // 80% sampling for high-volume production
+    retention_period: Duration::from_secs(30 * 24 * 60 * 60), // 30 days
+    max_recent_samples: 100,
+};
+
+// Enable analytics
+let analytics = RuleAnalytics::new(analytics_config);
+engine.enable_analytics(analytics);
+
+// Execute rules - analytics automatically collected
+let result = engine.execute(&facts)?;
+
+// Access comprehensive insights
+if let Some(analytics) = engine.analytics() {
+    let stats = analytics.overall_stats();
+    println!("Total executions: {}", stats.total_evaluations);
+    println!("Average execution time: {:.2}ms", 
+        stats.avg_execution_time.as_secs_f64() * 1000.0);
+    println!("Success rate: {:.1}%", stats.success_rate);
+    
+    // Get optimization recommendations
+    let recommendations = analytics.generate_recommendations();
+    for rec in recommendations {
+        println!("💡 {}", rec);
+    }
+}
+```
+
+### 📈 Analytics Features
+
+- **⏱️ Execution Timing**: Microsecond-precision rule performance tracking
+- **📊 Success Rate Monitoring**: Track fired vs evaluated rule ratios  
+- **💾 Memory Usage Estimation**: Optional memory footprint analysis
+- **🎯 Performance Rankings**: Identify fastest and slowest rules
+- **🔮 Smart Recommendations**: AI-powered optimization suggestions
+- **📅 Timeline Analysis**: Recent execution history and trends
+- **⚙️ Production Sampling**: Configurable sampling rates for high-volume environments
+- **🗂️ Automatic Cleanup**: Configurable data retention policies
+
+### 🎛️ Production Configuration
+
+```rust
+// Production configuration with optimized settings
+let production_config = AnalyticsConfig::production(); // Built-in production preset
+
+// Or custom configuration
+let custom_config = AnalyticsConfig {
+    track_execution_time: true,
+    track_memory_usage: false,    // Disable for performance
+    track_success_rate: true,
+    sampling_rate: 0.1,          // 10% sampling for high traffic
+    retention_period: Duration::from_secs(7 * 24 * 60 * 60), // 1 week
+    max_recent_samples: 50,      // Limit memory usage
+};
+```
+
+### 📊 Rich Analytics Dashboard
+
+```rust
+// Get comprehensive performance report
+let analytics = engine.analytics().unwrap();
+
+// Overall statistics
+let stats = analytics.overall_stats();
+println!("📊 Performance Summary:");
+println!("  Rules: {}", stats.total_rules);
+println!("  Executions: {}", stats.total_evaluations);
+println!("  Success Rate: {:.1}%", stats.success_rate);
+println!("  Avg Time: {:.2}ms", stats.avg_execution_time.as_secs_f64() * 1000.0);
+
+// Top performing rules
+for rule_metrics in analytics.slowest_rules(3) {
+    println!("⚠️ Slow Rule: {} ({:.2}ms avg)", 
+        rule_metrics.rule_name, 
+        rule_metrics.avg_execution_time().as_secs_f64() * 1000.0
+    );
+}
+
+// Recent activity timeline
+for event in analytics.get_recent_events(5) {
+    let status = if event.success { "✅" } else { "❌" };
+    println!("{} {} - {:.2}ms", status, event.rule_name, 
+        event.duration.as_secs_f64() * 1000.0);
+}
+```
+
+### 🔍 Performance Insights
+
+The analytics system provides actionable insights:
+
+- **Slow Rule Detection**: "Consider optimizing 'ComplexValidation' - average execution time is 15.3ms"
+- **Low Success Rate Alerts**: "Rule 'RareCondition' has low success rate (12.5%) - review conditions"  
+- **Dead Rule Detection**: "Rule 'ObsoleteCheck' never fires despite 156 evaluations - review logic"
+- **Memory Usage Warnings**: "Rule 'DataProcessor' uses significant memory - consider optimization"
+
+### 📚 Analytics Examples
+
+Check out the comprehensive analytics demo:
+
+```bash
+# Run the analytics demonstration
+cargo run --example analytics_demo
+
+# Output includes:
+# - Configuration summary
+# - Performance rankings  
+# - Success rate analysis
+# - Optimization recommendations
+# - Recent execution timeline
+```
+
+**Key Benefits:**
+- 🚀 **Performance Optimization**: Identify bottlenecks automatically
+- 📈 **Production Monitoring**: Real-time insights in live environments  
+- 🔧 **Development Debugging**: Detailed execution analysis during development
+- 📊 **Trend Analysis**: Historical performance tracking and regression detection
+- ⚡ **Zero-Overhead Option**: Configurable sampling with minimal performance impact
+
 ## � Changelog
 
-### v0.3.0 (October 2025) - AST-Based Dependency Analysis
+### v0.3.0 (October 2025) - AST-Based Dependency Analysis & Advanced Analytics
 - **🔍 Revolutionary Dependency Analysis**: Complete rewrite from hard-coded pattern matching to proper AST parsing
 - **🎯 Smart Field Detection**: Recursive condition tree traversal for accurate field dependency extraction
 - **🧠 Function Side-Effect Analysis**: Intelligent inference of field modifications from function calls
@@ -722,6 +1130,19 @@ See [docs/STREAMING.md](docs/STREAMING.md) for complete documentation and exampl
 - **🚀 Parallel Processing Foundation**: AST-based analysis enables safe concurrent rule execution
 - **📊 Advanced Conflict Detection**: Real data flow analysis for read-write conflict identification
 - **🏗️ Production-Ready Safety**: Robust dependency analysis for enterprise-grade rule management
+- **📈 Advanced Analytics System**: Comprehensive performance monitoring and optimization insights
+  - Real-time execution metrics with microsecond precision
+  - Success rate tracking and trend analysis
+  - Memory usage estimation and optimization recommendations
+  - Production-ready sampling and data retention policies
+  - Automated performance optimization suggestions
+  - Rich analytics dashboard with timeline analysis
+- **🌐 REST API with Monitoring**: Production-ready web API with full analytics integration
+  - Comprehensive REST endpoints for rule execution
+  - Real-time analytics dashboard with performance insights
+  - Health monitoring and system status endpoints
+  - CORS support and proper error handling
+  - Sample requests and complete API documentation
 
 ### v0.2.x - Core Features & Streaming
 - **🌊 Stream Processing**: Real-time event processing with time windows

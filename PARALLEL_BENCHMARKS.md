@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-Chúng ta đã tạo hệ thống benchmark comprehensive để so sánh hiệu suất giữa parallel và sequential execution trong Rust Rule Engine v0.3.0.
+We have created a comprehensive benchmark system to compare performance between parallel and sequential execution in Rust Rule Engine v0.3.0.
 
 ## 🧪 Benchmark Suite
 
@@ -144,4 +144,4 @@ ParallelConfig {
 ✅ **Performance characteristics** documented
 ✅ **Production guidance** provided
 
-**🏆 Rust Rule Engine v0.3.0 giờ có production-ready parallel execution với detailed performance analysis!**
+**🏆 Rust Rule Engine v0.3.0 now has production-ready parallel execution with detailed performance analysis!**
