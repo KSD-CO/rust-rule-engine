@@ -1,4 +1,4 @@
-use crate::engine::{facts::Facts, knowledge_base::KnowledgeBase};
+use crate::engine::{analytics::RuleAnalytics, facts::Facts, knowledge_base::KnowledgeBase};
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Value};
 use std::collections::HashMap;
@@ -49,6 +49,7 @@ pub struct RustRuleEngine {
     knowledge_base: KnowledgeBase,
     config: EngineConfig,
     custom_functions: HashMap<String, CustomFunction>,
+    analytics: Option<RuleAnalytics>,
 }
 
 impl RustRuleEngine {
@@ -58,6 +59,7 @@ impl RustRuleEngine {
             knowledge_base,
             config: EngineConfig::default(),
             custom_functions: HashMap::new(),
+            analytics: None,
         }
     }
 
@@ -67,6 +69,7 @@ impl RustRuleEngine {
             knowledge_base,
             config,
             custom_functions: HashMap::new(),
+            analytics: None,
         }
     }
 
@@ -77,6 +80,21 @@ impl RustRuleEngine {
     {
         self.custom_functions
             .insert(name.to_string(), Box::new(func));
+    }
+
+    /// Enable analytics with custom configuration
+    pub fn enable_analytics(&mut self, analytics: RuleAnalytics) {
+        self.analytics = Some(analytics);
+    }
+
+    /// Disable analytics
+    pub fn disable_analytics(&mut self) {
+        self.analytics = None;
+    }
+
+    /// Get reference to analytics data
+    pub fn analytics(&self) -> Option<&RuleAnalytics> {
+        self.analytics.as_ref()
     }
 
     /// Check if a custom function is registered
@@ -95,7 +113,7 @@ impl RustRuleEngine {
     }
 
     /// Execute all rules in the knowledge base against the given facts
-    pub fn execute(&self, facts: &Facts) -> Result<GruleExecutionResult> {
+    pub fn execute(&mut self, facts: &Facts) -> Result<GruleExecutionResult> {
         let start_time = Instant::now();
         let mut cycle_count = 0;
         let mut rules_evaluated = 0;
@@ -131,6 +149,7 @@ impl RustRuleEngine {
                 }
 
                 rules_evaluated += 1;
+                let rule_start = Instant::now();
 
                 if self.config.debug_mode {
                     println!("📝 Evaluating rule: {}", rule.name);
@@ -150,8 +169,29 @@ impl RustRuleEngine {
                         self.execute_action(action, facts)?;
                     }
 
+                    let rule_duration = rule_start.elapsed();
+
+                    // Record analytics if enabled
+                    if let Some(analytics) = &mut self.analytics {
+                        analytics.record_execution(&rule.name, rule_duration, true, true, None, 0);
+                    }
+
                     rules_fired += 1;
                     any_rule_fired = true;
+                } else {
+                    let rule_duration = rule_start.elapsed();
+
+                    // Record analytics for failed rules too
+                    if let Some(analytics) = &mut self.analytics {
+                        analytics.record_execution(
+                            &rule.name,
+                            rule_duration,
+                            false,
+                            false,
+                            None,
+                            0,
+                        );
+                    }
                 }
             }
 

@@ -1,3 +1,7 @@
+/// Advanced analytics and performance monitoring
+pub mod analytics;
+/// Dependency analysis for safe parallel execution
+pub mod dependency;
 /// Main rule execution engine
 #[allow(clippy::module_inception)]
 pub mod engine;
@@ -7,15 +11,16 @@ pub mod facts;
 pub mod knowledge_base;
 /// Parallel rule execution engine
 pub mod parallel;
-/// Dependency analysis for safe parallel execution
-pub mod dependency;
 /// Rule definition and condition handling
 pub mod rule;
 /// Rule templates for dynamic rule generation
 pub mod template;
 
 // Re-export main components for easy access
+pub use analytics::{AnalyticsConfig, ExecutionEvent, OverallStats, RuleAnalytics, RuleMetrics};
+pub use dependency::{
+    DependencyAnalysisResult, DependencyAnalyzer, ExecutionGroup, ExecutionMode, ExecutionStrategy,
+};
 pub use engine::{EngineConfig, GruleExecutionResult, RustRuleEngine};
 pub use parallel::{ParallelConfig, ParallelExecutionResult, ParallelRuleEngine};
 pub use template::{ParameterType, RuleTemplate, TemplateManager};
-pub use dependency::{DependencyAnalyzer, DependencyAnalysisResult, ExecutionGroup, ExecutionMode, ExecutionStrategy};

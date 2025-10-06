@@ -30,19 +30,27 @@ impl Default for ParallelConfig {
     }
 }
 
+/// Type alias for custom function storage
+type CustomFunctionMap =
+    HashMap<String, Box<dyn Fn(&[Value], &Facts) -> Result<Value> + Send + Sync>>;
+
 /// Rule execution context for parallel processing
 #[derive(Debug, Clone)]
 pub struct RuleExecutionContext {
+    /// The rule that was executed
     pub rule: Rule,
+    /// Whether the rule fired successfully
     pub fired: bool,
+    /// Error message if execution failed
     pub error: Option<String>,
+    /// Time taken to execute this rule
     pub execution_time: Duration,
 }
 
 /// Parallel rule execution engine
 pub struct ParallelRuleEngine {
     config: ParallelConfig,
-    custom_functions: Arc<RwLock<HashMap<String, Box<dyn Fn(&[Value], &Facts) -> Result<Value> + Send + Sync>>>>,
+    custom_functions: Arc<RwLock<CustomFunctionMap>>,
 }
 
 impl ParallelRuleEngine {
@@ -71,14 +79,17 @@ impl ParallelRuleEngine {
         debug_mode: bool,
     ) -> Result<ParallelExecutionResult> {
         let start_time = Instant::now();
-        
+
         if debug_mode {
-            println!("🚀 Starting parallel rule execution with {} rules", knowledge_base.get_rules().len());
+            println!(
+                "🚀 Starting parallel rule execution with {} rules",
+                knowledge_base.get_rules().len()
+            );
         }
 
         // Group rules by salience for ordered execution
         let salience_groups = self.group_rules_by_salience(&knowledge_base.get_rules());
-        
+
         let mut total_fired = 0;
         let mut total_evaluated = 0;
         let mut execution_contexts = Vec::new();
@@ -89,14 +100,18 @@ impl ParallelRuleEngine {
 
         for salience in salience_levels {
             let rules_at_level = &salience_groups[&salience];
-            
+
             if debug_mode {
-                println!("⚡ Processing {} rules at salience level {}", rules_at_level.len(), salience);
+                println!(
+                    "⚡ Processing {} rules at salience level {}",
+                    rules_at_level.len(),
+                    salience
+                );
             }
 
             // Decide whether to use parallel execution for this level
             let should_parallelize = self.should_parallelize(rules_at_level);
-            
+
             let contexts = if should_parallelize {
                 self.execute_rules_parallel(rules_at_level, facts, debug_mode)?
             } else {
@@ -128,7 +143,10 @@ impl ParallelRuleEngine {
         let mut groups = HashMap::new();
         for rule in rules {
             if rule.enabled {
-                groups.entry(rule.salience).or_insert_with(Vec::new).push(rule.clone());
+                groups
+                    .entry(rule.salience)
+                    .or_insert_with(Vec::new)
+                    .push(rule.clone());
             }
         }
         groups
@@ -136,9 +154,7 @@ impl ParallelRuleEngine {
 
     /// Determine if rules should be executed in parallel
     fn should_parallelize(&self, rules: &[Rule]) -> bool {
-        self.config.enabled && 
-        rules.len() >= self.config.min_rules_per_thread &&
-        rules.len() >= 2
+        self.config.enabled && rules.len() >= self.config.min_rules_per_thread && rules.len() >= 2
     }
 
     /// Execute rules in parallel within the same salience level
@@ -153,58 +169,68 @@ impl ParallelRuleEngine {
         let functions_arc = Arc::clone(&self.custom_functions);
 
         // Create worker threads
-        let chunk_size = (rules.len() + self.config.max_threads - 1) / self.config.max_threads;
+        let chunk_size = rules.len().div_ceil(self.config.max_threads);
         let chunks: Vec<_> = rules.chunks(chunk_size).collect();
 
-        let handles: Vec<_> = chunks.into_iter().enumerate().map(|(thread_id, chunk)| {
-            let chunk = chunk.to_vec();
-            let results_clone = Arc::clone(&results);
-            let facts_clone = Arc::clone(&facts_arc);
-            let functions_clone = Arc::clone(&functions_arc);
+        let handles: Vec<_> = chunks
+            .into_iter()
+            .enumerate()
+            .map(|(thread_id, chunk)| {
+                let chunk = chunk.to_vec();
+                let results_clone = Arc::clone(&results);
+                let facts_clone = Arc::clone(&facts_arc);
+                let functions_clone = Arc::clone(&functions_arc);
 
-            thread::spawn(move || {
-                if debug_mode {
-                    println!("  🧵 Thread {} processing {} rules", thread_id, chunk.len());
-                }
+                thread::spawn(move || {
+                    if debug_mode {
+                        println!("  🧵 Thread {} processing {} rules", thread_id, chunk.len());
+                    }
 
-                let mut thread_results = Vec::new();
-                for rule in chunk {
-                    let start = Instant::now();
-                    let fired = Self::evaluate_rule_conditions(&rule, &facts_clone);
-                    
-                    if fired {
-                        if debug_mode {
-                            println!("    🔥 Rule '{}' fired", rule.name);
-                        }
-                        
-                        // Execute actions (simplified for demo)
-                        for action in &rule.actions {
-                            if let Err(e) = Self::execute_action_parallel(action, &facts_clone, &functions_clone) {
-                                if debug_mode {
-                                    println!("    ❌ Action failed: {}", e);
+                    let mut thread_results = Vec::new();
+                    for rule in chunk {
+                        let start = Instant::now();
+                        let fired = Self::evaluate_rule_conditions(&rule, &facts_clone);
+
+                        if fired {
+                            if debug_mode {
+                                println!("    🔥 Rule '{}' fired", rule.name);
+                            }
+
+                            // Execute actions (simplified for demo)
+                            for action in &rule.actions {
+                                if let Err(e) = Self::execute_action_parallel(
+                                    action,
+                                    &facts_clone,
+                                    &functions_clone,
+                                ) {
+                                    if debug_mode {
+                                        println!("    ❌ Action failed: {}", e);
+                                    }
                                 }
                             }
                         }
+
+                        thread_results.push(RuleExecutionContext {
+                            rule: rule.clone(),
+                            fired,
+                            error: None,
+                            execution_time: start.elapsed(),
+                        });
                     }
 
-                    thread_results.push(RuleExecutionContext {
-                        rule: rule.clone(),
-                        fired,
-                        error: None,
-                        execution_time: start.elapsed(),
-                    });
-                }
-
-                let mut results = results_clone.lock().unwrap();
-                results.extend(thread_results);
+                    let mut results = results_clone.lock().unwrap();
+                    results.extend(thread_results);
+                })
             })
-        }).collect();
+            .collect();
 
         // Wait for all threads to complete
         for handle in handles {
-            handle.join().map_err(|_| RuleEngineError::EvaluationError {
-                message: "Thread panicked during parallel execution".to_string(),
-            })?;
+            handle
+                .join()
+                .map_err(|_| RuleEngineError::EvaluationError {
+                    message: "Thread panicked during parallel execution".to_string(),
+                })?;
         }
 
         let results = results.lock().unwrap();
@@ -224,7 +250,7 @@ impl ParallelRuleEngine {
         for rule in rules {
             let start = Instant::now();
             let fired = Self::evaluate_rule_conditions(rule, facts);
-            
+
             if fired && debug_mode {
                 println!("    🔥 Rule '{}' fired", rule.name);
             }
@@ -262,7 +288,7 @@ impl ParallelRuleEngine {
     fn execute_action_parallel(
         action: &ActionType,
         facts: &Facts,
-        functions: &Arc<RwLock<HashMap<String, Box<dyn Fn(&[Value], &Facts) -> Result<Value> + Send + Sync>>>>,
+        functions: &Arc<RwLock<CustomFunctionMap>>,
     ) -> Result<()> {
         match action {
             ActionType::Call { function, args } => {
@@ -302,7 +328,11 @@ impl ParallelRuleEngine {
         }
 
         let total_time: Duration = contexts.iter().map(|c| c.execution_time).sum();
-        let max_time = contexts.iter().map(|c| c.execution_time).max().unwrap_or(Duration::ZERO);
+        let max_time = contexts
+            .iter()
+            .map(|c| c.execution_time)
+            .max()
+            .unwrap_or(Duration::ZERO);
 
         if max_time.as_nanos() > 0 {
             total_time.as_nanos() as f64 / max_time.as_nanos() as f64
@@ -315,10 +345,15 @@ impl ParallelRuleEngine {
 /// Result of parallel rule execution
 #[derive(Debug)]
 pub struct ParallelExecutionResult {
+    /// Total number of rules evaluated
     pub total_rules_evaluated: usize,
+    /// Total number of rules that fired
     pub total_rules_fired: usize,
+    /// Total execution time
     pub execution_time: Duration,
+    /// Detailed execution contexts for each rule
     pub execution_contexts: Vec<RuleExecutionContext>,
+    /// Parallel speedup factor
     pub parallel_speedup: f64,
 }
 
@@ -338,7 +373,8 @@ impl ParallelExecutionResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::knowledge_base::KnowledgeBase;
+    use crate::engine::rule::{Condition, ConditionGroup};
+    use crate::types::{Operator, Value};
 
     #[test]
     fn test_parallel_config_default() {
@@ -359,11 +395,38 @@ mod tests {
     fn test_salience_grouping() {
         let config = ParallelConfig::default();
         let engine = ParallelRuleEngine::new(config);
-        
+
         let rules = vec![
-            Rule::new("Rule1".to_string(), Default::default(), vec![]).with_priority(10),
-            Rule::new("Rule2".to_string(), Default::default(), vec![]).with_priority(10),
-            Rule::new("Rule3".to_string(), Default::default(), vec![]).with_priority(5),
+            Rule::new(
+                "Rule1".to_string(),
+                ConditionGroup::Single(Condition::new(
+                    "test".to_string(),
+                    Operator::Equal,
+                    Value::Boolean(true),
+                )),
+                vec![],
+            )
+            .with_priority(10),
+            Rule::new(
+                "Rule2".to_string(),
+                ConditionGroup::Single(Condition::new(
+                    "test".to_string(),
+                    Operator::Equal,
+                    Value::Boolean(true),
+                )),
+                vec![],
+            )
+            .with_priority(10),
+            Rule::new(
+                "Rule3".to_string(),
+                ConditionGroup::Single(Condition::new(
+                    "test".to_string(),
+                    Operator::Equal,
+                    Value::Boolean(true),
+                )),
+                vec![],
+            )
+            .with_priority(5),
         ];
 
         let groups = engine.group_rules_by_salience(&rules);
