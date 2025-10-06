@@ -48,7 +48,7 @@ fn demo_basic_grule_rules() -> std::result::Result<(), Box<dyn std::error::Error
     kb.add_rules_from_grl(grl_rules)?;
 
     // Create Grule Engine
-    let engine = RustRuleEngine::new(kb);
+    let mut engine = RustRuleEngine::new(kb);
 
     // Create Facts (working memory)
     let facts = Facts::new();
@@ -115,7 +115,7 @@ fn demo_ecommerce_grule_rules() -> std::result::Result<(), Box<dyn std::error::E
     kb.add_rules_from_grl(grl_rules)?;
 
     // Create engine
-    let engine = RustRuleEngine::new(kb);
+    let mut engine = RustRuleEngine::new(kb);
 
     // Create facts
     let facts = Facts::new();
@@ -202,7 +202,7 @@ fn demo_advanced_grule_rules() -> std::result::Result<(), Box<dyn std::error::Er
         enable_stats: true,
         debug_mode: false,
     };
-    let engine = RustRuleEngine::with_config(kb, config);
+    let mut engine = RustRuleEngine::with_config(kb, config);
 
     // Create facts
     let facts = Facts::new();
