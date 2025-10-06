@@ -36,16 +36,22 @@ fn demo_performance_comparison() -> Result<(), Box<dyn std::error::Error>> {
     let facts = create_test_facts();
     let kb = create_performance_test_kb()?;
 
-    println!("🔧 Created {} rules for performance testing", kb.get_rules().len());
+    println!(
+        "🔧 Created {} rules for performance testing",
+        kb.get_rules().len()
+    );
 
     // Test 1: Sequential execution
     println!("\n🐌 Sequential Execution:");
     let start = Instant::now();
-    let mut sequential_engine = RustRuleEngine::with_config(kb.clone(), EngineConfig {
-        debug_mode: false,
-        max_cycles: 1,
-        ..Default::default()
-    });
+    let mut sequential_engine = RustRuleEngine::with_config(
+        kb.clone(),
+        EngineConfig {
+            debug_mode: false,
+            max_cycles: 1,
+            ..Default::default()
+        },
+    );
     register_test_functions(&mut sequential_engine);
     let sequential_result = sequential_engine.execute(&facts)?;
     let sequential_time = start.elapsed();
@@ -85,22 +91,31 @@ fn demo_parallel_configuration() -> Result<(), Box<dyn std::error::Error>> {
     // Test different configurations
     let configs = vec![
         ("Default", ParallelConfig::default()),
-        ("High Parallelism", ParallelConfig {
-            enabled: true,
-            max_threads: 8,
-            min_rules_per_thread: 1,
-            dependency_analysis: true,
-        }),
-        ("Conservative", ParallelConfig {
-            enabled: true,
-            max_threads: 2,
-            min_rules_per_thread: 5,
-            dependency_analysis: true,
-        }),
-        ("Disabled", ParallelConfig {
-            enabled: false,
-            ..Default::default()
-        }),
+        (
+            "High Parallelism",
+            ParallelConfig {
+                enabled: true,
+                max_threads: 8,
+                min_rules_per_thread: 1,
+                dependency_analysis: true,
+            },
+        ),
+        (
+            "Conservative",
+            ParallelConfig {
+                enabled: true,
+                max_threads: 2,
+                min_rules_per_thread: 5,
+                dependency_analysis: true,
+            },
+        ),
+        (
+            "Disabled",
+            ParallelConfig {
+                enabled: false,
+                ..Default::default()
+            },
+        ),
     ];
 
     for (name, config) in configs {
@@ -131,14 +146,17 @@ fn demo_large_scale_parallel() -> Result<(), Box<dyn std::error::Error>> {
     let kb = create_large_scale_kb(50)?; // 50 rules
     let facts = create_test_facts();
 
-    println!("🏗️  Created knowledge base with {} rules", kb.get_rules().len());
+    println!(
+        "🏗️  Created knowledge base with {} rules",
+        kb.get_rules().len()
+    );
 
     // Test with different thread counts
     let thread_counts = vec![1, 2, 4, 8];
 
     for thread_count in thread_counts {
         println!("\n🧵 Testing with {} threads:", thread_count);
-        
+
         let config = ParallelConfig {
             enabled: true,
             max_threads: thread_count,
@@ -155,8 +173,10 @@ fn demo_large_scale_parallel() -> Result<(), Box<dyn std::error::Error>> {
         println!("   ⏱️  Time: {:?}", execution_time);
         println!("   🔥 Rules fired: {}", result.total_rules_fired);
         println!("   📈 Theoretical speedup: {:.2}x", result.parallel_speedup);
-        println!("   📊 Rules per second: {:.0}", 
-            result.total_rules_evaluated as f64 / execution_time.as_secs_f64());
+        println!(
+            "   📊 Rules per second: {:.0}",
+            result.total_rules_evaluated as f64 / execution_time.as_secs_f64()
+        );
     }
 
     Ok(())
@@ -170,14 +190,20 @@ fn create_test_facts() -> Facts {
         user.insert("Country".to_string(), Value::String("US".to_string()));
         user.insert("SpendingTotal".to_string(), Value::Number(1500.0));
         user.insert("IsVIP".to_string(), Value::Boolean(false));
-        user.insert("Category".to_string(), Value::String("standard".to_string()));
+        user.insert(
+            "Category".to_string(),
+            Value::String("standard".to_string()),
+        );
         Value::Object(user)
     });
 
     facts.set("Order", {
         let mut order = HashMap::new();
         order.insert("Amount".to_string(), Value::Number(100.0));
-        order.insert("Category".to_string(), Value::String("electronics".to_string()));
+        order.insert(
+            "Category".to_string(),
+            Value::String("electronics".to_string()),
+        );
         order.insert("ItemCount".to_string(), Value::Number(3.0));
         Value::Object(order)
     });
@@ -240,7 +266,10 @@ fn create_large_scale_kb(rule_count: usize) -> Result<KnowledgeBase, Box<dyn std
                 when User.Age >= {}
                 then processRule("Rule {} executed");
             }}"#,
-            i, salience, i % 30 + 18, i
+            i,
+            salience,
+            i % 30 + 18,
+            i
         );
         kb.add_rules_from_grl(&rule_str)?;
     }

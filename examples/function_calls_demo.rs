@@ -204,7 +204,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         max_cycles: 5,
         ..Default::default()
     };
-    let engine = RustRuleEngine::with_config(kb, config);
+    let mut engine = RustRuleEngine::with_config(kb, config);
 
     // Execute rules
     println!("🚀 Executing rules with generic function calls...");

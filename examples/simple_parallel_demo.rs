@@ -1,11 +1,10 @@
 /// Demo: Parallel Rule Execution
 /// This example shows parallel rule execution capabilities.
-
 use rust_rule_engine::engine::{
-    parallel::{ParallelRuleEngine, ParallelConfig},
-    rule::{Rule, Condition, ConditionGroup},
     facts::Facts,
     knowledge_base::KnowledgeBase,
+    parallel::{ParallelConfig, ParallelRuleEngine},
+    rule::{Condition, ConditionGroup, Rule},
 };
 use rust_rule_engine::types::{ActionType, Operator, Value};
 use std::time::Instant;
@@ -20,10 +19,10 @@ fn main() {
 
 fn demo_parallel_execution() {
     println!("📊 Parallel Rule Execution Test\n");
-    
+
     // Create knowledge base with test rules
     let mut kb = KnowledgeBase::new("ParallelDemo");
-    
+
     // Add some independent rules
     let rules = vec![
         Rule::new(
@@ -33,8 +32,8 @@ fn demo_parallel_execution() {
                 Operator::GreaterThanOrEqual,
                 Value::Integer(18),
             )),
-            vec![ActionType::Log { 
-                message: "User is adult".to_string() 
+            vec![ActionType::Log {
+                message: "User is adult".to_string(),
             }],
         ),
         Rule::new(
@@ -44,8 +43,8 @@ fn demo_parallel_execution() {
                 Operator::Equal,
                 Value::String("US".to_string()),
             )),
-            vec![ActionType::Log { 
-                message: "User is from US".to_string() 
+            vec![ActionType::Log {
+                message: "User is from US".to_string(),
             }],
         ),
         Rule::new(
@@ -55,8 +54,8 @@ fn demo_parallel_execution() {
                 Operator::Contains,
                 Value::String("@test.com".to_string()),
             )),
-            vec![ActionType::Log { 
-                message: "User has test email".to_string() 
+            vec![ActionType::Log {
+                message: "User has test email".to_string(),
             }],
         ),
     ];
@@ -64,13 +63,13 @@ fn demo_parallel_execution() {
     for rule in rules {
         kb.add_rule(rule).unwrap();
     }
-    
+
     // Create facts
     let facts = Facts::new();
     facts.set("User.Age", Value::Integer(25));
     facts.set("User.Country", Value::String("US".to_string()));
     facts.set("User.Email", Value::String("user@test.com".to_string()));
-    
+
     // Configure parallel engine
     let config = ParallelConfig {
         enabled: true,
@@ -78,9 +77,9 @@ fn demo_parallel_execution() {
         min_rules_per_thread: 1,
         dependency_analysis: true,
     };
-    
+
     let engine = ParallelRuleEngine::new(config);
-    
+
     // Execute rules
     let start = Instant::now();
     match engine.execute_parallel(&kb, &facts, true) {

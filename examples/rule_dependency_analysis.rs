@@ -52,7 +52,10 @@ fn demo_safe_parallel_rules() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let result = engine.execute_parallel(&kb, &facts, true)?;
-    println!("\n📊 Result: {} rules fired safely in parallel", result.total_rules_fired);
+    println!(
+        "\n📊 Result: {} rules fired safely in parallel",
+        result.total_rules_fired
+    );
 
     Ok(())
 }
@@ -77,12 +80,15 @@ fn demo_dangerous_parallel_rules() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test sequential first
     println!("\n🐌 Sequential execution (correct order):");
-    let mut sequential_engine = RustRuleEngine::with_config(kb.clone(), EngineConfig {
-        debug_mode: true,
-        max_cycles: 1,
-        ..Default::default()
-    });
-    
+    let mut sequential_engine = RustRuleEngine::with_config(
+        kb.clone(),
+        EngineConfig {
+            debug_mode: true,
+            max_cycles: 1,
+            ..Default::default()
+        },
+    );
+
     // Register functions for sequential engine
     register_sequential_functions(&mut sequential_engine);
     let _sequential_result = sequential_engine.execute(&facts)?;
@@ -95,8 +101,8 @@ fn demo_dangerous_parallel_rules() -> Result<(), Box<dyn std::error::Error>> {
         min_rules_per_thread: 1,
         dependency_analysis: false,
     });
-    
-    // Register functions for parallel engine  
+
+    // Register functions for parallel engine
     register_parallel_functions(&mut parallel_engine);
     let _parallel_result = parallel_engine.execute_parallel(&kb, &facts, true)?;
 
@@ -134,7 +140,10 @@ fn demo_same_salience_conflicts() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let result = engine.execute_parallel(&kb, &facts, true)?;
-    println!("\n📊 Result: {} rules fired (but in what order?)", result.total_rules_fired);
+    println!(
+        "\n📊 Result: {} rules fired (but in what order?)",
+        result.total_rules_fired
+    );
 
     println!("\n💡 Solution needed:");
     println!("   1. 🔍 Dependency analysis to detect read/write conflicts");
@@ -248,22 +257,31 @@ fn create_conflict_kb() -> Result<KnowledgeBase, Box<dyn std::error::Error>> {
 }
 
 fn register_sequential_functions(engine: &mut RustRuleEngine) {
-    engine.register_function("calculateScore", Box::new(|args: &[Value], facts: &Facts| {
-        println!("     🧮 Calculating score...");
-        // In real implementation, would update facts
-        Ok(Value::Number(85.0))
-    }));
+    engine.register_function(
+        "calculateScore",
+        Box::new(|args: &[Value], facts: &Facts| {
+            println!("     🧮 Calculating score...");
+            // In real implementation, would update facts
+            Ok(Value::Number(85.0))
+        }),
+    );
 
-    engine.register_function("setVIPStatus", Box::new(|args: &[Value], facts: &Facts| {
-        println!("     ⭐ Setting VIP status...");
-        // In real implementation, would update facts
-        Ok(Value::Boolean(true))
-    }));
+    engine.register_function(
+        "setVIPStatus",
+        Box::new(|args: &[Value], facts: &Facts| {
+            println!("     ⭐ Setting VIP status...");
+            // In real implementation, would update facts
+            Ok(Value::Boolean(true))
+        }),
+    );
 
-    engine.register_function("applyDiscount", Box::new(|args: &[Value], facts: &Facts| {
-        println!("     💰 Applying discount...");
-        Ok(Value::Null)
-    }));
+    engine.register_function(
+        "applyDiscount",
+        Box::new(|args: &[Value], facts: &Facts| {
+            println!("     💰 Applying discount...");
+            Ok(Value::Null)
+        }),
+    );
 }
 
 fn register_parallel_functions(engine: &mut ParallelRuleEngine) {
