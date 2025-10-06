@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-01-27
+
+### Added
+- **🌐 Distributed & Cloud Architecture**: Complete enterprise-grade distributed rule engine capabilities
+  - Multi-node architecture with specialized worker roles (validation, pricing, loyalty)
+  - Container orchestration with Docker and Kubernetes deployment manifests
+  - Cloud platform integration guides for AWS EKS, Google GKE, and Azure AKS
+  - Redis-based shared state management for distributed facts coordination
+  - Load balancing with Nginx/HAProxy configurations and health check endpoints
+  - Auto-scaling policies and resource management for production deployments
+  - Performance monitoring demonstrating 3x speedup (1.4s → 458ms) with parallel processing
+- **📚 Comprehensive Documentation in English**:
+  - `docs/distributed_features_guide.md`: Technical implementation guide with code examples
+  - `docs/distributed_explained.md`: Real-world scenarios and cost analysis
+  - `examples/distributed_concept_demo.rs`: Working demonstration with performance comparisons
+  - Enhanced README with Table of Contents and organized examples by category
+  - Complete Vietnamese to English conversion across all documentation files
+- **🚀 Production-Ready Examples**:
+  - Cloud deployment templates for major providers
+  - Container configurations with resource limits and security policies
+  - Cost optimization strategies and scaling recommendations
+  - Fault tolerance patterns and disaster recovery guides
+
+### Enhanced
+- **README.md**: Added comprehensive distributed section with navigation and organized examples
+- **Documentation**: Standardized all content to English for international accessibility
+- **Examples Organization**: Categorized demos into Core Features, Performance & Scaling, Advanced Features, and Production Examples
+
+### Performance
+- **Distributed Processing**: 3x performance improvement through parallel execution
+- **Scalability**: Support for horizontal scaling with cloud-native deployment patterns
+- **Fault Tolerance**: Resilient architecture with graceful degradation capabilities
+
 ## [0.2.1] - 2025-10-02
 
 ### Added

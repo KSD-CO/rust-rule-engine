@@ -30,7 +30,7 @@ fn demo_method_calls() -> std::result::Result<(), Box<dyn Error>> {
         enable_stats: true,
         debug_mode: true,
     };
-    let engine = RustRuleEngine::with_config(kb, config);
+    let mut engine = RustRuleEngine::with_config(kb, config);
 
     // Create facts
     let facts = Facts::new();

@@ -12,6 +12,12 @@ pub struct DependencyAnalyzer {
     dependencies: HashMap<String, HashSet<String>>,
 }
 
+impl Default for DependencyAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependencyAnalyzer {
     /// Create new dependency analyzer
     pub fn new() -> Self {
@@ -25,7 +31,7 @@ impl DependencyAnalyzer {
     /// Analyze dependencies in a set of rules
     pub fn analyze(&mut self, rules: &[Rule]) -> DependencyAnalysisResult {
         self.clear();
-        
+
         // First pass: identify all reads and writes
         for rule in rules {
             self.analyze_rule_io(rule);
@@ -36,7 +42,7 @@ impl DependencyAnalyzer {
 
         // Third pass: identify conflicts
         let conflicts = self.find_conflicts(rules);
-        
+
         // Fourth pass: group rules for safe parallel execution
         let execution_groups = self.create_execution_groups(rules);
         let conflicts_len = conflicts.len();
@@ -62,38 +68,47 @@ impl DependencyAnalyzer {
         // Analyze condition reads
         let condition_reads = self.extract_condition_reads(rule);
         for field in condition_reads {
-            self.readers.entry(field).or_insert_with(Vec::new).push(rule.name.clone());
+            self.readers
+                .entry(field)
+                .or_default()
+                .push(rule.name.clone());
         }
 
         // Analyze action writes
         let action_writes = self.extract_action_writes(rule);
         for field in action_writes {
-            self.writers.entry(field).or_insert_with(Vec::new).push(rule.name.clone());
+            self.writers
+                .entry(field)
+                .or_default()
+                .push(rule.name.clone());
         }
     }
 
     /// Extract field reads from rule conditions (proper implementation)
     fn extract_condition_reads(&self, rule: &Rule) -> Vec<String> {
         let mut reads = Vec::new();
-        
+
         // Extract from actual condition structure
-        self.extract_fields_from_condition_group(&rule.conditions, &mut reads);
-        
+        Self::extract_fields_from_condition_group(&rule.conditions, &mut reads);
+
         reads
     }
 
     /// Recursively extract fields from condition groups
-    fn extract_fields_from_condition_group(&self, condition_group: &crate::engine::rule::ConditionGroup, reads: &mut Vec<String>) {
+    fn extract_fields_from_condition_group(
+        condition_group: &crate::engine::rule::ConditionGroup,
+        reads: &mut Vec<String>,
+    ) {
         match condition_group {
             crate::engine::rule::ConditionGroup::Single(condition) => {
                 reads.push(condition.field.clone());
             }
             crate::engine::rule::ConditionGroup::Compound { left, right, .. } => {
-                self.extract_fields_from_condition_group(left, reads);
-                self.extract_fields_from_condition_group(right, reads);
+                Self::extract_fields_from_condition_group(left, reads);
+                Self::extract_fields_from_condition_group(right, reads);
             }
             crate::engine::rule::ConditionGroup::Not(inner) => {
-                self.extract_fields_from_condition_group(inner, reads);
+                Self::extract_fields_from_condition_group(inner, reads);
             }
         }
     }
@@ -101,7 +116,7 @@ impl DependencyAnalyzer {
     /// Extract field writes from rule actions (proper implementation)
     fn extract_action_writes(&self, rule: &Rule) -> Vec<String> {
         let mut writes = Vec::new();
-        
+
         // Analyze actual actions to find field writes
         for action in &rule.actions {
             match action {
@@ -114,10 +129,13 @@ impl DependencyAnalyzer {
                 crate::types::ActionType::MethodCall { object, method, .. } => {
                     // Method calls might modify the object
                     writes.push(object.clone());
-                    
+
                     // Some methods have predictable side effects
-                    if method.contains("set") || method.contains("update") || 
-                       method.contains("modify") || method.contains("change") {
+                    if method.contains("set")
+                        || method.contains("update")
+                        || method.contains("modify")
+                        || method.contains("change")
+                    {
                         writes.push(format!("{}.{}", object, method));
                     }
                 }
@@ -125,12 +143,15 @@ impl DependencyAnalyzer {
                     // Analyze function calls for side effects
                     writes.extend(self.analyze_function_side_effects(function));
                 }
-                crate::types::ActionType::Custom { action_type, params } => {
+                crate::types::ActionType::Custom {
+                    action_type,
+                    params,
+                } => {
                     // Check if custom action has a target field parameter
                     if let Some(crate::types::Value::String(field)) = params.get("target_field") {
                         writes.push(field.clone());
                     }
-                    
+
                     // Analyze custom action type for side effects
                     writes.extend(self.analyze_custom_action_side_effects(action_type, params));
                 }
@@ -138,14 +159,14 @@ impl DependencyAnalyzer {
                 crate::types::ActionType::Log { .. } => {}
             }
         }
-        
+
         writes
     }
 
     /// Analyze function calls for potential field writes
     fn analyze_function_side_effects(&self, function_name: &str) -> Vec<String> {
         let mut side_effects = Vec::new();
-        
+
         // Pattern matching for common function naming conventions
         if function_name.starts_with("set") || function_name.starts_with("update") {
             // setUserScore, updateOrderTotal, etc.
@@ -163,14 +184,18 @@ impl DependencyAnalyzer {
                 side_effects.push(field);
             }
         }
-        
+
         side_effects
     }
 
     /// Analyze custom actions for potential field writes
-    fn analyze_custom_action_side_effects(&self, action_type: &str, params: &std::collections::HashMap<String, crate::types::Value>) -> Vec<String> {
+    fn analyze_custom_action_side_effects(
+        &self,
+        action_type: &str,
+        params: &std::collections::HashMap<String, crate::types::Value>,
+    ) -> Vec<String> {
         let mut side_effects = Vec::new();
-        
+
         // Check for common parameter names that indicate field modification
         for (key, value) in params {
             if key == "field" || key == "target" || key == "output_field" {
@@ -179,16 +204,19 @@ impl DependencyAnalyzer {
                 }
             }
         }
-        
+
         // Pattern matching on action type
-        if action_type.contains("set") || action_type.contains("update") || 
-           action_type.contains("modify") || action_type.contains("calculate") {
+        if action_type.contains("set")
+            || action_type.contains("update")
+            || action_type.contains("modify")
+            || action_type.contains("calculate")
+        {
             // Extract potential field from action type name
             if let Some(field) = self.extract_field_from_function_name(action_type) {
                 side_effects.push(field);
             }
         }
-        
+
         side_effects
     }
 
@@ -198,14 +226,15 @@ impl DependencyAnalyzer {
         // setUserScore -> User.Score
         // calculateOrderTotal -> Order.Total
         // updateVIPStatus -> VIP.Status
-        
-        let name = name.trim_start_matches("set")
-                      .trim_start_matches("update")
-                      .trim_start_matches("calculate")
-                      .trim_start_matches("compute")
-                      .trim_start_matches("modify")
-                      .trim_start_matches("change");
-        
+
+        let name = name
+            .trim_start_matches("set")
+            .trim_start_matches("update")
+            .trim_start_matches("calculate")
+            .trim_start_matches("compute")
+            .trim_start_matches("modify")
+            .trim_start_matches("change");
+
         // Simple pattern matching for common field patterns
         if name.contains("User") && name.contains("Score") {
             Some("User.Score".to_string())
@@ -228,17 +257,17 @@ impl DependencyAnalyzer {
         if name.is_empty() {
             return None;
         }
-        
+
         let mut result = String::new();
-        let mut chars = name.chars().peekable();
-        
-        while let Some(c) = chars.next() {
+        let chars = name.chars().peekable();
+
+        for c in chars {
             if c.is_uppercase() && !result.is_empty() {
                 result.push('.');
             }
             result.push(c);
         }
-        
+
         if result.contains('.') {
             Some(result)
         } else {
@@ -257,7 +286,7 @@ impl DependencyAnalyzer {
                         if reader != writer {
                             self.dependencies
                                 .entry(reader.clone())
-                                .or_insert_with(HashSet::new)
+                                .or_default()
                                 .insert(writer.clone());
                         }
                     }
@@ -269,11 +298,11 @@ impl DependencyAnalyzer {
     /// Find rules that have conflicts (read/write or write/write to same field)
     fn find_conflicts(&self, rules: &[Rule]) -> Vec<DependencyConflict> {
         let mut conflicts = Vec::new();
-        
+
         // Group rules by salience
         let mut salience_groups: HashMap<i32, Vec<&Rule>> = HashMap::new();
         for rule in rules {
-            salience_groups.entry(rule.salience).or_insert_with(Vec::new).push(rule);
+            salience_groups.entry(rule.salience).or_default().push(rule);
         }
 
         // Check for conflicts within each salience group
@@ -287,7 +316,10 @@ impl DependencyAnalyzer {
             for rule in &group_rules {
                 let writes = self.extract_action_writes(rule);
                 for field in writes {
-                    field_writers.entry(field).or_insert_with(Vec::new).push(rule.name.clone());
+                    field_writers
+                        .entry(field)
+                        .or_default()
+                        .push(rule.name.clone());
                 }
             }
 
@@ -308,23 +340,29 @@ impl DependencyAnalyzer {
                 let reads = self.extract_condition_reads(rule);
                 for field in &reads {
                     if let Some(writers) = self.writers.get(field) {
-                        let conflicting_writers: Vec<String> = writers.iter()
+                        let conflicting_writers: Vec<String> = writers
+                            .iter()
                             .filter(|writer| {
-                                group_rules.iter().any(|r| r.name == **writer && r.name != rule.name)
+                                group_rules
+                                    .iter()
+                                    .any(|r| r.name == **writer && r.name != rule.name)
                             })
                             .cloned()
                             .collect();
-                        
+
                         if !conflicting_writers.is_empty() {
                             let mut involved_rules = conflicting_writers.clone();
                             involved_rules.push(rule.name.clone());
-                            
+
                             conflicts.push(DependencyConflict {
                                 conflict_type: ConflictType::ReadWrite,
                                 field: field.clone(),
                                 rules: involved_rules,
                                 salience,
-                                description: format!("Rule {} reads {} while others write to it", rule.name, field),
+                                description: format!(
+                                    "Rule {} reads {} while others write to it",
+                                    rule.name, field
+                                ),
                             });
                         }
                     }
@@ -338,11 +376,14 @@ impl DependencyAnalyzer {
     /// Create execution groups for safe parallel execution
     fn create_execution_groups(&self, rules: &[Rule]) -> Vec<ExecutionGroup> {
         let mut groups = Vec::new();
-        
+
         // Group by salience first
         let mut salience_groups: HashMap<i32, Vec<Rule>> = HashMap::new();
         for rule in rules {
-            salience_groups.entry(rule.salience).or_insert_with(Vec::new).push(rule.clone());
+            salience_groups
+                .entry(rule.salience)
+                .or_default()
+                .push(rule.clone());
         }
 
         // Process each salience level
@@ -351,7 +392,7 @@ impl DependencyAnalyzer {
 
         for salience in salience_levels {
             let rules_at_level = &salience_groups[&salience];
-            
+
             if rules_at_level.len() == 1 {
                 // Single rule - always safe
                 groups.push(ExecutionGroup {
@@ -365,13 +406,13 @@ impl DependencyAnalyzer {
                 // Multiple rules - check for conflicts
                 let conflicts = self.find_conflicts(rules_at_level);
                 let can_parallelize = conflicts.is_empty();
-                
+
                 groups.push(ExecutionGroup {
                     rules: rules_at_level.clone(),
-                    execution_mode: if can_parallelize { 
-                        ExecutionMode::Parallel 
-                    } else { 
-                        ExecutionMode::Sequential 
+                    execution_mode: if can_parallelize {
+                        ExecutionMode::Parallel
+                    } else {
+                        ExecutionMode::Sequential
                     },
                     salience,
                     can_parallelize,
@@ -478,11 +519,12 @@ impl DependencyAnalysisResult {
     pub fn get_detailed_report(&self) -> String {
         let mut report = self.get_summary();
         report.push_str("\n\n🔍 Detailed Analysis:");
-        
+
         for (i, group) in self.execution_groups.iter().enumerate() {
             report.push_str(&format!(
                 "\n\n📋 Group {} (Salience {}):",
-                i + 1, group.salience
+                i + 1,
+                group.salience
             ));
             report.push_str(&format!(
                 "\n   Mode: {:?} | Can parallelize: {}",
@@ -491,9 +533,14 @@ impl DependencyAnalysisResult {
             ));
             report.push_str(&format!(
                 "\n   Rules: {}",
-                group.rules.iter().map(|r| r.name.as_str()).collect::<Vec<_>>().join(", ")
+                group
+                    .rules
+                    .iter()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
             ));
-            
+
             if !group.conflicts.is_empty() {
                 report.push_str("\n   🚨 Conflicts:");
                 for conflict in &group.conflicts {
@@ -510,7 +557,7 @@ impl DependencyAnalysisResult {
                 }
             }
         }
-        
+
         report
     }
 }
@@ -531,18 +578,26 @@ mod tests {
     #[test]
     fn test_safe_rules_analysis() {
         let mut analyzer = DependencyAnalyzer::new();
-        
+
         let rules = vec![
-            Rule::new("AgeValidation".to_string(), ConditionGroup::Single(Condition::new(
-                "User.Age".to_string(),
-                crate::types::Operator::GreaterThan,
-                crate::types::Value::Integer(18),
-            )), vec![]),
-            Rule::new("CountryCheck".to_string(), ConditionGroup::Single(Condition::new(
-                "User.Country".to_string(),
-                crate::types::Operator::Equal,
-                crate::types::Value::String("US".to_string()),
-            )), vec![]),
+            Rule::new(
+                "AgeValidation".to_string(),
+                ConditionGroup::Single(Condition::new(
+                    "User.Age".to_string(),
+                    crate::types::Operator::GreaterThan,
+                    crate::types::Value::Integer(18),
+                )),
+                vec![],
+            ),
+            Rule::new(
+                "CountryCheck".to_string(),
+                ConditionGroup::Single(Condition::new(
+                    "User.Country".to_string(),
+                    crate::types::Operator::Equal,
+                    crate::types::Value::String("US".to_string()),
+                )),
+                vec![],
+            ),
         ];
 
         let result = analyzer.analyze(&rules);
@@ -554,24 +609,32 @@ mod tests {
     #[test]
     fn test_conflicting_rules_analysis() {
         let mut analyzer = DependencyAnalyzer::new();
-        
+
         let rules = vec![
-            Rule::new("CalculateScore".to_string(), ConditionGroup::Single(Condition::new(
-                "User.Data".to_string(),
-                crate::types::Operator::Equal,
-                crate::types::Value::String("valid".to_string()),
-            )), vec![crate::types::ActionType::Set {
-                field: "User.Score".to_string(),
-                value: crate::types::Value::Integer(85),
-            }]),
-            Rule::new("CheckVIPStatus".to_string(), ConditionGroup::Single(Condition::new(
-                "User.Score".to_string(),
-                crate::types::Operator::GreaterThan,
-                crate::types::Value::Integer(80),
-            )), vec![crate::types::ActionType::Set {
-                field: "User.IsVIP".to_string(),
-                value: crate::types::Value::Boolean(true),
-            }]),
+            Rule::new(
+                "CalculateScore".to_string(),
+                ConditionGroup::Single(Condition::new(
+                    "User.Data".to_string(),
+                    crate::types::Operator::Equal,
+                    crate::types::Value::String("valid".to_string()),
+                )),
+                vec![crate::types::ActionType::Set {
+                    field: "User.Score".to_string(),
+                    value: crate::types::Value::Integer(85),
+                }],
+            ),
+            Rule::new(
+                "CheckVIPStatus".to_string(),
+                ConditionGroup::Single(Condition::new(
+                    "User.Score".to_string(),
+                    crate::types::Operator::GreaterThan,
+                    crate::types::Value::Integer(80),
+                )),
+                vec![crate::types::ActionType::Set {
+                    field: "User.IsVIP".to_string(),
+                    value: crate::types::Value::Boolean(true),
+                }],
+            ),
         ];
 
         let result = analyzer.analyze(&rules);

@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#;
 
     // Test inline rules
-    let engine = RuleEngineBuilder::new().with_inline_grl(grl_rules)?.build();
+    let mut engine = RuleEngineBuilder::new().with_inline_grl(grl_rules)?.build();
 
     // Create facts
     let facts = Facts::new();

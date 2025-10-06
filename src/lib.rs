@@ -39,7 +39,7 @@
 //!     kb.add_rule(parsed_rule)?;
 //!     
 //!     // Create engine
-//!     let engine = RustRuleEngine::new(kb);
+//!     let mut engine = RustRuleEngine::new(kb);
 //!     
 //!     // Create facts
 //!     let facts = Facts::new();
@@ -121,7 +121,7 @@ pub use engine::knowledge_base::KnowledgeBase;
 pub use engine::rule::{Condition, ConditionGroup, Rule};
 
 // Re-export parsers
-pub use parser::grl_parser::GRLParser;
+pub use parser::grl::GRLParser;
 
 /// Builder pattern for creating a RustRuleEngine with various configurations
 pub struct RuleEngineBuilder {

@@ -120,7 +120,7 @@ fn demo_vip_template() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Test US user
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     facts.set("User", {
         let mut user = HashMap::new();
         user.insert("Country".to_string(), Value::String("US".to_string()));

@@ -46,18 +46,21 @@ fn demo_sequential_vs_parallel() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🐌 Sequential Execution:");
     let start = Instant::now();
     let mut engine = RustRuleEngine::with_config(kb.clone(), config.clone());
-    
+
     // Register simple task function
-    engine.register_function("simpleTask", Box::new(|args: &[Value], _facts: &Facts| {
-        if let Some(Value::String(msg)) = args.first() {
-            println!("     📝 {}", msg);
-        }
-        Ok(Value::Null)
-    }));
-    
+    engine.register_function(
+        "simpleTask",
+        Box::new(|args: &[Value], _facts: &Facts| {
+            if let Some(Value::String(msg)) = args.first() {
+                println!("     📝 {}", msg);
+            }
+            Ok(Value::Null)
+        }),
+    );
+
     let result = engine.execute(&facts)?;
     let sequential_time = start.elapsed();
-    
+
     println!("   ⏱️  Time: {:?}", sequential_time);
     println!("   🔥 Rules fired: {}", result.rules_fired);
     println!("   📊 Rules evaluated: {}", result.rules_evaluated);
@@ -67,7 +70,7 @@ fn demo_sequential_vs_parallel() -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
     let parallel_result = simulate_parallel_execution(&kb, &facts)?;
     let parallel_time = start.elapsed();
-    
+
     println!("   ⏱️  Time: {:?}", parallel_time);
     println!("   🔥 Rules fired: {}", parallel_result.rules_fired);
     println!("   📊 Rules evaluated: {}", parallel_result.rules_evaluated);
@@ -137,8 +140,8 @@ fn create_test_knowledge_base() -> Result<KnowledgeBase, Box<dyn std::error::Err
 
 // Simulated parallel execution concept
 fn simulate_parallel_execution(
-    kb: &KnowledgeBase, 
-    facts: &Facts
+    kb: &KnowledgeBase,
+    facts: &Facts,
 ) -> Result<ParallelExecutionResult, Box<dyn std::error::Error>> {
     let rules = kb.get_rules().clone();
     let _handles: Vec<thread::JoinHandle<()>> = vec![];
@@ -147,7 +150,10 @@ fn simulate_parallel_execution(
     // Group rules by salience level for parallel execution within same priority
     let mut salience_groups: HashMap<i32, Vec<_>> = HashMap::new();
     for rule in rules {
-        salience_groups.entry(rule.salience).or_insert_with(Vec::new).push(rule);
+        salience_groups
+            .entry(rule.salience)
+            .or_insert_with(Vec::new)
+            .push(rule);
     }
 
     let mut total_evaluated = 0;
@@ -159,34 +165,42 @@ fn simulate_parallel_execution(
 
     for &salience in salience_levels {
         let rules_at_level = &salience_groups[&salience];
-        println!("   🔄 Processing {} rules at salience level {}", rules_at_level.len(), salience);
-        
+        println!(
+            "   🔄 Processing {} rules at salience level {}",
+            rules_at_level.len(),
+            salience
+        );
+
         // Parallel execution within same salience level
         let results_clone = Arc::clone(&results);
-        let handles: Vec<_> = rules_at_level.iter().enumerate().map(|(i, rule)| {
-            let rule_clone = rule.clone();
-            let facts_clone = facts.clone();
-            let results_clone = Arc::clone(&results_clone);
-            
-            thread::spawn(move || {
-                // Simulate rule evaluation time
-                thread::sleep(Duration::from_millis(10 + i as u64 * 5));
-                
-                // Simple condition check (in real implementation, use actual engine logic)
-                let fired = simulate_rule_evaluation(&rule_clone, &facts_clone);
-                
-                let mut results = results_clone.lock().unwrap();
-                results.push(RuleResult {
-                    rule_name: rule_clone.name.clone(),
-                    fired,
-                    evaluated: true,
-                });
-                
-                if fired {
-                    println!("     🔥 {} fired", rule_clone.name);
-                }
+        let handles: Vec<_> = rules_at_level
+            .iter()
+            .enumerate()
+            .map(|(i, rule)| {
+                let rule_clone = rule.clone();
+                let facts_clone = facts.clone();
+                let results_clone = Arc::clone(&results_clone);
+
+                thread::spawn(move || {
+                    // Simulate rule evaluation time
+                    thread::sleep(Duration::from_millis(10 + i as u64 * 5));
+
+                    // Simple condition check (in real implementation, use actual engine logic)
+                    let fired = simulate_rule_evaluation(&rule_clone, &facts_clone);
+
+                    let mut results = results_clone.lock().unwrap();
+                    results.push(RuleResult {
+                        rule_name: rule_clone.name.clone(),
+                        fired,
+                        evaluated: true,
+                    });
+
+                    if fired {
+                        println!("     🔥 {} fired", rule_clone.name);
+                    }
+                })
             })
-        }).collect();
+            .collect();
 
         // Wait for all rules at this salience level to complete
         for handle in handles {

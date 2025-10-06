@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create rules programmatically
     create_financial_rules(&mut kb)?;
 
-    let engine = RustRuleEngine::new(kb);
+    let mut engine = RustRuleEngine::new(kb);
 
     // Performance tracking
     let start_time = Instant::now();
@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     println!("\n🧪 Testing sample scenarios:");
-    test_sample_scenarios(&engine);
+    test_sample_scenarios(&mut engine);
 
     Ok(())
 }
@@ -323,7 +323,7 @@ fn create_complex_facts(scenario: usize) -> Facts {
     facts
 }
 
-fn test_sample_scenarios(engine: &RustRuleEngine) {
+fn test_sample_scenarios(engine: &mut RustRuleEngine) {
     println!("\n   🎭 Scenario Testing:");
 
     // Test different scenarios

@@ -198,7 +198,7 @@ fn demo_engine_execution() -> std::result::Result<(), Box<dyn std::error::Error>
         max_cycles: 3,
         ..Default::default()
     };
-    let engine = RustRuleEngine::with_config(kb, config);
+    let mut engine = RustRuleEngine::with_config(kb, config);
 
     println!("🏁 Initial state:");
     if let Some(user) = facts.get("User") {
@@ -321,7 +321,7 @@ fn demo_ecommerce_scenario() -> std::result::Result<(), Box<dyn std::error::Erro
         max_cycles: 3,
         ..Default::default()
     };
-    let engine = RustRuleEngine::with_config(kb, config);
+    let mut engine = RustRuleEngine::with_config(kb, config);
 
     println!("🏁 Initial e-commerce state:");
     if let Some(customer) = facts.get("Customer") {
