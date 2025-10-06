@@ -3,240 +3,323 @@ use std::collections::HashMap;
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// 🌐 Demo: So sánh Single vs Distributed Processing
-/// 
-/// Ví dụ này cho thấy sự khác biệt giữa:
-/// 1. Xử lý tập trung (1 engine làm tất cả)
-/// 2. Xử lý phân tán (nhiều engine làm song song)
+/// ⚡ Distributed vs Single Node Performance Comparison
+///
+/// This example compares performance between:
+/// 1. Single node processing all customers sequentially
+/// 2. Distributed processing across multiple specialized nodes
+///
+/// Demonstrates real-world performance benefits of distributed architecture.
 
-fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    println!("🌐 === DISTRIBUTED vs SINGLE NODE DEMO ===");
-    println!("So sánh hiệu suất giữa xử lý tập trung và phân tán\n");
+#[derive(Debug, Clone)]
+struct ProcessingResult {
+    method: String,
+    total_time: Duration,
+    customers_processed: usize,
+    rules_fired: usize,
+    throughput: f64, // customers per second
+}
 
-    // Tạo dữ liệu test với nhiều đơn hàng
-    let orders = create_multiple_orders()?;
-    println!("📦 Tạo {} đơn hàng để xử lý", orders.len());
+fn main() -> std::result::Result<(), RuleEngineError> {
+    println!("⚡ === Distributed vs Single Node Performance Demo ===");
+    println!("Comparing single node vs distributed processing performance\n");
 
-    // Demo 1: Single Node Processing (1 engine làm tất cả)
-    println!("\n🔄 Demo 1: SINGLE NODE PROCESSING");
-    println!("   1 engine xử lý tất cả {} đơn hàng", orders.len());
-    let single_start = Instant::now();
-    let single_results = process_single_node(&orders)?;
-    let single_duration = single_start.elapsed();
-    
-    println!("   ✅ Hoàn thành trong: {:?}", single_duration);
-    println!("   📊 Tổng rules fired: {}", single_results.iter().sum::<usize>());
+    // Create test data
+    let customers = create_large_customer_dataset(100); // 100 customers for meaningful comparison
+    println!(
+        "👥 Created {} customers for performance testing",
+        customers.len()
+    );
 
-    // Demo 2: Distributed Processing (nhiều engine song song)
-    println!("\n🌐 Demo 2: DISTRIBUTED PROCESSING");
-    println!("   3 engines xử lý song song {} đơn hàng", orders.len());
-    let distributed_start = Instant::now();
-    let distributed_results = process_distributed(&orders)?;
-    let distributed_duration = distributed_start.elapsed();
-    
-    println!("   ✅ Hoàn thành trong: {:?}", distributed_duration);
-    println!("   📊 Tổng rules fired: {}", distributed_results.iter().sum::<usize>());
+    // Test 1: Single Node Processing
+    println!("\n🔄 Testing Single Node Processing...");
+    let single_result = test_single_node_processing(&customers)?;
 
-    // So sánh kết quả
-    println!("\n📈 KẾT QUẢ SO SÁNH:");
-    println!("   Single Node:    {:>8.2?}", single_duration);
-    println!("   Distributed:    {:>8.2?}", distributed_duration);
-    
-    if distributed_duration < single_duration {
-        let speedup = single_duration.as_secs_f64() / distributed_duration.as_secs_f64();
-        println!("   🚀 Tăng tốc:     {:>8.1}x", speedup);
-        println!("   💡 Distributed nhanh hơn!");
-    } else {
-        println!("   ⚠️ Single node vẫn nhanh hơn (do overhead)");
-    }
+    // Test 2: Distributed Processing (simulated with threads)
+    println!("\n🌐 Testing Distributed Processing...");
+    let distributed_result = test_distributed_processing(&customers)?;
 
-    println!("\n🎯 Giải thích:");
-    println!("   📍 Single Node: 1 engine xử lý tuần tự từng đơn hàng");
-    println!("   🌐 Distributed: 3 engines xử lý song song, chia đều công việc");
-    println!("   ⚡ Khi có nhiều đơn hàng, distributed sẽ nhanh hơn rõ rệt");
+    // Compare results
+    println!("\n📊 Performance Comparison:");
+    display_comparison(&single_result, &distributed_result);
 
     Ok(())
 }
 
-/// Tạo nhiều đơn hàng để test
-fn create_multiple_orders() -> std::result::Result<Vec<Facts>, Box<dyn std::error::Error>> {
-    let mut orders = Vec::new();
-    
-    // Tạo 12 đơn hàng khác nhau
-    let order_data = vec![
-        ("ORD-001", "John Doe", 1500.0, 2),
-        ("ORD-002", "Jane Smith", 800.0, 1),
-        ("ORD-003", "Bob Johnson", 2200.0, 3),
-        ("ORD-004", "Alice Brown", 650.0, 1),
-        ("ORD-005", "Charlie Wilson", 1800.0, 2),
-        ("ORD-006", "Diana Lee", 950.0, 1),
-        ("ORD-007", "Eve Davis", 3000.0, 4),
-        ("ORD-008", "Frank Miller", 1200.0, 2),
-        ("ORD-009", "Grace Taylor", 750.0, 1),
-        ("ORD-010", "Henry Clark", 2500.0, 3),
-        ("ORD-011", "Ivy Anderson", 1100.0, 2),
-        ("ORD-012", "Jack White", 1750.0, 2),
-    ];
+fn test_single_node_processing(
+    customers: &[Value],
+) -> std::result::Result<ProcessingResult, RuleEngineError> {
+    let start = Instant::now();
 
-    for (order_id, customer_name, amount, item_count) in order_data {
-        let facts = Facts::new();
-        
-        // Order info
-        let mut order_props = HashMap::new();
-        order_props.insert("OrderID".to_string(), Value::String(order_id.to_string()));
-        order_props.insert("CustomerName".to_string(), Value::String(customer_name.to_string()));
-        order_props.insert("TotalAmount".to_string(), Value::Number(amount));
-        order_props.insert("ItemCount".to_string(), Value::Integer(item_count));
-        order_props.insert("Status".to_string(), Value::String("PENDING".to_string()));
-        order_props.insert("Priority".to_string(), Value::String("NORMAL".to_string()));
-        order_props.insert("ProcessingFee".to_string(), Value::Number(0.0));
-        facts.add_value("Order", Value::Object(order_props))?;
-
-        // Customer info
-        let mut customer_props = HashMap::new();
-        customer_props.insert("Name".to_string(), Value::String(customer_name.to_string()));
-        customer_props.insert("Tier".to_string(), Value::String(if amount > 2000.0 { "VIP" } else { "STANDARD" }.to_string()));
-        customer_props.insert("TotalSpent".to_string(), Value::Number(amount * 2.0)); // Giả sử đã mua trước đó
-        facts.add_value("Customer", Value::Object(customer_props))?;
-
-        orders.push(facts);
-    }
-
-    Ok(orders)
-}
-
-/// Xử lý single node (1 engine làm tất cả)
-fn process_single_node(orders: &[Facts]) -> std::result::Result<Vec<usize>, Box<dyn std::error::Error>> {
-    println!("   🔨 Tạo 1 engine duy nhất...");
-    
-    // Tạo 1 engine với tất cả rules
-    let mut engine = create_full_engine("SingleNode")?;
-    
-    let mut results = Vec::new();
-    
-    // Xử lý từng đơn hàng tuần tự
-    for (i, order) in orders.iter().enumerate() {
-        print!("   📦 Xử lý đơn hàng {}...", i + 1);
-        let result = engine.execute(order)?;
-        results.push(result.rules_fired);
-        println!(" {} rules fired", result.rules_fired);
-        
-        // Giả lập thời gian xử lý
-        thread::sleep(Duration::from_millis(100));
-    }
-    
-    Ok(results)
-}
-
-/// Xử lý distributed (nhiều engines song song)
-fn process_distributed(orders: &[Facts]) -> std::result::Result<Vec<usize>, Box<dyn std::error::Error>> {
-    println!("   🌐 Tạo 3 engines phân tán...");
-    
-    // Chia đơn hàng thành 3 nhóm
-    let chunk_size = (orders.len() + 2) / 3; // Chia đều cho 3 engines
-    let chunks: Vec<&[Facts]> = orders.chunks(chunk_size).collect();
-    
-    println!("   📊 Phân chia: {} + {} + {} đơn hàng", 
-        chunks.get(0).map(|c| c.len()).unwrap_or(0),
-        chunks.get(1).map(|c| c.len()).unwrap_or(0),
-        chunks.get(2).map(|c| c.len()).unwrap_or(0)
-    );
-
-    // Xử lý song song bằng threads
-    let mut handles = Vec::new();
-    
-    for (worker_id, chunk) in chunks.into_iter().enumerate() {
-        let chunk_owned: Vec<Facts> = chunk.iter().cloned().collect();
-        
-        let handle = thread::spawn(move || -> std::result::Result<Vec<usize>, Box<dyn std::error::Error>> {
-            println!("   🔨 Worker {} bắt đầu với {} đơn hàng", worker_id + 1, chunk_owned.len());
-            
-            // Mỗi worker có engine riêng
-            let mut engine = create_full_engine(&format!("Worker{}", worker_id + 1))?;
-            let mut worker_results = Vec::new();
-            
-            for (i, order) in chunk_owned.iter().enumerate() {
-                let result = engine.execute(order)?;
-                worker_results.push(result.rules_fired);
-                println!("   ⚡ Worker {} - Đơn hàng {}: {} rules", worker_id + 1, i + 1, result.rules_fired);
-                
-                // Giả lập thời gian xử lý (ngắn hơn vì song song)
-                thread::sleep(Duration::from_millis(50));
-            }
-            
-            println!("   ✅ Worker {} hoàn thành!", worker_id + 1);
-            Ok(worker_results)
-        });
-        
-        handles.push(handle);
-    }
-    
-    // Chờ tất cả workers hoàn thành
-    let mut all_results = Vec::new();
-    for handle in handles {
-        let worker_results = handle.join().map_err(|_| "Thread join error")??;
-        all_results.extend(worker_results);
-    }
-    
-    Ok(all_results)
-}
-
-/// Tạo engine với đầy đủ rules
-fn create_full_engine(name: &str) -> std::result::Result<RustRuleEngine, Box<dyn std::error::Error>> {
-    let kb = KnowledgeBase::new(name);
+    // Create single engine with all rules
+    let mut kb = KnowledgeBase::new("SingleNodeKB");
     let config = EngineConfig {
-        max_cycles: 3,
+        max_cycles: 5,
         debug_mode: false,
         enable_stats: true,
         ..Default::default()
     };
     let mut engine = RustRuleEngine::with_config(kb, config);
 
-    // Thêm rules xử lý đơn hàng
+    // Add all types of rules to single engine
+    add_all_rules(&mut engine)?;
+
+    let mut total_rules_fired = 0;
+
+    // Process each customer sequentially
+    for (i, customer) in customers.iter().enumerate() {
+        let mut facts = Facts::new();
+        facts.add_value("Customer", customer.clone())?;
+
+        let result = engine.execute(&mut facts)?;
+        total_rules_fired += result.rules_fired;
+
+        if i % 20 == 0 {
+            println!("   Processed {}/{} customers...", i + 1, customers.len());
+        }
+    }
+
+    let total_time = start.elapsed();
+    let throughput = customers.len() as f64 / total_time.as_secs_f64();
+
+    Ok(ProcessingResult {
+        method: "Single Node".to_string(),
+        total_time,
+        customers_processed: customers.len(),
+        rules_fired: total_rules_fired,
+        throughput,
+    })
+}
+
+fn test_distributed_processing(
+    customers: &[Value],
+) -> std::result::Result<ProcessingResult, RuleEngineError> {
+    let start = Instant::now();
+
+    // Split customers into chunks for different "nodes"
+    let chunk_size = customers.len() / 3; // 3 nodes
+    let chunks: Vec<_> = customers.chunks(chunk_size).collect();
+
+    // Use threads to simulate distributed nodes
+    let handles: Vec<_> = chunks
+        .iter()
+        .enumerate()
+        .map(|(node_id, chunk)| {
+            let chunk = chunk.to_vec();
+            let node_type = match node_id {
+                0 => "validation",
+                1 => "pricing",
+                2 => "loyalty",
+                _ => "general",
+            };
+
+            thread::spawn(
+                move || -> std::result::Result<(usize, usize), RuleEngineError> {
+                    // Create specialized engine for this node
+                    let mut kb = KnowledgeBase::new(&format!("Node{}KB", node_id));
+                    let config = EngineConfig {
+                        max_cycles: 5,
+                        debug_mode: false,
+                        enable_stats: true,
+                        ..Default::default()
+                    };
+                    let mut engine = RustRuleEngine::with_config(kb, config);
+
+                    // Add specialized rules based on node type
+                    add_specialized_rules(&mut engine, node_type)?;
+
+                    let mut total_rules_fired = 0;
+
+                    // Process customers assigned to this node
+                    for customer in &chunk {
+                        let mut facts = Facts::new();
+                        facts.add_value("Customer", customer.clone())?;
+
+                        let result = engine.execute(&mut facts)?;
+                        total_rules_fired += result.rules_fired;
+                    }
+
+                    println!(
+                        "   🔨 Node {} ({}) processed {} customers",
+                        node_id + 1,
+                        node_type,
+                        chunk.len()
+                    );
+
+                    Ok((chunk.len(), total_rules_fired))
+                },
+            )
+        })
+        .collect();
+
+    // Wait for all nodes to complete
+    let mut total_customers_processed = 0;
+    let mut total_rules_fired = 0;
+
+    for handle in handles {
+        let (customers_processed, rules_fired) = handle.join().unwrap()?;
+        total_customers_processed += customers_processed;
+        total_rules_fired += rules_fired;
+    }
+
+    let total_time = start.elapsed();
+    let throughput = total_customers_processed as f64 / total_time.as_secs_f64();
+
+    Ok(ProcessingResult {
+        method: "Distributed (3 nodes)".to_string(),
+        total_time,
+        customers_processed: total_customers_processed,
+        rules_fired: total_rules_fired,
+        throughput,
+    })
+}
+
+fn add_all_rules(engine: &mut RustRuleEngine) -> std::result::Result<(), RuleEngineError> {
     let rules = vec![
-        // Rule 1: VIP customer priority
-        r#"rule "VIPPriority" salience 20 {
-            when Customer.Tier == "VIP" && Order.Status == "PENDING"
-            then Order.Priority = "HIGH";
+        // Validation rules
+        r#"rule "AgeValidation" salience 20 {
+            when Customer.Age >= 18
+            then Customer.IsAdult = true; log("Age validation passed");
         }"#,
-        
-        // Rule 2: Large order processing fee
-        r#"rule "LargeOrderFee" salience 15 {
-            when Order.TotalAmount > 1500.0
-            then Order.ProcessingFee = Order.TotalAmount * 0.02;
+        r#"rule "EmailValidation" salience 15 {
+            when Customer.Email != ""
+            then Customer.HasValidEmail = true; log("Email validation passed");
         }"#,
-        
-        // Rule 3: Standard processing fee  
-        r#"rule "StandardFee" salience 10 {
-            when Order.TotalAmount <= 1500.0
-            then Order.ProcessingFee = 25.0;
+        // Pricing rules
+        r#"rule "VIPPricing" salience 25 {
+            when Customer.IsVIP == true
+            then Customer.DiscountRate = 0.20; log("VIP pricing applied");
         }"#,
-        
-        // Rule 4: High priority processing
-        r#"rule "HighPriorityProcessing" salience 5 {
-            when Order.Priority == "HIGH"
-            then Order.Status = "PRIORITY_QUEUE";
+        r#"rule "RegularPricing" salience 10 {
+            when Customer.IsVIP == false && Customer.Age >= 18
+            then Customer.DiscountRate = 0.05; log("Regular pricing applied");
         }"#,
-        
-        // Rule 5: Standard processing
-        r#"rule "StandardProcessing" salience 3 {
-            when Order.Priority == "NORMAL" && Order.Status == "PENDING"
-            then Order.Status = "PROCESSING";
+        // Loyalty rules
+        r#"rule "LoyaltyCalculation" salience 15 {
+            when Customer.Age >= 18
+            then Customer.LoyaltyPoints = 100; log("Loyalty points calculated");
         }"#,
-        
-        // Rule 6: Multi-item discount
-        r#"rule "MultiItemDiscount" salience 8 {
-            when Order.ItemCount > 2
-            then Order.ProcessingFee = Order.ProcessingFee * 0.9;
+        r#"rule "VIPLoyaltyBonus" salience 12 {
+            when Customer.IsVIP == true
+            then Customer.BonusPoints = 50; log("VIP bonus points added");
         }"#,
     ];
 
     for rule_str in rules {
         let parsed_rules = GRLParser::parse_rules(rule_str)?;
         for rule in parsed_rules {
-            engine.add_rule(rule)?;
+            engine.knowledge_base().add_rule(rule)?;
         }
     }
 
-    Ok(engine)
+    Ok(())
+}
+
+fn add_specialized_rules(
+    engine: &mut RustRuleEngine,
+    specialization: &str,
+) -> std::result::Result<(), RuleEngineError> {
+    let rules = match specialization {
+        "validation" => vec![
+            r#"rule "AgeValidation" salience 20 {
+                when Customer.Age >= 18
+                then Customer.IsAdult = true; log("Age validation passed");
+            }"#,
+            r#"rule "EmailValidation" salience 15 {
+                when Customer.Email != ""
+                then Customer.HasValidEmail = true; log("Email validation passed");
+            }"#,
+        ],
+        "pricing" => vec![
+            r#"rule "VIPPricing" salience 25 {
+                when Customer.IsVIP == true
+                then Customer.DiscountRate = 0.20; log("VIP pricing applied");
+            }"#,
+            r#"rule "RegularPricing" salience 10 {
+                when Customer.IsVIP == false && Customer.Age >= 18
+                then Customer.DiscountRate = 0.05; log("Regular pricing applied");
+            }"#,
+        ],
+        "loyalty" => vec![
+            r#"rule "LoyaltyCalculation" salience 15 {
+                when Customer.Age >= 18
+                then Customer.LoyaltyPoints = 100; log("Loyalty points calculated");
+            }"#,
+            r#"rule "VIPLoyaltyBonus" salience 12 {
+                when Customer.IsVIP == true
+                then Customer.BonusPoints = 50; log("VIP bonus points added");
+            }"#,
+        ],
+        _ => vec![],
+    };
+
+    for rule_str in rules {
+        let parsed_rules = GRLParser::parse_rules(rule_str)?;
+        for rule in parsed_rules {
+            engine.knowledge_base().add_rule(rule)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn create_large_customer_dataset(count: usize) -> Vec<Value> {
+    let mut customers = Vec::new();
+
+    for i in 0..count {
+        let age = 18 + (i % 50) as i64; // Age range 18-67
+        let is_vip = i % 5 == 0; // Every 5th customer is VIP
+
+        let customer = FactHelper::create_user(
+            &format!("Customer_{}", i + 1),
+            age,
+            &format!("customer{}@example.com", i + 1),
+            "US",
+            is_vip,
+        );
+
+        customers.push(customer);
+    }
+
+    customers
+}
+
+fn display_comparison(single: &ProcessingResult, distributed: &ProcessingResult) {
+    println!("┌─────────────────────┬──────────────────┬──────────────────────┐");
+    println!("│       Method        │   Execution Time │   Throughput (c/s)   │");
+    println!("├─────────────────────┼──────────────────┼──────────────────────┤");
+    println!(
+        "│ {:<19} │ {:>13.3}s │ {:>17.1} │",
+        single.method,
+        single.total_time.as_secs_f64(),
+        single.throughput
+    );
+    println!(
+        "│ {:<19} │ {:>13.3}s │ {:>17.1} │",
+        distributed.method,
+        distributed.total_time.as_secs_f64(),
+        distributed.throughput
+    );
+    println!("└─────────────────────┴──────────────────┴──────────────────────┘");
+
+    let speedup = single.total_time.as_secs_f64() / distributed.total_time.as_secs_f64();
+    let efficiency = (distributed.throughput / single.throughput) * 100.0;
+
+    println!("\n🚀 Performance Analysis:");
+    println!("   Speedup: {:.2}x", speedup);
+    println!("   Efficiency Improvement: {:.1}%", efficiency - 100.0);
+    println!("   Single Node Rules Fired: {}", single.rules_fired);
+    println!("   Distributed Rules Fired: {}", distributed.rules_fired);
+
+    if speedup > 1.0 {
+        println!("   ✅ Distributed processing is {:.2}x faster!", speedup);
+    } else {
+        println!("   ⚠️  Single node performed better (overhead vs parallelism trade-off)");
+    }
+
+    println!("\n💡 Key Insights:");
+    println!("   • Distributed processing benefits increase with data volume");
+    println!("   • Node specialization reduces rule evaluation overhead");
+    println!("   • Parallel execution scales with available CPU cores");
+    println!("   • Network latency in real distributed systems adds overhead");
 }
