@@ -1,0 +1,31 @@
+// Advanced rules with nested conditions and multiple operators
+
+rule "Premium Customer Benefits" salience 20 {
+    when
+        ((user.vipLevel >= 5) && (user.totalSpent > 10000)) || 
+        ((user.membershipYears >= 3) && (user.loyaltyPoints > 5000))
+    then
+        apply_discount(25);
+        set(user.freeShipping, true);
+        add_loyalty_points(500);
+}
+
+rule "Holiday Season Special" salience 15 {
+    when
+        ((date.month == 12) && (date.day >= 20)) && 
+        ((order.amount > 200) || (user.hasGiftCard == true))
+    then
+        apply_discount(15);
+        set(order.giftWrap, true);
+        log("Holiday special applied");
+}
+
+rule "Flash Sale Eligibility" salience 12 {
+    when
+        (product.category == "electronics") && 
+        ((user.notificationPrefs == "all") || (user.notificationPrefs == "sales")) &&
+        (product.stock > 10)
+    then
+        send_notification("flash_sale");
+        set(product.flashSaleEligible, true);
+}
