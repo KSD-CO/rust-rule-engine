@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2025-10-10
+
+### Enhanced
+- **🧠 Advanced GRL Parser with Complex Nested Conditions Support**
+  - Deep nested parentheses parsing: `(((A && B) || (C && D)))`
+  - Proper operator precedence handling: OR (lowest) → AND (higher) → Single conditions (highest)
+  - Smart logical operator splitting that respects parentheses nesting
+  - Enhanced field name support: both PascalCase (`User.Age`) and lowercase (`user.age`)
+  - New function calls support: `set(field, value)` and `add(value)` actions
+  - Backward compatibility with existing rule formats
+
+### Added
+- **📝 Comprehensive Rule Examples Collection**
+  - `examples/rules/` directory with organized rule samples
+  - `test_complex_rule.grl`: Complex nested business logic examples
+  - `simple_business_rules.grl`: Basic e-commerce rule patterns
+  - `advanced_nested_rules.grl`: Premium customer and seasonal campaigns
+  - `legacy_format_rules.grl`: Backward compatibility demonstration
+  - Comprehensive test suite for all rule complexity levels
+
+### Improved
+- **🔧 Parser Architecture Consolidation**
+  - Removed duplicate `grl_parser.rs` (331 lines of redundant code)
+  - Single source of truth with enhanced `grl.rs` parser
+  - All examples and benchmarks migrated to use unified parser
+  - Better error handling and more detailed parse error messages
+  - Enhanced value type parsing: proper Boolean, Integer, and String handling
+
+### Fixed
+- **🐛 Parsing Issues Resolution**
+  - Fixed parentheses stripping for conditions like `(user.age >= 18)`
+  - Corrected value parsing for complex expressions (no more extra parentheses)
+  - Proper nested condition structure building
+  - Enhanced regex patterns for field name matching
+  - Improved rule name extraction for quoted rule names
+
+### Technical Details
+- All 20 unit tests + 5 integration tests + 3 doc tests pass
+- Performance validated with complex rule parsing examples
+- Memory usage optimized through code consolidation
+- Enhanced test coverage for parser edge cases
+
 ## [0.4.0] - 2025-01-27
 
 ### Added

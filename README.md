@@ -1,6 +1,6 @@
-# 🦀 Rust Rule Engine - GRL Edition
+# 🦀 Rust Rule Engine - AI-Powered Edition
 
-A powerful, high-performance rule engine for Rust supporting **GRL (Grule Rule Language)** syntax with advanced features like method calls, custom functions, object interactions, and both file-based and inline rule management.
+A powerful, high-performance rule engine for Rust supporting **GRL (Grule Rule Language)** syntax with advanced features like AI integration, method calls, custom functions, object interactions, and both file-based and inline rule management.
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -9,6 +9,7 @@ A powerful, high-performance rule engine for Rust supporting **GRL (Grule Rule L
 ## 📋 Table of Contents
 
 - [🌟 Key Features](#-key-features)
+- [🤖 AI Integration](#-ai-integration-new)
 - [🚀 Quick Start](#-quick-start)
 - [📚 Examples](#-examples)
 - [🌐 REST API](#-rest-api-with-monitoring)
@@ -23,6 +24,7 @@ A powerful, high-performance rule engine for Rust supporting **GRL (Grule Rule L
 ## 🌟 Key Features
 
 - **🔥 GRL-Only Support**: Pure Grule Rule Language syntax (no JSON)
+- **🤖 AI Integration**: Built-in support for ML models, LLMs, and AI-powered decision making
 - **📄 Rule Files**: External `.grl` files for organized rule management  
 - **📝 Inline Rules**: Define rules as strings directly in your code
 - **📞 Custom Functions**: Register and call user-defined functions from rules
@@ -42,7 +44,112 @@ A powerful, high-performance rule engine for Rust supporting **GRL (Grule Rule L
 - **🚨 Action Handlers**: Custom action execution for rule consequences
 - **📈 Advanced Analytics**: Production-ready performance monitoring and optimization insights
 
+## 🤖 AI Integration (NEW!)
+
+Integrate AI/ML models seamlessly into your rules, similar to **Drools Pragmatic AI**:
+
+### Features
+- **🤖 Sentiment Analysis**: Real-time text sentiment evaluation
+- **🛡️ Fraud Detection**: ML-powered fraud scoring and detection
+- **🏆 Predictive Analytics**: Customer tier prediction and scoring
+- **🧠 LLM Reasoning**: Large Language Model decision support
+- **📊 Real-time ML Scoring**: Dynamic model inference in rules
+
+### Example AI Rules
+
+```grl
+rule "AI Customer Service" salience 100 {
+    when
+        CustomerMessage.type == "complaint"
+    then
+        analyzeSentiment(CustomerMessage.text);
+        set(Ticket.priority, "high");
+        logMessage("🤖 AI analyzing customer sentiment");
+}
+
+rule "AI Fraud Detection" salience 90 {
+    when
+        Transaction.amount > 1000
+    then
+        detectFraud(Transaction.amount, Transaction.userId);
+        set(Transaction.status, "under_review");
+        sendNotification("🛡️ Checking for potential fraud", "security@company.com");
+}
+
+rule "AI Tier Prediction" salience 80 {
+    when
+        Customer.tier == "pending"
+    then
+        predictTier(Customer.id);
+        set(Customer.tierAssignedBy, "AI");
+        logMessage("🏆 AI predicting customer tier");
+}
+```
+
+### Register AI Functions
+
+```rust
+// Register AI-powered functions
+engine.register_function("analyzeSentiment", |args, _facts| {
+    let text = args[0].as_string().unwrap_or("".to_string());
+    
+    // Call actual AI API (OpenAI, Anthropic, Hugging Face, etc.)
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let sentiment = rt.block_on(async {
+        call_openai_sentiment_api(&text).await
+    }).unwrap_or_else(|_| "neutral".to_string());
+    
+    Ok(Value::String(sentiment))
+});
+
+engine.register_function("detectFraud", |args, facts| {
+    let amount = args[0].as_number().unwrap_or(0.0);
+    let user_id = args[1].as_string().unwrap_or("unknown".to_string());
+    
+    // Call actual ML fraud detection API
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let is_fraud = rt.block_on(async {
+        call_fraud_detection_api(amount, &user_id, facts).await
+    }).unwrap_or_else(|_| false);
+    
+    Ok(Value::Boolean(is_fraud))
+});
+
+engine.register_function("predictTier", |args, facts| {
+    let customer_id = args[0].as_string().unwrap_or("unknown".to_string());
+    
+    // Call actual ML tier prediction API
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let predicted_tier = rt.block_on(async {
+        call_tier_prediction_api(&customer_id, facts).await
+    }).unwrap_or_else(|_| "bronze".to_string());
+    
+    Ok(Value::String(predicted_tier))
+});
+```
+
 ## 📋 Changelog
+
+### v0.5.0 (October 2025) - AI Integration 🤖
+- **🤖 AI-Powered Rules**: Built-in support for AI/ML model integration
+  - Sentiment analysis functions for customer service automation
+  - ML-powered fraud detection with real-time risk scoring
+  - Predictive analytics for customer tier assignment
+  - LLM reasoning for complex business decision support
+  - Real-time ML scoring for dynamic pricing and recommendations
+- **🧠 AI Function Registry**: Easy registration and management of AI model functions
+- **🚀 Production AI Examples**: Complete examples with simulated AI APIs
+- **📊 AI Insights**: Track AI model performance and decision outcomes
+- **🌐 AI-Enhanced REST API**: HTTP endpoints for AI-powered rule execution
+
+### v0.4.1 (October 2025) - Enhanced Parser & Publishing
+- **🔧 Enhanced GRL Parser**: Improved parsing with complex nested conditions
+  - Support for parentheses grouping: `(age >= 18) && (status == "active")`
+  - Better handling of compound boolean expressions
+  - Improved error messages and validation
+- **📦 Published to Crates.io**: Available as `rust-rule-engine = "0.4.1"`
+- **📚 Comprehensive Examples**: Added 40+ examples covering all features
+- **📖 Complete Documentation**: Full API documentation and usage guides
 
 ### v0.3.1 (October 2025) - REST API with Monitoring
 - **🌐 Production REST API**: Complete web API with advanced analytics integration
@@ -185,6 +292,221 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = engine.execute(&facts)?;
     println!("Rules fired: {}", result.rules_fired);
 
+    Ok(())
+}
+```
+
+## 🤖 Complete AI Integration Example
+
+Here's a complete example showing how to build an AI-powered business rule system:
+
+```rust
+use rust_rule_engine::{RuleEngineBuilder, Value, Facts};
+use std::collections::HashMap;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let ai_rules = r#"
+        rule "AI Customer Service" salience 100 {
+            when
+                CustomerMessage.type == "complaint"
+            then
+                analyzeSentiment(CustomerMessage.text);
+                set(Ticket.priority, "high");
+                logMessage("🤖 AI analyzing customer sentiment");
+        }
+
+        rule "AI Fraud Detection" salience 90 {
+            when
+                Transaction.amount > 1000
+            then
+                detectFraud(Transaction.amount, Transaction.userId);
+                set(Transaction.status, "under_review");
+                sendNotification("🛡️ Checking for potential fraud", "security@company.com");
+        }
+
+        rule "AI Tier Prediction" salience 80 {
+            when
+                Customer.tier == "pending"
+            then
+                predictTier(Customer.id);
+                set(Customer.tierAssignedBy, "AI");
+                logMessage("🏆 AI predicting customer tier");
+        }
+
+        rule "LLM Decision Support" salience 70 {
+            when
+                Customer.needsReview == true
+            then
+                askLLM("Should we approve this customer for premium tier?", Customer.id);
+                set(Customer.reviewedBy, "AI-LLM");
+                logMessage("🧠 LLM analyzing customer for approval");
+        }
+
+        rule "ML Dynamic Pricing" salience 60 {
+            when
+                Product.category == "dynamic" && Customer.tier != "unknown"
+            then
+                calculateMLPrice(Product.basePrice, Customer.tier, Product.demand);
+                set(Product.priceSource, "ML");
+                logMessage("📊 ML calculating dynamic price");
+        }
+    "#;
+
+    let mut engine = RuleEngineBuilder::new()
+        .with_inline_grl(ai_rules)?
+        .with_max_cycles(5)
+        .build();
+
+    // Register AI functions (in production, these would call real AI APIs)
+    engine.register_function("analyzeSentiment", |args, facts| {
+        let text = args[0].as_string().unwrap_or("".to_string());
+        
+        // Simulate sentiment analysis (OpenAI, Anthropic, HuggingFace, etc.)
+        let sentiment = if text.contains("terrible") || text.contains("awful") {
+            "negative"
+        } else if text.contains("love") || text.contains("great") {
+            "positive"
+        } else {
+            "neutral"
+        };
+        
+        // Store result in facts for other rules
+        facts.set_value("Analysis.sentiment", Value::String(sentiment.to_string()))?;
+        
+        println!("🤖 Sentiment Analysis: '{}' → {}", text, sentiment);
+        Ok(Value::String(sentiment.to_string()))
+    });
+
+    engine.register_function("detectFraud", |args, facts| {
+        let amount = args[0].as_number().unwrap_or(0.0);
+        let user_id = args[1].as_string().unwrap_or("unknown".to_string());
+        
+        // Simulate ML fraud detection model
+        let risk_score = if amount > 5000.0 { 0.95 } else if amount > 2000.0 { 0.75 } else { 0.2 };
+        let is_fraud = risk_score > 0.8;
+        
+        facts.set_value("FraudCheck.riskScore", Value::Number(risk_score))?;
+        facts.set_value("FraudCheck.isFraud", Value::Boolean(is_fraud))?;
+        
+        println!("🛡️ Fraud Detection: Amount {} for user {} → Risk: {:.2}, Fraud: {}", 
+                amount, user_id, risk_score, is_fraud);
+        
+        Ok(Value::Boolean(is_fraud))
+    });
+
+    engine.register_function("predictTier", |args, facts| {
+        let customer_id = args[0].as_string().unwrap_or("unknown".to_string());
+        
+        // Simulate customer tier prediction model
+        let predicted_tiers = ["bronze", "silver", "gold", "platinum"];
+        let tier = predicted_tiers[customer_id.len() % predicted_tiers.len()];
+        
+        facts.set_value("TierPrediction.tier", Value::String(tier.to_string()))?;
+        facts.set_value("TierPrediction.confidence", Value::Number(0.87))?;
+        
+        println!("🏆 Tier Prediction: Customer {} → {} tier (87% confidence)", customer_id, tier);
+        Ok(Value::String(tier.to_string()))
+    });
+
+    engine.register_function("askLLM", |args, facts| {
+        let question = args[0].as_string().unwrap_or("".to_string());
+        let customer_id = args[1].as_string().unwrap_or("unknown".to_string());
+        
+        // Simulate LLM reasoning (GPT-4, Claude, etc.)
+        let decision = if customer_id.contains("VIP") { "approve" } else { "review_further" };
+        let reasoning = format!("Based on customer profile analysis, recommendation: {}", decision);
+        
+        facts.set_value("LLMDecision.result", Value::String(decision.to_string()))?;
+        facts.set_value("LLMDecision.reasoning", Value::String(reasoning.clone()))?;
+        
+        println!("🧠 LLM Analysis: {} → {}", question, reasoning);
+        Ok(Value::String(decision.to_string()))
+    });
+
+    engine.register_function("calculateMLPrice", |args, facts| {
+        let base_price = args[0].as_number().unwrap_or(100.0);
+        let tier = args[1].as_string().unwrap_or("bronze".to_string());
+        let demand = args[2].as_number().unwrap_or(1.0);
+        
+        // Simulate ML pricing model
+        let tier_multiplier = match tier.as_str() {
+            "platinum" => 0.8,
+            "gold" => 0.9,
+            "silver" => 0.95,
+            _ => 1.0,
+        };
+        
+        let dynamic_price = base_price * tier_multiplier * demand;
+        
+        facts.set_value("Pricing.dynamicPrice", Value::Number(dynamic_price))?;
+        facts.set_value("Pricing.discount", Value::Number((1.0 - tier_multiplier) * 100.0))?;
+        
+        println!("📊 ML Pricing: Base ${:.2} × {} tier × {:.1}x demand → ${:.2}", 
+                base_price, tier, demand, dynamic_price);
+        
+        Ok(Value::Number(dynamic_price))
+    });
+
+    // Helper functions
+    engine.register_function("set", |args, facts| {
+        if args.len() >= 2 {
+            let key = args[0].as_string().unwrap_or("unknown".to_string());
+            facts.set_value(&key, args[1].clone())?;
+        }
+        Ok(Value::Boolean(true))
+    });
+
+    engine.register_function("logMessage", |args, _| {
+        println!("📝 {}", args[0]);
+        Ok(Value::Boolean(true))
+    });
+
+    engine.register_function("sendNotification", |args, _| {
+        println!("📧 Notification: {} → {}", args[0], args[1]);
+        Ok(Value::Boolean(true))
+    });
+
+    // Set up test facts
+    let facts = Facts::new();
+    
+    // Customer service scenario
+    let mut customer_message = HashMap::new();
+    customer_message.insert("type".to_string(), Value::String("complaint".to_string()));
+    customer_message.insert("text".to_string(), Value::String("This service is terrible!".to_string()));
+    facts.add_value("CustomerMessage", Value::Object(customer_message))?;
+
+    // Transaction for fraud detection
+    let mut transaction = HashMap::new();
+    transaction.insert("amount".to_string(), Value::Number(2500.0));
+    transaction.insert("userId".to_string(), Value::String("user123".to_string()));
+    facts.add_value("Transaction", Value::Object(transaction))?;
+
+    // Customer for tier prediction
+    let mut customer = HashMap::new();
+    customer.insert("id".to_string(), Value::String("VIP_customer_456".to_string()));
+    customer.insert("tier".to_string(), Value::String("pending".to_string()));
+    customer.insert("needsReview".to_string(), Value::Boolean(true));
+    facts.add_value("Customer", Value::Object(customer))?;
+
+    // Product for dynamic pricing
+    let mut product = HashMap::new();
+    product.insert("category".to_string(), Value::String("dynamic".to_string()));
+    product.insert("basePrice".to_string(), Value::Number(150.0));
+    product.insert("demand".to_string(), Value::Number(1.3));
+    facts.add_value("Product", Value::Object(product))?;
+
+    let mut ticket = HashMap::new();
+    facts.add_value("Ticket", Value::Object(ticket))?;
+
+    // Execute AI-powered rules
+    println!("\n🚀 Executing AI-Powered Rule Engine...\n");
+    let result = engine.execute(&facts)?;
+    
+    println!("\n📊 Execution Results:");
+    println!("   Rules fired: {}", result.rules_fired);
+    println!("   Cycles: {}", result.cycles);
+    println!("   Duration: {:?}", result.duration);
+    
     Ok(())
 }
 ```

@@ -1,16 +1,15 @@
 [package]
 name = "rust-rule-engine"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
-description = "A high-performance rule engine for Rust with GRL support, AST-based dependency analysis, parallel execution, file-based rules, custom functions, and method calls"
-authors = ["James Vu <ttvuhm@gmail.com>"]
+authors = ["Ton That Vu <tonthatvu.hust@gmail.com>"]
+description = "A high-performance rule engine for Rust with GRL support and AI integration"
 license = "MIT"
-repository = "https://github.com/KSD-CO/rust-rule-engine"  # TODO: Update with your real repo
-homepage = "https://github.com/KSD-CO/rust-rule-engine"    # TODO: Update with your real repo
-documentation = "https://docs.rs/rust-rule-engine"
 readme = "README.md"
-keywords = ["rule-engine", "grule", "business-rules", "dependency-analysis", "parallel"]
-categories = ["algorithms", "data-structures", "parsing", "science"]
+repository = "https://github.com/tonthatvu/rust-rule-engine"
+documentation = "https://docs.rs/rust-rule-engine"
+keywords = ["rules", "engine", "grl", "ai", "ml"]
+categories = ["algorithms", "data-structures", "science"]
 exclude = [
     "tests/*",
     ".github/*",
@@ -47,6 +46,8 @@ serde_json = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
+# AI API dependencies
+reqwest = { version = "0.11", features = ["json"] }
 
 [[bench]]
 name = "rule_engine_benchmarks"
