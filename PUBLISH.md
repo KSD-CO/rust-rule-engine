@@ -131,7 +131,7 @@ rust-rule-engine = "0.1.2"
 
 ```rust
 use rust_rule_engine::engine::{RustRuleEngine, EngineConfig};
-use rust_rule_engine::parser::grl_parser::GRLParser;
+use rust_rule_engine::parser::grl::GRLParser;
 
 // Your code here...
 ```

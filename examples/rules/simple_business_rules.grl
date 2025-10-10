@@ -1,0 +1,24 @@
+// Simple business rules for e-commerce system
+
+rule "Basic Age Check" salience 10 {
+    when
+        user.age >= 18
+    then
+        set(user.canPurchase, true);
+}
+
+rule "VIP Customer Discount" salience 15 {
+    when
+        user.vipStatus == true
+    then
+        apply_discount(10);
+        log("VIP discount applied");
+}
+
+rule "First Time Buyer" salience 5 {
+    when
+        user.orderCount == 0
+    then
+        set(user.welcomeBonus, 50);
+        log("Welcome bonus granted");
+}

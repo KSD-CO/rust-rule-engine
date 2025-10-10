@@ -37,7 +37,7 @@ impl GRLParser {
 
         // Extract rule components using regex - support quoted rule names
         let rule_regex =
-            Regex::new(r#"rule\s+(?:"([^"]+)"|(\w+))\s*(?:salience\s+(\d+))?\s*\{(.+)\}"#)
+            Regex::new(r#"rule\s+(?:"([^"]+)"|([a-zA-Z_]\w*))\s*(?:salience\s+(\d+))?\s*\{(.+)\}"#)
                 .map_err(|e| RuleEngineError::ParseError {
                     message: format!("Invalid rule regex: {}", e),
                 })?;
@@ -98,11 +98,13 @@ impl GRLParser {
 
     fn parse_multiple_rules(&mut self, grl_text: &str) -> Result<Vec<Rule>> {
         // Split by rule boundaries - support both quoted and unquoted rule names
-        let rule_regex = Regex::new(r#"rule\s+(?:"[^"]+"|[a-zA-Z_]\w*)[^}]*\}"#).map_err(|e| {
-            RuleEngineError::ParseError {
-                message: format!("Rule splitting regex error: {}", e),
-            }
-        })?;
+        // Use DOTALL flag to match newlines in rule body
+        let rule_regex =
+            Regex::new(r#"(?s)rule\s+(?:"[^"]+"|[a-zA-Z_]\w*).*?\}"#).map_err(|e| {
+                RuleEngineError::ParseError {
+                    message: format!("Rule splitting regex error: {}", e),
+                }
+            })?;
 
         let mut rules = Vec::new();
 
@@ -124,71 +126,119 @@ impl GRLParser {
     }
 
     fn parse_when_clause(&self, when_clause: &str) -> Result<ConditionGroup> {
-        // Handle logical operators
-        if when_clause.contains("&&") {
-            return self.parse_and_condition(when_clause);
+        // Handle logical operators with proper parentheses support
+        let trimmed = when_clause.trim();
+
+        // Strip outer parentheses if they exist
+        let clause = if trimmed.starts_with('(') && trimmed.ends_with(')') {
+            // Check if these are the outermost parentheses
+            let inner = &trimmed[1..trimmed.len() - 1];
+            if self.is_balanced_parentheses(inner) {
+                inner
+            } else {
+                trimmed
+            }
+        } else {
+            trimmed
+        };
+
+        // Parse OR at the top level (lowest precedence)
+        if let Some(parts) = self.split_logical_operator(clause, "||") {
+            return self.parse_or_parts(parts);
         }
 
-        if when_clause.contains("||") {
-            return self.parse_or_condition(when_clause);
+        // Parse AND (higher precedence)
+        if let Some(parts) = self.split_logical_operator(clause, "&&") {
+            return self.parse_and_parts(parts);
         }
 
-        if when_clause.starts_with("!") {
-            return self.parse_not_condition(when_clause);
+        // Handle NOT condition
+        if clause.trim_start().starts_with("!") {
+            return self.parse_not_condition(clause);
         }
 
         // Single condition
-        self.parse_single_condition(when_clause)
+        self.parse_single_condition(clause)
     }
 
-    fn parse_and_condition(&self, clause: &str) -> Result<ConditionGroup> {
-        let parts: Vec<&str> = clause.split("&&").collect();
-        if parts.len() < 2 {
-            return Err(RuleEngineError::ParseError {
-                message: "Invalid AND condition".to_string(),
-            });
+    fn is_balanced_parentheses(&self, text: &str) -> bool {
+        let mut count = 0;
+        for ch in text.chars() {
+            match ch {
+                '(' => count += 1,
+                ')' => {
+                    count -= 1;
+                    if count < 0 {
+                        return false;
+                    }
+                }
+                _ => {}
+            }
+        }
+        count == 0
+    }
+
+    fn split_logical_operator(&self, clause: &str, operator: &str) -> Option<Vec<String>> {
+        let mut parts = Vec::new();
+        let mut current_part = String::new();
+        let mut paren_count = 0;
+        let mut chars = clause.chars().peekable();
+
+        while let Some(ch) = chars.next() {
+            match ch {
+                '(' => {
+                    paren_count += 1;
+                    current_part.push(ch);
+                }
+                ')' => {
+                    paren_count -= 1;
+                    current_part.push(ch);
+                }
+                '&' if operator == "&&" && paren_count == 0 => {
+                    if chars.peek() == Some(&'&') {
+                        chars.next(); // consume second &
+                        parts.push(current_part.trim().to_string());
+                        current_part.clear();
+                    } else {
+                        current_part.push(ch);
+                    }
+                }
+                '|' if operator == "||" && paren_count == 0 => {
+                    if chars.peek() == Some(&'|') {
+                        chars.next(); // consume second |
+                        parts.push(current_part.trim().to_string());
+                        current_part.clear();
+                    } else {
+                        current_part.push(ch);
+                    }
+                }
+                _ => {
+                    current_part.push(ch);
+                }
+            }
         }
 
+        if !current_part.trim().is_empty() {
+            parts.push(current_part.trim().to_string());
+        }
+
+        if parts.len() > 1 {
+            Some(parts)
+        } else {
+            None
+        }
+    }
+
+    fn parse_or_parts(&self, parts: Vec<String>) -> Result<ConditionGroup> {
         let mut conditions = Vec::new();
         for part in parts {
-            let condition = self.parse_when_clause(part.trim())?;
+            let condition = self.parse_when_clause(&part)?;
             conditions.push(condition);
         }
 
-        // Combine with AND
         if conditions.is_empty() {
             return Err(RuleEngineError::ParseError {
-                message: "No conditions found".to_string(),
-            });
-        }
-
-        let mut iter = conditions.into_iter();
-        let mut result = iter.next().unwrap();
-        for condition in iter {
-            result = ConditionGroup::and(result, condition);
-        }
-
-        Ok(result)
-    }
-
-    fn parse_or_condition(&self, clause: &str) -> Result<ConditionGroup> {
-        let parts: Vec<&str> = clause.split("||").collect();
-        if parts.len() < 2 {
-            return Err(RuleEngineError::ParseError {
-                message: "Invalid OR condition".to_string(),
-            });
-        }
-
-        let mut conditions = Vec::new();
-        for part in parts {
-            let condition = self.parse_when_clause(part.trim())?;
-            conditions.push(condition);
-        }
-
-        // Combine with OR
-        if conditions.is_empty() {
-            return Err(RuleEngineError::ParseError {
-                message: "No conditions found".to_string(),
+                message: "No conditions found in OR".to_string(),
             });
         }
 
@@ -201,6 +251,28 @@ impl GRLParser {
         Ok(result)
     }
 
+    fn parse_and_parts(&self, parts: Vec<String>) -> Result<ConditionGroup> {
+        let mut conditions = Vec::new();
+        for part in parts {
+            let condition = self.parse_when_clause(&part)?;
+            conditions.push(condition);
+        }
+
+        if conditions.is_empty() {
+            return Err(RuleEngineError::ParseError {
+                message: "No conditions found in AND".to_string(),
+            });
+        }
+
+        let mut iter = conditions.into_iter();
+        let mut result = iter.next().unwrap();
+        for condition in iter {
+            result = ConditionGroup::and(result, condition);
+        }
+
+        Ok(result)
+    }
+
     fn parse_not_condition(&self, clause: &str) -> Result<ConditionGroup> {
         let inner_clause = clause.strip_prefix("!").unwrap().trim();
         let inner_condition = self.parse_when_clause(inner_clause)?;
@@ -208,6 +280,14 @@ impl GRLParser {
     }
 
     fn parse_single_condition(&self, clause: &str) -> Result<ConditionGroup> {
+        // Remove outer parentheses if they exist (handle new syntax like "(user.age >= 18)")
+        let trimmed_clause = clause.trim();
+        let clause_to_parse = if trimmed_clause.starts_with('(') && trimmed_clause.ends_with(')') {
+            trimmed_clause[1..trimmed_clause.len() - 1].trim()
+        } else {
+            trimmed_clause
+        };
+
         // Handle typed object conditions like: $TestCar : TestCarClass( speedUp == true && speed < maxSpeed )
         let typed_object_regex =
             Regex::new(r#"\$(\w+)\s*:\s*(\w+)\s*\(\s*(.+?)\s*\)"#).map_err(|e| {
@@ -216,7 +296,7 @@ impl GRLParser {
                 }
             })?;
 
-        if let Some(captures) = typed_object_regex.captures(clause) {
+        if let Some(captures) = typed_object_regex.captures(clause_to_parse) {
             let _object_name = captures.get(1).unwrap().as_str();
             let _object_type = captures.get(2).unwrap().as_str();
             let conditions_str = captures.get(3).unwrap().as_str();
@@ -225,20 +305,20 @@ impl GRLParser {
             return self.parse_conditions_within_object(conditions_str);
         }
 
-        // Parse expressions like: User.Age >= 18, Product.Price < 100.0, etc.
+        // Parse expressions like: User.Age >= 18, Product.Price < 100.0, user.age >= 18, etc.
+        // Support both PascalCase (User.Age) and lowercase (user.age) field naming
         let condition_regex = Regex::new(
-            r#"(\w+(?:\.\w+)*)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#,
+            r#"([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#,
         )
         .map_err(|e| RuleEngineError::ParseError {
             message: format!("Condition regex error: {}", e),
         })?;
 
-        let captures =
-            condition_regex
-                .captures(clause)
-                .ok_or_else(|| RuleEngineError::ParseError {
-                    message: format!("Invalid condition format: {}", clause),
-                })?;
+        let captures = condition_regex.captures(clause_to_parse).ok_or_else(|| {
+            RuleEngineError::ParseError {
+                message: format!("Invalid condition format: {}", clause_to_parse),
+            }
+        })?;
 
         let field = captures.get(1).unwrap().as_str().to_string();
         let operator_str = captures.get(2).unwrap().as_str();
@@ -430,6 +510,57 @@ impl GRLParser {
                         object: object_name,
                     })
                 }
+                "set" => {
+                    // Handle set(field, value) format
+                    let args = if args_str.is_empty() {
+                        Vec::new()
+                    } else {
+                        args_str
+                            .split(',')
+                            .map(|arg| self.parse_value(arg.trim()))
+                            .collect::<Result<Vec<_>>>()?
+                    };
+
+                    if args.len() >= 2 {
+                        let field = args[0].to_string();
+                        let value = args[1].clone();
+                        Ok(ActionType::Set { field, value })
+                    } else if args.len() == 1 {
+                        // set(field) - set to true by default
+                        Ok(ActionType::Set {
+                            field: args[0].to_string(),
+                            value: Value::Boolean(true),
+                        })
+                    } else {
+                        Ok(ActionType::Custom {
+                            action_type: "set".to_string(),
+                            params: {
+                                let mut params = HashMap::new();
+                                params.insert(
+                                    "args".to_string(),
+                                    Value::String(args_str.to_string()),
+                                );
+                                params
+                            },
+                        })
+                    }
+                }
+                "add" => {
+                    // Handle add(value) format
+                    let value = if args_str.is_empty() {
+                        Value::Integer(1) // Default increment
+                    } else {
+                        self.parse_value(args_str.trim())?
+                    };
+                    Ok(ActionType::Custom {
+                        action_type: "add".to_string(),
+                        params: {
+                            let mut params = HashMap::new();
+                            params.insert("value".to_string(), value);
+                            params
+                        },
+                    })
+                }
                 "log" => {
                     let message = if args_str.is_empty() {
                         "Log message".to_string()
@@ -498,7 +629,7 @@ impl GRLParser {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::grl_parser::GRLParser as NewGRLParser;
+    use super::GRLParser;
 
     #[test]
     fn test_parse_simple_rule() {
@@ -511,7 +642,7 @@ mod tests {
         }
         "#;
 
-        let rules = NewGRLParser::parse_rules(grl).unwrap();
+        let rules = GRLParser::parse_rules(grl).unwrap();
         assert_eq!(rules.len(), 1);
         let rule = &rules[0];
         assert_eq!(rule.name, "CheckAge");
@@ -530,9 +661,66 @@ mod tests {
         }
         "#;
 
-        let rules = NewGRLParser::parse_rules(grl).unwrap();
+        let rules = GRLParser::parse_rules(grl).unwrap();
         assert_eq!(rules.len(), 1);
         let rule = &rules[0];
         assert_eq!(rule.name, "ComplexRule");
+    }
+
+    #[test]
+    fn test_parse_new_syntax_with_parentheses() {
+        let grl = r#"
+        rule "Default Rule" salience 10 {
+            when
+                (user.age >= 18)
+            then
+                set(user.status, "approved");
+        }
+        "#;
+
+        let rules = GRLParser::parse_rules(grl).unwrap();
+        assert_eq!(rules.len(), 1);
+        let rule = &rules[0];
+        assert_eq!(rule.name, "Default Rule");
+        assert_eq!(rule.salience, 10);
+        assert_eq!(rule.actions.len(), 1);
+
+        // Check that the action is parsed as a Set action
+        match &rule.actions[0] {
+            crate::types::ActionType::Set { field, value } => {
+                assert_eq!(field, "user.status");
+                assert_eq!(value, &crate::types::Value::String("approved".to_string()));
+            }
+            _ => panic!("Expected Set action, got: {:?}", rule.actions[0]),
+        }
+    }
+
+    #[test]
+    fn test_parse_complex_nested_conditions() {
+        let grl = r#"
+        rule "Complex Business Rule" salience 10 {
+            when
+                (((user.vipStatus == true) && (order.amount > 500)) || ((date.isHoliday == true) && (order.hasCoupon == true)))
+            then
+                apply_discount(20000);
+        }
+        "#;
+
+        let rules = GRLParser::parse_rules(grl).unwrap();
+        assert_eq!(rules.len(), 1);
+        let rule = &rules[0];
+        assert_eq!(rule.name, "Complex Business Rule");
+        assert_eq!(rule.salience, 10);
+        assert_eq!(rule.actions.len(), 1);
+
+        // Check that the action is parsed as a function call
+        match &rule.actions[0] {
+            crate::types::ActionType::Call { function, args } => {
+                assert_eq!(function, "apply_discount");
+                assert_eq!(args.len(), 1);
+                assert_eq!(args[0], crate::types::Value::Integer(20000));
+            }
+            _ => panic!("Expected Call action, got: {:?}", rule.actions[0]),
+        }
     }
 }

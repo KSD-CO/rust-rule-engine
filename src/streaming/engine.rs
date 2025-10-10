@@ -5,7 +5,7 @@
 use crate::engine::facts::Facts;
 use crate::engine::knowledge_base::KnowledgeBase;
 use crate::engine::RustRuleEngine;
-use crate::parser::grl_parser::GRLParser;
+use crate::parser::grl::GRLParser;
 use crate::streaming::aggregator::StreamAnalytics;
 use crate::streaming::event::StreamEvent;
 use crate::streaming::window::{TimeWindow, WindowManager, WindowType};

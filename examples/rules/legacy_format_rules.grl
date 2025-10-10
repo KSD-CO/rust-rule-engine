@@ -1,0 +1,25 @@
+// Legacy format rules for backward compatibility testing
+
+rule CheckUserAge salience 10 {
+    when
+        User.Age >= 21 && User.Country == "US"
+    then
+        User.CanDrink = true;
+        log("Drinking age verified");
+}
+
+rule VIPProcessing salience 20 {
+    when
+        Customer.VipStatus == true
+    then
+        Customer.PriorityProcessing = true;
+        update(Customer);
+}
+
+rule OrderValidation {
+    when
+        Order.Amount > 1000.0 && Order.PaymentMethod == "credit"
+    then
+        Order.RequiresApproval = true;
+        log("High value order flagged for approval");
+}

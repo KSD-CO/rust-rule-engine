@@ -1,7 +1,7 @@
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
-use rust_rule_engine::parser::SimpleGRLParser;
+use rust_rule_engine::parser::grl::GRLParser as SimpleGRLParser;
 use rust_rule_engine::types::Value;
 use std::collections::HashMap;
 use std::fs;
