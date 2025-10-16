@@ -197,6 +197,12 @@ impl Facts {
         data.contains_key(name)
     }
 
+    /// Get all facts as a HashMap (for pattern matching evaluation)
+    pub fn get_all_facts(&self) -> HashMap<String, Value> {
+        let data = self.data.read().unwrap();
+        data.clone()
+    }
+
     /// Get the type name of a fact
     pub fn get_fact_type(&self, name: &str) -> Option<String> {
         let types = self.fact_types.read().unwrap();
