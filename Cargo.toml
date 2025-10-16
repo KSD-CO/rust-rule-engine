@@ -1,12 +1,12 @@
 [package]
 name = "rust-rule-engine"
-version = "0.5.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["Ton That Vu <tonthatvu.hust@gmail.com>"]
-description = "A high-performance rule engine for Rust with GRL support and AI integration"
+description = "A high-performance rule engine for Rust with advanced pattern matching, action handlers, and GRL support"
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/tonthatvu/rust-rule-engine"
+repository = "https://github.com/KSD-CO/rust-rule-engine"
 documentation = "https://docs.rs/rust-rule-engine"
 keywords = ["rules", "engine", "grl", "ai", "ml"]
 categories = ["algorithms", "data-structures", "science"]
@@ -26,6 +26,7 @@ serde_json = "1.0"
 regex = "1.0"
 thiserror = "1.0"
 num_cpus = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1.0", features = ["full"], optional = true }
 futures = { version = "0.3", optional = true }
 fastrand = "2.0"

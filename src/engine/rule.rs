@@ -1,4 +1,5 @@
 use crate::types::{ActionType, LogicalOperator, Operator, Value};
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
 /// Represents a single condition in a rule
@@ -49,6 +50,10 @@ pub enum ConditionGroup {
     },
     /// A negated condition group
     Not(Box<ConditionGroup>),
+    /// Pattern matching: check if at least one fact matches the condition
+    Exists(Box<ConditionGroup>),
+    /// Pattern matching: check if all facts of the target type match the condition
+    Forall(Box<ConditionGroup>),
 }
 
 impl ConditionGroup {
@@ -81,6 +86,16 @@ impl ConditionGroup {
         ConditionGroup::Not(Box::new(condition))
     }
 
+    /// Create an exists condition - checks if at least one fact matches
+    pub fn exists(condition: ConditionGroup) -> Self {
+        ConditionGroup::Exists(Box::new(condition))
+    }
+
+    /// Create a forall condition - checks if all facts of target type match
+    pub fn forall(condition: ConditionGroup) -> Self {
+        ConditionGroup::Forall(Box::new(condition))
+    }
+
     /// Evaluate this condition group against facts
     pub fn evaluate(&self, facts: &HashMap<String, Value>) -> bool {
         match self {
@@ -99,6 +114,39 @@ impl ConditionGroup {
                 }
             }
             ConditionGroup::Not(condition) => !condition.evaluate(facts),
+            ConditionGroup::Exists(_) | ConditionGroup::Forall(_) => {
+                // Pattern matching conditions need Facts struct, not HashMap
+                // For now, return false - these will be handled by the engine
+                false
+            }
+        }
+    }
+
+    /// Evaluate this condition group against Facts (supports pattern matching)
+    pub fn evaluate_with_facts(&self, facts: &crate::engine::facts::Facts) -> bool {
+        use crate::engine::pattern_matcher::PatternMatcher;
+
+        match self {
+            ConditionGroup::Single(condition) => {
+                let fact_map = facts.get_all_facts();
+                condition.evaluate(&fact_map)
+            }
+            ConditionGroup::Compound {
+                left,
+                operator,
+                right,
+            } => {
+                let left_result = left.evaluate_with_facts(facts);
+                let right_result = right.evaluate_with_facts(facts);
+                match operator {
+                    LogicalOperator::And => left_result && right_result,
+                    LogicalOperator::Or => left_result || right_result,
+                    LogicalOperator::Not => !left_result,
+                }
+            }
+            ConditionGroup::Not(condition) => !condition.evaluate_with_facts(facts),
+            ConditionGroup::Exists(condition) => PatternMatcher::evaluate_exists(condition, facts),
+            ConditionGroup::Forall(condition) => PatternMatcher::evaluate_forall(condition, facts),
         }
     }
 }
@@ -114,6 +162,18 @@ pub struct Rule {
     pub salience: i32,
     /// Whether the rule is enabled for execution
     pub enabled: bool,
+    /// Prevents the rule from activating itself in the same cycle
+    pub no_loop: bool,
+    /// Prevents the rule from firing again until agenda group changes
+    pub lock_on_active: bool,
+    /// Agenda group this rule belongs to (for workflow control)
+    pub agenda_group: Option<String>,
+    /// Activation group - only one rule in group can fire
+    pub activation_group: Option<String>,
+    /// Rule becomes effective from this date
+    pub date_effective: Option<DateTime<Utc>>,
+    /// Rule expires after this date
+    pub date_expires: Option<DateTime<Utc>>,
     /// The conditions that must be met for the rule to fire
     pub conditions: ConditionGroup,
     /// The actions to execute when the rule fires
@@ -128,6 +188,12 @@ impl Rule {
             description: None,
             salience: 0,
             enabled: true,
+            no_loop: false,
+            lock_on_active: false,
+            agenda_group: None,
+            activation_group: None,
+            date_effective: None,
+            date_expires: None,
             conditions,
             actions,
         }
@@ -149,6 +215,80 @@ impl Rule {
     pub fn with_priority(mut self, priority: i32) -> Self {
         self.salience = priority;
         self
+    }
+
+    /// Enable or disable no-loop behavior for this rule
+    pub fn with_no_loop(mut self, no_loop: bool) -> Self {
+        self.no_loop = no_loop;
+        self
+    }
+
+    /// Enable or disable lock-on-active behavior for this rule
+    pub fn with_lock_on_active(mut self, lock_on_active: bool) -> Self {
+        self.lock_on_active = lock_on_active;
+        self
+    }
+
+    /// Set the agenda group for this rule
+    pub fn with_agenda_group(mut self, agenda_group: String) -> Self {
+        self.agenda_group = Some(agenda_group);
+        self
+    }
+
+    /// Set the activation group for this rule
+    pub fn with_activation_group(mut self, activation_group: String) -> Self {
+        self.activation_group = Some(activation_group);
+        self
+    }
+
+    /// Set the effective date for this rule
+    pub fn with_date_effective(mut self, date_effective: DateTime<Utc>) -> Self {
+        self.date_effective = Some(date_effective);
+        self
+    }
+
+    /// Set the expiration date for this rule
+    pub fn with_date_expires(mut self, date_expires: DateTime<Utc>) -> Self {
+        self.date_expires = Some(date_expires);
+        self
+    }
+
+    /// Parse and set the effective date from ISO string
+    pub fn with_date_effective_str(mut self, date_str: &str) -> Result<Self, chrono::ParseError> {
+        let date = DateTime::parse_from_rfc3339(date_str)?.with_timezone(&Utc);
+        self.date_effective = Some(date);
+        Ok(self)
+    }
+
+    /// Parse and set the expiration date from ISO string
+    pub fn with_date_expires_str(mut self, date_str: &str) -> Result<Self, chrono::ParseError> {
+        let date = DateTime::parse_from_rfc3339(date_str)?.with_timezone(&Utc);
+        self.date_expires = Some(date);
+        Ok(self)
+    }
+
+    /// Check if this rule is active at the given timestamp
+    pub fn is_active_at(&self, timestamp: DateTime<Utc>) -> bool {
+        // Check if rule is effective
+        if let Some(effective) = self.date_effective {
+            if timestamp < effective {
+                return false;
+            }
+        }
+
+        // Check if rule has expired
+        if let Some(expires) = self.date_expires {
+            if timestamp >= expires {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Check if this rule is currently active (using current time)
+    pub fn is_active(&self) -> bool {
+        self.is_active_at(Utc::now())
     }
 
     /// Check if this rule matches the given facts

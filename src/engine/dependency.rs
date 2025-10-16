@@ -110,6 +110,14 @@ impl DependencyAnalyzer {
             crate::engine::rule::ConditionGroup::Not(inner) => {
                 Self::extract_fields_from_condition_group(inner, reads);
             }
+            crate::engine::rule::ConditionGroup::Exists(inner) => {
+                // For EXISTS, we're reading the fields to check existence
+                Self::extract_fields_from_condition_group(inner, reads);
+            }
+            crate::engine::rule::ConditionGroup::Forall(inner) => {
+                // For FORALL, we're reading the fields to check all match
+                Self::extract_fields_from_condition_group(inner, reads);
+            }
         }
     }
 
@@ -157,6 +165,11 @@ impl DependencyAnalyzer {
                 }
                 // Log doesn't modify fields
                 crate::types::ActionType::Log { .. } => {}
+                // Workflow actions don't modify facts directly
+                crate::types::ActionType::ActivateAgendaGroup { .. } => {}
+                crate::types::ActionType::ScheduleRule { .. } => {}
+                crate::types::ActionType::CompleteWorkflow { .. } => {}
+                crate::types::ActionType::SetWorkflowData { .. } => {}
             }
         }
 

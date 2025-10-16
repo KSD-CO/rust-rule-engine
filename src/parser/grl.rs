@@ -1,12 +1,24 @@
 use crate::engine::rule::{Condition, ConditionGroup, Rule};
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Operator, Value};
+use chrono::{DateTime, Utc};
 use regex::Regex;
 use std::collections::HashMap;
 
 /// GRL (Grule Rule Language) Parser
 /// Parses Grule-like syntax into Rule objects
 pub struct GRLParser;
+
+/// Parsed rule attributes from GRL header
+#[derive(Debug, Default)]
+struct RuleAttributes {
+    pub no_loop: bool,
+    pub lock_on_active: bool,
+    pub agenda_group: Option<String>,
+    pub activation_group: Option<String>,
+    pub date_effective: Option<DateTime<Utc>>,
+    pub date_expires: Option<DateTime<Utc>>,
+}
 
 impl GRLParser {
     /// Parse a single rule from GRL syntax
@@ -35,12 +47,11 @@ impl GRLParser {
     fn parse_single_rule(&mut self, grl_text: &str) -> Result<Rule> {
         let cleaned = self.clean_text(grl_text);
 
-        // Extract rule components using regex - support quoted rule names
-        let rule_regex =
-            Regex::new(r#"rule\s+(?:"([^"]+)"|([a-zA-Z_]\w*))\s*(?:salience\s+(\d+))?\s*\{(.+)\}"#)
-                .map_err(|e| RuleEngineError::ParseError {
-                    message: format!("Invalid rule regex: {}", e),
-                })?;
+        // Extract rule components using regex - support various attributes
+        let rule_regex = Regex::new(r#"rule\s+(?:"([^"]+)"|([a-zA-Z_]\w*))\s*([^{]*)\{(.+)\}"#)
+            .map_err(|e| RuleEngineError::ParseError {
+                message: format!("Invalid rule regex: {}", e),
+            })?;
 
         let captures =
             rule_regex
@@ -59,13 +70,15 @@ impl GRLParser {
                 message: "Could not extract rule name".to_string(),
             });
         };
-        // Extract salience and rule body
-        let salience = captures
-            .get(3)
-            .and_then(|m| m.as_str().parse::<i32>().ok())
-            .unwrap_or(0);
 
+        // Attributes section (group 3)
+        let attributes_section = captures.get(3).map(|m| m.as_str()).unwrap_or("");
+
+        // Rule body (group 4)
         let rule_body = captures.get(4).unwrap().as_str();
+
+        // Parse salience from attributes section
+        let salience = self.extract_salience(attributes_section)?;
 
         // Parse when and then sections
         let when_then_regex =
@@ -83,15 +96,36 @@ impl GRLParser {
         let when_clause = when_then_captures.get(1).unwrap().as_str().trim();
         let then_clause = when_then_captures.get(2).unwrap().as_str().trim();
 
-        // Parse conditions
+        // Parse conditions and actions
         let conditions = self.parse_when_clause(when_clause)?;
-
-        // Parse actions
         let actions = self.parse_then_clause(then_clause)?;
+
+        // Parse all attributes from rule header
+        let attributes = self.parse_rule_attributes(attributes_section)?;
 
         // Build rule
         let mut rule = Rule::new(rule_name, conditions, actions);
         rule = rule.with_priority(salience);
+
+        // Apply parsed attributes
+        if attributes.no_loop {
+            rule = rule.with_no_loop(true);
+        }
+        if attributes.lock_on_active {
+            rule = rule.with_lock_on_active(true);
+        }
+        if let Some(agenda_group) = attributes.agenda_group {
+            rule = rule.with_agenda_group(agenda_group);
+        }
+        if let Some(activation_group) = attributes.activation_group {
+            rule = rule.with_activation_group(activation_group);
+        }
+        if let Some(date_effective) = attributes.date_effective {
+            rule = rule.with_date_effective(date_effective);
+        }
+        if let Some(date_expires) = attributes.date_expires {
+            rule = rule.with_date_expires(date_expires);
+        }
 
         Ok(rule)
     }
@@ -115,6 +149,103 @@ impl GRLParser {
         }
 
         Ok(rules)
+    }
+
+    /// Parse rule attributes from the rule header
+    fn parse_rule_attributes(&self, rule_header: &str) -> Result<RuleAttributes> {
+        let mut attributes = RuleAttributes::default();
+
+        // Check for simple boolean attributes
+        if rule_header.contains("no-loop") {
+            attributes.no_loop = true;
+        }
+        if rule_header.contains("lock-on-active") {
+            attributes.lock_on_active = true;
+        }
+
+        // Parse agenda-group attribute
+        if let Some(agenda_group) = self.extract_quoted_attribute(rule_header, "agenda-group")? {
+            attributes.agenda_group = Some(agenda_group);
+        }
+
+        // Parse activation-group attribute
+        if let Some(activation_group) =
+            self.extract_quoted_attribute(rule_header, "activation-group")?
+        {
+            attributes.activation_group = Some(activation_group);
+        }
+
+        // Parse date-effective attribute
+        if let Some(date_str) = self.extract_quoted_attribute(rule_header, "date-effective")? {
+            attributes.date_effective = Some(self.parse_date_string(&date_str)?);
+        }
+
+        // Parse date-expires attribute
+        if let Some(date_str) = self.extract_quoted_attribute(rule_header, "date-expires")? {
+            attributes.date_expires = Some(self.parse_date_string(&date_str)?);
+        }
+
+        Ok(attributes)
+    }
+
+    /// Extract quoted attribute value from rule header
+    fn extract_quoted_attribute(&self, header: &str, attribute: &str) -> Result<Option<String>> {
+        let pattern = format!(r#"{}\s+"([^"]+)""#, attribute);
+        let regex = Regex::new(&pattern).map_err(|e| RuleEngineError::ParseError {
+            message: format!("Invalid attribute regex for {}: {}", attribute, e),
+        })?;
+
+        if let Some(captures) = regex.captures(header) {
+            if let Some(value) = captures.get(1) {
+                return Ok(Some(value.as_str().to_string()));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Parse date string in various formats
+    fn parse_date_string(&self, date_str: &str) -> Result<DateTime<Utc>> {
+        // Try ISO 8601 format first
+        if let Ok(date) = DateTime::parse_from_rfc3339(date_str) {
+            return Ok(date.with_timezone(&Utc));
+        }
+
+        // Try simple date formats
+        let formats = ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%d-%b-%Y", "%d-%m-%Y"];
+
+        for format in &formats {
+            if let Ok(naive_date) = chrono::NaiveDateTime::parse_from_str(date_str, format) {
+                return Ok(naive_date.and_utc());
+            }
+            if let Ok(naive_date) = chrono::NaiveDate::parse_from_str(date_str, format) {
+                return Ok(naive_date.and_hms_opt(0, 0, 0).unwrap().and_utc());
+            }
+        }
+
+        Err(RuleEngineError::ParseError {
+            message: format!("Unable to parse date: {}", date_str),
+        })
+    }
+
+    /// Extract salience value from attributes section
+    fn extract_salience(&self, attributes_section: &str) -> Result<i32> {
+        let salience_regex =
+            Regex::new(r"salience\s+(\d+)").map_err(|e| RuleEngineError::ParseError {
+                message: format!("Invalid salience regex: {}", e),
+            })?;
+
+        if let Some(captures) = salience_regex.captures(attributes_section) {
+            if let Some(salience_match) = captures.get(1) {
+                return salience_match.as_str().parse::<i32>().map_err(|e| {
+                    RuleEngineError::ParseError {
+                        message: format!("Invalid salience value: {}", e),
+                    }
+                });
+            }
+        }
+
+        Ok(0) // Default salience
     }
 
     fn clean_text(&self, text: &str) -> String {
@@ -155,6 +286,16 @@ impl GRLParser {
         // Handle NOT condition
         if clause.trim_start().starts_with("!") {
             return self.parse_not_condition(clause);
+        }
+
+        // Handle EXISTS condition
+        if clause.trim_start().starts_with("exists(") {
+            return self.parse_exists_condition(clause);
+        }
+
+        // Handle FORALL condition
+        if clause.trim_start().starts_with("forall(") {
+            return self.parse_forall_condition(clause);
         }
 
         // Single condition
@@ -277,6 +418,34 @@ impl GRLParser {
         let inner_clause = clause.strip_prefix("!").unwrap().trim();
         let inner_condition = self.parse_when_clause(inner_clause)?;
         Ok(ConditionGroup::not(inner_condition))
+    }
+
+    fn parse_exists_condition(&self, clause: &str) -> Result<ConditionGroup> {
+        let clause = clause.trim_start();
+        if !clause.starts_with("exists(") || !clause.ends_with(")") {
+            return Err(RuleEngineError::ParseError {
+                message: "Invalid exists syntax. Expected: exists(condition)".to_string(),
+            });
+        }
+
+        // Extract content between parentheses
+        let inner_clause = &clause[7..clause.len() - 1]; // Remove "exists(" and ")"
+        let inner_condition = self.parse_when_clause(inner_clause)?;
+        Ok(ConditionGroup::exists(inner_condition))
+    }
+
+    fn parse_forall_condition(&self, clause: &str) -> Result<ConditionGroup> {
+        let clause = clause.trim_start();
+        if !clause.starts_with("forall(") || !clause.ends_with(")") {
+            return Err(RuleEngineError::ParseError {
+                message: "Invalid forall syntax. Expected: forall(condition)".to_string(),
+            });
+        }
+
+        // Extract content between parentheses
+        let inner_clause = &clause[7..clause.len() - 1]; // Remove "forall(" and ")"
+        let inner_condition = self.parse_when_clause(inner_clause)?;
+        Ok(ConditionGroup::forall(inner_condition))
     }
 
     fn parse_single_condition(&self, clause: &str) -> Result<ConditionGroup> {
@@ -510,57 +679,6 @@ impl GRLParser {
                         object: object_name,
                     })
                 }
-                "set" => {
-                    // Handle set(field, value) format
-                    let args = if args_str.is_empty() {
-                        Vec::new()
-                    } else {
-                        args_str
-                            .split(',')
-                            .map(|arg| self.parse_value(arg.trim()))
-                            .collect::<Result<Vec<_>>>()?
-                    };
-
-                    if args.len() >= 2 {
-                        let field = args[0].to_string();
-                        let value = args[1].clone();
-                        Ok(ActionType::Set { field, value })
-                    } else if args.len() == 1 {
-                        // set(field) - set to true by default
-                        Ok(ActionType::Set {
-                            field: args[0].to_string(),
-                            value: Value::Boolean(true),
-                        })
-                    } else {
-                        Ok(ActionType::Custom {
-                            action_type: "set".to_string(),
-                            params: {
-                                let mut params = HashMap::new();
-                                params.insert(
-                                    "args".to_string(),
-                                    Value::String(args_str.to_string()),
-                                );
-                                params
-                            },
-                        })
-                    }
-                }
-                "add" => {
-                    // Handle add(value) format
-                    let value = if args_str.is_empty() {
-                        Value::Integer(1) // Default increment
-                    } else {
-                        self.parse_value(args_str.trim())?
-                    };
-                    Ok(ActionType::Custom {
-                        action_type: "add".to_string(),
-                        params: {
-                            let mut params = HashMap::new();
-                            params.insert("value".to_string(), value);
-                            params
-                        },
-                    })
-                }
                 "log" => {
                     let message = if args_str.is_empty() {
                         "Log message".to_string()
@@ -570,18 +688,90 @@ impl GRLParser {
                     };
                     Ok(ActionType::Log { message })
                 }
-                _ => {
-                    let args = if args_str.is_empty() {
-                        Vec::new()
+                "activateagendagroup" | "activate_agenda_group" => {
+                    let agenda_group = if args_str.is_empty() {
+                        return Err(RuleEngineError::ParseError {
+                            message: "ActivateAgendaGroup requires agenda group name".to_string(),
+                        });
                     } else {
-                        args_str
-                            .split(',')
-                            .map(|arg| self.parse_value(arg.trim()))
-                            .collect::<Result<Vec<_>>>()?
+                        let value = self.parse_value(args_str.trim())?;
+                        match value {
+                            Value::String(s) => s,
+                            _ => value.to_string(),
+                        }
                     };
-                    Ok(ActionType::Call {
-                        function: function_name.to_string(),
-                        args,
+                    Ok(ActionType::ActivateAgendaGroup { group: agenda_group })
+                }
+                "schedulerule" | "schedule_rule" => {
+                    // Parse delay and target rule: ScheduleRule(5000, "next-rule")
+                    let parts: Vec<&str> = args_str.split(',').collect();
+                    if parts.len() != 2 {
+                        return Err(RuleEngineError::ParseError {
+                            message: "ScheduleRule requires delay_ms and rule_name".to_string(),
+                        });
+                    }
+                    
+                    let delay_ms = self.parse_value(parts[0].trim())?;
+                    let rule_name = self.parse_value(parts[1].trim())?;
+                    
+                    let delay_ms = match delay_ms {
+                        Value::Integer(i) => i as u64,
+                        Value::Number(f) => f as u64,
+                        _ => return Err(RuleEngineError::ParseError {
+                            message: "ScheduleRule delay_ms must be a number".to_string(),
+                        }),
+                    };
+                    
+                    let rule_name = match rule_name {
+                        Value::String(s) => s,
+                        _ => rule_name.to_string(),
+                    };
+                    
+                    Ok(ActionType::ScheduleRule { delay_ms, rule_name })
+                }
+                "completeworkflow" | "complete_workflow" => {
+                    let workflow_id = if args_str.is_empty() {
+                        return Err(RuleEngineError::ParseError {
+                            message: "CompleteWorkflow requires workflow_id".to_string(),
+                        });
+                    } else {
+                        let value = self.parse_value(args_str.trim())?;
+                        match value {
+                            Value::String(s) => s,
+                            _ => value.to_string(),
+                        }
+                    };
+                    Ok(ActionType::CompleteWorkflow { workflow_name: workflow_id })
+                }
+                "setworkflowdata" | "set_workflow_data" => {
+                    // Parse key=value: SetWorkflowData("key=value")
+                    let data_str = args_str.trim();
+                    
+                    // Simple key=value parsing
+                    let (key, value) = if let Some(eq_pos) = data_str.find('=') {
+                        let key = data_str[..eq_pos].trim().trim_matches('"');
+                        let value_str = data_str[eq_pos + 1..].trim();
+                        let value = self.parse_value(value_str)?;
+                        (key.to_string(), value)
+                    } else {
+                        return Err(RuleEngineError::ParseError {
+                            message: "SetWorkflowData data must be in key=value format".to_string(),
+                        });
+                    };
+                    
+                    Ok(ActionType::SetWorkflowData { key, value })
+                }
+                _ => {
+                    // All other functions become custom actions
+                    let params = if args_str.is_empty() {
+                        HashMap::new()
+                    } else {
+                        self.parse_function_args_as_params(args_str)?
+                    };
+                    
+                    Ok(ActionType::Custom {
+                        action_type: function_name.to_string(),
+                        params,
                     })
                 }
             }
@@ -624,6 +814,27 @@ impl GRLParser {
         }
 
         Ok(args)
+    }
+
+    /// Parse function arguments as parameters for custom actions
+    fn parse_function_args_as_params(&self, args_str: &str) -> Result<HashMap<String, Value>> {
+        let mut params = HashMap::new();
+
+        if args_str.trim().is_empty() {
+            return Ok(params);
+        }
+
+        // Parse positional parameters as numbered args
+        let parts: Vec<&str> = args_str.split(',').collect();
+        for (i, part) in parts.iter().enumerate() {
+            let trimmed = part.trim();
+            let value = self.parse_value(trimmed)?;
+            
+            // Use simple numeric indexing - engine will resolve references dynamically
+            params.insert(i.to_string(), value);
+        }
+
+        Ok(params)
     }
 }
 
@@ -685,13 +896,14 @@ mod tests {
         assert_eq!(rule.salience, 10);
         assert_eq!(rule.actions.len(), 1);
 
-        // Check that the action is parsed as a Set action
+        // Check that the action is parsed as a Custom action (set is now custom)
         match &rule.actions[0] {
-            crate::types::ActionType::Set { field, value } => {
-                assert_eq!(field, "user.status");
-                assert_eq!(value, &crate::types::Value::String("approved".to_string()));
+            crate::types::ActionType::Custom { action_type, params } => {
+                assert_eq!(action_type, "set");
+                assert_eq!(params.get("0"), Some(&crate::types::Value::String("user.status".to_string())));
+                assert_eq!(params.get("1"), Some(&crate::types::Value::String("approved".to_string())));
             }
-            _ => panic!("Expected Set action, got: {:?}", rule.actions[0]),
+            _ => panic!("Expected Custom action, got: {:?}", rule.actions[0]),
         }
     }
 
@@ -713,14 +925,188 @@ mod tests {
         assert_eq!(rule.salience, 10);
         assert_eq!(rule.actions.len(), 1);
 
-        // Check that the action is parsed as a function call
+        // Check that the action is parsed as a Custom action (apply_discount is now custom)
         match &rule.actions[0] {
-            crate::types::ActionType::Call { function, args } => {
-                assert_eq!(function, "apply_discount");
-                assert_eq!(args.len(), 1);
-                assert_eq!(args[0], crate::types::Value::Integer(20000));
+            crate::types::ActionType::Custom { action_type, params } => {
+                assert_eq!(action_type, "apply_discount");
+                assert_eq!(params.get("0"), Some(&crate::types::Value::Integer(20000)));
             }
-            _ => panic!("Expected Call action, got: {:?}", rule.actions[0]),
+            _ => panic!("Expected Custom action, got: {:?}", rule.actions[0]),
+        }
+    }
+
+    #[test]
+    fn test_parse_no_loop_attribute() {
+        let grl = r#"
+        rule "NoLoopRule" no-loop salience 15 {
+            when
+                User.Score < 100
+            then
+                set(User.Score, User.Score + 10);
+        }
+        "#;
+
+        let rules = GRLParser::parse_rules(grl).unwrap();
+        assert_eq!(rules.len(), 1);
+        let rule = &rules[0];
+        assert_eq!(rule.name, "NoLoopRule");
+        assert_eq!(rule.salience, 15);
+        assert!(rule.no_loop, "Rule should have no-loop=true");
+    }
+
+    #[test]
+    fn test_parse_no_loop_different_positions() {
+        // Test no-loop before salience
+        let grl1 = r#"
+        rule "Rule1" no-loop salience 10 {
+            when User.Age >= 18
+            then log("adult");
+        }
+        "#;
+
+        // Test no-loop after salience
+        let grl2 = r#"
+        rule "Rule2" salience 10 no-loop {
+            when User.Age >= 18
+            then log("adult");
+        }
+        "#;
+
+        let rules1 = GRLParser::parse_rules(grl1).unwrap();
+        let rules2 = GRLParser::parse_rules(grl2).unwrap();
+
+        assert_eq!(rules1.len(), 1);
+        assert_eq!(rules2.len(), 1);
+
+        assert!(rules1[0].no_loop, "Rule1 should have no-loop=true");
+        assert!(rules2[0].no_loop, "Rule2 should have no-loop=true");
+
+        assert_eq!(rules1[0].salience, 10);
+        assert_eq!(rules2[0].salience, 10);
+    }
+
+    #[test]
+    fn test_parse_without_no_loop() {
+        let grl = r#"
+        rule "RegularRule" salience 5 {
+            when
+                User.Active == true
+            then
+                log("active user");
+        }
+        "#;
+
+        let rules = GRLParser::parse_rules(grl).unwrap();
+        assert_eq!(rules.len(), 1);
+        let rule = &rules[0];
+        assert_eq!(rule.name, "RegularRule");
+        assert!(!rule.no_loop, "Rule should have no-loop=false by default");
+    }
+
+    #[test]
+    fn test_parse_exists_pattern() {
+        let grl = r#"
+        rule "ExistsRule" salience 20 {
+            when
+                exists(Customer.tier == "VIP")
+            then
+                System.premiumActive = true;
+        }
+        "#;
+
+        let rules = GRLParser::parse_rules(grl).unwrap();
+        assert_eq!(rules.len(), 1);
+        let rule = &rules[0];
+        assert_eq!(rule.name, "ExistsRule");
+        assert_eq!(rule.salience, 20);
+
+        // Check that condition is EXISTS pattern
+        match &rule.conditions {
+            crate::engine::rule::ConditionGroup::Exists(_) => {
+                // Test passes
+            }
+            _ => panic!(
+                "Expected EXISTS condition group, got: {:?}",
+                rule.conditions
+            ),
+        }
+    }
+
+    #[test]
+    fn test_parse_forall_pattern() {
+        let grl = r#"
+        rule "ForallRule" salience 15 {
+            when
+                forall(Order.status == "processed")
+            then
+                Shipping.enabled = true;
+        }
+        "#;
+
+        let rules = GRLParser::parse_rules(grl).unwrap();
+        assert_eq!(rules.len(), 1);
+        let rule = &rules[0];
+        assert_eq!(rule.name, "ForallRule");
+
+        // Check that condition is FORALL pattern
+        match &rule.conditions {
+            crate::engine::rule::ConditionGroup::Forall(_) => {
+                // Test passes
+            }
+            _ => panic!(
+                "Expected FORALL condition group, got: {:?}",
+                rule.conditions
+            ),
+        }
+    }
+
+    #[test]
+    fn test_parse_combined_patterns() {
+        let grl = r#"
+        rule "CombinedRule" salience 25 {
+            when
+                exists(Customer.tier == "VIP") && !exists(Alert.priority == "high")
+            then
+                System.vipMode = true;
+        }
+        "#;
+
+        let rules = GRLParser::parse_rules(grl).unwrap();
+        assert_eq!(rules.len(), 1);
+        let rule = &rules[0];
+        assert_eq!(rule.name, "CombinedRule");
+
+        // Check that condition is AND with EXISTS and NOT(EXISTS) patterns
+        match &rule.conditions {
+            crate::engine::rule::ConditionGroup::Compound {
+                left,
+                operator,
+                right,
+            } => {
+                assert_eq!(*operator, crate::types::LogicalOperator::And);
+
+                // Left should be EXISTS
+                match left.as_ref() {
+                    crate::engine::rule::ConditionGroup::Exists(_) => {
+                        // Expected
+                    }
+                    _ => panic!("Expected EXISTS in left side, got: {:?}", left),
+                }
+
+                // Right should be NOT(EXISTS)
+                match right.as_ref() {
+                    crate::engine::rule::ConditionGroup::Not(inner) => {
+                        match inner.as_ref() {
+                            crate::engine::rule::ConditionGroup::Exists(_) => {
+                                // Expected
+                            }
+                            _ => panic!("Expected EXISTS inside NOT, got: {:?}", inner),
+                        }
+                    }
+                    _ => panic!("Expected NOT in right side, got: {:?}", right),
+                }
+            }
+            _ => panic!("Expected compound condition, got: {:?}", rule.conditions),
         }
     }
 }

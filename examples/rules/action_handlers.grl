@@ -1,0 +1,56 @@
+rule "VIPCustomerWelcome" salience 20 no-loop {
+    when
+        Customer.tier == "VIP" && Customer.welcome_sent != true
+    then
+        SendEmail(Customer.email, "VIP Welcome Package", "Welcome to our VIP program! Enjoy exclusive benefits.");
+        LogToDatabase("customer_events", "vip_welcome_email_sent");
+        Customer.welcome_sent = true;
+}
+
+rule "HighValueOrderAlert" salience 15 no-loop {
+    when
+        Order.total > 2000 && Order.alert_sent != true
+    then
+        SendAlert("HIGH", "High-value order detected - requires review");
+        ProcessPayment(Order.total, "premium_processing");
+        Order.alert_sent = true;
+}
+
+rule "OrderStatusUpdate" salience 10 no-loop {
+    when
+        Order.status == "pending" && Order.processed != true
+    then
+        Order.status = "processing";
+        LogToDatabase("order_status_log", "status_changed_to_processing");
+        Order.processed = true;
+}
+
+rule "FraudDetection" salience 25 no-loop {
+    when
+        exists(Transaction.suspicious == true) && 
+        !exists(Alert.fraud_sent == true)
+    then
+        SendAlert("CRITICAL", "Suspicious transaction detected - immediate action required");
+        LogToDatabase("security_events", "fraud_alert_triggered");
+        Alert.fraud_sent = true;
+}
+
+rule "CustomerTierUpgrade" salience 12 no-loop {
+    when
+        Customer.total_spent > 10000 && Customer.tier != "VIP"
+    then
+        Customer.tier = "VIP";
+        SendEmail(Customer.email, "Congratulations! You are now a VIP", "Thank you for your loyalty. You have been upgraded to VIP status!");
+        LogToDatabase("customer_events", "tier_upgraded_to_vip");
+        SendAlert("INFO", "Customer upgraded to VIP status");
+}
+
+rule "PaymentVerification" salience 18 no-loop {
+    when
+        forall(Payment.status == "verified") && 
+        Order.payment_complete != true
+    then
+        Order.payment_complete = true;
+        ProcessPayment(Order.total, "final_processing");
+        SendEmail(Customer.email, "Payment Confirmed", "Your payment has been successfully processed.");
+}

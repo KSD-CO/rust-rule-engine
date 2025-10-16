@@ -329,6 +329,12 @@ impl ConditionGroupGRLExport for crate::engine::rule::ConditionGroup {
             crate::engine::rule::ConditionGroup::Not(condition) => {
                 format!("!{}", condition.to_grl())
             }
+            crate::engine::rule::ConditionGroup::Exists(condition) => {
+                format!("exists({})", condition.to_grl())
+            }
+            crate::engine::rule::ConditionGroup::Forall(condition) => {
+                format!("forall({})", condition.to_grl())
+            }
         }
     }
 }
@@ -414,6 +420,18 @@ impl ActionTypeGRLExport for crate::types::ActionType {
             }
             crate::types::ActionType::Custom { action_type, .. } => {
                 format!("Custom(\"{}\")", action_type)
+            }
+            crate::types::ActionType::ActivateAgendaGroup { group } => {
+                format!("ActivateAgendaGroup(\"{}\")", group)
+            }
+            crate::types::ActionType::ScheduleRule { rule_name, delay_ms } => {
+                format!("ScheduleRule({}, \"{}\")", delay_ms, rule_name)
+            }
+            crate::types::ActionType::CompleteWorkflow { workflow_name } => {
+                format!("CompleteWorkflow(\"{}\")", workflow_name)
+            }
+            crate::types::ActionType::SetWorkflowData { key, value } => {
+                format!("SetWorkflowData(\"{}={}\")", key, value.to_grl())
             }
         }
     }
