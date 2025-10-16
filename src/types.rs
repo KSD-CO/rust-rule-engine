@@ -397,4 +397,28 @@ pub enum ActionType {
         /// Action parameters
         params: HashMap<String, Value>,
     },
+    /// Activate a specific agenda group for workflow progression
+    ActivateAgendaGroup {
+        /// Agenda group name to activate
+        group: String,
+    },
+    /// Schedule a rule to execute after a delay
+    ScheduleRule {
+        /// Rule name to schedule
+        rule_name: String,
+        /// Delay in milliseconds
+        delay_ms: u64,
+    },
+    /// Complete a workflow and trigger cleanup
+    CompleteWorkflow {
+        /// Workflow name to complete
+        workflow_name: String,
+    },
+    /// Set workflow-specific data
+    SetWorkflowData {
+        /// Data key
+        key: String,
+        /// Data value
+        value: Value,
+    },
 }
