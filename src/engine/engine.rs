@@ -1,11 +1,21 @@
-use crate::engine::{analytics::RuleAnalytics, facts::Facts, knowledge_base::KnowledgeBase};
+use crate::engine::{
+    agenda::{ActivationGroupManager, AgendaManager},
+    analytics::RuleAnalytics,
+    facts::Facts,
+    knowledge_base::KnowledgeBase,
+    workflow::WorkflowEngine,
+};
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Value};
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 /// Type for custom function implementations
 pub type CustomFunction = Box<dyn Fn(&[Value], &Facts) -> Result<Value> + Send + Sync>;
+
+/// Type for custom action handlers
+pub type ActionHandler = Box<dyn Fn(&HashMap<String, Value>, &Facts) -> Result<()> + Send + Sync>;
 
 /// Configuration options for the rule engine
 #[derive(Debug, Clone)]
@@ -49,7 +59,14 @@ pub struct RustRuleEngine {
     knowledge_base: KnowledgeBase,
     config: EngineConfig,
     custom_functions: HashMap<String, CustomFunction>,
+    action_handlers: HashMap<String, ActionHandler>,
     analytics: Option<RuleAnalytics>,
+    agenda_manager: AgendaManager,
+    activation_group_manager: ActivationGroupManager,
+    /// Track rules that have fired globally (for no-loop support)
+    fired_rules_global: std::collections::HashSet<String>,
+    /// Workflow engine for rule chaining and sequential execution
+    workflow_engine: WorkflowEngine,
 }
 
 impl RustRuleEngine {
@@ -59,7 +76,12 @@ impl RustRuleEngine {
             knowledge_base,
             config: EngineConfig::default(),
             custom_functions: HashMap::new(),
+            action_handlers: HashMap::new(),
             analytics: None,
+            agenda_manager: AgendaManager::new(),
+            activation_group_manager: ActivationGroupManager::new(),
+            fired_rules_global: std::collections::HashSet::new(),
+            workflow_engine: WorkflowEngine::new(),
         }
     }
 
@@ -69,7 +91,12 @@ impl RustRuleEngine {
             knowledge_base,
             config,
             custom_functions: HashMap::new(),
+            action_handlers: HashMap::new(),
             analytics: None,
+            agenda_manager: AgendaManager::new(),
+            activation_group_manager: ActivationGroupManager::new(),
+            fired_rules_global: std::collections::HashSet::new(),
+            workflow_engine: WorkflowEngine::new(),
         }
     }
 
@@ -82,9 +109,23 @@ impl RustRuleEngine {
             .insert(name.to_string(), Box::new(func));
     }
 
+    /// Register a custom action handler
+    pub fn register_action_handler<F>(&mut self, action_type: &str, handler: F)
+    where
+        F: Fn(&HashMap<String, Value>, &Facts) -> Result<()> + Send + Sync + 'static,
+    {
+        self.action_handlers
+            .insert(action_type.to_string(), Box::new(handler));
+    }
+
     /// Enable analytics with custom configuration
     pub fn enable_analytics(&mut self, analytics: RuleAnalytics) {
         self.analytics = Some(analytics);
+    }
+
+    /// Reset global no-loop tracking (useful for testing or when facts change significantly)
+    pub fn reset_no_loop_tracking(&mut self) {
+        self.fired_rules_global.clear();
     }
 
     /// Disable analytics
@@ -102,33 +143,223 @@ impl RustRuleEngine {
         self.custom_functions.contains_key(name)
     }
 
-    /// Get reference to the knowledge base
+    /// Check if a custom action handler is registered
+    pub fn has_action_handler(&self, action_type: &str) -> bool {
+        self.action_handlers.contains_key(action_type)
+    }
+
+    /// Get ready scheduled tasks
+    pub fn get_ready_tasks(&mut self) -> Vec<crate::engine::workflow::ScheduledTask> {
+        self.workflow_engine.get_ready_tasks()
+    }
+
+    /// Execute scheduled tasks that are ready
+    pub fn execute_scheduled_tasks(&mut self, facts: &Facts) -> Result<()> {
+        let ready_tasks = self.get_ready_tasks();
+        for task in ready_tasks {
+            if let Some(rule) = self.knowledge_base.get_rules().iter().find(|r| r.name == task.rule_name) {
+                if self.config.debug_mode {
+                    println!("⚡ Executing scheduled task: {}", task.rule_name);
+                }
+                
+                // Execute just this one rule if conditions match
+                if self.evaluate_conditions(&rule.conditions, facts)? {
+                    for action in &rule.actions {
+                        self.execute_action(action, facts)?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Activate agenda group
+    pub fn activate_agenda_group(&mut self, group: String) {
+        self.workflow_engine.activate_agenda_group(group.clone());
+        self.agenda_manager.set_focus(&group);
+    }
+
+    /// Get the knowledge base
     pub fn knowledge_base(&self) -> &KnowledgeBase {
         &self.knowledge_base
     }
 
-    /// Get mutable reference to the knowledge base
+    /// Get mutable reference to knowledge base
     pub fn knowledge_base_mut(&mut self) -> &mut KnowledgeBase {
         &mut self.knowledge_base
     }
 
+    /// Sync workflow engine agenda activations with agenda manager
+    fn sync_workflow_agenda_activations(&mut self) {
+        // Process any pending agenda activations from workflow engine
+        while let Some(agenda_group) = self.workflow_engine.get_next_pending_agenda_activation() {
+            if self.config.debug_mode {
+                println!("🔄 Syncing workflow agenda activation: {}", agenda_group);
+            }
+            self.agenda_manager.set_focus(&agenda_group);
+        }
+    }
+
+    /// Set focus to a specific agenda group
+    pub fn set_agenda_focus(&mut self, group: &str) {
+        self.agenda_manager.set_focus(group);
+    }
+
+    /// Get the currently active agenda group
+    pub fn get_active_agenda_group(&self) -> &str {
+        self.agenda_manager.get_active_group()
+    }
+
+    /// Pop the agenda focus stack
+    pub fn pop_agenda_focus(&mut self) -> Option<String> {
+        self.agenda_manager.pop_focus()
+    }
+
+    /// Clear all agenda focus and return to MAIN
+    pub fn clear_agenda_focus(&mut self) {
+        self.agenda_manager.clear_focus();
+    }
+
+    /// Get all agenda groups that have rules
+    pub fn get_agenda_groups(&self) -> Vec<String> {
+        self.agenda_manager
+            .get_agenda_groups(&self.knowledge_base.get_rules())
+    }
+
+    /// Get all activation groups that have rules
+    pub fn get_activation_groups(&self) -> Vec<String> {
+        self.activation_group_manager
+            .get_activation_groups(&self.knowledge_base.get_rules())
+    }
+
+    // 🔄 Workflow Engine Methods
+
+    /// Start a new workflow
+    pub fn start_workflow(&mut self, workflow_name: Option<String>) -> String {
+        self.workflow_engine.start_workflow(workflow_name)
+    }
+
+    /// Get workflow statistics
+    pub fn get_workflow_stats(&self) -> crate::engine::workflow::WorkflowStats {
+        self.workflow_engine.get_workflow_stats()
+    }
+
+    /// Get workflow state by ID
+    pub fn get_workflow(&self, workflow_id: &str) -> Option<&crate::engine::workflow::WorkflowState> {
+        self.workflow_engine.get_workflow(workflow_id)
+    }
+
+    /// Clean up completed workflows
+    pub fn cleanup_completed_workflows(&mut self, older_than: Duration) {
+        self.workflow_engine.cleanup_completed_workflows(older_than);
+    }
+
+    /// Execute workflow step by activating specific agenda group
+    pub fn execute_workflow_step(&mut self, agenda_group: &str, facts: &Facts) -> Result<GruleExecutionResult> {
+        // Set agenda focus to the specific group
+        self.set_agenda_focus(agenda_group);
+        
+        // Execute rules in that group
+        let result = self.execute(facts)?;
+        
+        // Process any workflow actions that were triggered
+        self.process_workflow_actions(facts)?;
+        
+        Ok(result)
+    }
+
+    /// Execute a complete workflow by processing agenda groups sequentially
+    pub fn execute_workflow(&mut self, agenda_groups: Vec<&str>, facts: &Facts) -> Result<crate::engine::workflow::WorkflowResult> {
+        let start_time = Instant::now();
+        let mut total_steps = 0;
+        
+        if self.config.debug_mode {
+            println!("🔄 Starting workflow execution with {} steps", agenda_groups.len());
+        }
+        
+        for (i, group) in agenda_groups.iter().enumerate() {
+            if self.config.debug_mode {
+                println!("📋 Executing workflow step {}: {}", i + 1, group);
+            }
+            
+            let step_result = self.execute_workflow_step(group, facts)?;
+            total_steps += 1;
+            
+            if step_result.rules_fired == 0 {
+                if self.config.debug_mode {
+                    println!("⏸️ No rules fired in step '{}', stopping workflow", group);
+                }
+                break;
+            }
+        }
+        
+        let execution_time = start_time.elapsed();
+        
+        Ok(crate::engine::workflow::WorkflowResult::success(total_steps, execution_time))
+    }
+
+    /// Process workflow-related actions and scheduled tasks
+    fn process_workflow_actions(&mut self, facts: &Facts) -> Result<()> {
+        // Process agenda group activations
+        while let Some(group) = self.workflow_engine.get_next_agenda_group() {
+            self.set_agenda_focus(&group);
+        }
+        
+        // Process scheduled tasks
+        let ready_tasks = self.workflow_engine.get_ready_tasks();
+        for task in ready_tasks {
+            if self.config.debug_mode {
+                println!("⚡ Executing scheduled task: {}", task.rule_name);
+            }
+            
+            // Find and execute the specific rule
+            if let Some(rule) = self.knowledge_base.get_rules().iter().find(|r| r.name == task.rule_name) {
+                // Execute just this one rule
+                if self.evaluate_conditions(&rule.conditions, facts)? {
+                    for action in &rule.actions {
+                        self.execute_action(action, facts)?;
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+
     /// Execute all rules in the knowledge base against the given facts
     pub fn execute(&mut self, facts: &Facts) -> Result<GruleExecutionResult> {
+        self.execute_at_time(facts, Utc::now())
+    }
+
+    /// Execute all rules at a specific timestamp (for date-effective/expires testing)
+    pub fn execute_at_time(
+        &mut self,
+        facts: &Facts,
+        timestamp: DateTime<Utc>,
+    ) -> Result<GruleExecutionResult> {
         let start_time = Instant::now();
         let mut cycle_count = 0;
         let mut rules_evaluated = 0;
         let mut rules_fired = 0;
 
+        // Process any pending agenda group activations from workflow engine
+        self.sync_workflow_agenda_activations();
+
         if self.config.debug_mode {
             println!(
-                "🚀 Starting rule execution with {} rules",
-                self.knowledge_base.get_rules().len()
+                "🚀 Starting rule execution with {} rules (agenda group: {})",
+                self.knowledge_base.get_rules().len(),
+                self.agenda_manager.get_active_group()
             );
         }
 
         for cycle in 0..self.config.max_cycles {
             cycle_count = cycle + 1;
             let mut any_rule_fired = false;
+            let mut fired_rules_in_cycle = std::collections::HashSet::new();
+
+            // Reset activation groups for each cycle
+            self.activation_group_manager.reset_cycle();
 
             // Check for timeout
             if let Some(timeout) = self.config.timeout {
@@ -143,8 +374,34 @@ impl RustRuleEngine {
             let mut rules = self.knowledge_base.get_rules().clone();
             rules.sort_by(|a, b| b.salience.cmp(&a.salience));
 
+            // Filter rules by agenda group
+            let rules: Vec<_> = rules
+                .iter()
+                .filter(|rule| self.agenda_manager.should_evaluate_rule(rule))
+                .collect();
+
             for rule in &rules {
                 if !rule.enabled {
+                    continue;
+                }
+
+                // Check date effective/expires
+                if !rule.is_active_at(timestamp) {
+                    continue;
+                }
+
+                // Check agenda group constraints (lock-on-active)
+                if !self.agenda_manager.can_fire_rule(rule) {
+                    continue;
+                }
+
+                // Check activation group constraints
+                if !self.activation_group_manager.can_fire(rule) {
+                    continue;
+                }
+
+                // Check no-loop: if rule has no_loop=true and already fired globally, skip
+                if rule.no_loop && self.fired_rules_global.contains(&rule.name) {
                     continue;
                 }
 
@@ -156,7 +413,12 @@ impl RustRuleEngine {
                 }
 
                 // Evaluate rule conditions
-                if self.evaluate_conditions(&rule.conditions, facts)? {
+                let condition_result = self.evaluate_conditions(&rule.conditions, facts)?;
+                if self.config.debug_mode {
+                    println!("  🔍 Condition result for '{}': {}", rule.name, condition_result);
+                }
+                
+                if condition_result {
                     if self.config.debug_mode {
                         println!(
                             "🔥 Rule '{}' fired (salience: {})",
@@ -178,6 +440,18 @@ impl RustRuleEngine {
 
                     rules_fired += 1;
                     any_rule_fired = true;
+
+                    // Track that this rule fired in this cycle (for cycle counting)
+                    fired_rules_in_cycle.insert(rule.name.clone());
+
+                    // Track that this rule fired globally (for no-loop support)
+                    if rule.no_loop {
+                        self.fired_rules_global.insert(rule.name.clone());
+                    }
+
+                    // Mark rule as fired for agenda and activation group management
+                    self.agenda_manager.mark_rule_fired(rule);
+                    self.activation_group_manager.mark_fired(rule);
                 } else {
                     let rule_duration = rule_start.elapsed();
 
@@ -199,6 +473,9 @@ impl RustRuleEngine {
             if !any_rule_fired {
                 break;
             }
+
+            // Sync any new workflow agenda activations at the end of each cycle
+            self.sync_workflow_agenda_activations();
         }
 
         let execution_time = start_time.elapsed();
@@ -217,6 +494,7 @@ impl RustRuleEngine {
         conditions: &crate::engine::rule::ConditionGroup,
         facts: &Facts,
     ) -> Result<bool> {
+        use crate::engine::pattern_matcher::PatternMatcher;
         use crate::engine::rule::ConditionGroup;
 
         match conditions {
@@ -242,7 +520,19 @@ impl RustRuleEngine {
                 let result = self.evaluate_conditions(condition, facts)?;
                 Ok(!result)
             }
+            // Pattern matching conditions
+            ConditionGroup::Exists(condition) => {
+                Ok(PatternMatcher::evaluate_exists(condition, facts))
+            }
+            ConditionGroup::Forall(condition) => {
+                Ok(PatternMatcher::evaluate_forall(condition, facts))
+            }
         }
+    }
+
+    /// Evaluate rule conditions - wrapper for evaluate_conditions for compatibility
+    fn evaluate_rule_conditions(&self, rule: &crate::engine::rule::Rule, facts: &Facts) -> Result<bool> {
+        self.evaluate_conditions(&rule.conditions, facts)
     }
 
     /// Evaluate a single condition
@@ -251,8 +541,18 @@ impl RustRuleEngine {
         condition: &crate::engine::rule::Condition,
         facts: &Facts,
     ) -> Result<bool> {
-        // Get the field value from facts
-        let field_value = facts.get_nested(&condition.field);
+        // Try nested first, then fall back to flat key lookup
+        let field_value = facts.get_nested(&condition.field)
+            .or_else(|| facts.get(&condition.field));
+        
+        if self.config.debug_mode {
+            println!("    🔎 Evaluating condition: {} {} {:?}", 
+                condition.field, 
+                format!("{:?}", condition.operator).to_lowercase(), 
+                condition.value
+            );
+            println!("      Field value: {:?}", field_value);
+        }
 
         if field_value.is_none() {
             return Ok(false); // Field not found, condition fails
@@ -265,10 +565,14 @@ impl RustRuleEngine {
     }
 
     /// Execute an action
-    fn execute_action(&self, action: &ActionType, facts: &Facts) -> Result<()> {
+    fn execute_action(&mut self, action: &ActionType, facts: &Facts) -> Result<()> {
         match action {
             ActionType::Set { field, value } => {
-                facts.set_nested(field, value.clone())?;
+                // Try nested first, then fall back to flat key setting
+                if let Err(_) = facts.set_nested(field, value.clone()) {
+                    // If nested fails, use flat key
+                    facts.set(field, value.clone());
+                }
                 if self.config.debug_mode {
                     println!("  ✅ Set {field} = {value:?}");
                 }
@@ -303,9 +607,59 @@ impl RustRuleEngine {
                 action_type,
                 params,
             } => {
-                if self.config.debug_mode {
-                    println!("  🎯 Custom action: {action_type} with params: {params:?}");
+                if let Some(handler) = self.action_handlers.get(action_type) {
+                    if self.config.debug_mode {
+                        println!("  🎯 Executing custom action: {action_type} with params: {params:?}");
+                    }
+                    
+                    // Resolve parameter values from facts
+                    let resolved_params = self.resolve_action_parameters(params, facts)?;
+                    
+                    // Execute the registered handler
+                    handler(&resolved_params, facts)?;
+                } else {
+                    if self.config.debug_mode {
+                        println!("  ⚠️ No handler registered for custom action: {action_type}");
+                        println!("     Available handlers: {:?}", self.action_handlers.keys().collect::<Vec<_>>());
+                    }
+                    
+                    // Return error if no handler found
+                    return Err(RuleEngineError::EvaluationError {
+                        message: format!(
+                            "No action handler registered for '{action_type}'. Use engine.register_action_handler() to add custom action handlers."
+                        ),
+                    });
                 }
+            }
+            // 🔄 Workflow Actions
+            ActionType::ActivateAgendaGroup { group } => {
+                if self.config.debug_mode {
+                    println!("  🎯 Activating agenda group: {}", group);
+                }
+                // Sync with both workflow engine and agenda manager immediately
+                self.workflow_engine.activate_agenda_group(group.clone());
+                self.agenda_manager.set_focus(group);
+            }
+            ActionType::ScheduleRule { rule_name, delay_ms } => {
+                if self.config.debug_mode {
+                    println!("  ⏰ Scheduling rule '{}' to execute in {}ms", rule_name, delay_ms);
+                }
+                self.workflow_engine.schedule_rule(rule_name.clone(), *delay_ms, None);
+            }
+            ActionType::CompleteWorkflow { workflow_name } => {
+                if self.config.debug_mode {
+                    println!("  ✅ Completing workflow: {}", workflow_name);
+                }
+                self.workflow_engine.complete_workflow(workflow_name.clone());
+            }
+            ActionType::SetWorkflowData { key, value } => {
+                if self.config.debug_mode {
+                    println!("  💾 Setting workflow data: {} = {:?}", key, value);
+                }
+                // For now, we'll use a default workflow ID. Later this could be enhanced
+                // to track current workflow context
+                let workflow_id = "default_workflow";
+                self.workflow_engine.set_workflow_data(workflow_id, key.clone(), value.clone());
             }
         }
         Ok(())
@@ -828,5 +1182,37 @@ impl RustRuleEngine {
             None => String::new(),
             Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
         }
+    }
+
+    /// Resolve action parameters by replacing fact references with actual values
+    fn resolve_action_parameters(
+        &self,
+        params: &HashMap<String, Value>,
+        facts: &Facts,
+    ) -> Result<HashMap<String, Value>> {
+        let mut resolved = HashMap::new();
+
+        for (key, value) in params {
+            let resolved_value = match value {
+                Value::String(s) => {
+                    // Check if string looks like a fact reference (contains dot)
+                    if s.contains('.') {
+                        // Try to get the value from facts
+                        if let Some(fact_value) = facts.get_nested(s) {
+                            fact_value
+                        } else {
+                            // If not found, keep original string
+                            value.clone()
+                        }
+                    } else {
+                        value.clone()
+                    }
+                }
+                _ => value.clone(),
+            };
+            resolved.insert(key.clone(), resolved_value);
+        }
+
+        Ok(resolved)
     }
 }

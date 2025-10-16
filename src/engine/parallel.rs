@@ -278,9 +278,12 @@ impl ParallelRuleEngine {
     }
 
     /// Simplified rule condition evaluation
+    /// TODO: This is a simplified version for parallel demo purposes
+    /// Real implementation should use proper condition evaluation like main engine
     fn evaluate_rule_conditions(rule: &Rule, _facts: &Facts) -> bool {
         // For demo purposes, just return true if rule has conditions
         // In real implementation, this would evaluate the actual conditions
+        // using the same logic as engine.rs evaluate_conditions() method
         !rule.actions.is_empty()
     }
 
@@ -316,6 +319,22 @@ impl ParallelRuleEngine {
             }
             ActionType::Custom { .. } => {
                 // Simplified custom action handling
+                Ok(())
+            }
+            ActionType::ActivateAgendaGroup { .. } => {
+                // Workflow actions not supported in parallel execution
+                Ok(())
+            }
+            ActionType::ScheduleRule { .. } => {
+                // Workflow actions not supported in parallel execution  
+                Ok(())
+            }
+            ActionType::CompleteWorkflow { .. } => {
+                // Workflow actions not supported in parallel execution
+                Ok(())
+            }
+            ActionType::SetWorkflowData { .. } => {
+                // Workflow actions not supported in parallel execution
                 Ok(())
             }
         }

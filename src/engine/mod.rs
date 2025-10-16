@@ -1,3 +1,5 @@
+/// Agenda and activation group management
+pub mod agenda;
 /// Advanced analytics and performance monitoring
 pub mod analytics;
 /// Dependency analysis for safe parallel execution
@@ -11,12 +13,17 @@ pub mod facts;
 pub mod knowledge_base;
 /// Parallel rule execution engine
 pub mod parallel;
+/// Pattern matching for advanced condition evaluation (exists, not, forall)
+pub mod pattern_matcher;
 /// Rule definition and condition handling
 pub mod rule;
 /// Rule templates for dynamic rule generation
 pub mod template;
+/// Workflow engine for rule chaining and sequential execution
+pub mod workflow;
 
 // Re-export main components for easy access
+pub use agenda::{ActivationGroupManager, AgendaManager};
 pub use analytics::{AnalyticsConfig, ExecutionEvent, OverallStats, RuleAnalytics, RuleMetrics};
 pub use dependency::{
     DependencyAnalysisResult, DependencyAnalyzer, ExecutionGroup, ExecutionMode, ExecutionStrategy,
@@ -24,3 +31,6 @@ pub use dependency::{
 pub use engine::{EngineConfig, GruleExecutionResult, RustRuleEngine};
 pub use parallel::{ParallelConfig, ParallelExecutionResult, ParallelRuleEngine};
 pub use template::{ParameterType, RuleTemplate, TemplateManager};
+pub use workflow::{
+    ScheduledTask, WorkflowEngine, WorkflowResult, WorkflowState, WorkflowStats, WorkflowStatus,
+};
