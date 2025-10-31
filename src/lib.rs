@@ -1,10 +1,13 @@
-//! # Rust Rule Engine - GRL Edition
+//! # Rust Rule Engine v0.9.0 - Plugin System Edition
 //!
-//! A high-performance rule engine for Rust with **GRL (Grule Rule Language)** support,
-//! featuring method calls, object interactions, and complex condition evaluation.
+//! A high-performance rule engine for Rust with **Plugin System**, **Built-in Utilities**,
+//! **GRL (Grule Rule Language)** support, featuring modular architecture, extensive built-in
+//! functionality, method calls, object interactions, and complex condition evaluation.
 //!
 //! ## Features
 //!
+//! - **🔌 Plugin System**: Modular plugin architecture with lifecycle management
+//! - **🛠️ Built-in Plugin Suite**: 44+ actions & 33+ functions for common operations  
 //! - **🔥 GRL Support**: Full Grule-compatible syntax
 //! - **🎯 Method Calls**: `$Object.method(args)` and property access
 //! - **📊 Knowledge Base**: Centralized rule management with salience
@@ -13,30 +16,61 @@
 //! - **🔄 Arithmetic**: Complex calculations in conditions and actions
 //! - **🛡️ Type Safety**: Rust's type system ensures runtime safety
 //!
-//! ## Quick Start
+//! ## Quick Start with Plugins
 //!
 //! ```rust
 //! use rust_rule_engine::*;
 //!
 //! fn main() -> Result<()> {
-//!     // Create Knowledge Base
+//!     // Create Knowledge Base and Engine
 //!     let kb = KnowledgeBase::new("Demo");
+//!     let mut engine = RustRuleEngine::new(kb);
+//!     let mut facts = Facts::new();
+//!     
+//!     // Set up data
+//!     facts.set("user.age", Value::Number(25.0));
+//!     facts.set("user.premium", Value::Boolean(false));
 //!     
 //!     // Define GRL rule
 //!     let rule = r#"
-//!     rule "AgeCheck" salience 10 {
+//!     rule "PremiumUpgrade" salience 10 {
 //!         when
-//!             User.Age >= 18 && User.Country == "US"
+//!             user.age >= 18 && user.premium == false
 //!         then
-//!             User.IsAdult = true;
-//!             User.DiscountRate = 0.10;
+//!             user.premium = true;
+//!             user.discount = 0.1;
 //!     }
 //!     "#;
 //!     
-//!     // Parse and add rule
+//!     // Parse and add rule to knowledge base
 //!     let rules = GRLParser::parse_rules(rule)?;
-//!     let parsed_rule = rules.into_iter().next().unwrap();
-//!     kb.add_rule(parsed_rule)?;
+//!     for r in rules {
+//!         engine.knowledge_base().add_rule(r)?;
+//!     }
+//!     
+//!     // Execute with facts
+//!     let result = engine.execute(&facts)?;
+//!     println!("User premium status: {:?}", facts.get("user.premium"));
+//!     
+//!     Ok(())
+//! }
+//! ```
+//!
+//! Built-in Plugin Suite provides comprehensive functionality for common operations:
+//!
+//! - **String Utilities**: 8 actions, 5 functions for text manipulation
+//! - **Math Operations**: 10 actions, 6 functions for calculations  
+//! - **Date/Time**: 8 actions, 7 functions for temporal operations
+//! - Actions: CurrentDate, CurrentTime, FormatDate, ParseDate, AddDays, AddHours, DateDiff, IsWeekend
+//! - Functions: now, today, dayOfWeek, dayOfYear, year, month, day
+//!
+//! ### Validation (8 actions, 6 functions)
+//! - Actions: ValidateEmail, ValidatePhone, ValidateUrl, ValidateRegex, ValidateRange, ValidateLength, ValidateNotEmpty, ValidateNumeric
+//! - Functions: isEmail, isPhone, isUrl, isNumeric, isEmpty, inRange
+//!
+//! ### Collections (10 actions, 9 functions)
+//! - Actions: ArrayLength, ArrayPush, ArrayPop, ArraySort, ArrayFilter, ArrayMap, ArrayFind, ObjectKeys, ObjectValues, ObjectMerge
+//! - Functions: length, contains, first, last, reverse, join, slice, keys, values
 //!     
 //!     // Create engine
 //!     let mut engine = RustRuleEngine::new(kb);
@@ -53,47 +87,6 @@
 //!     Ok(())
 //! }
 //! ```
-//!
-//! ## Advanced Features
-//!
-//! ### Method Calls and Object Interactions
-//!
-//! ```rust
-//! # use rust_rule_engine::*;
-//! let speedup_rule = r#"
-//! rule "SpeedUp" salience 10 {
-//!     when
-//!         $TestCar : TestCarClass( speedUp == true && speed < maxSpeed )
-//!     then
-//!         $TestCar.setSpeed($TestCar.Speed + $TestCar.SpeedIncrement);
-//!         update($TestCar);
-//! }
-//! "#;
-//! ```
-//!
-//! ### E-commerce Rules
-//!
-//! ```rust
-//! # use rust_rule_engine::*;
-//! let discount_rule = r#"
-//! rule "PremiumDiscount" salience 20 {
-//!     when
-//!         Customer.Membership == "premium" && Order.Total > 100
-//!     then
-//!         Order.DiscountRate = 0.15;
-//!         Order.FreeShipping = true;
-//! }
-//! "#;
-//! ```
-//!
-//! ## Core Components
-//!
-//! - [`KnowledgeBase`]: Manages collections of rules with metadata
-//! - [`Facts`]: Working memory for data objects and rule evaluation  
-//! - [`RustRuleEngine`]: Executes rules with configurable options
-//! - [`GRLParser`]: Parses Grule Rule Language syntax
-//! - [`FactHelper`]: Utility functions for creating data objects
-//! - [`Value`]: Flexible data type system supporting objects, arrays, primitives
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
@@ -104,11 +97,15 @@ pub mod engine;
 pub mod errors;
 /// Rule parsing and language support  
 pub mod parser;
+/// Built-in plugin system for extended functionality
+pub mod plugins;
 /// Streaming rule engine for real-time event processing
 #[cfg(feature = "streaming")]
 pub mod streaming;
 /// Core type definitions for values, operators, and actions
 pub mod types;
+/// RETE module for rule evaluation
+pub mod rete;
 
 // Re-export core types for easy access
 pub use errors::{Result, RuleEngineError};

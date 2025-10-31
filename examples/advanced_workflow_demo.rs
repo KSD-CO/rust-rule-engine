@@ -1,4 +1,4 @@
-use rust_rule_engine::engine::engine::{RustRuleEngine, EngineConfig};
+use rust_rule_engine::engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::parser::grl::GRLParser;
 use rust_rule_engine::types::Value;
@@ -18,7 +18,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         timeout: None,
         enable_stats: true,
     };
-    let mut engine = RustRuleEngine::with_config(KnowledgeBase::new("AdvancedWorkflowDemo"), config);
+    let mut engine =
+        RustRuleEngine::with_config(KnowledgeBase::new("AdvancedWorkflowDemo"), config);
 
     // Create facts for advanced order processing
     let facts = Facts::new();
@@ -34,7 +35,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Order.ID = {:?}", facts.get("Order.ID"));
     println!("  Order.Amount = {:?}", facts.get("Order.Amount"));
     println!("  Customer.VIP = {:?}", facts.get("Customer.VIP"));
-    println!("  Customer.CreditScore = {:?}", facts.get("Customer.CreditScore"));
+    println!(
+        "  Customer.CreditScore = {:?}",
+        facts.get("Customer.CreditScore")
+    );
     println!("  Payment.Risk = {:?}", facts.get("Payment.Risk"));
 
     // Advanced workflow with conditional routing and scheduled tasks
@@ -49,7 +53,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("risk-assessment");
         }
         "#,
-
         // Step 2: Risk Assessment Branch
         r#"
         rule "HighRiskAssessment" salience 90 agenda-group "risk-assessment" {
@@ -62,7 +65,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("manual-review");
         }
         "#,
-
         r#"
         rule "MediumRiskAssessment" salience 80 agenda-group "risk-assessment" {
             when
@@ -73,7 +75,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("verification");
         }
         "#,
-
         r#"
         rule "LowRiskAssessment" salience 70 agenda-group "risk-assessment" {
             when
@@ -84,7 +85,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("payment");
         }
         "#,
-
         // Step 3: Verification workflow
         r#"
         rule "AdditionalVerification" salience 60 agenda-group "verification" {
@@ -96,7 +96,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ScheduleRule(2000, "VerificationComplete");
         }
         "#,
-
         r#"
         rule "VerificationComplete" salience 50 {
             when
@@ -107,7 +106,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("payment");
         }
         "#,
-
         // Step 4: Payment processing with VIP/Regular branching
         r#"
         rule "ProcessVIPPayment" salience 80 agenda-group "payment" {
@@ -120,7 +118,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("fulfillment");
         }
         "#,
-
         r#"
         rule "ProcessRegularPayment" salience 70 agenda-group "payment" {
             when
@@ -132,7 +129,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ScheduleRule(1500, "PaymentConfirmation");
         }
         "#,
-
         r#"
         rule "PaymentConfirmation" salience 60 {
             when
@@ -142,7 +138,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("fulfillment");
         }
         "#,
-
         // Step 5: Fulfillment
         r#"
         rule "ExpressFulfillment" salience 80 agenda-group "fulfillment" {
@@ -156,7 +151,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("completion");
         }
         "#,
-
         r#"
         rule "StandardFulfillment" salience 70 agenda-group "fulfillment" {
             when
@@ -169,7 +163,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("completion");
         }
         "#,
-
         // Step 6: Completion
         r#"
         rule "CompleteAdvancedWorkflow" salience 40 agenda-group "completion" no-loop {
@@ -181,7 +174,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 CompleteWorkflow("order-process");
         }
         "#,
-
         // Timeout and error handling
         r#"
         rule "ReviewTimeout" salience 30 {
@@ -218,32 +210,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Execute initial workflow
     println!("\n⚡ Executing workflow phase 1...");
     let result1 = engine.execute(&facts)?;
-    println!("📊 Phase 1 Results: {} rules evaluated, {} fired", result1.rules_evaluated, result1.rules_fired);
+    println!(
+        "📊 Phase 1 Results: {} rules evaluated, {} fired",
+        result1.rules_evaluated, result1.rules_fired
+    );
 
     // Simulate time passing and execute scheduled tasks
     println!("\n⏰ Simulating time passage for scheduled tasks...");
     let scheduled_tasks = engine.get_ready_tasks();
-    println!("  Currently {} tasks are ready immediately", scheduled_tasks.len());
-    
+    println!(
+        "  Currently {} tasks are ready immediately",
+        scheduled_tasks.len()
+    );
+
     // Wait a bit for tasks to become ready (simulating time passing)
     println!("  Waiting for scheduled tasks to become ready...");
     thread::sleep(Duration::from_millis(2100)); // Wait slightly longer than 2000ms
-    
+
     let ready_tasks = engine.get_ready_tasks();
     if !ready_tasks.is_empty() {
-        println!("  Found {} scheduled tasks ready for execution", ready_tasks.len());
-        
+        println!(
+            "  Found {} scheduled tasks ready for execution",
+            ready_tasks.len()
+        );
+
         // Execute scheduled tasks
         engine.execute_scheduled_tasks(&facts)?;
-        
+
         println!("\n⚡ Executing workflow phase 2 (after scheduled tasks)...");
         let result2 = engine.execute(&facts)?;
-        println!("📊 Phase 2 Results: {} rules evaluated, {} fired", result2.rules_evaluated, result2.rules_fired);
-        
+        println!(
+            "📊 Phase 2 Results: {} rules evaluated, {} fired",
+            result2.rules_evaluated, result2.rules_fired
+        );
+
         // Continue normal workflow execution to process the state change
         println!("\n⚡ Continuing workflow execution...");
         let result2b = engine.execute(&facts)?;
-        println!("📊 Phase 2b Results: {} rules evaluated, {} fired", result2b.rules_evaluated, result2b.rules_fired);
+        println!(
+            "📊 Phase 2b Results: {} rules evaluated, {} fired",
+            result2b.rules_evaluated, result2b.rules_fired
+        );
     } else {
         println!("  No scheduled tasks became ready");
     }
@@ -255,19 +262,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("\n⏰ Processing remaining scheduled tasks...");
         println!("  Found {} more tasks ready", remaining_tasks.len());
         engine.execute_scheduled_tasks(&facts)?;
-        
+
         println!("\n⚡ Executing workflow phase 3 (final)...");
         let result3 = engine.execute(&facts)?;
-        println!("📊 Phase 3 Results: {} rules evaluated, {} fired", result3.rules_evaluated, result3.rules_fired);
+        println!(
+            "📊 Phase 3 Results: {} rules evaluated, {} fired",
+            result3.rules_evaluated, result3.rules_fired
+        );
     }
 
     // Show final results
     println!("\n📋 Final Order State:");
     println!("  Order.ID = {:?}", facts.get("Order.ID"));
     println!("  Order.Status = {:?}", facts.get("Order.Status"));
-    println!("  Order.PaymentMethod = {:?}", facts.get("Order.PaymentMethod"));
-    println!("  Order.ShippingType = {:?}", facts.get("Order.ShippingType"));
-    println!("  Order.ShippingDate = {:?}", facts.get("Order.ShippingDate"));
+    println!(
+        "  Order.PaymentMethod = {:?}",
+        facts.get("Order.PaymentMethod")
+    );
+    println!(
+        "  Order.ShippingType = {:?}",
+        facts.get("Order.ShippingType")
+    );
+    println!(
+        "  Order.ShippingDate = {:?}",
+        facts.get("Order.ShippingDate")
+    );
 
     // Workflow statistics
     println!("\n📈 Final Workflow Statistics:");
@@ -279,6 +298,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n🏆 Advanced workflow demo completed successfully!");
     println!("✨ Demonstrated: Conditional routing, scheduled tasks, risk assessment, and complex business logic");
-    
+
     Ok(())
 }

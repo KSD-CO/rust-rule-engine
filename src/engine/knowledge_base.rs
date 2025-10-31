@@ -424,7 +424,10 @@ impl ActionTypeGRLExport for crate::types::ActionType {
             crate::types::ActionType::ActivateAgendaGroup { group } => {
                 format!("ActivateAgendaGroup(\"{}\")", group)
             }
-            crate::types::ActionType::ScheduleRule { rule_name, delay_ms } => {
+            crate::types::ActionType::ScheduleRule {
+                rule_name,
+                delay_ms,
+            } => {
                 format!("ScheduleRule({}, \"{}\")", delay_ms, rule_name)
             }
             crate::types::ActionType::CompleteWorkflow { workflow_name } => {

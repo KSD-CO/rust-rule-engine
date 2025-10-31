@@ -1,0 +1,26 @@
+// Simplified Pattern Matching Rules for Individual Testing
+// Each rule tests one specific pattern type
+
+rule "VIPExistsRule" "Test EXISTS pattern" salience 20 no-loop {
+    when
+        exists(Customer.tier == "VIP")
+    then
+        System.vipFound = true;
+        log("VIP customer found");
+}
+
+rule "NoPendingOrdersRule" "Test NOT pattern" salience 15 no-loop {
+    when
+        !exists(Order.status == "pending")
+    then
+        Marketing.sendEmails = true;
+        log("No pending orders - marketing enabled");
+}
+
+rule "AllOrdersProcessedRule" "Test FORALL pattern" salience 10 no-loop {
+    when
+        forall(Order.status == "processed")
+    then
+        Shipping.readyToShip = true;
+        log("All orders processed - ready to ship");
+}

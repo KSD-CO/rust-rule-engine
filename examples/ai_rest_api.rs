@@ -278,66 +278,96 @@ async fn load_production_ai_rules(
     engine: &mut RustRuleEngine,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let ai_rules = vec![
-        // Customer service automation with AI
+        // Customer service automation with AI - analyze sentiment in action
         r#"
-rule "AI Customer Service Priority" salience 100 {
+rule "Analyze Customer Ticket" salience 100 {
     when
-        Support.ticket.type == "complaint" && 
-        aiSentiment(Support.ticket.message) == "negative"
+        Support.ticket.type == "complaint"
+    then
+        set(Support.ticket.sentiment, aiSentiment(Support.ticket.message));
+        set(Support.ticket.aiProcessed, true);
+        Log("Analyzed ticket sentiment with AI");
+}
+        "#,
+        r#"
+rule "High Priority Negative Sentiment" salience 95 {
+    when
+        Support.ticket.sentiment == "negative"
     then
         set(Support.ticket.priority, "urgent");
-        set(Support.ticket.aiProcessed, true);
-        sendNotification("High priority ticket detected by AI", "support-manager@company.com");
+        Log("Escalated negative sentiment ticket");
 }
         "#,
-        // Smart fraud prevention
+        // Smart fraud prevention - detect fraud in action
         r#"
-rule "AI Smart Fraud Prevention" salience 90 {
+rule "Fraud Risk Assessment" salience 90 {
     when
-        Payment.amount > 500 && 
-        aiFraud(Payment.amount, Payment.userId) == true
+        Payment.amount > 500
+    then
+        set(Payment.isFraud, aiFraud(Payment.amount, Payment.userId));
+        Log("AI fraud detection completed");
+}
+        "#,
+        r#"
+rule "Block Fraudulent Payment" salience 85 {
+    when
+        Payment.isFraud == true
     then
         set(Payment.status, "blocked");
-        set(Payment.aiBlocked, true);
         set(Payment.reviewRequired, true);
-        logMessage("AI fraud system blocked suspicious payment");
+        Log("Payment blocked due to fraud detection");
 }
         "#,
-        // LLM-powered business decisions
+        // Business decisions with LLM
         r#"
-rule "AI Business Decision Support" salience 80 {
+rule "Complex Case AI Analysis" salience 80 {
     when
-        Case.complexity == "high" && 
+        Case.complexity == "high" &&
         Case.status == "pending"
     then
-        set(Case.aiRecommendation, 
-            aiLLM("Analyze this business case and recommend approval or rejection"));
+        set(Case.aiRecommendation, aiLLM("Should this case be approved or rejected?"));
         set(Case.status, "ai_reviewed");
-        logMessage("AI provided business case recommendation");
+        Log("LLM provided business case recommendation");
 }
         "#,
-        // Dynamic pricing with ML
+        // Dynamic pricing with ML scoring
         r#"
-rule "AI Dynamic Pricing" salience 70 {
+rule "Calculate Price Score" salience 75 {
     when
-        Product.isPremium == true &&
-        aiScore(Market.demand, Product.inventory, Customer.tier) > 0.8
+        Product.isPremium == true
     then
-        set(Product.dynamicPrice, Product.basePrice * 1.15);
-        set(Product.pricingStrategy, "AI_PREMIUM");
-        logMessage("AI adjusted pricing strategy");
+        set(Product.mlScore, aiScore(Market.demand, Product.inventory, Customer.tier));
+        Log("ML price scoring completed");
 }
         "#,
-        // Intelligent content moderation
         r#"
-rule "AI Content Moderation" salience 60 {
+rule "Premium Pricing" salience 70 {
     when
-        Content.type == "user_post" &&
-        aiSentiment(Content.text) == "toxic"
+        Product.mlScore > 0.8
+    then
+        set(Product.pricingStrategy, "PREMIUM");
+        set(Product.dynamicPrice, Product.basePrice * 1.15);
+        Log("Premium pricing strategy applied");
+}
+        "#,
+        // Content moderation
+        r#"
+rule "Analyze Content" salience 65 {
+    when
+        Content.type == "user_post"
+    then
+        set(Content.sentiment, aiSentiment(Content.text));
+        Log("Content sentiment analyzed");
+}
+        "#,
+        r#"
+rule "Moderate Toxic Content" salience 60 {
+    when
+        Content.sentiment == "toxic"
     then
         set(Content.status, "moderated");
         set(Content.aiModerated, true);
-        sendNotification("Content flagged by AI moderation", "content-team@company.com");
+        Log("Toxic content moderated by AI");
 }
         "#,
     ];
@@ -350,6 +380,8 @@ rule "AI Content Moderation" salience 60 {
     }
 
     println!("✅ Loaded {} production AI rules", ai_rules.len());
+    println!("💡 AI functions (aiSentiment, aiFraud, aiLLM, aiScore) are called in rule actions");
+    println!("💡 Rules are chained: first rule calls AI, second rule uses AI result");
     Ok(())
 }
 

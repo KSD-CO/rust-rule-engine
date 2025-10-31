@@ -42,6 +42,8 @@ rule "BulkDiscount" salience 12 {
         log("Bulk discount applied");
 }
 
+
+
 rule "SeasonalPromotion" salience 10 {
     when
         Promotion.Active == true && Order.Category == "clothing"

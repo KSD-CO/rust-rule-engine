@@ -1,8 +1,61 @@
-use rust_rule_engine::engine::engine::{RustRuleEngine, EngineConfig};
+use rust_rule_engine::engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::parser::grl::GRLParser;
 use rust_rule_engine::types::Value;
 use rust_rule_engine::Facts;
+
+// Helper: convert parser ConditionGroup to auto_network ConditionGroup
+fn convert_condition_group(src: &rust_rule_engine::ConditionGroup) -> rust_rule_engine::rete::auto_network::ConditionGroup {
+    use rust_rule_engine::rete::auto_network::{ConditionGroup as AutoGroup, Condition as AutoCond};
+    match src {
+        rust_rule_engine::ConditionGroup::Single(cond) => {
+            // Map operator enum to RETE-UL string
+            let op_str = match format!("{:?}", cond.operator).as_str() {
+                "Eq" => "==",
+                "Ne" => "!=",
+                "Gt" => ">",
+                "Lt" => "<",
+                "Ge" => ">=",
+                "Le" => "<=",
+                _ => "==",
+            };
+            // Use correct value string
+            let val_str = match &cond.value {
+                Value::String(s) => s.clone(),
+                Value::Number(n) => n.to_string(),
+                Value::Integer(i) => i.to_string(),
+                Value::Boolean(b) => b.to_string(),
+                _ => cond.value.to_string(),
+            };
+            AutoGroup::Single(AutoCond {
+                field: cond.field.clone(),
+                operator: op_str.to_string(),
+                value: val_str,
+            })
+        }
+        rust_rule_engine::ConditionGroup::Compound { left, operator, right } => {
+            let op_str = match format!("{:?}", operator).as_str() {
+                "And" => "AND",
+                "Or" => "OR",
+                _ => "AND",
+            };
+            AutoGroup::Compound {
+                left: Box::new(convert_condition_group(left)),
+                operator: op_str.to_string(),
+                right: Box::new(convert_condition_group(right)),
+            }
+        }
+        rust_rule_engine::ConditionGroup::Not(inner) => {
+            AutoGroup::Not(Box::new(convert_condition_group(inner)))
+        }
+        rust_rule_engine::ConditionGroup::Exists(inner) => {
+            AutoGroup::Exists(Box::new(convert_condition_group(inner)))
+        }
+        rust_rule_engine::ConditionGroup::Forall(inner) => {
+            AutoGroup::Forall(Box::new(convert_condition_group(inner)))
+        }
+    }
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 Workflow Engine Demo - v0.8.0");
@@ -10,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create rule engine with minimal debug
     let config = EngineConfig {
-        debug_mode: false,  // Disable debug for cleaner output
+        debug_mode: false, // Disable debug for cleaner output
         max_cycles: 100,
         timeout: None,
         enable_stats: true,
@@ -30,7 +83,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Order.Amount = {:?}", facts.get("Order.Amount"));
     println!("  Order.Status = {:?}", facts.get("Order.Status"));
     println!("  Customer.VIP = {:?}", facts.get("Customer.VIP"));
-    println!("  Inventory.Available = {:?}", facts.get("Inventory.Available"));
+    println!(
+        "  Inventory.Available = {:?}",
+        facts.get("Inventory.Available")
+    );
 
     // Define workflow rules using GRL syntax
     let workflow_rules = vec![
@@ -45,7 +101,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 SetWorkflowData("order-process", status="started");
         }
         "#,
-
         // Step 2: Validate order details
         r#"
         rule "ValidateOrder" salience 90 agenda-group "validation" {
@@ -57,7 +112,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("payment");
         }
         "#,
-
         // Step 3: Process payment (VIP customers get priority)
         r#"
         rule "ProcessVIPPayment" salience 80 agenda-group "payment" {
@@ -70,7 +124,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("fulfillment");
         }
         "#,
-
         // Step 3b: Process regular payment
         r#"
         rule "ProcessRegularPayment" salience 70 agenda-group "payment" {
@@ -83,7 +136,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ScheduleRule(2000, "CheckPaymentStatus");
         }
         "#,
-
         // Step 4: Schedule payment verification (for demo of scheduling)
         r#"
         rule "CheckPaymentStatus" salience 60 {
@@ -94,7 +146,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("fulfillment");
         }
         "#,
-
         // Step 5: Fulfill order
         r#"
         rule "FulfillOrder" salience 50 agenda-group "fulfillment" {
@@ -107,7 +158,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ActivateAgendaGroup("completion");
         }
         "#,
-
         // Step 6: Complete workflow
         r#"
         rule "CompleteOrderWorkflow" salience 40 agenda-group "completion" no-loop {
@@ -123,11 +173,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Parse and add rules to engine
     println!("\n📝 Adding workflow rules...");
+    let mut rete_rules = Vec::new();
     for (i, rule_grl) in workflow_rules.iter().enumerate() {
         match GRLParser::parse_rule(rule_grl) {
             Ok(rule) => {
                 println!("  ✅ Added rule: {}", rule.name);
-                engine.knowledge_base().add_rule(rule).unwrap();
+                engine.knowledge_base().add_rule(rule.clone()).unwrap();
+                // Chuyển sang auto_network::Rule để test với RETE
+                let auto_rule = rust_rule_engine::rete::auto_network::Rule {
+                    name: rule.name.clone(),
+                    conditions: convert_condition_group(&rule.conditions),
+                    action: rule.actions.get(0).map(|a| format!("{:?}", a)).unwrap_or_default(),
+                };
+                rete_rules.push(auto_rule);
             }
             Err(e) => {
                 println!("  ❌ Failed to parse rule {}: {}", i + 1, e);
@@ -136,22 +194,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Start workflow by activating initial agenda group
-    println!("\n🏁 Starting workflow execution...");
+    // --- Chạy với engine gốc ---
+    use std::time::Instant;
+    println!("\n🏁 Starting workflow execution (engine gốc)...");
     engine.start_workflow(Some("order-process".to_string()));
-    
-    // Set initial agenda group to "start"
     engine.activate_agenda_group("start".to_string());
-
-    // Execute rules
-    println!("\n⚡ Executing workflow...");
+    println!("\n⚡ Executing workflow (engine gốc)...");
+    let start_engine = Instant::now();
     let result = engine.execute(&facts)?;
-
-    println!("\n📊 Execution Results:");
+    let duration_engine = start_engine.elapsed();
+    println!("\n📊 Execution Results (engine gốc):");
     println!("  Rules evaluated: {}", result.rules_evaluated);
     println!("  Rules fired: {}", result.rules_fired);
     println!("  Execution cycles: {}", result.cycle_count);
-    println!("  Total time: {:?}", result.execution_time);
+    println!("  Total time (engine): {:?}", duration_engine);
+
+    // --- Chạy với RETE-UL node ---
+    use rust_rule_engine::rete::auto_network::build_rete_ul_from_rule;
+    use rust_rule_engine::rete::evaluate_rete_ul_node;
+    use std::collections::HashMap;
+    println!("\n🔬 So sánh với RETE-UL node:");
+    let mut facts_map = std::collections::HashMap::new();
+    for (k, v) in facts.get_all_facts().iter() {
+        facts_map.insert(k.clone(), v.to_string());
+    }
+    let start_rete = Instant::now();
+    let mut rete_fired = 0;
+    for rule in &rete_rules {
+        let rete_node = build_rete_ul_from_rule(rule);
+        let matched = evaluate_rete_ul_node(&rete_node, &facts_map);
+        println!("  Rule: {:<25} | RETE match: {}", rule.name, matched);
+        if matched { rete_fired += 1; }
+    }
+    let duration_rete = start_rete.elapsed();
+    println!("\n📊 RETE-UL: Số rule match: {} / {}", rete_fired, rete_rules.len());
+    println!("\n⏱️ So sánh tốc độ:");
+    println!("  Engine gốc:   {:?}", duration_engine);
+    println!("  RETE-UL node: {:?}", duration_rete);
 
     // Show final facts state
     println!("\n📋 Final Facts:");
@@ -159,18 +238,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Order.Amount = {:?}", facts.get("Order.Amount"));
     println!("  Order.Status = {:?}", facts.get("Order.Status"));
     println!("  Customer.VIP = {:?}", facts.get("Customer.VIP"));
-    println!("  Inventory.Available = {:?}", facts.get("Inventory.Available"));
-    println!("  Order.PaymentMethod = {:?}", facts.get("Order.PaymentMethod"));
-    println!("  Order.ShippingDate = {:?}", facts.get("Order.ShippingDate"));
+    println!(
+        "  Inventory.Available = {:?}",
+        facts.get("Inventory.Available")
+    );
+    println!(
+        "  Order.PaymentMethod = {:?}",
+        facts.get("Order.PaymentMethod")
+    );
+    println!(
+        "  Order.ShippingDate = {:?}",
+        facts.get("Order.ShippingDate")
+    );
 
     // Process any scheduled tasks
     println!("\n⏰ Processing scheduled tasks...");
     let scheduled_tasks = engine.get_ready_tasks();
     if !scheduled_tasks.is_empty() {
         println!("  Found {} scheduled tasks", scheduled_tasks.len());
-        // In a real scenario, you would execute these after their delay
         for task in scheduled_tasks {
-            println!("  📅 Scheduled task: {} (execution time: {:?})", task.rule_name, task.execute_at);
+            println!(
+                "  📅 Scheduled task: {} (execution time: {:?})",
+                task.rule_name, task.execute_at
+            );
         }
     } else {
         println!("  No scheduled tasks found");
@@ -183,8 +273,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Running workflows: {}", stats.running_workflows);
     println!("  Completed workflows: {}", stats.completed_workflows);
     println!("  Failed workflows: {}", stats.failed_workflows);
-    println!("  Pending scheduled tasks: {}", stats.pending_scheduled_tasks);
-    println!("  Pending agenda activations: {}", stats.pending_agenda_activations);
+    println!(
+        "  Pending scheduled tasks: {}",
+        stats.pending_scheduled_tasks
+    );
+    println!(
+        "  Pending agenda activations: {}",
+        stats.pending_agenda_activations
+    );
 
     println!("\n🏆 Workflow demo completed successfully!");
     Ok(())

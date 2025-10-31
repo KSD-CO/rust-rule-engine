@@ -75,6 +75,13 @@ pub enum RuleEngineError {
         /// Error message
         message: String,
     },
+
+    /// Plugin system error
+    #[error("Plugin error: {message}")]
+    PluginError {
+        /// Error message
+        message: String,
+    },
 }
 
 /// Convenient Result type alias for rule engine operations

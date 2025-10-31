@@ -5,6 +5,105 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-10-16
+
+### 🔥 Added - Major Plugin System Release
+
+#### Plugin Architecture
+- **Modular Plugin System**: Introduced comprehensive plugin architecture with lifecycle management
+- **RulePlugin Trait**: Standardized plugin interface with register_actions, register_functions, health_check, and unload methods
+- **Plugin Metadata**: Complete plugin information system with name, version, description, author, state, and health tracking
+- **Plugin Manager**: Centralized plugin management with configuration and monitoring capabilities
+
+#### Built-in Plugin Suite (44+ Actions, 33+ Functions)
+- **StringUtilsPlugin**: 8 actions (ToUpperCase, ToLowerCase, StringTrim, StringLength, StringContains, StringReplace, StringSplit, StringJoin) + 5 functions (concat, repeat, substring, padLeft, padRight)
+- **MathUtilsPlugin**: 10 actions (Add, Subtract, Multiply, Divide, Modulo, Power, Abs, Round, Ceil, Floor) + 6 functions (max, min, sqrt, sum, avg, random)
+- **DateUtilsPlugin**: 8 actions (CurrentDate, CurrentTime, FormatDate, ParseDate, AddDays, AddHours, DateDiff, IsWeekend) + 7 functions (now, today, dayOfWeek, dayOfYear, year, month, day)
+- **ValidationPlugin**: 8 actions (ValidateEmail, ValidatePhone, ValidateUrl, ValidateRegex, ValidateRange, ValidateLength, ValidateNotEmpty, ValidateNumeric) + 6 functions (isEmail, isPhone, isUrl, isNumeric, isEmpty, inRange)
+- **CollectionUtilsPlugin**: 10 actions (ArrayLength, ArrayPush, ArrayPop, ArraySort, ArrayFilter, ArrayMap, ArrayFind, ObjectKeys, ObjectValues, ObjectMerge) + 9 functions (length, contains, first, last, reverse, join, slice, keys, values)
+
+#### Plugin Features
+- **Health Monitoring**: Real-time plugin health checks with Healthy, Warning, and Error states
+- **Dynamic Loading**: Plugin registration and unloading capabilities
+- **Error Handling**: Comprehensive error handling for plugin operations
+- **Type Safety**: Full Rust type safety for all plugin operations
+- **Parameter Validation**: Robust parameter validation and type conversion
+
+#### Examples and Documentation
+- **builtin_plugins_demo.rs**: Comprehensive example demonstrating all built-in plugins
+- **Plugin System Documentation**: Complete documentation for creating custom plugins
+- **Integration Examples**: Real-world examples showing plugin usage in business rules
+
+### 🔧 Enhanced
+- **Engine API**: Extended RustRuleEngine with plugin registration methods
+- **Function System**: Enhanced function registration with plugin support
+- **Action System**: Improved action handler system for plugin integration
+- **Error Messages**: Better error messages for plugin-related operations
+
+### 🛠 Technical Improvements
+- **Module Organization**: New `src/plugins/` module structure for built-in plugins
+- **Export System**: Clean plugin exports through `plugins` module
+- **Integration**: Seamless integration between plugins and core rule engine
+- **Performance**: Optimized plugin execution with minimal overhead
+
+### 📚 Documentation
+- **README Update**: Completely rewritten README focusing on Plugin System v0.9.0
+- **API Documentation**: Comprehensive documentation for all plugin interfaces
+- **Examples**: Multiple examples showing plugin usage patterns
+
+### 🔄 Breaking Changes
+- **Version Bump**: Updated to v0.9.0 to reflect major plugin system addition
+- **New Dependencies**: Added `regex` and `chrono` dependencies for built-in plugins
+
+### 🚀 Performance
+- **Plugin Efficiency**: Minimal overhead plugin system with lazy loading
+- **Memory Usage**: Efficient memory usage with plugin lifecycle management
+- **Execution Speed**: Fast plugin action and function execution
+
+### 🧪 Testing
+- **Plugin Tests**: Comprehensive test suite for all built-in plugins
+- **Integration Tests**: Tests for plugin interaction with rule engine
+- **Example Tests**: All examples include test cases
+
+## [0.8.0] - Previous Release
+### 🌊 Advanced Workflow Engine
+- Comprehensive workflow management with agenda groups and scheduled tasks
+
+## [0.7.1] - Previous Release  
+### 🚨 Advanced Action Handlers
+- Custom action execution system for external integrations
+
+## [0.7.0] - Previous Release
+### 🧩 Advanced Pattern Matching
+- EXISTS, NOT, FORALL patterns for complex conditional logic
+
+## [0.6.0] - Previous Release
+### 🎯 Rule Attributes
+- Advanced rule attributes including agenda groups, activation groups, lock-on-active, and date-based rules
+
+## [0.5.1] - 2025-10-10
+
+### 🔄 Added No-Loop Protection (Major Feature)
+- **🔄 No-Loop Attribute Support**: Drools-compatible `no-loop` attribute to prevent infinite rule self-activation
+- **📝 GRL Parser Enhancement**: Full support for `no-loop` in GRL syntax
+  - `rule "Name" no-loop salience 10 { ... }` ✅
+  - `rule "Name" salience 10 no-loop { ... }` ✅  
+- **🧠 Engine Logic Enhancement**: Per-cycle rule firing tracking to enforce no-loop behavior
+- **🎯 Builder API**: New `.with_no_loop(true)` method for programmatic rule creation
+- **🧪 Comprehensive Testing**: Full test suite with parsing and execution validation
+- **📚 Documentation**: Complete examples and real-world use cases
+
+### Technical Details
+- Added `no_loop: bool` field to `Rule` struct
+- Enhanced rule execution engine with `fired_rules_in_cycle` tracking
+- Updated GRL regex to parse no-loop attribute in multiple positions
+- Backward compatible: existing rules default to `no_loop=false`
+
+### Examples Added
+- `examples/no_loop_demo.rs`: Programmatic API demonstration  
+- `examples/grl_no_loop_demo.rs`: GRL parsing and execution examples
+- `examples/rules/no_loop_test.grl`: Sample rule files with various no-loop patterns
+
 ## [0.4.1] - 2025-10-10
 
 ### Enhanced

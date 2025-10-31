@@ -220,6 +220,7 @@ mod tests {
 
     fn create_dummy_condition() -> ConditionGroup {
         let condition = Condition {
+            expression: crate::engine::rule::ConditionExpression::Field("test".to_string()),
             field: "test".to_string(),
             operator: Operator::Equal,
             value: Value::Boolean(true),

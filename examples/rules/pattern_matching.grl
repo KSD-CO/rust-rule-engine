@@ -1,0 +1,45 @@
+// Pattern Matching Rules in GRL Format
+// Demonstrates EXISTS, NOT, and FORALL keywords
+
+rule "ActivatePremiumService" "Activate premium service when VIP customer exists" salience 20 no-loop {
+    when
+        exists(Customer.tier == "VIP")
+    then
+        System.premiumServiceActive = true;
+        log("Premium service activated - VIP customer detected");
+}
+
+rule "SendMarketingEmail" "Send marketing email when no pending orders" salience 15 no-loop {
+    when
+        !exists(Order.status == "pending")
+    then
+        Marketing.emailSent = true;
+        log("Marketing email sent - no pending orders");
+}
+
+rule "EnableShipping" "Enable shipping when all orders are processed" salience 10 no-loop {
+    when
+        forall(Order.status == "processed")
+    then
+        Shipping.enabled = true;
+        log("Shipping enabled - all orders processed");
+}
+
+rule "ComplexBusinessRule" "Complex rule with combined patterns" salience 25 no-loop {
+    when
+        exists(Customer.tier == "VIP") && !exists(Alert.priority == "high")
+    then
+        System.vipModeEnabled = true;
+        log("VIP mode enabled - VIP customer present and no high alerts");
+}
+
+rule "AdvancedInventoryRule" "Advanced inventory management" salience 30 no-loop {
+    when
+        exists(Product.category == "electronics") && 
+        forall(Supplier.status == "active") && 
+        !exists(Alert.type == "critical")
+    then
+        Inventory.autoReplenishment = true;
+        Inventory.priority = "high";
+        log("Auto-replenishment enabled for electronics");
+}

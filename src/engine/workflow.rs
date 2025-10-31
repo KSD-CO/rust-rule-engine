@@ -138,11 +138,12 @@ impl WorkflowEngine {
     /// Start a new workflow
     pub fn start_workflow(&mut self, workflow_name: Option<String>) -> String {
         self.workflow_counter += 1;
-        let workflow_id = workflow_name.unwrap_or_else(|| format!("workflow_{}", self.workflow_counter));
-        
+        let workflow_id =
+            workflow_name.unwrap_or_else(|| format!("workflow_{}", self.workflow_counter));
+
         let workflow_state = WorkflowState::new(workflow_id.clone());
         self.workflows.insert(workflow_id.clone(), workflow_state);
-        
+
         println!("🔄 Started workflow: {}", workflow_id);
         workflow_id
     }
@@ -160,9 +161,12 @@ impl WorkflowEngine {
             execute_at: Instant::now() + Duration::from_millis(delay_ms),
             workflow_id,
         };
-        
+
         self.scheduled_tasks.push(task);
-        println!("⏰ Scheduled rule '{}' to execute in {}ms", rule_name, delay_ms);
+        println!(
+            "⏰ Scheduled rule '{}' to execute in {}ms",
+            rule_name, delay_ms
+        );
     }
 
     /// Complete a workflow
@@ -177,7 +181,11 @@ impl WorkflowEngine {
     pub fn set_workflow_data(&mut self, workflow_id: &str, key: String, value: Value) {
         if let Some(workflow) = self.workflows.get_mut(workflow_id) {
             workflow.set_data(key.clone(), value);
-            println!("💾 Set workflow data: {} = {:?}", key, workflow.get_data(&key));
+            println!(
+                "💾 Set workflow data: {} = {:?}",
+                key,
+                workflow.get_data(&key)
+            );
         }
     }
 
@@ -194,7 +202,7 @@ impl WorkflowEngine {
     pub fn get_ready_tasks(&mut self) -> Vec<ScheduledTask> {
         let now = Instant::now();
         let mut ready_tasks = Vec::new();
-        
+
         self.scheduled_tasks.retain(|task| {
             if task.execute_at <= now {
                 ready_tasks.push(task.clone());
@@ -203,11 +211,14 @@ impl WorkflowEngine {
                 true // Keep in queue
             }
         });
-        
+
         if !ready_tasks.is_empty() {
-            println!("⚡ {} scheduled tasks are ready for execution", ready_tasks.len());
+            println!(
+                "⚡ {} scheduled tasks are ready for execution",
+                ready_tasks.len()
+            );
         }
-        
+
         ready_tasks
     }
 
@@ -236,9 +247,21 @@ impl WorkflowEngine {
     /// Get workflow statistics
     pub fn get_workflow_stats(&self) -> WorkflowStats {
         let total = self.workflows.len();
-        let running = self.workflows.values().filter(|w| w.status == WorkflowStatus::Running).count();
-        let completed = self.workflows.values().filter(|w| w.status == WorkflowStatus::Completed).count();
-        let failed = self.workflows.values().filter(|w| w.status == WorkflowStatus::Failed).count();
+        let running = self
+            .workflows
+            .values()
+            .filter(|w| w.status == WorkflowStatus::Running)
+            .count();
+        let completed = self
+            .workflows
+            .values()
+            .filter(|w| w.status == WorkflowStatus::Completed)
+            .count();
+        let failed = self
+            .workflows
+            .values()
+            .filter(|w| w.status == WorkflowStatus::Failed)
+            .count();
         let scheduled_tasks = self.scheduled_tasks.len();
 
         WorkflowStats {
@@ -255,9 +278,11 @@ impl WorkflowEngine {
     pub fn cleanup_completed_workflows(&mut self, older_than: Duration) {
         let cutoff = Instant::now() - older_than;
         let initial_count = self.workflows.len();
-        
+
         self.workflows.retain(|_, workflow| {
-            if workflow.status == WorkflowStatus::Completed || workflow.status == WorkflowStatus::Failed {
+            if workflow.status == WorkflowStatus::Completed
+                || workflow.status == WorkflowStatus::Failed
+            {
                 if let Some(completed_at) = workflow.completed_at {
                     completed_at > cutoff
                 } else {
@@ -267,7 +292,7 @@ impl WorkflowEngine {
                 true // Keep active workflows
             }
         });
-        
+
         let cleaned = initial_count - self.workflows.len();
         if cleaned > 0 {
             println!("🧹 Cleaned up {} completed workflows", cleaned);
@@ -377,7 +402,7 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         engine.start_workflow(Some("test1".to_string()));
         engine.start_workflow(Some("test2".to_string()));
-        
+
         let stats = engine.get_workflow_stats();
         assert_eq!(stats.total_workflows, 2);
         assert_eq!(stats.running_workflows, 2);
