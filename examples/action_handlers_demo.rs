@@ -11,11 +11,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Create facts
     let facts = Facts::new();
-    
+
     // Add customer data
     let mut customer_props = HashMap::new();
     customer_props.insert("name".to_string(), Value::String("John Doe".to_string()));
-    customer_props.insert("email".to_string(), Value::String("john.doe@example.com".to_string()));
+    customer_props.insert(
+        "email".to_string(),
+        Value::String("john.doe@example.com".to_string()),
+    );
     customer_props.insert("tier".to_string(), Value::String("VIP".to_string()));
     customer_props.insert("balance".to_string(), Value::Number(1500.0));
     facts.add_value("Customer", Value::Object(customer_props))?;
@@ -49,29 +52,47 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // 1. Email Handler
     engine.register_action_handler("SendEmail", |params, _facts| {
-        let to = params.get("to").map(|v| v.to_string()).unwrap_or("unknown".to_string());
-        let subject = params.get("subject").map(|v| v.to_string()).unwrap_or("No Subject".to_string());
-        let body = params.get("body").map(|v| v.to_string()).unwrap_or("No Body".to_string());
-        
+        let to = params
+            .get("to")
+            .map(|v| v.to_string())
+            .unwrap_or("unknown".to_string());
+        let subject = params
+            .get("subject")
+            .map(|v| v.to_string())
+            .unwrap_or("No Subject".to_string());
+        let body = params
+            .get("body")
+            .map(|v| v.to_string())
+            .unwrap_or("No Body".to_string());
+
         println!("📧 EMAIL SENT:");
         println!("   To: {}", to);
         println!("   Subject: {}", subject);
         println!("   Body: {}", body);
         println!("   Status: ✅ Successfully sent");
-        
+
         Ok(())
     });
 
     // 2. Database Logger Handler
     engine.register_action_handler("LogToDatabase", |params, facts| {
-        let table = params.get("table").map(|v| v.to_string()).unwrap_or("default_table".to_string());
-        let event = params.get("event").map(|v| v.to_string()).unwrap_or("unknown_event".to_string());
-        
+        let table = params
+            .get("table")
+            .map(|v| v.to_string())
+            .unwrap_or("default_table".to_string());
+        let event = params
+            .get("event")
+            .map(|v| v.to_string())
+            .unwrap_or("unknown_event".to_string());
+
         println!("🗄️ DATABASE LOG:");
         println!("   Table: {}", table);
         println!("   Event: {}", event);
-        println!("   Timestamp: {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"));
-        
+        println!(
+            "   Timestamp: {}",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")
+        );
+
         // Could access facts for additional context
         if let Some(customer) = facts.get("Customer") {
             if let Value::Object(customer_obj) = customer {
@@ -80,56 +101,71 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        
+
         Ok(())
     });
 
     // 3. Alert Handler
     engine.register_action_handler("SendAlert", |params, _facts| {
-        let level = params.get("level").map(|v| v.to_string()).unwrap_or("INFO".to_string());
-        let message = params.get("message").map(|v| v.to_string()).unwrap_or("Alert triggered".to_string());
-        
+        let level = params
+            .get("level")
+            .map(|v| v.to_string())
+            .unwrap_or("INFO".to_string());
+        let message = params
+            .get("message")
+            .map(|v| v.to_string())
+            .unwrap_or("Alert triggered".to_string());
+
         let emoji = match level.to_uppercase().as_str() {
             "CRITICAL" => "🚨",
             "HIGH" => "⚠️",
             "MEDIUM" => "🔔",
             _ => "ℹ️",
         };
-        
+
         println!("{} ALERT [{}]: {}", emoji, level.to_uppercase(), message);
-        
+
         Ok(())
     });
 
     // 4. Payment Processing Handler
     engine.register_action_handler("ProcessPayment", |params, facts| {
-        let amount = params.get("amount")
+        let amount = params
+            .get("amount")
             .and_then(|v| match v {
                 Value::Number(n) => Some(*n),
                 Value::Integer(i) => Some(*i as f64),
                 _ => None,
             })
             .unwrap_or(0.0);
-        
-        let method = params.get("method").map(|v| v.to_string()).unwrap_or("credit_card".to_string());
-        
+
+        let method = params
+            .get("method")
+            .map(|v| v.to_string())
+            .unwrap_or("credit_card".to_string());
+
         println!("💳 PAYMENT PROCESSING:");
         println!("   Amount: ${:.2}", amount);
         println!("   Method: {}", method);
-        
+
         if amount > 1000.0 {
             println!("   Status: 🔐 Requires additional verification");
         } else {
             println!("   Status: ✅ Payment approved");
         }
-        
+
         // Update order status in facts
         if let Some(Value::Object(order_obj)) = facts.get("Order") {
             let mut updated_order = order_obj.clone();
-            updated_order.insert("payment_status".to_string(), Value::String("processed".to_string()));
-            facts.add_value("Order", Value::Object(updated_order)).unwrap();
+            updated_order.insert(
+                "payment_status".to_string(),
+                Value::String("processed".to_string()),
+            );
+            facts
+                .add_value("Order", Value::Object(updated_order))
+                .unwrap();
         }
-        
+
         Ok(())
     });
 
@@ -151,9 +187,21 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 action_type: "SendEmail".to_string(),
                 params: {
                     let mut params = HashMap::new();
-                    params.insert("to".to_string(), Value::String("Customer.email".to_string()));
-                    params.insert("subject".to_string(), Value::String("Welcome VIP Customer!".to_string()));
-                    params.insert("body".to_string(), Value::String("Thank you for being a VIP customer. Enjoy exclusive benefits!".to_string()));
+                    params.insert(
+                        "to".to_string(),
+                        Value::String("Customer.email".to_string()),
+                    );
+                    params.insert(
+                        "subject".to_string(),
+                        Value::String("Welcome VIP Customer!".to_string()),
+                    );
+                    params.insert(
+                        "body".to_string(),
+                        Value::String(
+                            "Thank you for being a VIP customer. Enjoy exclusive benefits!"
+                                .to_string(),
+                        ),
+                    );
                     params
                 },
             },
@@ -161,8 +209,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 action_type: "LogToDatabase".to_string(),
                 params: {
                     let mut params = HashMap::new();
-                    params.insert("table".to_string(), Value::String("customer_events".to_string()));
-                    params.insert("event".to_string(), Value::String("vip_welcome_email_sent".to_string()));
+                    params.insert(
+                        "table".to_string(),
+                        Value::String("customer_events".to_string()),
+                    );
+                    params.insert(
+                        "event".to_string(),
+                        Value::String("vip_welcome_email_sent".to_string()),
+                    );
                     params
                 },
             },
@@ -189,7 +243,10 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 params: {
                     let mut params = HashMap::new();
                     params.insert("level".to_string(), Value::String("HIGH".to_string()));
-                    params.insert("message".to_string(), Value::String("High value order detected - requires review".to_string()));
+                    params.insert(
+                        "message".to_string(),
+                        Value::String("High value order detected - requires review".to_string()),
+                    );
                     params
                 },
             },
@@ -197,8 +254,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 action_type: "ProcessPayment".to_string(),
                 params: {
                     let mut params = HashMap::new();
-                    params.insert("amount".to_string(), Value::String("Order.total".to_string()));
-                    params.insert("method".to_string(), Value::String("premium_processing".to_string()));
+                    params.insert(
+                        "amount".to_string(),
+                        Value::String("Order.total".to_string()),
+                    );
+                    params.insert(
+                        "method".to_string(),
+                        Value::String("premium_processing".to_string()),
+                    );
                     params
                 },
             },
@@ -228,8 +291,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 action_type: "LogToDatabase".to_string(),
                 params: {
                     let mut params = HashMap::new();
-                    params.insert("table".to_string(), Value::String("order_status_log".to_string()));
-                    params.insert("event".to_string(), Value::String("status_changed_to_processing".to_string()));
+                    params.insert(
+                        "table".to_string(),
+                        Value::String("order_status_log".to_string()),
+                    );
+                    params.insert(
+                        "event".to_string(),
+                        Value::String("status_changed_to_processing".to_string()),
+                    );
                     params
                 },
             },

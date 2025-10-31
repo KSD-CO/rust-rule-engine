@@ -2,34 +2,121 @@ use crate::types::{ActionType, LogicalOperator, Operator, Value};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
+/// Expression in a condition - can be a field reference or function call
+#[derive(Debug, Clone)]
+pub enum ConditionExpression {
+    /// Direct field reference (e.g., User.age)
+    Field(String),
+    /// Function call with arguments (e.g., aiSentiment(User.text))
+    FunctionCall {
+        /// Function name
+        name: String,
+        /// Function arguments (field names or literal values)
+        args: Vec<String>,
+    },
+}
+
 /// Represents a single condition in a rule
 #[derive(Debug, Clone)]
 pub struct Condition {
-    /// The field name to evaluate
-    pub field: String,
+    /// The expression to evaluate (field or function call)
+    pub expression: ConditionExpression,
     /// The comparison operator to use
     pub operator: Operator,
     /// The value to compare against
     pub value: Value,
+
+    // Keep field for backward compatibility
+    #[deprecated(note = "Use expression instead")]
+    #[doc(hidden)]
+    pub field: String,
 }
 
 impl Condition {
-    /// Create a new condition
+    /// Create a new condition with a field reference
     pub fn new(field: String, operator: Operator, value: Value) -> Self {
         Self {
-            field,
+            expression: ConditionExpression::Field(field.clone()),
             operator,
             value,
+            field, // Keep for backward compatibility
+        }
+    }
+
+    /// Create a new condition with a function call
+    pub fn with_function(
+        function_name: String,
+        args: Vec<String>,
+        operator: Operator,
+        value: Value,
+    ) -> Self {
+        Self {
+            expression: ConditionExpression::FunctionCall {
+                name: function_name.clone(),
+                args,
+            },
+            operator,
+            value,
+            field: function_name, // Use function name for backward compat
         }
     }
 
     /// Evaluate this condition against the given facts
     pub fn evaluate(&self, facts: &HashMap<String, Value>) -> bool {
-        if let Some(field_value) = get_nested_value(facts, &self.field) {
-            // Use the evaluate method from Operator
-            self.operator.evaluate(field_value, &self.value)
-        } else {
-            false
+        match &self.expression {
+            ConditionExpression::Field(field_name) => {
+                if let Some(field_value) = get_nested_value(facts, field_name) {
+                    self.operator.evaluate(field_value, &self.value)
+                } else {
+                    false
+                }
+            }
+            ConditionExpression::FunctionCall { .. } => {
+                // Function calls need engine context - will be handled by evaluate_with_engine
+                false
+            }
+        }
+    }
+
+    /// Evaluate condition with access to engine's function registry
+    /// This is needed for function call evaluation
+    pub fn evaluate_with_engine(
+        &self,
+        facts: &HashMap<String, Value>,
+        function_registry: &HashMap<
+            String,
+            std::sync::Arc<dyn Fn(Vec<Value>, &HashMap<String, Value>) -> crate::errors::Result<Value> + Send + Sync>,
+        >,
+    ) -> bool {
+        match &self.expression {
+            ConditionExpression::Field(field_name) => {
+                if let Some(field_value) = get_nested_value(facts, field_name) {
+                    self.operator.evaluate(field_value, &self.value)
+                } else {
+                    false
+                }
+            }
+            ConditionExpression::FunctionCall { name, args } => {
+                // Call the function with arguments
+                if let Some(function) = function_registry.get(name) {
+                    // Resolve arguments from facts
+                    let arg_values: Vec<Value> = args
+                        .iter()
+                        .map(|arg| {
+                            get_nested_value(facts, arg)
+                                .cloned()
+                                .unwrap_or(Value::String(arg.clone()))
+                        })
+                        .collect();
+
+                    // Call function
+                    if let Ok(result) = function(arg_values, facts) {
+                        // Compare function result with expected value
+                        return self.operator.evaluate(&result, &self.value);
+                    }
+                }
+                false
+            }
         }
     }
 }

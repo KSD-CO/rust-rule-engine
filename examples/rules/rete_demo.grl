@@ -1,0 +1,86 @@
+// RETE Demo Rules - Optimized for RETE-UL Engine
+// These rules demonstrate incremental propagation and efficient pattern matching
+
+rule "AdultVerification" salience 20 no-loop {
+    when
+        Person.age >= 18
+    then
+        Person.is_adult = true;
+        Person.tier = "adult";
+}
+
+rule "SeniorBenefits" salience 15 no-loop {
+    when
+        Person.age >= 65 && Person.is_adult == true
+    then
+        Person.discount = 0.15;
+        Person.tier = "senior";
+        Person.healthcare_eligible = true;
+}
+
+rule "HighValueOrder" salience 18 no-loop {
+    when
+        Order.amount > 1000
+    then
+        Order.requires_approval = true;
+        Order.priority = "high";
+        Order.fast_shipping = true;
+}
+
+rule "BulkOrderDiscount" salience 12 no-loop {
+    when
+        Order.amount > 5000 && Order.quantity > 10
+    then
+        Order.discount = 0.2;
+        Order.bulk_order = true;
+}
+
+rule "VIPCustomerUpgrade" salience 16 no-loop {
+    when
+        Customer.total_spent > 10000
+    then
+        Customer.tier = "VIP";
+        Customer.discount = 0.25;
+        Customer.free_shipping = true;
+}
+
+rule "PremiumMembership" salience 14 no-loop {
+    when
+        Customer.total_spent > 5000 && Customer.orders_count > 20
+    then
+        Customer.membership = "premium";
+        Customer.priority_support = true;
+}
+
+rule "FraudAlert" salience 25 no-loop {
+    when
+        exists(Transaction.suspicious == true)
+    then
+        Alert.fraud_detected = true;
+        Alert.priority = "critical";
+        Alert.notify_security = true;
+}
+
+rule "AllPaymentsCleared" salience 20 no-loop {
+    when
+        forall(Payment.status == "verified")
+    then
+        Order.payment_complete = true;
+        Order.ready_to_ship = true;
+}
+
+rule "InventoryAlert" salience 22 no-loop {
+    when
+        Product.stock < 10
+    then
+        Alert.low_stock = true;
+        Product.reorder_needed = true;
+}
+
+rule "ExpressShipping" salience 17 no-loop {
+    when
+        Order.amount > 2000 && Customer.tier == "VIP"
+    then
+        Order.shipping_method = "express";
+        Order.estimated_days = 1;
+}

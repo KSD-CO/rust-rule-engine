@@ -326,7 +326,7 @@ impl ParallelRuleEngine {
                 Ok(())
             }
             ActionType::ScheduleRule { .. } => {
-                // Workflow actions not supported in parallel execution  
+                // Workflow actions not supported in parallel execution
                 Ok(())
             }
             ActionType::CompleteWorkflow { .. } => {

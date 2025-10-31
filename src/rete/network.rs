@@ -1,0 +1,624 @@
+use crate::rete::alpha::AlphaNode;
+/// Chuyển ConditionGroup sang ReteUlNode
+pub fn build_rete_ul_from_condition_group(group: &crate::rete::auto_network::ConditionGroup) -> ReteUlNode {
+    use crate::rete::auto_network::ConditionGroup;
+    match group {
+        ConditionGroup::Single(cond) => {
+            ReteUlNode::UlAlpha(AlphaNode {
+                field: cond.field.clone(),
+                operator: cond.operator.clone(),
+                value: cond.value.clone(),
+            })
+        }
+        ConditionGroup::Compound { left, operator, right } => {
+            match operator.as_str() {
+                "AND" => ReteUlNode::UlAnd(
+                    Box::new(build_rete_ul_from_condition_group(left)),
+                    Box::new(build_rete_ul_from_condition_group(right)),
+                ),
+                "OR" => ReteUlNode::UlOr(
+                    Box::new(build_rete_ul_from_condition_group(left)),
+                    Box::new(build_rete_ul_from_condition_group(right)),
+                ),
+                _ => ReteUlNode::UlAnd(
+                    Box::new(build_rete_ul_from_condition_group(left)),
+                    Box::new(build_rete_ul_from_condition_group(right)),
+                ),
+            }
+        }
+        ConditionGroup::Not(inner) => {
+            ReteUlNode::UlNot(Box::new(build_rete_ul_from_condition_group(inner)))
+        }
+        ConditionGroup::Exists(inner) => {
+            ReteUlNode::UlExists(Box::new(build_rete_ul_from_condition_group(inner)))
+        }
+        ConditionGroup::Forall(inner) => {
+            ReteUlNode::UlForall(Box::new(build_rete_ul_from_condition_group(inner)))
+        }
+    }
+}
+use std::collections::HashMap;
+
+/// Đánh giá mạng node RETE với facts
+pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>) -> bool {
+    match node {
+        ReteUlNode::UlAlpha(alpha) => {
+            let val = if alpha.field.contains('.') {
+                let parts: Vec<&str> = alpha.field.split('.').collect();
+                if parts.len() == 2 {
+                    let prefix = parts[0];
+                    let suffix = parts[1];
+                    facts.get(&format!("{}.{}", prefix, suffix)).or_else(|| facts.get(&format!("{}:{}", prefix, suffix)))
+                } else {
+                    facts.get(&alpha.field)
+                }
+            } else {
+                facts.get(&alpha.field)
+            };
+            if let Some(val) = val {
+                match alpha.operator.as_str() {
+                    "==" => val == &alpha.value,
+                    "!=" => val != &alpha.value,
+                    ">" => val.parse::<f64>().unwrap_or(0.0) > alpha.value.parse::<f64>().unwrap_or(0.0),
+                    "<" => val.parse::<f64>().unwrap_or(0.0) < alpha.value.parse::<f64>().unwrap_or(0.0),
+                    ">=" => val.parse::<f64>().unwrap_or(0.0) >= alpha.value.parse::<f64>().unwrap_or(0.0),
+                    "<=" => val.parse::<f64>().unwrap_or(0.0) <= alpha.value.parse::<f64>().unwrap_or(0.0),
+                    _ => false,
+                }
+            } else {
+                false
+            }
+        }
+        ReteUlNode::UlAnd(left, right) => {
+            evaluate_rete_ul_node(left, facts) && evaluate_rete_ul_node(right, facts)
+        }
+        ReteUlNode::UlOr(left, right) => {
+            evaluate_rete_ul_node(left, facts) || evaluate_rete_ul_node(right, facts)
+        }
+        ReteUlNode::UlNot(inner) => {
+            !evaluate_rete_ul_node(inner, facts)
+        }
+        ReteUlNode::UlExists(inner) => {
+            let target_field = match &**inner {
+                ReteUlNode::UlAlpha(alpha) => alpha.field.clone(),
+                _ => "".to_string(),
+            };
+            if target_field.contains('.') {
+                let parts: Vec<&str> = target_field.split('.').collect();
+                if parts.len() == 2 {
+                    let prefix = parts[0];
+                    let suffix = parts[1];
+                    let filtered: Vec<_> = facts.iter()
+                        .filter(|(k, _)| k.starts_with(prefix) && k.ends_with(suffix))
+                        .collect();
+                    filtered.iter().any(|(_, value)| {
+                        let mut sub_facts = HashMap::new();
+                        sub_facts.insert(target_field.clone(), (*value).clone());
+                        evaluate_rete_ul_node(inner, &sub_facts)
+                    })
+                } else {
+                    facts.iter().any(|(field, value)| {
+                        let mut sub_facts = HashMap::new();
+                        sub_facts.insert(field.clone(), value.clone());
+                        evaluate_rete_ul_node(inner, &sub_facts)
+                    })
+                }
+            } else {
+                facts.iter().any(|(field, value)| {
+                    let mut sub_facts = HashMap::new();
+                    sub_facts.insert(field.clone(), value.clone());
+                    evaluate_rete_ul_node(inner, &sub_facts)
+                })
+            }
+        }
+        ReteUlNode::UlForall(inner) => {
+            let target_field = match &**inner {
+                ReteUlNode::UlAlpha(alpha) => alpha.field.clone(),
+                _ => "".to_string(),
+            };
+            if target_field.contains('.') {
+                let parts: Vec<&str> = target_field.split('.').collect();
+                if parts.len() == 2 {
+                    let prefix = parts[0];
+                    let suffix = parts[1];
+                    let filtered: Vec<_> = facts.iter()
+                        .filter(|(k, _)| k.starts_with(prefix) && k.ends_with(suffix))
+                        .collect();
+                    if filtered.is_empty() {
+                        return true; // Vacuous truth: FORALL on empty set is TRUE
+                    }
+                    filtered.iter().all(|(_, value)| {
+                        let mut sub_facts = HashMap::new();
+                        sub_facts.insert(target_field.clone(), (*value).clone());
+                        evaluate_rete_ul_node(inner, &sub_facts)
+                    })
+                } else {
+                    facts.iter().all(|(field, value)| {
+                        let mut sub_facts = HashMap::new();
+                        sub_facts.insert(field.clone(), value.clone());
+                        evaluate_rete_ul_node(inner, &sub_facts)
+                    })
+                }
+            } else {
+                facts.iter().all(|(field, value)| {
+                    let mut sub_facts = HashMap::new();
+                    sub_facts.insert(field.clone(), value.clone());
+                    evaluate_rete_ul_node(inner, &sub_facts)
+                })
+            }
+        }
+        ReteUlNode::UlTerminal(_) => true // Rule match
+    }
+}
+
+/// RETE-UL: Unified Logic Node
+#[derive(Debug, Clone)]
+pub enum ReteUlNode {
+    UlAlpha(AlphaNode),
+    UlAnd(Box<ReteUlNode>, Box<ReteUlNode>),
+    UlOr(Box<ReteUlNode>, Box<ReteUlNode>),
+    UlNot(Box<ReteUlNode>),
+    UlExists(Box<ReteUlNode>),
+    UlForall(Box<ReteUlNode>),
+    UlTerminal(String), // Rule name
+}
+
+impl ReteUlNode {
+    /// Evaluate with typed facts (convenience method)
+    pub fn evaluate_typed(&self, facts: &super::facts::TypedFacts) -> bool {
+        evaluate_rete_ul_node_typed(self, facts)
+    }
+}
+
+/// RETE-UL Rule Struct
+pub struct ReteUlRule {
+    pub name: String,
+    pub node: ReteUlNode,
+    pub priority: i32,
+    pub no_loop: bool,
+    pub action: Box<dyn FnMut(&mut std::collections::HashMap<String, String>)>,
+}
+
+/// Drools-style RETE-UL rule firing loop
+/// Fires all matching rules, updates facts, repeats until no more rules can fire
+pub fn fire_rete_ul_rules(
+    rules: &mut [(String, ReteUlNode, Box<dyn FnMut(&mut std::collections::HashMap<String, String>)>)],
+    facts: &mut std::collections::HashMap<String, String>,
+) -> Vec<String> {
+    let mut fired_rules = Vec::new();
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for (rule_name, node, action) in rules.iter_mut() {
+            let fired_flag = format!("{}_fired", rule_name);
+            if facts.get(&fired_flag) == Some(&"true".to_string()) {
+                continue;
+            }
+            if evaluate_rete_ul_node(node, facts) {
+                action(facts);
+                facts.insert(fired_flag.clone(), "true".to_string());
+                fired_rules.push(rule_name.clone());
+                changed = true;
+            }
+        }
+    }
+    fired_rules
+}
+
+/// Drools-style RETE-UL rule firing loop with agenda and control
+pub fn fire_rete_ul_rules_with_agenda(
+    rules: &mut [ReteUlRule],
+    facts: &mut std::collections::HashMap<String, String>,
+) -> Vec<String> {
+    let mut fired_rules = Vec::new();
+    let mut agenda: Vec<usize>;
+    let mut changed = true;
+    let mut fired_flags = std::collections::HashSet::new();
+    while changed {
+        changed = false;
+        // Build agenda: rules that match and not fired (check both local and facts-based flag)
+        agenda = rules.iter().enumerate()
+            .filter(|(_, rule)| {
+                let fired_flag = format!("{}_fired", rule.name);
+                let already_fired = fired_flags.contains(&rule.name) || facts.get(&fired_flag) == Some(&"true".to_string());
+                !rule.no_loop || !already_fired
+            })
+            .filter(|(_, rule)| evaluate_rete_ul_node(&rule.node, facts))
+            .map(|(i, _)| i)
+            .collect();
+        // Sort agenda by priority (descending)
+        agenda.sort_by_key(|&i| -rules[i].priority);
+        for &i in &agenda {
+            let rule = &mut rules[i];
+            let fired_flag = format!("{}_fired", rule.name);
+            let already_fired = fired_flags.contains(&rule.name) || facts.get(&fired_flag) == Some(&"true".to_string());
+            if rule.no_loop && already_fired {
+                continue;
+            }
+            (rule.action)(facts);
+            fired_rules.push(rule.name.clone());
+            fired_flags.insert(rule.name.clone());
+            facts.insert(fired_flag, "true".to_string());
+            changed = true;
+        }
+    }
+    fired_rules
+}
+
+/// RETE-UL Engine with cached nodes (Performance optimized!)
+/// This engine builds RETE nodes once and reuses them, avoiding expensive rebuilds
+pub struct ReteUlEngine {
+    rules: Vec<ReteUlRule>,
+    facts: std::collections::HashMap<String, String>,
+}
+
+impl ReteUlEngine {
+    /// Create new engine from Rule definitions (nodes are built and cached once)
+    pub fn new() -> Self {
+        Self {
+            rules: Vec::new(),
+            facts: std::collections::HashMap::new(),
+        }
+    }
+
+    /// Add a rule with custom action closure
+    pub fn add_rule_with_action<F>(
+        &mut self,
+        name: String,
+        node: ReteUlNode,
+        priority: i32,
+        no_loop: bool,
+        action: F,
+    ) where
+        F: FnMut(&mut std::collections::HashMap<String, String>) + 'static,
+    {
+        self.rules.push(ReteUlRule {
+            name,
+            node,
+            priority,
+            no_loop,
+            action: Box::new(action),
+        });
+    }
+
+    /// Add a rule from Rule definition (auto-build node once and cache)
+    pub fn add_rule_from_definition(
+        &mut self,
+        rule: &crate::rete::auto_network::Rule,
+        priority: i32,
+        no_loop: bool,
+    ) {
+        let node = build_rete_ul_from_condition_group(&rule.conditions);
+        let rule_name = rule.name.clone();
+
+        // Default action: just mark as fired
+        let action = Box::new(move |facts: &mut std::collections::HashMap<String, String>| {
+            facts.insert(format!("{}_executed", rule_name), "true".to_string());
+        }) as Box<dyn FnMut(&mut std::collections::HashMap<String, String>)>;
+
+        self.rules.push(ReteUlRule {
+            name: rule.name.clone(),
+            node,
+            priority,
+            no_loop,
+            action,
+        });
+    }
+
+    /// Set a fact
+    pub fn set_fact(&mut self, key: String, value: String) {
+        self.facts.insert(key, value);
+    }
+
+    /// Get a fact
+    pub fn get_fact(&self, key: &str) -> Option<&String> {
+        self.facts.get(key)
+    }
+
+    /// Remove a fact
+    pub fn remove_fact(&mut self, key: &str) -> Option<String> {
+        self.facts.remove(key)
+    }
+
+    /// Get all facts
+    pub fn get_all_facts(&self) -> &std::collections::HashMap<String, String> {
+        &self.facts
+    }
+
+    /// Clear all facts
+    pub fn clear_facts(&mut self) {
+        self.facts.clear();
+    }
+
+    /// Fire all rules with agenda (using cached nodes - NO rebuild!)
+    pub fn fire_all(&mut self) -> Vec<String> {
+        fire_rete_ul_rules_with_agenda(&mut self.rules, &mut self.facts)
+    }
+
+    /// Check if a specific rule matches current facts (without firing)
+    pub fn matches(&self, rule_name: &str) -> bool {
+        self.rules
+            .iter()
+            .find(|r| r.name == rule_name)
+            .map(|r| evaluate_rete_ul_node(&r.node, &self.facts))
+            .unwrap_or(false)
+    }
+
+    /// Get all matching rules (without firing)
+    pub fn get_matching_rules(&self) -> Vec<&str> {
+        self.rules
+            .iter()
+            .filter(|r| evaluate_rete_ul_node(&r.node, &self.facts))
+            .map(|r| r.name.as_str())
+            .collect()
+    }
+
+    /// Reset fired flags (allow rules to fire again)
+    pub fn reset_fired_flags(&mut self) {
+        let keys_to_remove: Vec<_> = self.facts
+            .keys()
+            .filter(|k| k.ends_with("_fired") || k.ends_with("_executed"))
+            .cloned()
+            .collect();
+        for key in keys_to_remove {
+            self.facts.remove(&key);
+        }
+    }
+}
+
+// ============================================================================
+// Typed Facts Support (NEW!)
+// ============================================================================
+
+use super::facts::{FactValue, TypedFacts};
+
+/// Evaluate RETE-UL node with typed facts (NEW!)
+pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> bool {
+    match node {
+        ReteUlNode::UlAlpha(alpha) => {
+            alpha.matches_typed(facts)
+        }
+        ReteUlNode::UlAnd(left, right) => {
+            evaluate_rete_ul_node_typed(left, facts) && evaluate_rete_ul_node_typed(right, facts)
+        }
+        ReteUlNode::UlOr(left, right) => {
+            evaluate_rete_ul_node_typed(left, facts) || evaluate_rete_ul_node_typed(right, facts)
+        }
+        ReteUlNode::UlNot(inner) => {
+            !evaluate_rete_ul_node_typed(inner, facts)
+        }
+        ReteUlNode::UlExists(inner) => {
+            let target_field = match &**inner {
+                ReteUlNode::UlAlpha(alpha) => alpha.field.clone(),
+                _ => "".to_string(),
+            };
+            if target_field.contains('.') {
+                let parts: Vec<&str> = target_field.split('.').collect();
+                if parts.len() == 2 {
+                    let prefix = parts[0];
+                    let suffix = parts[1];
+                    let filtered: Vec<_> = facts.get_all().iter()
+                        .filter(|(k, _)| k.starts_with(prefix) && k.ends_with(suffix))
+                        .collect();
+                    filtered.iter().any(|(_, _)| {
+                        evaluate_rete_ul_node_typed(inner, facts)
+                    })
+                } else {
+                    evaluate_rete_ul_node_typed(inner, facts)
+                }
+            } else {
+                evaluate_rete_ul_node_typed(inner, facts)
+            }
+        }
+        ReteUlNode::UlForall(inner) => {
+            let target_field = match &**inner {
+                ReteUlNode::UlAlpha(alpha) => alpha.field.clone(),
+                _ => "".to_string(),
+            };
+            if target_field.contains('.') {
+                let parts: Vec<&str> = target_field.split('.').collect();
+                if parts.len() == 2 {
+                    let prefix = parts[0];
+                    let suffix = parts[1];
+                    let filtered: Vec<_> = facts.get_all().iter()
+                        .filter(|(k, _)| k.starts_with(prefix) && k.ends_with(suffix))
+                        .collect();
+                    if filtered.is_empty() {
+                        return true; // Vacuous truth
+                    }
+                    filtered.iter().all(|(_, _)| {
+                        evaluate_rete_ul_node_typed(inner, facts)
+                    })
+                } else {
+                    if facts.get_all().is_empty() {
+                        return true; // Vacuous truth
+                    }
+                    evaluate_rete_ul_node_typed(inner, facts)
+                }
+            } else {
+                if facts.get_all().is_empty() {
+                    return true; // Vacuous truth
+                }
+                evaluate_rete_ul_node_typed(inner, facts)
+            }
+        }
+        ReteUlNode::UlTerminal(_) => true
+    }
+}
+
+/// Typed RETE-UL Rule
+pub struct TypedReteUlRule {
+    pub name: String,
+    pub node: ReteUlNode,
+    pub priority: i32,
+    pub no_loop: bool,
+    pub action: Box<dyn FnMut(&mut TypedFacts)>,
+}
+
+/// Typed RETE-UL Engine with cached nodes (Performance + Type Safety!)
+/// This is the recommended engine for new code
+pub struct TypedReteUlEngine {
+    rules: Vec<TypedReteUlRule>,
+    facts: TypedFacts,
+}
+
+impl TypedReteUlEngine {
+    /// Create new typed engine
+    pub fn new() -> Self {
+        Self {
+            rules: Vec::new(),
+            facts: TypedFacts::new(),
+        }
+    }
+
+    /// Add a rule with custom action
+    pub fn add_rule_with_action<F>(
+        &mut self,
+        name: String,
+        node: ReteUlNode,
+        priority: i32,
+        no_loop: bool,
+        action: F,
+    ) where
+        F: FnMut(&mut TypedFacts) + 'static,
+    {
+        self.rules.push(TypedReteUlRule {
+            name,
+            node,
+            priority,
+            no_loop,
+            action: Box::new(action),
+        });
+    }
+
+    /// Add a rule from Rule definition
+    pub fn add_rule_from_definition(
+        &mut self,
+        rule: &crate::rete::auto_network::Rule,
+        priority: i32,
+        no_loop: bool,
+    ) {
+        let node = build_rete_ul_from_condition_group(&rule.conditions);
+        let rule_name = rule.name.clone();
+
+        let action = Box::new(move |facts: &mut TypedFacts| {
+            facts.set(format!("{}_executed", rule_name), true);
+        }) as Box<dyn FnMut(&mut TypedFacts)>;
+
+        self.rules.push(TypedReteUlRule {
+            name: rule.name.clone(),
+            node,
+            priority,
+            no_loop,
+            action,
+        });
+    }
+
+    /// Set a fact with typed value
+    pub fn set_fact<K: Into<String>, V: Into<FactValue>>(&mut self, key: K, value: V) {
+        self.facts.set(key, value);
+    }
+
+    /// Get a fact
+    pub fn get_fact(&self, key: &str) -> Option<&FactValue> {
+        self.facts.get(key)
+    }
+
+    /// Remove a fact
+    pub fn remove_fact(&mut self, key: &str) -> Option<FactValue> {
+        self.facts.remove(key)
+    }
+
+    /// Get all facts
+    pub fn get_all_facts(&self) -> &TypedFacts {
+        &self.facts
+    }
+
+    /// Clear all facts
+    pub fn clear_facts(&mut self) {
+        self.facts.clear();
+    }
+
+    /// Fire all rules with agenda (using cached nodes + typed evaluation!)
+    pub fn fire_all(&mut self) -> Vec<String> {
+        let mut fired_rules = Vec::new();
+        let mut agenda: Vec<usize>;
+        let mut changed = true;
+        let mut fired_flags = std::collections::HashSet::new();
+
+        while changed {
+            changed = false;
+
+            // Build agenda: rules that match and not fired
+            agenda = self.rules.iter().enumerate()
+                .filter(|(_, rule)| {
+                    let fired_flag = format!("{}_fired", rule.name);
+                    let already_fired = fired_flags.contains(&rule.name) ||
+                        self.facts.get(&fired_flag).and_then(|v| v.as_boolean()) == Some(true);
+                    !rule.no_loop || !already_fired
+                })
+                .filter(|(_, rule)| evaluate_rete_ul_node_typed(&rule.node, &self.facts))
+                .map(|(i, _)| i)
+                .collect();
+
+            // Sort by priority (descending)
+            agenda.sort_by_key(|&i| -self.rules[i].priority);
+
+            for &i in &agenda {
+                let rule = &mut self.rules[i];
+                let fired_flag = format!("{}_fired", rule.name);
+                let already_fired = fired_flags.contains(&rule.name) ||
+                    self.facts.get(&fired_flag).and_then(|v| v.as_boolean()) == Some(true);
+
+                if rule.no_loop && already_fired {
+                    continue;
+                }
+
+                (rule.action)(&mut self.facts);
+                fired_rules.push(rule.name.clone());
+                fired_flags.insert(rule.name.clone());
+                self.facts.set(fired_flag, true);
+                changed = true;
+            }
+        }
+
+        fired_rules
+    }
+
+    /// Check if a specific rule matches current facts
+    pub fn matches(&self, rule_name: &str) -> bool {
+        self.rules
+            .iter()
+            .find(|r| r.name == rule_name)
+            .map(|r| evaluate_rete_ul_node_typed(&r.node, &self.facts))
+            .unwrap_or(false)
+    }
+
+    /// Get all matching rules
+    pub fn get_matching_rules(&self) -> Vec<&str> {
+        self.rules
+            .iter()
+            .filter(|r| evaluate_rete_ul_node_typed(&r.node, &self.facts))
+            .map(|r| r.name.as_str())
+            .collect()
+    }
+
+    /// Reset fired flags
+    pub fn reset_fired_flags(&mut self) {
+        let keys_to_remove: Vec<_> = self.facts.get_all()
+            .keys()
+            .filter(|k| k.ends_with("_fired") || k.ends_with("_executed"))
+            .cloned()
+            .collect();
+        for key in keys_to_remove {
+            self.facts.remove(&key);
+        }
+    }
+}
+
+impl Default for TypedReteUlEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+

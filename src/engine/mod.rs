@@ -13,14 +13,17 @@ pub mod facts;
 pub mod knowledge_base;
 /// Parallel rule execution engine
 pub mod parallel;
-/// Pattern matching for advanced condition evaluation (exists, not, forall)
+/// Pattern matching for complex conditions
 pub mod pattern_matcher;
-/// Rule definition and condition handling
+/// Plugin system for extensibility
+pub mod plugin;
+/// Rule execution engine and core functionality
 pub mod rule;
 /// Rule templates for dynamic rule generation
 pub mod template;
 /// Workflow engine for rule chaining and sequential execution
 pub mod workflow;
+pub mod coverage; // Adding coverage module
 
 // Re-export main components for easy access
 pub use agenda::{ActivationGroupManager, AgendaManager};

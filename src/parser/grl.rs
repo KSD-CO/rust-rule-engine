@@ -474,6 +474,41 @@ impl GRLParser {
             return self.parse_conditions_within_object(conditions_str);
         }
 
+        // Try to parse function call pattern: functionName(arg1, arg2, ...) operator value
+        let function_regex = Regex::new(
+            r#"([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#,
+        )
+        .map_err(|e| RuleEngineError::ParseError {
+            message: format!("Function regex error: {}", e),
+        })?;
+
+        if let Some(captures) = function_regex.captures(clause_to_parse) {
+            let function_name = captures.get(1).unwrap().as_str().to_string();
+            let args_str = captures.get(2).unwrap().as_str();
+            let operator_str = captures.get(3).unwrap().as_str();
+            let value_str = captures.get(4).unwrap().as_str().trim();
+
+            // Parse arguments
+            let args: Vec<String> = if args_str.trim().is_empty() {
+                Vec::new()
+            } else {
+                args_str
+                    .split(',')
+                    .map(|arg| arg.trim().to_string())
+                    .collect()
+            };
+
+            let operator =
+                Operator::from_str(operator_str).ok_or_else(|| RuleEngineError::InvalidOperator {
+                    operator: operator_str.to_string(),
+                })?;
+
+            let value = self.parse_value(value_str)?;
+
+            let condition = Condition::with_function(function_name, args, operator, value);
+            return Ok(ConditionGroup::single(condition));
+        }
+
         // Parse expressions like: User.Age >= 18, Product.Price < 100.0, user.age >= 18, etc.
         // Support both PascalCase (User.Age) and lowercase (user.age) field naming
         let condition_regex = Regex::new(
@@ -700,7 +735,9 @@ impl GRLParser {
                             _ => value.to_string(),
                         }
                     };
-                    Ok(ActionType::ActivateAgendaGroup { group: agenda_group })
+                    Ok(ActionType::ActivateAgendaGroup {
+                        group: agenda_group,
+                    })
                 }
                 "schedulerule" | "schedule_rule" => {
                     // Parse delay and target rule: ScheduleRule(5000, "next-rule")
@@ -710,24 +747,29 @@ impl GRLParser {
                             message: "ScheduleRule requires delay_ms and rule_name".to_string(),
                         });
                     }
-                    
+
                     let delay_ms = self.parse_value(parts[0].trim())?;
                     let rule_name = self.parse_value(parts[1].trim())?;
-                    
+
                     let delay_ms = match delay_ms {
                         Value::Integer(i) => i as u64,
                         Value::Number(f) => f as u64,
-                        _ => return Err(RuleEngineError::ParseError {
-                            message: "ScheduleRule delay_ms must be a number".to_string(),
-                        }),
+                        _ => {
+                            return Err(RuleEngineError::ParseError {
+                                message: "ScheduleRule delay_ms must be a number".to_string(),
+                            })
+                        }
                     };
-                    
+
                     let rule_name = match rule_name {
                         Value::String(s) => s,
                         _ => rule_name.to_string(),
                     };
-                    
-                    Ok(ActionType::ScheduleRule { delay_ms, rule_name })
+
+                    Ok(ActionType::ScheduleRule {
+                        delay_ms,
+                        rule_name,
+                    })
                 }
                 "completeworkflow" | "complete_workflow" => {
                     let workflow_id = if args_str.is_empty() {
@@ -741,12 +783,14 @@ impl GRLParser {
                             _ => value.to_string(),
                         }
                     };
-                    Ok(ActionType::CompleteWorkflow { workflow_name: workflow_id })
+                    Ok(ActionType::CompleteWorkflow {
+                        workflow_name: workflow_id,
+                    })
                 }
                 "setworkflowdata" | "set_workflow_data" => {
                     // Parse key=value: SetWorkflowData("key=value")
                     let data_str = args_str.trim();
-                    
+
                     // Simple key=value parsing
                     let (key, value) = if let Some(eq_pos) = data_str.find('=') {
                         let key = data_str[..eq_pos].trim().trim_matches('"');
@@ -758,7 +802,7 @@ impl GRLParser {
                             message: "SetWorkflowData data must be in key=value format".to_string(),
                         });
                     };
-                    
+
                     Ok(ActionType::SetWorkflowData { key, value })
                 }
                 _ => {
@@ -768,7 +812,7 @@ impl GRLParser {
                     } else {
                         self.parse_function_args_as_params(args_str)?
                     };
-                    
+
                     Ok(ActionType::Custom {
                         action_type: function_name.to_string(),
                         params,
@@ -829,7 +873,7 @@ impl GRLParser {
         for (i, part) in parts.iter().enumerate() {
             let trimmed = part.trim();
             let value = self.parse_value(trimmed)?;
-            
+
             // Use simple numeric indexing - engine will resolve references dynamically
             params.insert(i.to_string(), value);
         }
@@ -898,10 +942,19 @@ mod tests {
 
         // Check that the action is parsed as a Custom action (set is now custom)
         match &rule.actions[0] {
-            crate::types::ActionType::Custom { action_type, params } => {
+            crate::types::ActionType::Custom {
+                action_type,
+                params,
+            } => {
                 assert_eq!(action_type, "set");
-                assert_eq!(params.get("0"), Some(&crate::types::Value::String("user.status".to_string())));
-                assert_eq!(params.get("1"), Some(&crate::types::Value::String("approved".to_string())));
+                assert_eq!(
+                    params.get("0"),
+                    Some(&crate::types::Value::String("user.status".to_string()))
+                );
+                assert_eq!(
+                    params.get("1"),
+                    Some(&crate::types::Value::String("approved".to_string()))
+                );
             }
             _ => panic!("Expected Custom action, got: {:?}", rule.actions[0]),
         }
@@ -927,7 +980,10 @@ mod tests {
 
         // Check that the action is parsed as a Custom action (apply_discount is now custom)
         match &rule.actions[0] {
-            crate::types::ActionType::Custom { action_type, params } => {
+            crate::types::ActionType::Custom {
+                action_type,
+                params,
+            } => {
                 assert_eq!(action_type, "apply_discount");
                 assert_eq!(params.get("0"), Some(&crate::types::Value::Integer(20000)));
             }
