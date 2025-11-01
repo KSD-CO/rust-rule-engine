@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2025-11-01
+
+### 🚀 Performance - RETE Algorithm Optimization
+
+#### Critical Fixes
+- **Fixed RETE Infinite Loop**: Eliminated infinite loop issue in `fire_rete_ul_rules_with_agenda`
+- **Max Iterations Guard**: Added safety limit (100 iterations) to prevent hangs
+- **Agenda Optimization**: Improved rule firing logic to fire each rule only once per match
+- **Performance Breakthrough**: RETE now runs at ~5µs per rule (was hanging before)
+
+#### Comprehensive Benchmarking
+- **New Benchmark Suite**: Added `benches/rete_simple_benchmark.rs` for quick comparisons
+- **Enhanced Benchmarks**: Added `benches/rete_comparison_benchmarks.rs` for comprehensive testing
+- **Performance Tests**: Added `tests/rete_performance_test.rs` for validation
+- **Documentation**: Created `BENCHMARK_RESULTS.md` with detailed analysis
+
+#### Performance Results (Traditional vs RETE)
+- **3 rules**: 2.34x faster (9.34µs → 3.99µs)
+- **10 rules**: 2.06x faster (28.50µs → 13.85µs)
+- **25 rules**: 2.12x faster (59.87µs → 28.24µs)
+- **50 rules**: **24.4x faster** (1.72ms → 70µs) 🔥
+- **Complex patterns**: 2.81x faster (5.02µs → 1.79µs)
+
+#### Technical Improvements
+- Simplified fired rule tracking with HashSet
+- Removed redundant `changed` flag logic
+- Improved agenda building efficiency
+- Better no_loop support
+- Linear scalability: ~5µs per rule consistently
+
+### 📚 Documentation
+- **BENCHMARK_RESULTS.md**: Complete performance analysis and recommendations
+- **Updated README**: Added benchmark results and updated recommendations
+- **Cargo.toml**: Updated description to highlight "2-24x faster"
+
+### 🔧 Configuration
+- Added `rete_simple_benchmark` to Cargo.toml
+- Added `rete_comparison_benchmarks` to Cargo.toml
+- Updated version to 0.10.1
+
+## [0.10.0] - 2025-10-31
+
+### See [CHANGELOG_v0.10.0.md](CHANGELOG_v0.10.0.md) for details
+- Template System (CLIPS-inspired)
+- Defglobal support
+- Function calls in WHEN clause
+- ~97% Drools compatibility
+
 ## [0.9.0] - 2025-10-16
 
 ### 🔥 Added - Major Plugin System Release
