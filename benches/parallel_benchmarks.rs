@@ -125,7 +125,7 @@ fn bench_small_sequential_vs_parallel(c: &mut Criterion) {
     group.throughput(Throughput::Elements(10)); // 10 rules
 
     // Sequential
-    let (seq_engine, seq_facts) = create_sequential_engine(10, 20);
+    let (mut seq_engine, seq_facts) = create_sequential_engine(10, 20);
     group.bench_function("sequential_10rules", |b| {
         b.iter(|| {
             black_box(seq_engine.execute(&seq_facts).unwrap());
@@ -166,7 +166,7 @@ fn bench_medium_sequential_vs_parallel(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(30));
 
     // Sequential
-    let (seq_engine, seq_facts) = create_sequential_engine(50, 100);
+    let (mut seq_engine, seq_facts) = create_sequential_engine(50, 100);
     group.bench_function("sequential_50rules", |b| {
         b.iter(|| {
             black_box(seq_engine.execute(&seq_facts).unwrap());
@@ -194,7 +194,7 @@ fn bench_large_sequential_vs_parallel(c: &mut Criterion) {
     group.sample_size(10); // Fewer samples for large tests
 
     // Sequential
-    let (seq_engine, seq_facts) = create_sequential_engine(200, 500);
+    let (mut seq_engine, seq_facts) = create_sequential_engine(200, 500);
     group.bench_function("sequential_200rules", |b| {
         b.iter(|| {
             black_box(seq_engine.execute(&seq_facts).unwrap());
@@ -221,7 +221,7 @@ fn bench_rule_scalability(c: &mut Criterion) {
 
     for rule_count in [10, 25, 50, 100, 200].iter() {
         // Sequential
-        let (seq_engine, seq_facts) = create_sequential_engine(*rule_count, 100);
+        let (mut seq_engine, seq_facts) = create_sequential_engine(*rule_count, 100);
         group.throughput(Throughput::Elements(*rule_count as u64));
         group.bench_with_input(
             BenchmarkId::new("sequential", rule_count),
