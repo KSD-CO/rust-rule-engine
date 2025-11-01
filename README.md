@@ -1,25 +1,33 @@
-# Rust Rule Engine v0.10.0 🦀⚡
+# Rust Rule Engine v0.10.1 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/workflows/CI/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with ~97% Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with ~97% Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## ✨ What's New in v0.10.0
+## ✨ What's New in v0.10.1
 
-🎉 **CLIPS-Inspired Features + Function Calls in WHEN Clause**!
+🚀 **RETE Performance Optimization + Comprehensive Benchmarks**!
 
-- **🔧 Function Calls in WHEN** - Call AI/custom functions directly in rule conditions *(NEW)*
+- **⚡ RETE Fixed** - Eliminated infinite loop issue, now blazing fast
+- **📊 Benchmarked** - Comprehensive comparison: Traditional vs RETE
+- **🔥 2-24x Faster** - RETE shows 2x speedup at 10 rules, 24x at 50+ rules
+- **✅ Production Ready** - Max iterations guard, optimized agenda management
+- **📈 Scalability Proven** - ~5µs per rule, scales linearly
+
+[**See Benchmark Results →**](BENCHMARK_RESULTS.md)
+
+### Previous Updates (v0.10.0)
+- **🔧 Function Calls in WHEN** - Call AI/custom functions directly in rule conditions
 - **📋 Template System** - Type-safe schema definitions for structured facts
 - **🌍 Defglobal** - Global variables with thread-safe access
-- **📈 Drools Compatibility** - Improved from ~95% to **~97%**
-- **✅ Quality** - 85 tests passing, zero breaking changes
+- **📈 Drools Compatibility** - ~97% Drools parity
 
 [**See Release Notes →**](RELEASE_v0.10.0.md) | [**CLIPS Features Guide →**](CLIPS_INSPIRED_FEATURES.md)
 
@@ -35,20 +43,24 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 - **Type Safety** - Rust's compile-time guarantees
 - **Production Ready** - REST API, monitoring, health checks
 
-### RETE-UL Engine (Recommended for 100+ rules)
+### RETE-UL Engine (Recommended for 50+ rules)
+- **🚀 2-24x Faster** - Proven benchmarks vs traditional engine *(v0.10.1)*
 - **🔥 RETE Algorithm** - High-performance pattern matching (~97% Drools parity)
-- **📋 Template System** - Type-safe structured facts *(NEW in v0.10.0)*
-- **🌍 Defglobal** - Global variables across firings *(NEW in v0.10.0)*
-- **⚡ Incremental Updates** - Only re-evaluate affected rules (2x speedup)
+- **📋 Template System** - Type-safe structured facts *(v0.10.0)*
+- **🌍 Defglobal** - Global variables across firings *(v0.10.0)*
+- **⚡ Incremental Updates** - Only re-evaluate affected rules
 - **🧠 Working Memory** - FactHandles with insert/update/retract
-- **🎯 Advanced Agenda** - Salience, activation groups, no-loop
+- **🎯 Advanced Agenda** - Salience, activation groups, no-loop, max iterations guard
 - **🔗 Variable Binding** - Cross-pattern $var syntax
 - **💾 Memoization** - 99.99% cache hit rate
 
 **Choose Your Engine:**
-- **< 50 rules** → Native Engine (simpler API, plugin support)
-- **> 100 rules** → RETE-UL Engine (better performance, advanced features)
+- **< 10 rules** → Native Engine (simpler API, plugin support)
+- **10-50 rules** → Either (RETE ~2x faster)
+- **50+ rules** → RETE-UL Engine (2-24x faster, highly recommended)
 - **Both needs** → Hybrid approach
+
+📊 **Performance at 50 rules**: Traditional 1.72ms vs RETE 70µs = **24.4x faster**!
 
 📖 [**Engine Comparison Guide →**](ENGINE_COMPARISON.md) | [**Quick Start Guide →**](QUICK_START_ENGINES.md)
 
@@ -58,16 +70,13 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.10.0"
+rust-rule-engine = "0.10.1"
 ```
 
 ### Optional Features
 ```toml
-# Enable async support
-rust-rule-engine = { version = "0.10.0", features = ["async"] }
-
-# Enable all features
-rust-rule-engine = { version = "0.10.0", features = ["full"] }
+# Enable streaming support
+rust-rule-engine = { version = "0.10.1", features = ["streaming"] }
 ```
 
 ---

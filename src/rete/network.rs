@@ -211,37 +211,61 @@ pub fn fire_rete_ul_rules_with_agenda(
     facts: &mut std::collections::HashMap<String, String>,
 ) -> Vec<String> {
     let mut fired_rules = Vec::new();
-    let mut agenda: Vec<usize>;
-    let mut changed = true;
     let mut fired_flags = std::collections::HashSet::new();
-    while changed {
-        changed = false;
-        // Build agenda: rules that match and not fired (check both local and facts-based flag)
-        agenda = rules.iter().enumerate()
+    let max_iterations = 100; // Prevent infinite loops
+    let mut iterations = 0;
+
+    loop {
+        iterations += 1;
+        if iterations > max_iterations {
+            eprintln!("Warning: RETE engine reached max iterations ({})", max_iterations);
+            break;
+        }
+
+        // Build agenda: rules that match and haven't been fired yet
+        let mut agenda: Vec<usize> = rules
+            .iter()
+            .enumerate()
             .filter(|(_, rule)| {
-                let fired_flag = format!("{}_fired", rule.name);
-                let already_fired = fired_flags.contains(&rule.name) || facts.get(&fired_flag) == Some(&"true".to_string());
-                !rule.no_loop || !already_fired
+                // Check if rule already fired
+                if fired_flags.contains(&rule.name) {
+                    return false;
+                }
+                // Check if rule matches current facts
+                evaluate_rete_ul_node(&rule.node, facts)
             })
-            .filter(|(_, rule)| evaluate_rete_ul_node(&rule.node, facts))
             .map(|(i, _)| i)
             .collect();
+
+        // If no rules to fire, we're done
+        if agenda.is_empty() {
+            break;
+        }
+
         // Sort agenda by priority (descending)
         agenda.sort_by_key(|&i| -rules[i].priority);
+
+        // Fire all rules in agenda
         for &i in &agenda {
             let rule = &mut rules[i];
-            let fired_flag = format!("{}_fired", rule.name);
-            let already_fired = fired_flags.contains(&rule.name) || facts.get(&fired_flag) == Some(&"true".to_string());
-            if rule.no_loop && already_fired {
-                continue;
-            }
+
+            // Execute rule action
             (rule.action)(facts);
+
+            // Mark as fired
             fired_rules.push(rule.name.clone());
             fired_flags.insert(rule.name.clone());
+
+            let fired_flag = format!("{}_fired", rule.name);
             facts.insert(fired_flag, "true".to_string());
-            changed = true;
+        }
+
+        // If no_loop is enabled for all rules, stop after one iteration
+        if rules.iter().all(|r| r.no_loop) {
+            break;
         }
     }
+
     fired_rules
 }
 
