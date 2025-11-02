@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.10.1 🦀⚡
+# Rust Rule Engine v0.10.2 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,7 +11,11 @@ A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)*
 
 ---
 
-## ✨ What's New in v0.10.1
+## ✨ What's New in v0.10.2
+
+📧 **Metadata Update** - Corrected author email contact information
+
+### Previous Updates (v0.10.1)
 
 🚀 **RETE Performance Optimization + Comprehensive Benchmarks**!
 
@@ -23,7 +27,7 @@ A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)*
 
 [**See Benchmark Results →**](BENCHMARK_RESULTS.md)
 
-### Previous Updates (v0.10.0)
+### v0.10.0
 - **🔧 Function Calls in WHEN** - Call AI/custom functions directly in rule conditions
 - **📋 Template System** - Type-safe schema definitions for structured facts
 - **🌍 Defglobal** - Global variables with thread-safe access
@@ -421,7 +425,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 
 - **Issues**: [GitHub Issues](https://github.com/KSD-CO/rust-rule-engine/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/KSD-CO/rust-rule-engine/discussions)
-- **Email**: tonthatvu.hust@gmail.com
+- **Email**: ttvuhm@gmail.com
 
 ---
 
