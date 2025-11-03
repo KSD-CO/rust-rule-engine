@@ -12,6 +12,7 @@ use super::facts::TypedFacts;
 use super::agenda::{AdvancedAgenda, Activation};
 use super::template::TemplateRegistry;
 use super::globals::GlobalsRegistry;
+use super::deffacts::DeffactsRegistry;
 
 /// Track which rules are affected by which fact types
 #[derive(Debug)]
@@ -84,6 +85,8 @@ pub struct IncrementalEngine {
     templates: TemplateRegistry,
     /// Global variables registry
     globals: GlobalsRegistry,
+    /// Deffacts registry for initial facts
+    deffacts: DeffactsRegistry,
 }
 
 impl IncrementalEngine {
@@ -97,6 +100,7 @@ impl IncrementalEngine {
             rule_matched_facts: HashMap::new(),
             templates: TemplateRegistry::new(),
             globals: GlobalsRegistry::new(),
+            deffacts: DeffactsRegistry::new(),
         }
     }
 
@@ -263,6 +267,86 @@ impl IncrementalEngine {
     /// Get mutable global variables registry
     pub fn globals_mut(&mut self) -> &mut GlobalsRegistry {
         &mut self.globals
+    }
+
+    /// Get deffacts registry
+    pub fn deffacts(&self) -> &DeffactsRegistry {
+        &self.deffacts
+    }
+
+    /// Get mutable deffacts registry
+    pub fn deffacts_mut(&mut self) -> &mut DeffactsRegistry {
+        &mut self.deffacts
+    }
+
+    /// Load all registered deffacts into working memory
+    /// Returns handles of all inserted facts
+    pub fn load_deffacts(&mut self) -> Vec<FactHandle> {
+        let mut handles = Vec::new();
+
+        // Get all facts from all registered deffacts
+        let all_facts = self.deffacts.get_all_facts();
+
+        for (_deffacts_name, fact_instance) in all_facts {
+            // Check if template exists for this fact type
+            let handle = if self.templates.get(&fact_instance.fact_type).is_some() {
+                // Use template validation
+                match self.insert_with_template(&fact_instance.fact_type, fact_instance.data) {
+                    Ok(h) => h,
+                    Err(_) => continue, // Skip invalid facts
+                }
+            } else {
+                // Insert without template validation
+                self.insert(fact_instance.fact_type, fact_instance.data)
+            };
+
+            handles.push(handle);
+        }
+
+        handles
+    }
+
+    /// Load a specific deffacts set by name
+    /// Returns handles of inserted facts or error if deffacts not found
+    pub fn load_deffacts_by_name(&mut self, name: &str) -> crate::errors::Result<Vec<FactHandle>> {
+        // Clone the facts to avoid borrow checker issues
+        let facts_to_insert = {
+            let deffacts = self.deffacts.get(name).ok_or_else(|| {
+                crate::errors::RuleEngineError::EvaluationError {
+                    message: format!("Deffacts '{}' not found", name),
+                }
+            })?;
+            deffacts.facts.clone()
+        };
+
+        let mut handles = Vec::new();
+
+        for fact_instance in facts_to_insert {
+            // Check if template exists for this fact type
+            let handle = if self.templates.get(&fact_instance.fact_type).is_some() {
+                // Use template validation
+                self.insert_with_template(&fact_instance.fact_type, fact_instance.data)?
+            } else {
+                // Insert without template validation
+                self.insert(fact_instance.fact_type, fact_instance.data)
+            };
+
+            handles.push(handle);
+        }
+
+        Ok(handles)
+    }
+
+    /// Reset engine and reload all deffacts (similar to CLIPS reset)
+    /// Clears working memory and agenda, then loads all deffacts
+    pub fn reset_with_deffacts(&mut self) -> Vec<FactHandle> {
+        // Clear working memory and agenda
+        self.working_memory = WorkingMemory::new();
+        self.agenda.clear();
+        self.rule_matched_facts.clear();
+
+        // Reload all deffacts
+        self.load_deffacts()
     }
 
     /// Insert a typed fact with template validation

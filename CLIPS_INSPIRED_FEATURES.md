@@ -6,12 +6,13 @@ This document describes the CLIPS-inspired features that have been added to the 
 
 ## Overview
 
-Following the analysis in [CLIPS_FEATURES_ANALYSIS.md](CLIPS_FEATURES_ANALYSIS.md), we've implemented two **HIGH priority** features from CLIPS that significantly enhance the Rust rule engine:
+Following the analysis in [CLIPS_FEATURES_ANALYSIS.md](CLIPS_FEATURES_ANALYSIS.md), we've implemented **HIGH priority** features from CLIPS that significantly enhance the Rust rule engine:
 
-1. **Template System** (deftemplate) - Type-safe structured facts
-2. **Defglobal** - Global variables accessible across rule firings
+1. **Template System** (deftemplate) - Type-safe structured facts *(v0.10.0)*
+2. **Defglobal** - Global variables accessible across rule firings *(v0.10.0)*
+3. **Deffacts** - Initial fact definitions *(v0.11.0)*
 
-These features are available in **v0.10.0** and bring our Drools compatibility from ~95% to **~97%**.
+These features bring our Drools compatibility from ~95% to **~97%**.
 
 ---
 
@@ -368,7 +369,222 @@ println!("Revenue: {:?}", engine.globals().get("revenue_today")?);
 
 ---
 
-## 3. Combined Usage Example
+## 3. Deffacts (Initial Facts)
+
+### What is it?
+
+Deffacts provides **initial fact definitions** that are automatically loaded into working memory, similar to:
+- CLIPS's `deffacts`
+- Drools's declared facts
+- Database seed data
+
+### Why use it?
+
+✅ **Initial State**: Define starting state for your system
+✅ **Seed Data**: Pre-populate working memory with default entities
+✅ **Testing**: Consistent initial state for test scenarios
+✅ **Reset Support**: Restore original state with `reset_with_deffacts()`
+✅ **Organization**: Group related initial facts together
+
+### Basic Usage
+
+```rust
+use rust_rule_engine::rete::{IncrementalEngine, DeffactsBuilder, FactValue, TypedFacts};
+
+let mut engine = IncrementalEngine::new();
+
+// Create initial person facts
+let mut person1 = TypedFacts::new();
+person1.set("name", FactValue::String("Alice".to_string()));
+person1.set("age", FactValue::Integer(30));
+
+let mut person2 = TypedFacts::new();
+person2.set("name", FactValue::String("Bob".to_string()));
+person2.set("age", FactValue::Integer(25));
+
+// Create deffacts using builder
+let initial_people = DeffactsBuilder::new("initial-people")
+    .add_fact("Person", person1)
+    .add_fact("Person", person2)
+    .with_description("Initial person data")
+    .build();
+
+// Register deffacts
+engine.deffacts_mut().register(initial_people)?;
+
+// Load all deffacts into working memory
+let handles = engine.load_deffacts();
+println!("Loaded {} facts", handles.len());
+```
+
+### Advanced Features
+
+#### Multiple Deffacts Sets
+
+```rust
+// First deffacts set - Users
+let users_deffacts = DeffactsBuilder::new("system-users")
+    .add_fact("User", admin_data)
+    .add_fact("User", guest_data)
+    .with_description("System user accounts")
+    .build();
+
+// Second deffacts set - Configuration
+let config_deffacts = DeffactsBuilder::new("system-config")
+    .add_fact("Config", config_data)
+    .with_description("System configuration")
+    .build();
+
+// Register both
+engine.deffacts_mut().register(users_deffacts)?;
+engine.deffacts_mut().register(config_deffacts)?;
+
+// Load all at once
+let handles = engine.load_deffacts();
+```
+
+#### Batch Add Facts
+
+```rust
+let mut person1 = TypedFacts::new();
+person1.set("name", FactValue::String("Alice".to_string()));
+
+let mut person2 = TypedFacts::new();
+person2.set("name", FactValue::String("Bob".to_string()));
+
+let people = vec![person1, person2];
+
+let deffacts = DeffactsBuilder::new("people")
+    .add_facts("Person", people)  // Add multiple facts of same type
+    .build();
+```
+
+#### Deffacts Registry
+
+```rust
+let registry = engine.deffacts();
+
+// List all deffacts
+let names = registry.list_deffacts();
+println!("Deffacts: {:?}", names);
+
+// Check existence
+if registry.exists("initial-data") {
+    println!("Found initial-data");
+}
+
+// Get total fact count
+let total = registry.total_fact_count();
+println!("Total facts: {}", total);
+
+// Load specific deffacts by name
+let handles = engine.load_deffacts_by_name("initial-data")?;
+```
+
+### Integration with Templates
+
+Deffacts works seamlessly with templates for type-safe initial facts:
+
+```rust
+// Define template
+let customer_template = TemplateBuilder::new("Customer")
+    .required_string("customer_id")
+    .string_field("name")
+    .string_field("tier")
+    .float_field("total_spent")
+    .build();
+
+engine.templates_mut().register(customer_template);
+
+// Create initial customers
+let mut customer1 = TypedFacts::new();
+customer1.set("customer_id", FactValue::String("C001".to_string()));
+customer1.set("name", FactValue::String("VIP Corp".to_string()));
+customer1.set("tier", FactValue::String("VIP".to_string()));
+customer1.set("total_spent", FactValue::Float(50000.0));
+
+let customers_deffacts = DeffactsBuilder::new("initial-customers")
+    .add_fact("Customer", customer1)
+    .with_description("VIP customers")
+    .build();
+
+engine.deffacts_mut().register(customers_deffacts)?;
+
+// Load deffacts - will validate against template!
+let handles = engine.load_deffacts();
+```
+
+### Reset and Reload
+
+Similar to CLIPS reset functionality:
+
+```rust
+// Initial load
+let handles = engine.load_deffacts();
+
+// Modify facts...
+engine.update(handles[0], modified_data)?;
+
+// Reset - clears working memory and reloads all deffacts
+let new_handles = engine.reset_with_deffacts();
+// All facts restored to original deffacts values!
+```
+
+### Usage with Rules
+
+```rust
+// Create initial pending orders
+let orders_deffacts = DeffactsBuilder::new("pending-orders")
+    .add_fact("Order", order1)
+    .add_fact("Order", order2)
+    .add_fact("Order", order3)
+    .with_description("Orders waiting to be processed")
+    .build();
+
+engine.deffacts_mut().register(orders_deffacts)?;
+
+// Load business rules
+let rules = r#"
+rule "HighValueOrder" salience 20 no-loop {
+    when
+        Order.amount > 1000
+    then
+        Order.priority = "high";
+}
+
+rule "ProcessOrder" salience 10 no-loop {
+    when
+        Order.status == "pending"
+    then
+        Order.status = "processing";
+}
+"#;
+
+GrlReteLoader::load_from_string(rules, &mut engine)?;
+
+// Load deffacts
+engine.load_deffacts();
+
+// Fire rules on initial facts
+engine.reset();
+let fired = engine.fire_all();
+println!("Processed {} rules", fired.len());
+```
+
+### Comparison with Other Systems
+
+| Feature | Rust Deffacts | CLIPS deffacts | Drools declared | SQL seed data |
+|---------|---------------|----------------|-----------------|---------------|
+| Initial Facts | ✅ | ✅ | ✅ | ✅ |
+| Type Safety | ✅ (with templates) | ⚠️ Runtime | ✅ | ⚠️ (depends) |
+| Reset Support | ✅ | ✅ | ❌ | ❌ |
+| Multiple Sets | ✅ | ✅ | ❌ | ✅ (migrations) |
+| Builder API | ✅ | ❌ | ❌ | ⚠️ (ORMs) |
+| Runtime Load | ✅ | ❌ (parse-time) | ✅ | ✅ |
+
+---
+
+## 4. Combined Usage Example
 
 Here's a real-world example combining both features:
 
@@ -572,9 +788,10 @@ Template + insert + rules:         ~35µs (total)
 
 ## 7. Future Enhancements
 
-Planned for v0.11.0:
+Completed in v0.11.0:
+- ✅ **Deffacts**: Initial fact definitions (CLIPS feature)
 
-- **Deffacts**: Initial fact definitions (CLIPS feature)
+Planned for future releases:
 - **Test CE**: Arbitrary condition evaluation in patterns
 - **Multi-field Variables**: Pattern matching on arrays
 - **Global Access in Rules**: Direct global reference in `when` clauses
@@ -643,16 +860,55 @@ engine.globals() -> &GlobalsRegistry
 engine.globals_mut() -> &mut GlobalsRegistry
 ```
 
+### Deffacts API
+
+```rust
+// DeffactsBuilder
+DeffactsBuilder::new(name)
+    .add_fact(fact_type, data)
+    .add_facts(fact_type, vec![data1, data2])
+    .with_description(description)
+    .build() -> Deffacts
+
+// Deffacts
+deffacts.name -> String
+deffacts.facts -> Vec<FactInstance>
+deffacts.description -> Option<String>
+deffacts.fact_count() -> usize
+deffacts.is_empty() -> bool
+
+// DeffactsRegistry
+registry.register(deffacts) -> Result<()>
+registry.register_or_replace(deffacts)
+registry.get(name) -> Option<&Deffacts>
+registry.get_mut(name) -> Option<&mut Deffacts>
+registry.exists(name) -> bool
+registry.remove(name) -> Result<Deffacts>
+registry.list_deffacts() -> Vec<String>
+registry.get_all_facts() -> Vec<(String, FactInstance)>
+registry.total_fact_count() -> usize
+registry.clear()
+
+// IncrementalEngine
+engine.deffacts() -> &DeffactsRegistry
+engine.deffacts_mut() -> &mut DeffactsRegistry
+engine.load_deffacts() -> Vec<FactHandle>
+engine.load_deffacts_by_name(name) -> Result<Vec<FactHandle>>
+engine.reset_with_deffacts() -> Vec<FactHandle>
+```
+
 ---
 
 ## 9. Examples
 
-See the complete working example:
-- [examples/rete_template_globals_demo.rs](examples/rete_template_globals_demo.rs)
+See the complete working examples:
+- [examples/rete_template_globals_demo.rs](examples/rete_template_globals_demo.rs) - Templates & Globals
+- [examples/rete_deffacts_demo.rs](examples/rete_deffacts_demo.rs) - Deffacts System
 
-Run it:
+Run them:
 ```bash
 cargo run --example rete_template_globals_demo
+cargo run --example rete_deffacts_demo
 ```
 
 ---
@@ -675,9 +931,17 @@ cargo run --example rete_template_globals_demo
 **Problem**: "Cannot modify read-only global"
 **Solution**: Use `define()` instead of `define_readonly()` for mutable globals
 
+### Deffacts Errors
+
+**Problem**: "Deffacts 'x' not found"
+**Solution**: Register the deffacts before calling `load_deffacts_by_name()`
+
+**Problem**: "Deffacts 'x' already exists"
+**Solution**: Use `register_or_replace()` instead of `register()` to overwrite
+
 ---
 
-**Last Updated**: 2025-10-31
-**Version**: rust-rule-engine v0.10.0
-**Features**: Template System, Defglobal
-**Next Release**: v0.11.0 with Deffacts, Test CE, Multi-field Variables
+**Last Updated**: 2025-11-03
+**Version**: rust-rule-engine v0.11.0
+**Features**: Template System, Defglobal, Deffacts
+**Next Release**: v0.12.0 with Test CE, Multi-field Variables

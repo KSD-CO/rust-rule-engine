@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.10.2 🦀⚡
+# Rust Rule Engine v0.11.0 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,11 +11,24 @@ A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)*
 
 ---
 
-## ✨ What's New in v0.10.2
+## ✨ What's New in v0.11.0
 
+🎯 **Deffacts System** - Initial fact definitions (CLIPS feature)!
+
+- **📦 Deffacts** - Pre-defined fact sets for initial state
+- **🔄 Reset Support** - Restore original facts with `reset_with_deffacts()`
+- **📋 Multiple Sets** - Organize initial facts by category
+- **✅ Template Integration** - Type-safe initial facts
+- **🏗️ Builder API** - Fluent interface for defining deffacts
+
+[**See Deffacts Demo →**](examples/rete_deffacts_demo.rs)
+
+### Previous Updates
+
+### v0.10.2
 📧 **Metadata Update** - Corrected author email contact information
 
-### Previous Updates (v0.10.1)
+### v0.10.1
 
 🚀 **RETE Performance Optimization + Comprehensive Benchmarks**!
 
@@ -52,6 +65,7 @@ A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)*
 - **🔥 RETE Algorithm** - High-performance pattern matching (~97% Drools parity)
 - **📋 Template System** - Type-safe structured facts *(v0.10.0)*
 - **🌍 Defglobal** - Global variables across firings *(v0.10.0)*
+- **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
 - **⚡ Incremental Updates** - Only re-evaluate affected rules
 - **🧠 Working Memory** - FactHandles with insert/update/retract
 - **🎯 Advanced Agenda** - Salience, activation groups, no-loop, max iterations guard
@@ -74,13 +88,13 @@ A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)*
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.10.1"
+rust-rule-engine = "0.11.0"
 ```
 
 ### Optional Features
 ```toml
 # Enable streaming support
-rust-rule-engine = { version = "0.10.1", features = ["streaming"] }
+rust-rule-engine = { version = "0.11.0", features = ["streaming"] }
 ```
 
 ---
@@ -336,8 +350,11 @@ rule "TemperatureAlert" {
 
 ## 🗺️ Roadmap
 
-### v0.11.0 (Next Release - 2-3 weeks)
-- [ ] **Deffacts** - Initial fact definitions (CLIPS feature)
+### v0.11.0 (Current Release)
+- [x] **Deffacts** - Initial fact definitions (CLIPS feature) ✅
+- **Target**: ~97% Drools compatibility maintained
+
+### v0.12.0 (Next Release - 2-3 weeks)
 - [ ] **Test CE** - Arbitrary conditions in patterns
 - [ ] **Multi-field Variables** - Array pattern matching
 - **Target**: ~98-99% Drools compatibility

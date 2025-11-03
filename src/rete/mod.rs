@@ -14,6 +14,7 @@ pub mod propagation;
 pub mod grl_loader;
 pub mod template;
 pub mod globals;
+pub mod deffacts;
 
 pub use alpha::*;
 pub use beta::*;
@@ -28,3 +29,4 @@ pub use propagation::*;
 pub use grl_loader::*;
 pub use template::*;
 pub use globals::*;
+pub use deffacts::*;
