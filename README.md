@@ -342,13 +342,6 @@ rule "TemperatureAlert" {
 - [ ] **Multi-field Variables** - Array pattern matching
 - **Target**: ~98-99% Drools compatibility
 
-### v1.0.0 (Stable Release)
-- [ ] Full API stability guarantee
-- [ ] 99% Drools compatibility
-- [ ] Performance optimizations
-- [ ] Comprehensive benchmarks
-- [ ] Production hardening
-
 ### Future Features
 - [ ] Truth Maintenance System (TMS)
 - [ ] Module System for rule organization
@@ -357,25 +350,6 @@ rule "TemperatureAlert" {
 - [ ] Visual rule builder UI
 
 [**Full Roadmap →**](docs/ROADMAP.md)
-
----
-
-## 📊 Comparison with Other Engines
-
-| Feature | Rust Engine | Drools | CLIPS |
-|---------|-------------|--------|-------|
-| **Performance** | ⚡ Excellent | Good | Excellent |
-| **Type Safety** | ✅ Compile-time | ⚠️ Runtime | ⚠️ Runtime |
-| **Memory Safety** | ✅ Guaranteed | ❌ JVM | ❌ Manual |
-| **RETE Algorithm** | ✅ RETE-UL | ✅ Full RETE | ✅ Full RETE |
-| **Pattern Matching** | ✅ Advanced | ✅ Advanced | ✅ Advanced |
-| **Plugin System** | ✅ Native | ⚠️ Limited | ❌ No |
-| **GRL Support** | ✅ Full | N/A | N/A |
-| **Template System** | ✅ v0.10.0 | ✅ | ✅ |
-| **Defglobal** | ✅ v0.10.0 | ✅ | ✅ |
-| **Drools Compatibility** | ~97% | 100% | ~60% |
-| **Learning Curve** | Medium | High | High |
-| **Ecosystem** | Growing | Mature | Mature |
 
 ---
 
