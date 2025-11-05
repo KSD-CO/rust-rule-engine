@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "0.11.0"
+version = "0.11.1"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A high-performance rule engine for Rust with RETE-UL algorithm (2-24x faster), CLIPS-inspired features (Template System, Defglobal, Deffacts), GRL support, and ~97% Drools compatibility"
@@ -64,6 +64,30 @@ harness = false
 
 [[bench]]
 name = "rete_simple_benchmark"
+harness = false
+
+[[bin]]
+name = "rete_1m_rules_benchmark"
+path = "benches/rete_1m_rules_benchmark.rs"
+
+[[bench]]
+name = "concurrent_access_test"
+harness = false
+
+[[bench]]
+name = "rule_updates_test"
+harness = false
+
+[[bench]]
+name = "streaming_test"
+harness = false
+
+[[bench]]
+name = "advanced_rete_analysis"
+harness = false
+
+[[bench]]
+name = "rete_2000_test"
 harness = false
 
 [[example]]
