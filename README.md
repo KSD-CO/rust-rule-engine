@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/workflows/CI/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with ~97% Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with good Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
@@ -61,8 +61,8 @@ A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)*
 - **Production Ready** - REST API, monitoring, health checks
 
 ### RETE-UL Engine (Recommended for 50+ rules)
-- **🚀 2-24x Faster** - Proven benchmarks vs traditional engine *(v0.10.1)*
-- **🔥 RETE Algorithm** - High-performance pattern matching (~97% Drools parity)
+- **🚀 High Performance** - Efficient RETE algorithm with incremental updates
+- **🔥 RETE Algorithm** - Advanced pattern matching with good Drools compatibility
 - **📋 Template System** - Type-safe structured facts *(v0.10.0)*
 - **🌍 Defglobal** - Global variables across firings *(v0.10.0)*
 - **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
@@ -70,7 +70,7 @@ A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)*
 - **🧠 Working Memory** - FactHandles with insert/update/retract
 - **🎯 Advanced Agenda** - Salience, activation groups, no-loop, max iterations guard
 - **🔗 Variable Binding** - Cross-pattern $var syntax
-- **💾 Memoization** - 99.99% cache hit rate
+- **💾 Memoization** - Efficient caching for repeated evaluations
 
 **Choose Your Engine:**
 - **< 10 rules** → Native Engine (simpler API, plugin support)
@@ -78,7 +78,7 @@ A high-performance rule engine for Rust with **RETE-UL algorithm (2-24x faster)*
 - **50+ rules** → RETE-UL Engine (2-24x faster, highly recommended)
 - **Both needs** → Hybrid approach
 
-📊 **Performance at 50 rules**: Traditional 1.72ms vs RETE 70µs = **24.4x faster**!
+📊 **Performance at 50 rules**: RETE shows good performance improvements over traditional engine!
 
 📖 [**Engine Comparison Guide →**](ENGINE_COMPARISON.md) | [**Quick Start Guide →**](QUICK_START_ENGINES.md)
 
