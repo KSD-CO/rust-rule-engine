@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.11.0 🦀⚡
+# Rust Rule Engine v0.12.0 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,8 +11,23 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 
 ---
 
-## ✨ What's New in v0.11.0
+## ✨ What's New in v0.12.0
 
+🧪 **Test CE (Conditional Element)** - CLIPS-inspired arbitrary boolean expressions!
+
+- **🔬 Test CE Syntax** - Call arbitrary functions in rule conditions without operators
+- **📝 GRL Support** - Parse `test(function(args))` directly from .grl files
+- **🎯 Native Engine** - Fully implemented with function registry
+- **⚡ Truthy Evaluation** - Automatic boolean conversion for all value types
+- **🔗 Negation Support** - Use `!test()` for negated conditions
+- **🤝 Combined Conditions** - Mix test() with regular conditions using AND/OR
+- **📚 Multiple Arguments** - Support functions with any number of arguments
+
+[**See Test CE Demo →**](examples/test_ce_comprehensive.rs) | [**CLIPS Features Guide →**](CLIPS_INSPIRED_FEATURES.md)
+
+### Previous Updates
+
+### v0.11.0
 🎯 **Deffacts System** - Initial fact definitions (CLIPS feature)!
 
 - **📦 Deffacts** - Pre-defined fact sets for initial state
@@ -22,8 +37,6 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 - **🏗️ Builder API** - Fluent interface for defining deffacts
 
 [**See Deffacts Demo →**](examples/rete_deffacts_demo.rs)
-
-### Previous Updates
 
 ### v0.10.2
 📧 **Metadata Update** - Corrected author email contact information
@@ -88,13 +101,13 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.11.0"
+rust-rule-engine = "0.12.0"
 ```
 
 ### Optional Features
 ```toml
 # Enable streaming support
-rust-rule-engine = { version = "0.11.0", features = ["streaming"] }
+rust-rule-engine = { version = "0.12.0", features = ["streaming"] }
 ```
 
 ---

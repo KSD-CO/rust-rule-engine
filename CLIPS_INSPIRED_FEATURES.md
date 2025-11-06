@@ -11,8 +11,9 @@ Following the analysis in [CLIPS_FEATURES_ANALYSIS.md](CLIPS_FEATURES_ANALYSIS.m
 1. **Template System** (deftemplate) - Type-safe structured facts *(v0.10.0)*
 2. **Defglobal** - Global variables accessible across rule firings *(v0.10.0)*
 3. **Deffacts** - Initial fact definitions *(v0.11.0)*
+4. **Test CE** (test conditional element) - Arbitrary boolean expressions *(v0.12.0)*
 
-These features bring our Drools compatibility from ~95% to **~97%**.
+These features bring our Drools compatibility from ~95% to **~97%** and provide powerful CLIPS-style condition evaluation.
 
 ---
 
@@ -584,7 +585,240 @@ println!("Processed {} rules", fired.len());
 
 ---
 
-## 4. Combined Usage Example
+## 4. Test CE (Test Conditional Element)
+
+### What is it?
+
+The Test CE allows you to call **arbitrary boolean functions** directly in rule conditions without comparison operators. This is a powerful CLIPS feature that enables:
+
+- **Custom validation logic** - Email validation, regex matching, range checks
+- **Complex computations** - Call any function that returns a boolean
+- **Multiple arguments** - Pass multiple fact fields or literals to test functions
+- **Negation support** - Use `!test()` for inverted logic
+- **Combined conditions** - Mix test() with regular conditions using AND/OR
+
+### Why use it?
+
+✅ **Arbitrary Logic**: Call any function, not limited to comparison operators
+✅ **Cleaner Rules**: More readable than complex AND/OR chains
+✅ **Function Reuse**: Share validation logic across multiple rules
+✅ **Type Flexibility**: Automatic truthy evaluation for all value types
+✅ **CLIPS Compatible**: Direct port of CLIPS test CE feature
+
+### Basic Usage
+
+```rust
+use rust_rule_engine::{RustRuleEngine, Facts, Value};
+
+let mut engine = RustRuleEngine::new();
+
+// Register a test function
+engine.register_function(
+    "is_valid_email",
+    |args: &[Value], _facts: &Facts| {
+        if let Some(Value::String(email)) = args.first() {
+            Ok(Value::Boolean(email.contains('@') && email.contains('.')))
+        } else {
+            Ok(Value::Boolean(false))
+        }
+    },
+);
+
+// Load GRL rule with test()
+let grl = r#"
+rule "ValidateEmail" {
+    when
+        test(is_valid_email(User.email))
+    then
+        User.status = "valid";
+}
+"#;
+engine.load_rules_from_string(grl)?;
+```
+
+### GRL Syntax
+
+```grl
+// Simple test CE
+rule "EmailCheck" {
+    when
+        test(is_valid_email(User.email))
+    then
+        User.verified = true;
+}
+
+// Test with multiple arguments
+rule "PriceRangeCheck" {
+    when
+        test(in_range(Product.price, 100, 1000))
+    then
+        Product.category = "mid-range";
+}
+
+// Combined with regular conditions
+rule "ApproveOrder" {
+    when
+        Order.amount > 100 &&
+        test(is_valid_email(Customer.email))
+    then
+        Order.status = "approved";
+}
+
+// Negated test CE
+rule "BlockInvalidEmail" {
+    when
+        User.checkEmail == true &&
+        !test(is_valid_email(User.email))
+    then
+        User.status = "blocked";
+}
+```
+
+### Advanced Features
+
+#### Multiple Test Functions
+
+```rust
+// Range validation
+engine.register_function(
+    "in_range",
+    |args: &[Value], _facts: &Facts| {
+        if args.len() >= 3 {
+            if let (Some(Value::Number(val)), Some(Value::Number(min)), Some(Value::Number(max)))
+                = (args.get(0), args.get(1), args.get(2)) {
+                return Ok(Value::Boolean(*val >= *min && *val <= *max));
+            }
+        }
+        Ok(Value::Boolean(false))
+    },
+);
+
+// Age validation
+engine.register_function(
+    "is_adult",
+    |args: &[Value], _facts: &Facts| {
+        if let Some(Value::Integer(age)) = args.first() {
+            Ok(Value::Boolean(*age >= 18))
+        } else {
+            Ok(Value::Boolean(false))
+        }
+    },
+);
+```
+
+#### Truthy Evaluation
+
+Test functions can return any value type, which is automatically converted to boolean:
+
+```rust
+engine.register_function(
+    "get_count",
+    |args: &[Value], _facts: &Facts| {
+        // Return integer - will be truthy if != 0
+        Ok(Value::Integer(5))
+    },
+);
+
+// In GRL:
+// test(get_count(items)) - fires if count != 0
+```
+
+**Truthy conversion rules:**
+- `Boolean(b)` → `b`
+- `Integer(i)` → `i != 0`
+- `Number(f)` → `f != 0.0`
+- `String(s)` → `!s.is_empty()`
+- Other types → `false`
+
+#### Combined Logic Example
+
+```rust
+let grl = r#"
+rule "PremiumCustomer" {
+    when
+        test(is_valid_email(Customer.email)) &&
+        test(in_range(Customer.age, 25, 65)) &&
+        Customer.spending > 1000
+    then
+        Customer.tier = "premium";
+}
+"#;
+```
+
+### Comparison Table
+
+| Feature | Test CE | Regular Condition | Function Call in WHEN |
+|---------|---------|-------------------|----------------------|
+| Syntax | `test(func(args))` | `field == value` | `func(args) == value` |
+| Operator Required | ❌ | ✅ | ✅ |
+| Returns Boolean Directly | ✅ | ❌ | ❌ |
+| Multiple Arguments | ✅ | ❌ | ✅ |
+| Truthy Evaluation | ✅ | ❌ | ❌ |
+| Negation | `!test()` | `field != value` | `func() != value` |
+| Use Case | Arbitrary logic | Simple comparison | Return value comparison |
+
+### Examples
+
+See [test_ce_comprehensive.rs](examples/test_ce_comprehensive.rs) for complete examples including:
+- Email validation
+- Range checking with multiple arguments
+- Combined conditions (regular + test CE)
+- Negated test CE
+- GRL file parsing
+
+### Current Implementation Status
+
+**Native Engine**: ✅ Fully implemented
+- Function registry
+- GRL parsing support
+- Truthy evaluation
+- Negation support
+- Combined conditions
+
+**RETE Engine**: 🚧 Partial
+- Function registry added
+- GRL parsing support
+- Evaluation logic pending
+
+### Common Use Cases
+
+#### Email Validation
+```grl
+rule "ValidateEmail" {
+    when
+        test(is_valid_email(User.email))
+    then
+        User.status = "verified";
+}
+```
+
+#### Business Hours Check
+```rust
+engine.register_function(
+    "is_business_hours",
+    |args: &[Value], _facts: &Facts| {
+        let now = chrono::Local::now();
+        let hour = now.hour();
+        Ok(Value::Boolean(hour >= 9 && hour < 17))
+    },
+);
+```
+
+#### Complex Validation
+```grl
+rule "ApproveTransaction" {
+    when
+        test(is_valid_card(Payment.card_number)) &&
+        test(has_sufficient_balance(Account.balance, Payment.amount)) &&
+        test(is_within_limit(Payment.amount, Account.daily_limit))
+    then
+        Payment.status = "approved";
+}
+```
+
+---
+
+## 5. Combined Usage Example
 
 Here's a real-world example combining both features:
 
@@ -941,7 +1175,7 @@ cargo run --example rete_deffacts_demo
 
 ---
 
-**Last Updated**: 2025-11-03
-**Version**: rust-rule-engine v0.11.0
-**Features**: Template System, Defglobal, Deffacts
-**Next Release**: v0.12.0 with Test CE, Multi-field Variables
+**Last Updated**: 2025-11-06
+**Version**: rust-rule-engine v0.12.0
+**Features**: Template System, Defglobal, Deffacts, Test CE
+**Next Release**: v0.13.0 with Multi-field Variables, RETE Test CE integration

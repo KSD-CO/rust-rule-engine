@@ -6,13 +6,15 @@
 //! - Efficient re-evaluation after updates
 
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use super::working_memory::{WorkingMemory, FactHandle};
 use super::network::{ReteUlNode, TypedReteUlRule};
-use super::facts::TypedFacts;
+use super::facts::{TypedFacts, FactValue};
 use super::agenda::{AdvancedAgenda, Activation};
 use super::template::TemplateRegistry;
 use super::globals::GlobalsRegistry;
 use super::deffacts::DeffactsRegistry;
+use crate::errors::{Result, RuleEngineError};
 
 /// Track which rules are affected by which fact types
 #[derive(Debug)]
@@ -68,6 +70,10 @@ impl Default for RuleDependencyGraph {
     }
 }
 
+/// Type alias for custom test functions in RETE engine
+/// Functions take a slice of FactValues and return a FactValue (typically Boolean)
+pub type ReteCustomFunction = Arc<dyn Fn(&[FactValue], &TypedFacts) -> Result<FactValue> + Send + Sync>;
+
 /// Incremental Propagation Engine
 /// Only re-evaluates rules affected by changed facts
 pub struct IncrementalEngine {
@@ -87,6 +93,8 @@ pub struct IncrementalEngine {
     globals: GlobalsRegistry,
     /// Deffacts registry for initial facts
     deffacts: DeffactsRegistry,
+    /// Custom functions for Test CE support
+    custom_functions: HashMap<String, ReteCustomFunction>,
 }
 
 impl IncrementalEngine {
@@ -98,6 +106,7 @@ impl IncrementalEngine {
             dependencies: RuleDependencyGraph::new(),
             agenda: AdvancedAgenda::new(),
             rule_matched_facts: HashMap::new(),
+            custom_functions: HashMap::new(),
             templates: TemplateRegistry::new(),
             globals: GlobalsRegistry::new(),
             deffacts: DeffactsRegistry::new(),
@@ -127,14 +136,18 @@ impl IncrementalEngine {
     }
 
     /// Update fact in working memory
-    pub fn update(&mut self, handle: FactHandle, data: TypedFacts) -> Result<(), String> {
+    pub fn update(&mut self, handle: FactHandle, data: TypedFacts) -> Result<()> {
         // Get fact type before update
         let fact_type = self.working_memory
             .get(&handle)
             .map(|f| f.fact_type.clone())
-            .ok_or_else(|| format!("FactHandle {} not found", handle))?;
+            .ok_or_else(|| RuleEngineError::FieldNotFound {
+                field: format!("FactHandle {} not found", handle),
+            })?;
 
-        self.working_memory.update(handle, data)?;
+        self.working_memory.update(handle, data).map_err(|e| RuleEngineError::EvaluationError {
+            message: e,
+        })?;
 
         // Trigger incremental propagation for this fact type
         self.propagate_changes_for_type(&fact_type);
@@ -143,14 +156,18 @@ impl IncrementalEngine {
     }
 
     /// Retract fact from working memory
-    pub fn retract(&mut self, handle: FactHandle) -> Result<(), String> {
+    pub fn retract(&mut self, handle: FactHandle) -> Result<()> {
         // Get fact type before retract
         let fact_type = self.working_memory
             .get(&handle)
             .map(|f| f.fact_type.clone())
-            .ok_or_else(|| format!("FactHandle {} not found", handle))?;
+            .ok_or_else(|| RuleEngineError::FieldNotFound {
+                field: format!("FactHandle {} not found", handle),
+            })?;
 
-        self.working_memory.retract(handle)?;
+        self.working_memory.retract(handle).map_err(|e| RuleEngineError::EvaluationError {
+            message: e,
+        })?;
 
         // Trigger incremental propagation for this fact type
         self.propagate_changes_for_type(&fact_type);
@@ -257,6 +274,36 @@ impl IncrementalEngine {
     /// Get mutable template registry
     pub fn templates_mut(&mut self) -> &mut TemplateRegistry {
         &mut self.templates
+    }
+
+    /// Register a custom function for Test CE support
+    ///
+    /// # Example
+    /// ```
+    /// use rust_rule_engine::rete::{IncrementalEngine, FactValue};
+    ///
+    /// let mut engine = IncrementalEngine::new();
+    /// engine.register_function(
+    ///     "is_valid_email",
+    ///     |args, _facts| {
+    ///         if let Some(FactValue::String(email)) = args.first() {
+    ///             Ok(FactValue::Boolean(email.contains('@')))
+    ///         } else {
+    ///             Ok(FactValue::Boolean(false))
+    ///         }
+    ///     }
+    /// );
+    /// ```
+    pub fn register_function<F>(&mut self, name: &str, func: F)
+    where
+        F: Fn(&[FactValue], &TypedFacts) -> Result<FactValue> + Send + Sync + 'static,
+    {
+        self.custom_functions.insert(name.to_string(), Arc::new(func));
+    }
+
+    /// Get a custom function by name (for Test CE evaluation)
+    pub fn get_function(&self, name: &str) -> Option<&ReteCustomFunction> {
+        self.custom_functions.get(name)
     }
 
     /// Get global variables registry

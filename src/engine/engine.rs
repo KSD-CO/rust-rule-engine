@@ -734,6 +734,57 @@ impl RustRuleEngine {
                     false
                 }
             }
+            ConditionExpression::Test { name, args } => {
+                // Test CE condition - expects boolean result
+                if self.config.debug_mode {
+                    println!("    🧪 Evaluating test CE: test({}({:?}))", name, args);
+                }
+
+                if let Some(function) = self.custom_functions.get(name) {
+                    // Resolve arguments from facts
+                    let arg_values: Vec<Value> = args
+                        .iter()
+                        .map(|arg| {
+                            let resolved = facts
+                                .get_nested(arg)
+                                .or_else(|| facts.get(arg))
+                                .unwrap_or(Value::String(arg.clone()));
+                            if self.config.debug_mode {
+                                println!("      Resolving arg '{}' -> {:?}", arg, resolved);
+                            }
+                            resolved
+                        })
+                        .collect();
+
+                    // Call the function
+                    match function(&arg_values, facts) {
+                        Ok(result_value) => {
+                            if self.config.debug_mode {
+                                println!("      Test result: {:?}", result_value);
+                            }
+                            // Test CE expects boolean result directly
+                            match result_value {
+                                Value::Boolean(b) => b,
+                                Value::Integer(i) => i != 0,
+                                Value::Number(f) => f != 0.0,
+                                Value::String(s) => !s.is_empty(),
+                                _ => false,
+                            }
+                        }
+                        Err(e) => {
+                            if self.config.debug_mode {
+                                println!("      Test function error: {}", e);
+                            }
+                            false
+                        }
+                    }
+                } else {
+                    if self.config.debug_mode {
+                        println!("      Test function '{}' not found", name);
+                    }
+                    false
+                }
+            }
         };
 
         if self.config.debug_mode {

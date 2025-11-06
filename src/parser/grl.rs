@@ -457,6 +457,31 @@ impl GRLParser {
             trimmed_clause
         };
 
+        // Handle Test CE: test(functionName(args...))
+        // This is a CLIPS-inspired feature for arbitrary boolean expressions
+        let test_regex = Regex::new(r#"^test\s*\(\s*([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*\)$"#)
+            .map_err(|e| RuleEngineError::ParseError {
+                message: format!("Test CE regex error: {}", e),
+            })?;
+
+        if let Some(captures) = test_regex.captures(clause_to_parse) {
+            let function_name = captures.get(1).unwrap().as_str().to_string();
+            let args_str = captures.get(2).unwrap().as_str();
+
+            // Parse arguments
+            let args: Vec<String> = if args_str.trim().is_empty() {
+                Vec::new()
+            } else {
+                args_str
+                    .split(',')
+                    .map(|arg| arg.trim().to_string())
+                    .collect()
+            };
+
+            let condition = Condition::with_test(function_name, args);
+            return Ok(ConditionGroup::single(condition));
+        }
+
         // Handle typed object conditions like: $TestCar : TestCarClass( speedUp == true && speed < maxSpeed )
         let typed_object_regex =
             Regex::new(r#"\$(\w+)\s*:\s*(\w+)\s*\(\s*(.+?)\s*\)"#).map_err(|e| {

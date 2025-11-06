@@ -14,6 +14,14 @@ pub enum ConditionExpression {
         /// Function arguments (field names or literal values)
         args: Vec<String>,
     },
+    /// Test CE - arbitrary expression that evaluates to boolean (CLIPS feature)
+    /// Example: test(calculate_discount(Order.amount) > 10.0)
+    Test {
+        /// Function name for the test
+        name: String,
+        /// Function arguments
+        args: Vec<String>,
+    },
 }
 
 /// Represents a single condition in a rule
@@ -61,6 +69,20 @@ impl Condition {
         }
     }
 
+    /// Create a new Test CE condition
+    /// The function must return a boolean value
+    pub fn with_test(function_name: String, args: Vec<String>) -> Self {
+        Self {
+            expression: ConditionExpression::Test {
+                name: function_name.clone(),
+                args,
+            },
+            operator: Operator::Equal, // Not used for Test CE
+            value: Value::Boolean(true), // Not used for Test CE
+            field: format!("test({})", function_name), // For backward compat
+        }
+    }
+
     /// Evaluate this condition against the given facts
     pub fn evaluate(&self, facts: &HashMap<String, Value>) -> bool {
         match &self.expression {
@@ -71,8 +93,8 @@ impl Condition {
                     false
                 }
             }
-            ConditionExpression::FunctionCall { .. } => {
-                // Function calls need engine context - will be handled by evaluate_with_engine
+            ConditionExpression::FunctionCall { .. } | ConditionExpression::Test { .. } => {
+                // Function calls and Test CE need engine context - will be handled by evaluate_with_engine
                 false
             }
         }
@@ -113,6 +135,33 @@ impl Condition {
                     if let Ok(result) = function(arg_values, facts) {
                         // Compare function result with expected value
                         return self.operator.evaluate(&result, &self.value);
+                    }
+                }
+                false
+            }
+            ConditionExpression::Test { name, args } => {
+                // Test CE: Call the function and expect boolean result
+                if let Some(function) = function_registry.get(name) {
+                    // Resolve arguments from facts
+                    let arg_values: Vec<Value> = args
+                        .iter()
+                        .map(|arg| {
+                            get_nested_value(facts, arg)
+                                .cloned()
+                                .unwrap_or(Value::String(arg.clone()))
+                        })
+                        .collect();
+
+                    // Call function
+                    if let Ok(result) = function(arg_values, facts) {
+                        // Test CE expects boolean result directly
+                        match result {
+                            Value::Boolean(b) => return b,
+                            Value::Integer(i) => return i != 0,
+                            Value::Number(f) => return f != 0.0,
+                            Value::String(s) => return !s.is_empty(),
+                            _ => return false,
+                        }
                     }
                 }
                 false

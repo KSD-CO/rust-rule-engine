@@ -1,0 +1,52 @@
+// Test CE Rules for RETE Engine
+// Demonstrates Test CE syntax with RETE-UL compatibility
+
+// Rule 1: Email validation using test CE
+rule "ValidateEmail" salience 10 {
+    when
+        test(is_valid_email(User.email))
+    then
+        User.status = "valid";
+        Log("Email validation passed");
+}
+
+// Rule 2: Price range check with test CE
+rule "CheckPriceRange" salience 5 {
+    when
+        test(in_range(Product.price, 100, 1000))
+    then
+        Product.category = "mid-range";
+        Log("Product categorized as mid-range");
+}
+
+// Rule 3: Combined conditions - regular AND test CE
+rule "ApproveOrder" salience 15 {
+    when
+        Order.amount > 100 &&
+        test(is_valid_email(Customer.email))
+    then
+        Order.status = "approved";
+        Order.discount = 50.0;
+        Log("Order approved with discount");
+}
+
+// Rule 4: Multiple test CEs combined
+rule "PremiumCustomer" salience 20 {
+    when
+        test(is_valid_email(Customer.email)) &&
+        test(in_range(Customer.age, 25, 65)) &&
+        Customer.spending > 1000
+    then
+        Customer.tier = "premium";
+        Log("Customer upgraded to premium");
+}
+
+// Rule 5: Negated test CE
+rule "BlockInvalidEmail" {
+    when
+        User.checkEmail == true &&
+        !test(is_valid_email(User.email))
+    then
+        User.status = "blocked";
+        Log("Invalid email blocked");
+}
