@@ -1,0 +1,76 @@
+// Conflict Resolution Demo Rules
+// Demonstrates different salience levels and rule complexity
+
+// High priority fraud detection (salience: 100)
+rule "FraudDetection" salience 100 no-loop {
+    when
+        Transaction.amount > 10000 &&
+        Transaction.country != Customer.country &&
+        Transaction.time_diff < 60
+    then
+        Transaction.status = "fraud_suspected";
+        Alert.fraud = true;
+        Log("CRITICAL: Fraud detected!");
+}
+
+// High value transaction approval (salience: 50)
+rule "HighValueApproval" salience 50 no-loop {
+    when
+        Transaction.amount > 5000 &&
+        Transaction.status != "fraud_suspected"
+    then
+        Transaction.requires_approval = true;
+        Log("High value transaction requires approval");
+}
+
+// VIP customer discount (salience: 40)
+rule "VIPDiscount" salience 40 no-loop {
+    when
+        Customer.tier == "VIP" &&
+        Order.amount > 1000
+    then
+        Order.discount = 0.20;
+        Order.priority = "high";
+        Log("VIP discount applied");
+}
+
+// Standard transaction processing (salience: 10)
+rule "StandardProcessing" salience 10 no-loop {
+    when
+        Transaction.amount > 0 &&
+        Transaction.status != "fraud_suspected"
+    then
+        Transaction.status = "processing";
+        Log("Standard processing");
+}
+
+// Low priority logging (salience: 5)
+rule "AuditLog" salience 5 no-loop {
+    when
+        Transaction.amount > 0
+    then
+        Audit.logged = true;
+        Log("Transaction logged");
+}
+
+// Simple validation rule (1 condition - for Simplicity strategy)
+rule "ValidateUser" salience 15 no-loop {
+    when
+        User.verified == true
+    then
+        User.status = "active";
+}
+
+// Complex risk assessment (5 conditions - for Complexity strategy)
+rule "RiskAssessment" salience 20 no-loop {
+    when
+        Customer.age >= 18 &&
+        Customer.credit_score > 600 &&
+        Customer.account_age > 365 &&
+        Customer.payment_history == "good" &&
+        Transaction.amount < 50000
+    then
+        Transaction.risk_level = "low";
+        Transaction.auto_approve = true;
+        Log("Low risk transaction");
+}

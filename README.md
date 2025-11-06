@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.12.0 🦀⚡
+# Rust Rule Engine v0.13.0 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,8 +11,24 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 
 ---
 
-## ✨ What's New in v0.12.0
+## ✨ What's New in v0.13.0
 
+⚡ **Conflict Resolution Strategies** - CLIPS/Drools-inspired rule ordering!
+
+- **🎯 8 Strategies** - Salience, LEX, MEA, Depth, Breadth, Simplicity, Complexity, Random
+- **📊 Priority-Based** - Control rule execution order with salience
+- **🕐 Recency-Based** - Most recent facts fire first (LEX)
+- **🔍 Specificity** - More specific rules fire first (Complexity, MEA)
+- **⚙️ Performance** - Simple rules before complex (Simplicity)
+- **🔄 Dynamic Switching** - Change strategies at runtime
+- **✅ CLIPS Compatible** - Industry-standard conflict resolution
+- **📈 ~98% Drools Parity** - Enhanced compatibility
+
+[**See Conflict Resolution Demo →**](examples/conflict_resolution_demo.rs) | [**CLIPS Features Guide →**](CLIPS_INSPIRED_FEATURES.md)
+
+### Previous Updates
+
+### v0.12.0
 🧪 **Test CE (Conditional Element)** - CLIPS-inspired arbitrary boolean expressions!
 
 - **🔬 Test CE Syntax** - Call arbitrary functions in rule conditions without operators
@@ -23,9 +39,7 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 - **🤝 Combined Conditions** - Mix test() with regular conditions using AND/OR
 - **📚 Multiple Arguments** - Support functions with any number of arguments
 
-[**See Test CE Demo →**](examples/test_ce_comprehensive.rs) | [**CLIPS Features Guide →**](CLIPS_INSPIRED_FEATURES.md)
-
-### Previous Updates
+[**See Test CE Demo →**](examples/test_ce_comprehensive.rs)
 
 ### v0.11.0
 🎯 **Deffacts System** - Initial fact definitions (CLIPS feature)!
@@ -79,9 +93,10 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 - **📋 Template System** - Type-safe structured facts *(v0.10.0)*
 - **🌍 Defglobal** - Global variables across firings *(v0.10.0)*
 - **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
-- **⚡ Incremental Updates** - Only re-evaluate affected rules
+- **🧪 Test CE** - Arbitrary boolean expressions in rules *(v0.12.0)*
+- **⚡ Conflict Resolution** - 8 CLIPS strategies (Salience, LEX, MEA, etc.) *(v0.13.0)*
+- **🎯 Incremental Updates** - Only re-evaluate affected rules
 - **🧠 Working Memory** - FactHandles with insert/update/retract
-- **🎯 Advanced Agenda** - Salience, activation groups, no-loop, max iterations guard
 - **🔗 Variable Binding** - Cross-pattern $var syntax
 - **💾 Memoization** - Efficient caching for repeated evaluations
 
@@ -101,13 +116,13 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.12.0"
+rust-rule-engine = "0.13.0"
 ```
 
 ### Optional Features
 ```toml
 # Enable streaming support
-rust-rule-engine = { version = "0.12.0", features = ["streaming"] }
+rust-rule-engine = { version = "0.13.0", features = ["streaming"] }
 ```
 
 ---
@@ -363,14 +378,14 @@ rule "TemperatureAlert" {
 
 ## 🗺️ Roadmap
 
-### v0.11.0 (Current Release)
-- [x] **Deffacts** - Initial fact definitions (CLIPS feature) ✅
-- **Target**: ~97% Drools compatibility maintained
+### v0.13.0 (Current Release)
+- [x] **Conflict Resolution Strategies** - 8 CLIPS strategies ✅
+- **Target**: ~98% Drools compatibility
 
-### v0.12.0 (Next Release - 2-3 weeks)
-- [ ] **Test CE** - Arbitrary conditions in patterns
+### v0.14.0 (Next Release - 2-3 weeks)
 - [ ] **Multi-field Variables** - Array pattern matching
-- **Target**: ~98-99% Drools compatibility
+- [ ] **RETE Test CE Integration** - Test CE in RETE engine
+- **Target**: ~99% Drools compatibility
 
 ### Future Features
 - [ ] Truth Maintenance System (TMS)

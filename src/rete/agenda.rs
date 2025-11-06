@@ -6,9 +6,48 @@
 //! - Ruleflow Groups: Workflow-based execution
 //! - Auto-focus: Automatic agenda group switching
 //! - Lock-on-active: Prevent re-activation during rule firing
+//! - Conflict Resolution Strategies: Multiple ordering strategies
 
 use std::collections::{HashMap, HashSet, BinaryHeap};
 use std::cmp::Ordering;
+
+/// Conflict Resolution Strategy
+///
+/// Determines how conflicting activations are ordered in the agenda.
+/// Similar to CLIPS and Drools conflict resolution strategies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConflictResolutionStrategy {
+    /// Salience-based ordering (default) - Higher salience fires first
+    Salience,
+
+    /// LEX (Recency) - Most recently inserted facts fire first
+    /// Sorts by the timestamp of the most recent fact used in the activation
+    LEX,
+
+    /// MEA (Recency + Specificity) - LEX + more specific rules first
+    /// Combines recency with condition count (more conditions = more specific)
+    MEA,
+
+    /// Depth-first - Fire rule immediately after insertion
+    /// Re-evaluates agenda after each rule fires
+    Depth,
+
+    /// Breadth-first - Collect all activations before firing (default)
+    /// Fires all activations in current cycle before re-evaluating
+    Breadth,
+
+    /// Simplicity - Rules with fewer conditions fire first
+    /// Simpler rules are prioritized
+    Simplicity,
+
+    /// Complexity - Rules with more conditions fire first
+    /// More complex/specific rules are prioritized
+    Complexity,
+
+    /// Random - Random ordering
+    /// Useful for testing non-deterministic behavior
+    Random,
+}
 
 /// Activation represents a rule that is ready to fire
 #[derive(Debug, Clone)]
@@ -31,6 +70,8 @@ pub struct Activation {
     pub auto_focus: bool,
     /// Creation timestamp (for conflict resolution)
     pub created_at: std::time::Instant,
+    /// Number of conditions in the rule (for complexity/simplicity strategies)
+    pub condition_count: usize,
     /// Internal ID
     id: usize,
 }
@@ -48,8 +89,15 @@ impl Activation {
             lock_on_active: false,
             auto_focus: false,
             created_at: std::time::Instant::now(),
+            condition_count: 1, // Default to 1
             id: 0,
         }
+    }
+
+    /// Builder: Set condition count
+    pub fn with_condition_count(mut self, count: usize) -> Self {
+        self.condition_count = count;
+        self
     }
 
     /// Builder: Set activation group
@@ -135,6 +183,8 @@ pub struct AdvancedAgenda {
     active_ruleflow_groups: HashSet<String>,
     /// Next activation ID
     next_id: usize,
+    /// Conflict resolution strategy
+    strategy: ConflictResolutionStrategy,
 }
 
 impl AdvancedAgenda {
@@ -149,9 +199,95 @@ impl AdvancedAgenda {
             locked_groups: HashSet::new(),
             active_ruleflow_groups: HashSet::new(),
             next_id: 0,
+            strategy: ConflictResolutionStrategy::Salience, // Default strategy
         };
         agenda.activations.insert("MAIN".to_string(), BinaryHeap::new());
         agenda
+    }
+
+    /// Set the conflict resolution strategy
+    pub fn set_strategy(&mut self, strategy: ConflictResolutionStrategy) {
+        self.strategy = strategy;
+        // Re-sort all existing activations with new strategy
+        let current_strategy = self.strategy; // Copy strategy to avoid borrow issues
+        for heap in self.activations.values_mut() {
+            let mut activations: Vec<_> = heap.drain().collect();
+            Self::sort_with_strategy(current_strategy, &mut activations);
+            *heap = activations.into_iter().collect();
+        }
+    }
+
+    /// Get current strategy
+    pub fn strategy(&self) -> ConflictResolutionStrategy {
+        self.strategy
+    }
+
+    /// Sort activations according to given strategy (static method)
+    fn sort_with_strategy(strategy: ConflictResolutionStrategy, activations: &mut [Activation]) {
+        match strategy {
+            ConflictResolutionStrategy::Salience => {
+                // Default: sort by salience (higher first), then by recency
+                activations.sort_by(|a, b| {
+                    match b.salience.cmp(&a.salience) {
+                        Ordering::Equal => b.created_at.cmp(&a.created_at),
+                        other => other,
+                    }
+                });
+            }
+            ConflictResolutionStrategy::LEX => {
+                // Recency: most recent first
+                activations.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+            }
+            ConflictResolutionStrategy::MEA => {
+                // Recency + Specificity: recent first, then more conditions
+                activations.sort_by(|a, b| {
+                    match b.created_at.cmp(&a.created_at) {
+                        Ordering::Equal => b.condition_count.cmp(&a.condition_count),
+                        other => other,
+                    }
+                });
+            }
+            ConflictResolutionStrategy::Depth => {
+                // Depth-first: same as salience (handled in fire loop)
+                activations.sort_by(|a, b| {
+                    match b.salience.cmp(&a.salience) {
+                        Ordering::Equal => b.created_at.cmp(&a.created_at),
+                        other => other,
+                    }
+                });
+            }
+            ConflictResolutionStrategy::Breadth => {
+                // Breadth-first: same as salience (default behavior)
+                activations.sort_by(|a, b| {
+                    match b.salience.cmp(&a.salience) {
+                        Ordering::Equal => b.created_at.cmp(&a.created_at),
+                        other => other,
+                    }
+                });
+            }
+            ConflictResolutionStrategy::Simplicity => {
+                // Simpler rules (fewer conditions) first
+                activations.sort_by(|a, b| {
+                    match a.condition_count.cmp(&b.condition_count) {
+                        Ordering::Equal => b.created_at.cmp(&a.created_at),
+                        other => other,
+                    }
+                });
+            }
+            ConflictResolutionStrategy::Complexity => {
+                // More complex rules (more conditions) first
+                activations.sort_by(|a, b| {
+                    match b.condition_count.cmp(&a.condition_count) {
+                        Ordering::Equal => b.created_at.cmp(&a.created_at),
+                        other => other,
+                    }
+                });
+            }
+            ConflictResolutionStrategy::Random => {
+                // Random ordering using fastrand
+                fastrand::shuffle(activations);
+            }
+        }
     }
 
     /// Add an activation to the agenda

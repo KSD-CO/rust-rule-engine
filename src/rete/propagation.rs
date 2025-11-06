@@ -251,6 +251,22 @@ impl IncrementalEngine {
         &mut self.agenda
     }
 
+    /// Set conflict resolution strategy
+    ///
+    /// Controls how conflicting rules in the agenda are ordered.
+    /// Available strategies: Salience (default), LEX, MEA, Depth, Breadth, Simplicity, Complexity, Random
+    pub fn set_conflict_resolution_strategy(
+        &mut self,
+        strategy: super::agenda::ConflictResolutionStrategy,
+    ) {
+        self.agenda.set_strategy(strategy);
+    }
+
+    /// Get current conflict resolution strategy
+    pub fn conflict_resolution_strategy(&self) -> super::agenda::ConflictResolutionStrategy {
+        self.agenda.strategy()
+    }
+
     /// Get statistics
     pub fn stats(&self) -> IncrementalEngineStats {
         IncrementalEngineStats {

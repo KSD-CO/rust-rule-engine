@@ -12,8 +12,9 @@ Following the analysis in [CLIPS_FEATURES_ANALYSIS.md](CLIPS_FEATURES_ANALYSIS.m
 2. **Defglobal** - Global variables accessible across rule firings *(v0.10.0)*
 3. **Deffacts** - Initial fact definitions *(v0.11.0)*
 4. **Test CE** (test conditional element) - Arbitrary boolean expressions *(v0.12.0)*
+5. **Conflict Resolution Strategies** - CLIPS/Drools-inspired rule ordering *(v0.13.0)*
 
-These features bring our Drools compatibility from ~95% to **~97%** and provide powerful CLIPS-style condition evaluation.
+These features bring our Drools compatibility from ~95% to **~98%** and provide powerful CLIPS-style condition evaluation.
 
 ---
 
@@ -818,9 +819,67 @@ rule "ApproveTransaction" {
 
 ---
 
-## 5. Combined Usage Example
+## 5. Conflict Resolution Strategies
 
-Here's a real-world example combining both features:
+### What is it?
+
+Conflict Resolution Strategies determine **which rule fires first** when multiple rules are activated simultaneously. This is a core CLIPS/Drools feature inspired by:
+- **CLIPS** conflict resolution strategies (Depth, Breadth, LEX, MEA, Complexity, Simplicity, Random)
+- **Drools** salience and agenda groups
+- **Production system theory** for conflict resolution
+
+When multiple rules match the same facts, the engine needs a systematic way to decide the firing order. Different strategies are optimal for different scenarios.
+
+### Why use it?
+
+✅ **Deterministic Behavior**: Control exact rule execution order
+✅ **Priority-Based**: Higher priority rules fire first (Salience)
+✅ **Recency-Based**: Most recent facts trigger first (LEX)
+✅ **Specificity-Based**: More specific rules fire first (MEA, Complexity)
+✅ **Simplicity-First**: Simpler rules fire before complex ones (Simplicity)
+✅ **CLIPS/Drools Compatible**: Industry-standard conflict resolution
+
+### Available Strategies
+
+| Strategy | Description | Best For |
+|----------|-------------|----------|
+| **Salience** | Priority-based (higher values first) | Business rules with explicit priorities |
+| **LEX** | Recency (most recent facts first) | Event processing, reactive systems |
+| **MEA** | Recency + Specificity (recent + complex) | Balanced performance |
+| **Depth** | Depth-first execution | Workflow chains |
+| **Breadth** | Breadth-first execution | Parallel processing |
+| **Simplicity** | Fewer conditions first | Quick checks before complex logic |
+| **Complexity** | More conditions first | Specific rules before general ones |
+| **Random** | Random ordering | Testing, fuzzing |
+
+### Basic Usage
+
+```rust
+use rust_rule_engine::rete::{
+    IncrementalEngine, ConflictResolutionStrategy, Activation
+};
+
+let mut engine = IncrementalEngine::new();
+
+// Set strategy (default is Salience)
+engine.set_conflict_resolution_strategy(ConflictResolutionStrategy::Salience);
+
+// Rules fire in priority order: HighPriority → MediumPriority → LowPriority
+```
+
+### Examples
+
+See [conflict_resolution_demo.rs](examples/conflict_resolution_demo.rs) for comprehensive examples of all 8 strategies.
+
+```bash
+cargo run --example conflict_resolution_demo
+```
+
+---
+
+## 6. Combined Usage Example
+
+Here's a real-world example combining multiple features:
 
 ```rust
 use rust_rule_engine::rete::{
@@ -922,7 +981,7 @@ fn main() -> Result<()> {
 
 ---
 
-## 4. Migration Guide
+## 7. Migration Guide
 
 ### From Native Engine (No Templates)
 
@@ -968,7 +1027,7 @@ while let Some(event) = event_stream.next() {
 
 ---
 
-## 5. Performance Considerations
+## 8. Performance Considerations
 
 ### Template Validation
 
@@ -994,7 +1053,7 @@ Template + insert + rules:         ~35µs (total)
 
 ---
 
-## 6. Best Practices
+## 9. Best Practices
 
 ### Templates
 
@@ -1020,7 +1079,7 @@ Template + insert + rules:         ~35µs (total)
 
 ---
 
-## 7. Future Enhancements
+## 10. Future Enhancements
 
 Completed in v0.11.0:
 - ✅ **Deffacts**: Initial fact definitions (CLIPS feature)
@@ -1034,7 +1093,7 @@ Planned for future releases:
 
 ---
 
-## 8. API Reference
+## 11. API Reference
 
 ### Template API
 
@@ -1133,7 +1192,7 @@ engine.reset_with_deffacts() -> Vec<FactHandle>
 
 ---
 
-## 9. Examples
+## 12. Examples
 
 See the complete working examples:
 - [examples/rete_template_globals_demo.rs](examples/rete_template_globals_demo.rs) - Templates & Globals
@@ -1147,7 +1206,7 @@ cargo run --example rete_deffacts_demo
 
 ---
 
-## 10. Troubleshooting
+## 13. Troubleshooting
 
 ### Template Validation Fails
 
@@ -1176,6 +1235,6 @@ cargo run --example rete_deffacts_demo
 ---
 
 **Last Updated**: 2025-11-06
-**Version**: rust-rule-engine v0.12.0
-**Features**: Template System, Defglobal, Deffacts, Test CE
-**Next Release**: v0.13.0 with Multi-field Variables, RETE Test CE integration
+**Version**: rust-rule-engine v0.13.0
+**Features**: Template System, Defglobal, Deffacts, Test CE, Conflict Resolution Strategies
+**Next Release**: v0.14.0 with Multi-field Variables, RETE Test CE integration
