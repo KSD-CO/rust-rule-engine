@@ -154,7 +154,7 @@ pub struct ReteUlRule {
 ### Phase 2: Fact Evaluation (Every Execution)
 
 <p align="center">
-    <img src="./docs/images/RETE-UL-Data-Flow-Fact-Evaluation.png" alt="Fact Evaluation (Every Execution)" width="500"/>
+    <img src="./docs/images/RETE-UL-Data-Flow-Fact-Evaluation.png" alt="Fact Evaluation (Every Execution)" width="800"/>
 </p>
 
 ### Phase 3: Agenda Execution
@@ -213,13 +213,13 @@ UlAnd(
 ### NOT Nodes (Negation)
 
 <p align="center">
-    <img src="./docs/images/NOT-Nodes.png" alt="NOT Nodes (Negation)" width="350"/>
+    <img src="./docs/images/NOT-Nodes.png" alt="NOT Nodes (Negation)" width="200"/>
 </p>
 
 ### EXISTS Nodes (Existential Quantifier)
 
 <p align="center">
-    <img src="./docs/images/EXISTS-Nodes.png" alt="EXISTS Nodes (Existential Quantifier)" width="350"/>
+    <img src="./docs/images/EXISTS-Nodes.png" alt="EXISTS Nodes (Existential Quantifier)" width="200"/>
 </p>
 
 **Example**:
@@ -232,7 +232,7 @@ UlAnd(
 ### FORALL Nodes (Universal Quantifier)
 
 <p align="center">
-    <img src="./docs/images/FORALL-Nodes.png" alt="FORALL Nodes (Universal Quantifier)" width="350"/>
+    <img src="./docs/images/FORALL-Nodes.png" alt="FORALL Nodes (Universal Quantifier)" width="500"/>
 </p>
 
 ---
