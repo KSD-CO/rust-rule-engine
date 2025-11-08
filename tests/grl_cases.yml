@@ -79,6 +79,11 @@
       sendEmails: false
     Shipping:
       readyToShip: false
+  expect:
+    fired_rules_contains: ["VIPExistsRule", "NoPendingOrdersRule"]
+    facts:
+      "System.vipFound": true
+      "Marketing.sendEmails": true
 
 - name: no_loop_test
   grl: "examples/rules/no_loop_test.grl"
@@ -87,6 +92,9 @@
       score: 75
       safe: true
       bonus: false
+  expect:
+    facts:
+      "Player.bonus": true
 
 - name: function_calls
   grl: "examples/rules/function_calls.grl"
@@ -97,6 +105,8 @@
       Text: "this is a test"
       Count: 3
       Active: true
+  expect:
+    fired_rules_contains: ["FunctionCallDemo1", "FunctionCallDemo2", "FunctionCallDemo3", "FunctionCallDemo4"]
 
 - name: test_complex_rule
   grl: "examples/rules/test_complex_rule.grl"
@@ -109,6 +119,10 @@
       hasCoupon: false
     date:
       isHoliday: false
+  expect:
+    fired_rules_contains: ["Complex Business Rule", "Simple Backup Rule"]
+    facts:
+      "user.hasAccess": true
 
 - name: complete_speedup
   grl: "examples/rules/complete_speedup.grl"
@@ -120,6 +134,11 @@
       SpeedIncrement: 10.0
     DistanceRecord:
       TotalDistance: 900.0
+  expect:
+    fired_rules_contains: ["SpeedUpOptimized", "DistanceTracking"]
+    facts:
+      "TestCar.Speed": 60.0
+      "DistanceRecord.TotalDistance": 950.0
 
 - name: test_ce_rete_rules
   grl: "examples/rules/test_ce_rete_rules.grl"
@@ -135,6 +154,13 @@
       price: 200.0
     Order:
       amount: 150
+  expect:
+    fired_rules_contains: ["ValidateEmail", "CheckPriceRange", "ApproveOrder", "PremiumCustomer"]
+    facts:
+      "Order.status": "approved"
+      "Customer.tier": "premium"
+      "Product.category": "mid-range"
+      "User.status": "valid"
 
 - name: car_functions
   grl: "examples/rules/car_functions.grl"
@@ -148,6 +174,10 @@
       Name: "John Doe"
       Experience: 7
       License: "VALID"
+  expect:
+    fired_rules_contains: ["SpeedLimitCheck", "DriverValidation", "EngineDiagnostics", "MaintenanceCheck"]
+    facts:
+      "Car.IsRunning": true
 
 - name: rule_attributes_test
   grl: "examples/rules/rule_attributes_test.grl"
@@ -167,6 +197,14 @@
       confirmed: false
     Technology:
       advanced: false
+  expect:
+    fired_rules_contains: ["ValidationRule", "PremiumDiscount", "WelcomeEmail", "ComplexRule"]
+    facts:
+      "Order.status": "processed"
+      "Payment.confirmed": true
+      "Customer.welcomeEmailSent": true
+      "Order.discount": 0.20
+      "User.status": "valid"
 
 - name: generic_method_calls
   grl: "examples/rules/generic_method_calls.grl"
@@ -176,6 +214,12 @@
       Processed: true
       Value: 200
       Type: "sample"
+  expect:
+    fired_rules_contains: ["GenericMethodCall1", "GenericMethodCall2", "GenericMethodCall3"]
+    facts:
+      "Object.Processed": true
+      "Object.Category": "HIGH_VALUE"
+      "Object.Priority": "URGENT"
 
 - name: advanced_nested_rules
   grl: "examples/rules/advanced_nested_rules.grl"
@@ -195,6 +239,13 @@
     product:
       category: "electronics"
       stock: 20
+  expect:
+    fired_rules_contains: ["Premium Customer Benefits", "Holiday Season Special", "Flash Sale Eligibility"]
+    facts:
+      "user.freeShipping": true
+      "order.giftWrap": true
+      "product.flashSaleEligible": true
+      "user.loyaltyPoints": 6500
 
 - name: fraud_detection
   grl: "examples/rules/fraud_detection.grl"
@@ -210,19 +261,26 @@
       LastLoginLocation: "DOMESTIC"
     Alert:
       FraudScore: 0
+  expect:
+    fired_rules_contains: ["HighAmountAlert", "ForeignLocationAlert", "HighRiskMerchantAlert", "LateNightAlert"]
 
 - name: simple_business_rules
   grl: "examples/rules/simple_business_rules.grl"
   initial_facts:
-    Person:
+    user:
       age: 70
-      name: "John Smith"
+      vipStatus: true
+      orderCount: 1
     Order:
       amount: 1500.0
       customer: "John Smith"
     Customer:
       name: "Jane Doe"
       total_spent: 15000.0
+  expect:
+    fired_rules_contains: ["Basic Age Check", "VIP Customer Discount"]
+    facts:
+      "user.canPurchase": true
 
 - name: pattern_matching
   grl: "examples/rules/pattern_matching.grl"
@@ -241,6 +299,12 @@
       priority: "normal"
     Shipping:
       enabled: false
+  expect:
+    fired_rules_contains: ["ActivatePremiumService", "SendMarketingEmail", "ComplexBusinessRule"]
+    facts:
+      "System.premiumServiceActive": true
+      "System.vipModeEnabled": true
+      "Marketing.emailSent": true
 
 - name: grule_demo
   grl: "examples/rules/grule_demo.grl"
@@ -254,6 +318,12 @@
       IsNew: true
     Order:
       Amount: 150
+  expect:
+    fired_rules_contains: ["AdultCheck", "VIPCheck", "NewCustomerWelcome", "CalculateFinalAmount"]
+    facts:
+      "User.IsVIP": true
+      "Order.DiscountPercent": 10.0
+      "Customer.LoyaltyPoints": 100
 
 - name: advanced_method_calls
   grl: "examples/rules/advanced_method_calls.grl"
@@ -264,6 +334,11 @@
       IsRunning: true
       Engine: "V6"
       FuelLevel: 15.0
+  expect:
+    fired_rules_contains: ["AdvancedSpeedControl", "FuelAlert"]
+    facts:
+      "TestCar.WarningLight": true
+      "TestCar.EcoMode": true
 
 - name: complete_speedup_duplicate
   grl: "examples/rules/complete_speedup.grl"
@@ -275,6 +350,11 @@
       SpeedIncrement: 10.0
     DistanceRecord:
       TotalDistance: 900.0
+  expect:
+    fired_rules_contains: ["SpeedUpOptimized", "DistanceTracking"]
+    facts:
+      "TestCar.Speed": 60.0
+      "DistanceRecord.TotalDistance": 950.0
 
 - name: ecommerce
   grl: "examples/rules/ecommerce.grl"
@@ -286,6 +366,12 @@
     Order:
       Total: 120.0
       ItemCount: 1
+  expect:
+    fired_rules_contains: ["NewCustomerDiscount", "FreeShippingLargeOrders"]
+    facts:
+      "Order.DiscountRate": 0.10
+      "Order.FreeShipping": true
+      "Customer.WelcomeEmailSent": true
 
 - name: rete_demo
   grl: "examples/rules/rete_demo.grl"
@@ -307,6 +393,16 @@
       stock: 5
     Alert:
       fraud_detected: false
+  expect:
+    fired_rules_contains: ["AdultVerification", "SeniorBenefits", "HighValueOrder", "VIPCustomerUpgrade", "FraudAlert", "AllPaymentsCleared", "InventoryAlert"]
+    facts:
+      "Person.is_adult": true
+      "Person.tier": "senior"
+      "Order.requires_approval": true
+      "Customer.tier": "VIP"
+      "Alert.fraud_detected": true
+      "Order.payment_complete": true
+      "Alert.low_stock": true
 
 - name: legacy_format_rules
   grl: "examples/rules/legacy_format_rules.grl"
@@ -319,6 +415,12 @@
     Order:
       Amount: 1500.0
       PaymentMethod: "credit"
+  expect:
+    fired_rules_contains: ["CheckUserAge", "VIPProcessing", "OrderValidation"]
+    facts:
+      "User.CanDrink": true
+      "Customer.PriorityProcessing": true
+      "Order.RequiresApproval": true
 
 - name: test_ce_rules
   grl: "examples/rules/test_ce_rules.grl"
@@ -334,3 +436,10 @@
       price: 200.0
     Order:
       amount: 150
+  expect:
+    fired_rules_contains: ["ValidateEmail", "CheckPriceRange", "ApproveOrder", "PremiumCustomer"]
+    facts:
+      "Order.status": "approved"
+      "Customer.tier": "premium"
+      "Product.category": "mid-range"
+      "User.status": "valid"
