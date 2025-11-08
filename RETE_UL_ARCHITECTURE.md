@@ -20,37 +20,9 @@ This document describes the RETE-UL (Rete Universal Logic) algorithm implementat
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        RETE-UL ENGINE                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐  │
-│  │   GRL Rules  │─────▶│  Auto Build  │─────▶│ RETE Network │  │
-│  │   (Source)   │      │  Condition   │      │   (Cached)   │  │
-│  └──────────────┘      │    Groups    │      └──────────────┘  │
-│                        └──────────────┘             │           │
-│                                                      │           │
-│                                                      ▼           │
-│  ┌──────────────┐                          ┌──────────────┐    │
-│  │    Facts     │─────────────────────────▶│   Evaluate   │    │
-│  │  (HashMap)   │                          │    Nodes     │    │
-│  └──────────────┘                          └──────────────┘    │
-│                                                      │           │
-│                                                      ▼           │
-│                        ┌──────────────────────────────────┐     │
-│                        │       Agenda System              │     │
-│                        │  - Priority Sorting              │     │
-│                        │  - No-Loop Control               │     │
-│                        │  - Max Iterations Guard          │     │
-│                        └──────────────────────────────┬───┘     │
-│                                                        │         │
-│                                                        ▼         │
-│                                                ┌──────────────┐  │
-│                                                │ Fire Actions │  │
-│                                                └──────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="./docs/images/RETE-UL-ENGINE.png" alt="Architecture Overview" width="350"/>
+</p>
 
 ---
 
@@ -175,119 +147,21 @@ pub struct ReteUlRule {
 
 ### Phase 1: Rule Compilation (One-Time)
 
-```
-┌─────────────┐
-│  GRL Rule   │
-│   Source    │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────────┐
-│  Parser             │
-│  GRLParser::parse() │
-└──────┬──────────────┘
-       │
-       ▼
-┌──────────────────────────┐
-│  Rule Structure          │
-│  - name                  │
-│  - conditions            │
-│  - action                │
-└──────┬───────────────────┘
-       │
-       ▼
-┌───────────────────────────────┐
-│  build_rete_ul_from_rule()    │
-│  Converts ConditionGroup to   │
-│  optimized ReteUlNode tree    │
-└──────┬────────────────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│  ReteUlNode Network  │
-│  (Cached forever)    │
-└──────────────────────┘
-```
+<p align="center">
+  <img src="./docs/images/RETE-UL-Data-Flow-Compilation.png" alt="Rule Compilation (One-Time)" width="250"/>
+</p>
 
 ### Phase 2: Fact Evaluation (Every Execution)
 
-```
-┌────────────────┐
-│  Facts HashMap │
-│  key → value   │
-└────────┬───────┘
-         │
-         ▼
-┌─────────────────────────┐
-│  evaluate_rete_ul_node()│
-│  Traverse cached network│
-└────────┬────────────────┘
-         │
-         ▼
-    ┌────────────┐
-    │ UlAlpha?   │───Yes──▶ Check fact value
-    └────┬───────┘
-         │No
-         ▼
-    ┌────────────┐
-    │  UlAnd?    │───Yes──▶ Evaluate left && right
-    └────┬───────┘
-         │No
-         ▼
-    ┌────────────┐
-    │  UlOr?     │───Yes──▶ Evaluate left || right
-    └────┬───────┘
-         │No
-         ▼
-    ┌────────────┐
-    │  UlNot?    │───Yes──▶ Negate inner result
-    └────┬───────┘
-         │
-         ▼
-    ┌─────────────┐
-    │   Result    │
-    │ true/false  │
-    └─────────────┘
-```
+<p align="center">
+    <img src="./docs/images/RETE-UL-Data-Flow-Fact-Evaluation.png" alt="Fact Evaluation (Every Execution)" width="800"/>
+</p>
 
 ### Phase 3: Agenda Execution
 
-```
-┌──────────────────────────────┐
-│  fire_rete_ul_rules_with_    │
-│  agenda()                     │
-└──────┬───────────────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│  Loop (max 100 iter) │
-└──────┬───────────────┘
-       │
-       ▼
-┌─────────────────────────────┐
-│  Build Agenda                │
-│  - Filter: evaluate_node()   │
-│  - Filter: !already_fired    │
-│  - Sort: by priority         │
-└──────┬──────────────────────┘
-       │
-       ▼
-   ┌────────────┐
-   │ Agenda     │───Empty──▶ DONE
-   │ empty?     │
-   └────┬───────┘
-        │Not empty
-        ▼
-   ┌──────────────────┐
-   │ For each rule in │
-   │ agenda:          │
-   │  - Execute action│
-   │  - Mark fired    │
-   │  - Add to result │
-   └────┬─────────────┘
-        │
-        └────▶ Loop again
-```
+<p align="center">
+    <img src="./docs/images/RETE-UL-Data-Flow-Agenda-Execution.png" alt="Agenda Execution" width="500"/>
+</p>
 
 ---
 
@@ -295,19 +169,9 @@ pub struct ReteUlRule {
 
 ### Alpha Nodes (Leaf Tests)
 
-```
-┌─────────────────────┐
-│    AlphaNode        │
-├─────────────────────┤
-│ field: "user.age"   │
-│ operator: ">"       │
-│ value: "25"         │
-└─────────────────────┘
-          │
-          ▼
-    Evaluate against
-    facts["user.age"]
-```
+<p align="center">
+    <img src="./docs/images/Alpha-Node.png" alt="Alpha Nodes (Leaf Tests)" width="250"/>
+</p>
 
 **Example**:
 ```rust
@@ -327,20 +191,9 @@ fact_value.parse::<f64>() > "25".parse::<f64>() // true
 
 ### AND Nodes (Conjunction)
 
-```
-        ┌─────────┐
-        │  UlAnd  │
-        └────┬────┘
-             │
-        ┌────┴────┐
-        ▼         ▼
-    ┌──────┐  ┌──────┐
-    │ Left │  │Right │
-    │ Node │  │ Node │
-    └──────┘  └──────┘
-
-    Result = Left AND Right
-```
+<p align="center">
+    <img src="./docs/images/AND-Nodes.png" alt="AND Nodes (Conjunction)" width="350"/>
+</p>
 
 **Example**:
 ```rust
@@ -353,52 +206,21 @@ UlAnd(
 
 ### OR Nodes (Disjunction)
 
-```
-        ┌────────┐
-        │  UlOr  │
-        └────┬───┘
-             │
-        ┌────┴────┐
-        ▼         ▼
-    ┌──────┐  ┌──────┐
-    │ Left │  │Right │
-    │ Node │  │ Node │
-    └──────┘  └──────┘
-
-    Result = Left OR Right
-```
+<p align="center">
+    <img src="./docs/images/OR-Nodes.png" alt="OR Nodes (Disjunction)" width="350"/>
+</p>
 
 ### NOT Nodes (Negation)
 
-```
-        ┌────────┐
-        │  UlNot │
-        └────┬───┘
-             │
-             ▼
-        ┌────────┐
-        │ Inner  │
-        │  Node  │
-        └────────┘
-
-    Result = NOT Inner
-```
+<p align="center">
+    <img src="./docs/images/NOT-Nodes.png" alt="NOT Nodes (Negation)" width="200"/>
+</p>
 
 ### EXISTS Nodes (Existential Quantifier)
 
-```
-        ┌───────────┐
-        │ UlExists  │
-        └─────┬─────┘
-              │
-              ▼
-    ┌──────────────────┐
-    │ Pattern          │
-    │ e.g., user.*.age │
-    └──────────────────┘
-
-    Result = At least ONE match exists
-```
+<p align="center">
+    <img src="./docs/images/EXISTS-Nodes.png" alt="EXISTS Nodes (Existential Quantifier)" width="200"/>
+</p>
 
 **Example**:
 ```rust
@@ -409,19 +231,9 @@ UlAnd(
 
 ### FORALL Nodes (Universal Quantifier)
 
-```
-        ┌───────────┐
-        │ UlForall  │
-        └─────┬─────┘
-              │
-              ▼
-    ┌──────────────────┐
-    │ Pattern          │
-    │ e.g., order.*    │
-    └──────────────────┘
-
-    Result = ALL matches satisfy condition
-```
+<p align="center">
+    <img src="./docs/images/FORALL-Nodes.png" alt="FORALL Nodes (Universal Quantifier)" width="500"/>
+</p>
 
 ---
 
@@ -533,20 +345,9 @@ Per-rule average: ~5 µs (RETE)
 
 ### Scalability
 
-```
-Time (µs)
-    │
-200 │                           ╱ Traditional
-    │                       ╱
-150 │                   ╱
-    │               ╱
-100 │           ╱──────────── RETE (linear ~5µs/rule)
-    │       ╱
- 50 │   ╱
-    │╱
-  0 └─────────────────────────────────▶ Rules
-    0   10   20   30   40   50   60
-```
+<p align="center">
+    <img src="./docs/images/Scalability.png" alt="Scalability" width="350"/>
+</p>
 
 **Key Insight**: RETE maintains **linear scalability** (~5µs per rule), while traditional engine degrades exponentially.
 
@@ -722,14 +523,9 @@ Rule {
 
 ### Step 2: Network Building
 
-```
-        ReteUlNode::UlAnd
-              │
-        ┌─────┴─────┐
-        ▼           ▼
-   UlAlpha      UlAlpha
-   (spent>5K)   (tier!=VIP)
-```
+<p align="center">
+    <img src="./docs/images/Network-Building.png" alt="Network Building" width="350"/>
+</p>
 
 ### Step 3: Evaluation with Facts
 

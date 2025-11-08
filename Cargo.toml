@@ -49,6 +49,7 @@ tracing-subscriber = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 # AI API dependencies
 reqwest = { version = "0.11", features = ["json"] }
+serde_yaml = "0.9"
 
 [[bench]]
 name = "rule_engine_benchmarks"

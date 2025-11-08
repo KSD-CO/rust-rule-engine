@@ -1,0 +1,336 @@
+- name: action_handlers
+  grl: "examples/rules/action_handlers.grl"
+  initial_facts:
+    Customer:
+      name: "Alice Johnson"
+      email: "alice.johnson@example.com"
+      tier: "VIP"
+      total_spent: 12500.0
+      welcome_sent: false
+    Order:
+      id: "ORD-002"
+      total: 3500.0
+      status: "pending"
+      alert_sent: false
+      processed: false
+      payment_complete: false
+    Transaction:
+      id: "TXN-001"
+      amount: 3500.0
+      suspicious: true
+    Payment:
+      method: "credit_card"
+      status: "verified"
+      amount: 3500.0
+    Alert:
+      fraud_sent: false
+  expect:
+    fired_rules_contains: ["FraudDetection"]
+    facts:
+      "Alert.fraud_sent": true
+      "Payment.status": "processed"
+
+- name: method_calls
+  grl: "examples/rules/method_calls.grl"
+  initial_facts:
+    TestCar:
+      SpeedIncrement: 10.0
+      MaxSpeed: 100.0
+      Speed: 30.0
+      SpeedUp: true
+  expect:
+    executed_ok: true
+
+- name: conflict_resolution
+  grl: "examples/rules/conflict_resolution_rules.grl"
+  initial_facts:
+    Transaction:
+      amount: 12000
+      country: "RU"
+      time_diff: 30
+    Customer:
+      tier: "VIP"
+      country: "US"
+    Order:
+      amount: 1500
+    User:
+      verified: true
+  expect:
+    fired_rules_contains: ["FraudDetection", "HighValueApproval"]
+
+# Automatically added minimal run cases for all other .grl files to ensure coverage
+
+- name: simple_patterns
+  grl: "examples/rules/simple_patterns.grl"
+  initial_facts:
+    Customer1:
+      tier: "Regular"
+    Customer2:
+      tier: "VIP"
+    System:
+      vipFound: false
+    Order1:
+      status: "completed"
+    Order2:
+      status: "shipped"
+    Order3:
+      status: "processed"
+    Marketing:
+      sendEmails: false
+    Shipping:
+      readyToShip: false
+
+- name: no_loop_test
+  grl: "examples/rules/no_loop_test.grl"
+  initial_facts:
+    Player:
+      score: 75
+      safe: true
+      bonus: false
+
+- name: function_calls
+  grl: "examples/rules/function_calls.grl"
+  initial_facts:
+    Data:
+      Value: 60
+      MaxValue: 100
+      Text: "this is a test"
+      Count: 3
+      Active: true
+
+- name: test_complex_rule
+  grl: "examples/rules/test_complex_rule.grl"
+  initial_facts:
+    user:
+      vipStatus: true
+      isGuest: false
+    order:
+      amount: 1000
+      hasCoupon: false
+    date:
+      isHoliday: false
+
+- name: complete_speedup
+  grl: "examples/rules/complete_speedup.grl"
+  initial_facts:
+    TestCar:
+      SpeedUp: true
+      Speed: 50.0
+      MaxSpeed: 200.0
+      SpeedIncrement: 10.0
+    DistanceRecord:
+      TotalDistance: 900.0
+
+- name: test_ce_rete_rules
+  grl: "examples/rules/test_ce_rete_rules.grl"
+  initial_facts:
+    User:
+      email: "user@example.com"
+      checkEmail: true
+    Customer:
+      email: "customer@example.com"
+      age: 30
+      spending: 2000
+    Product:
+      price: 200.0
+    Order:
+      amount: 150
+
+- name: car_functions
+  grl: "examples/rules/car_functions.grl"
+  initial_facts:
+    Car:
+      Speed: 95.0
+      MaxSpeed: 120.0
+      Engine: "V6"
+      IsRunning: true
+    Driver:
+      Name: "John Doe"
+      Experience: 7
+      License: "VALID"
+
+- name: rule_attributes_test
+  grl: "examples/rules/rule_attributes_test.grl"
+  initial_facts:
+    User:
+      age: 25
+    Customer:
+      tier: "premium"
+      isNew: true
+      legacy: false
+      total_spent: 1200.0
+    Order:
+      total: 150
+      status: "pending"
+    Payment:
+      method: "credit"
+      confirmed: false
+    Technology:
+      advanced: false
+
+- name: generic_method_calls
+  grl: "examples/rules/generic_method_calls.grl"
+  initial_facts:
+    Object:
+      Status: "ACTIVE"
+      Processed: true
+      Value: 200
+      Type: "sample"
+
+- name: advanced_nested_rules
+  grl: "examples/rules/advanced_nested_rules.grl"
+  initial_facts:
+    user:
+      vipLevel: 6
+      totalSpent: 15000
+      membershipYears: 4
+      loyaltyPoints: 6000
+      notificationPrefs: "all"
+      hasGiftCard: false
+    date:
+      month: 12
+      day: 21
+    order:
+      amount: 250
+    product:
+      category: "electronics"
+      stock: 20
+
+- name: fraud_detection
+  grl: "examples/rules/fraud_detection.grl"
+  initial_facts:
+    Transaction:
+      Amount: 12000
+      Location: "FOREIGN"
+      MerchantCategory: "CASINO"
+      Time: "23:30"
+    Account:
+      DailyLimit: 1000
+      Balance: 5000
+      LastLoginLocation: "DOMESTIC"
+    Alert:
+      FraudScore: 0
+
+- name: simple_business_rules
+  grl: "examples/rules/simple_business_rules.grl"
+  initial_facts:
+    Person:
+      age: 70
+      name: "John Smith"
+    Order:
+      amount: 1500.0
+      customer: "John Smith"
+    Customer:
+      name: "Jane Doe"
+      total_spent: 15000.0
+
+- name: pattern_matching
+  grl: "examples/rules/pattern_matching.grl"
+  initial_facts:
+    Customer1:
+      tier: "Regular"
+    Customer2:
+      tier: "VIP"
+    System:
+      premiumServiceActive: false
+      vipModeEnabled: false
+    Marketing:
+      emailSent: false
+    Inventory:
+      autoReplenishment: false
+      priority: "normal"
+    Shipping:
+      enabled: false
+
+- name: grule_demo
+  grl: "examples/rules/grule_demo.grl"
+  initial_facts:
+    User:
+      Age: 25
+      Country: "US"
+      SpendingTotal: 2000
+      IsAdult: true
+    Customer:
+      IsNew: true
+    Order:
+      Amount: 150
+
+- name: advanced_method_calls
+  grl: "examples/rules/advanced_method_calls.grl"
+  initial_facts:
+    TestCar:
+      Speed: 85.0
+      MaxSpeed: 100.0
+      IsRunning: true
+      Engine: "V6"
+      FuelLevel: 15.0
+
+- name: complete_speedup_duplicate
+  grl: "examples/rules/complete_speedup.grl"
+  initial_facts:
+    TestCar:
+      SpeedUp: true
+      Speed: 50.0
+      MaxSpeed: 200.0
+      SpeedIncrement: 10.0
+    DistanceRecord:
+      TotalDistance: 900.0
+
+- name: ecommerce
+  grl: "examples/rules/ecommerce.grl"
+  initial_facts:
+    Customer:
+      IsNew: true
+      Membership: "regular"
+      TotalSpent: 500.0
+    Order:
+      Total: 120.0
+      ItemCount: 1
+
+- name: rete_demo
+  grl: "examples/rules/rete_demo.grl"
+  initial_facts:
+    Person:
+      age: 70
+      is_adult: false
+    Order:
+      amount: 1500
+      quantity: 2
+    Customer:
+      total_spent: 15000
+      orders_count: 30
+    Transaction:
+      suspicious: true
+    Payment:
+      status: "verified"
+    Product:
+      stock: 5
+    Alert:
+      fraud_detected: false
+
+- name: legacy_format_rules
+  grl: "examples/rules/legacy_format_rules.grl"
+  initial_facts:
+    User:
+      Age: 25
+      Country: "US"
+    Customer:
+      VipStatus: true
+    Order:
+      Amount: 1500.0
+      PaymentMethod: "credit"
+
+- name: test_ce_rules
+  grl: "examples/rules/test_ce_rules.grl"
+  initial_facts:
+    User:
+      email: "user@example.com"
+      checkEmail: true
+    Customer:
+      email: "customer@example.com"
+      age: 30
+      spending: 2000
+    Product:
+      price: 200.0
+    Order:
+      amount: 150
