@@ -20,7 +20,9 @@ This document describes the RETE-UL (Rete Universal Logic) algorithm implementat
 
 ## Architecture Overview
 
-![Architecture Overview](./docs/images/RETE-UL-ENGINE.png)
+<p align="center">
+  <img src="./docs/images/RETE-UL-ENGINE.png" alt="Architecture Overview" width="350"/>
+</p>
 
 ---
 
@@ -145,15 +147,21 @@ pub struct ReteUlRule {
 
 ### Phase 1: Rule Compilation (One-Time)
 
-![Rule Compilation (One-Time)](./docs/images/RETE-UL-Data-Flow-Compilation.png)
+<p align="center">
+  <img src="./docs/images/RETE-UL-Data-Flow-Compilation.png" alt="Rule Compilation (One-Time)" width="350"/>
+</p>
 
 ### Phase 2: Fact Evaluation (Every Execution)
 
-![Fact Evaluation (Every Execution)](./docs/images/RETE-UL-Data-Flow-Fact-Evaluation.png)
+<p align="center">
+    <img src="./docs/images/RETE-UL-Data-Flow-Fact-Evaluation.png" alt="Fact Evaluation (Every Execution)" width="500"/>
+</p>
 
 ### Phase 3: Agenda Execution
 
-![Agenda Execution](./docs/images/RETE-UL-Data-Flow-Agenda-Execution.png)
+<p align="center">
+    <img src="./docs/images/RETE-UL-Data-Flow-Agenda-Execution.png" alt="Agenda Execution" width="500"/>
+</p>
 
 ---
 
@@ -161,7 +169,9 @@ pub struct ReteUlRule {
 
 ### Alpha Nodes (Leaf Tests)
 
-![Alpha Nodes (Leaf Tests)](./docs/images/Alpha-Node.png)
+<p align="center">
+    <img src="./docs/images/Alpha-Node.png" alt="Alpha Nodes (Leaf Tests)" width="350"/>
+</p>
 
 **Example**:
 ```rust
@@ -181,7 +191,9 @@ fact_value.parse::<f64>() > "25".parse::<f64>() // true
 
 ### AND Nodes (Conjunction)
 
-![AND Nodes (Conjunction)](./docs/images/AND-Nodes.png)
+<p align="center">
+    <img src="./docs/images/AND-Nodes.png" alt="AND Nodes (Conjunction)" width="350"/>
+</p>
 
 **Example**:
 ```rust
@@ -194,15 +206,21 @@ UlAnd(
 
 ### OR Nodes (Disjunction)
 
-![OR Nodes (Disjunction)](./docs/images/OR-Nodes.png)
+<p align="center">
+    <img src="./docs/images/OR-Nodes.png" alt="OR Nodes (Disjunction)" width="350"/>
+</p>
 
 ### NOT Nodes (Negation)
 
-![NOT Nodes (Negation)](./docs/images/NOT-Nodes.png)
+<p align="center">
+    <img src="./docs/images/NOT-Nodes.png" alt="NOT Nodes (Negation)" width="350"/>
+</p>
 
 ### EXISTS Nodes (Existential Quantifier)
 
-![EXISTS Nodes (Existential Quantifier)](./docs/images/EXISTS-Nodes.png)
+<p align="center">
+    <img src="./docs/images/EXISTS-Nodes.png" alt="EXISTS Nodes (Existential Quantifier)" width="350"/>
+</p>
 
 **Example**:
 ```rust
@@ -213,7 +231,9 @@ UlAnd(
 
 ### FORALL Nodes (Universal Quantifier)
 
-![FORALL Nodes (Universal Quantifier)](./docs/images/FORALL-Nodes.png)
+<p align="center">
+    <img src="./docs/images/FORALL-Nodes.png" alt="FORALL Nodes (Universal Quantifier)" width="350"/>
+</p>
 
 ---
 
@@ -325,7 +345,9 @@ Per-rule average: ~5 µs (RETE)
 
 ### Scalability
 
-![Scalability)](./docs/images/Scalability.png)
+<p align="center">
+    <img src="./docs/images/Scalability.png" alt="Scalability" width="350"/>
+</p>
 
 **Key Insight**: RETE maintains **linear scalability** (~5µs per rule), while traditional engine degrades exponentially.
 
@@ -501,7 +523,9 @@ Rule {
 
 ### Step 2: Network Building
 
-![Network Building)](./docs/images/Network-Building.png)
+<p align="center">
+    <img src="./docs/images/Network-Building.png" alt="Network Building" width="350"/>
+</p>
 
 ### Step 3: Evaluation with Facts
 
