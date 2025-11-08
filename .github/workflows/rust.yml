@@ -3,6 +3,8 @@ name: Rust
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - 'v*.*.*'
   pull_request:
     branches: [ "main" ]
 
@@ -20,3 +22,23 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+
+  publish:
+    name: Publish to crates.io
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          # Ensure the tag's Cargo.toml version matches the tag name (vX.Y.Z -> X.Y.Z)
+          echo "Publishing crate for ${GITHUB_REF}"
+          cargo publish
