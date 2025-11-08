@@ -148,7 +148,7 @@ pub struct ReteUlRule {
 ### Phase 1: Rule Compilation (One-Time)
 
 <p align="center">
-  <img src="./docs/images/RETE-UL-Data-Flow-Compilation.png" alt="Rule Compilation (One-Time)" width="350"/>
+  <img src="./docs/images/RETE-UL-Data-Flow-Compilation.png" alt="Rule Compilation (One-Time)" width="250"/>
 </p>
 
 ### Phase 2: Fact Evaluation (Every Execution)
@@ -170,7 +170,7 @@ pub struct ReteUlRule {
 ### Alpha Nodes (Leaf Tests)
 
 <p align="center">
-    <img src="./docs/images/Alpha-Node.png" alt="Alpha Nodes (Leaf Tests)" width="350"/>
+    <img src="./docs/images/Alpha-Node.png" alt="Alpha Nodes (Leaf Tests)" width="250"/>
 </p>
 
 **Example**:
