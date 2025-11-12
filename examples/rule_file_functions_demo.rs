@@ -98,7 +98,63 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         println!("{}", result);
         Ok(Value::String(result))
     });
+        // Also register action handlers for the same names because parser maps some
+    // 'then' function calls to ActionType::Custom, not function calls. This
+    // ensures both styles are handled by this demo.
+    engine.register_action_handler("checkSpeedLimit", |params, facts| {
+        // params use numeric keys "0", "1" etc.
+        let speed = params
+            .get("0")
+            .cloned()
+            .unwrap_or(Value::Number(0.0));
+        let limit = params
+            .get("1")
+            .cloned()
+            .unwrap_or(Value::Number(0.0));
+        println!("🚦 Action Handler: Speed check: {:?} vs {:?}", speed, limit);
+        Ok(())
+    });
 
+    engine.register_action_handler("sendAlert", |params, facts| {
+        let message = params.get("0").map(|v| v.to_string()).unwrap_or_default();
+        println!("🚨 Action Handler Alert: {}", message);
+        Ok(())
+    });
+
+    engine.register_action_handler("validateDriver", |params, _facts| {
+        println!("✅ Action Handler: validateDriver called with {:?}", params);
+        Ok(())
+    });
+
+    engine.register_action_handler("calculateInsurance", |params, _facts| {
+        println!("💰 Action Handler: calculateInsurance called with {:?}", params);
+        Ok(())
+    });
+
+    engine.register_action_handler("performDiagnostics", |params, _facts| {
+        println!("🔧 Action Handler: performDiagnostics called with {:?}", params);
+        Ok(())
+    });
+
+    engine.register_action_handler("optimizePerformance", |params, _facts| {
+        println!("⚡ Action Handler: optimizePerformance called with {:?}", params);
+        Ok(())
+    });
+
+    engine.register_action_handler("scheduleMaintenanceCheck", |params, _facts| {
+        println!("🔧 Action Handler: scheduleMaintenanceCheck called with {:?}", params);
+        Ok(())
+    });
+
+    engine.register_action_handler("updateMaintenanceRecord", |params, _facts| {
+        println!("📋 Action Handler: updateMaintenanceRecord called with {:?}", params);
+        Ok(())
+    });
+
+    engine.register_action_handler("emergencyStop", |params, _facts| {
+        println!("⛔ Action Handler: emergencyStop called with {:?}", params);
+        Ok(())
+    });
     engine.register_function("sendAlert", |args, facts| {
         let message = args.get(0).unwrap().to_string();
         let _driver_field = args.get(1).unwrap().to_string();
