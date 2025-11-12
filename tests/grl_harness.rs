@@ -150,10 +150,33 @@ fn method_calls_smoke() -> Result<(), Box<dyn std::error::Error>> {
     facts.add_value("TestCar", Value::Object(car))?;
 
     let config = EngineConfig { debug_mode: false, ..Default::default() };
-    let engine = RustRuleEngine::with_config(kb, config);
+    let mut engine = RustRuleEngine::with_config(kb, config);
+    // Register action handlers for the method calls used in the GRL file
+    engine.register_action_handler("setSpeed", |params, facts| {
+        if let Some(speed_value) = params.get("value") {
+            if let Some(car) = facts.get("TestCar") {
+                if let Value::Object(mut car_obj) = car.clone() {
+                    car_obj.insert("Speed".to_string(), speed_value.clone());
+                    // Note: In a real implementation, you'd update the fact in the facts collection
+                    // For this test, we just ensure the handler exists and doesn't panic
+                }
+            }
+        }
+        Ok(())
+    });
 
+    engine.register_action_handler("setSpeedUp", |params, facts| {
+        if let Some(speed_up_value) = params.get("value") {
+            if let Some(car) = facts.get("TestCar") {
+                if let Value::Object(mut car_obj) = car.clone() {
+                    car_obj.insert("SpeedUp".to_string(), speed_up_value.clone());
+                    // Note: In a real implementation, you'd update the fact in the facts collection
+                }
+            }
+        }
+        Ok(())
+    });
     // We only assert that execute returns Ok (no panic). Use a mutable engine to conform API
-    let mut engine = engine;
     let _ = engine.execute(&facts)?;
 
     Ok(())
