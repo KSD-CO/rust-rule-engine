@@ -41,4 +41,4 @@ jobs:
         run: |
           # Ensure the tag's Cargo.toml version matches the tag name (vX.Y.Z -> X.Y.Z)
           echo "Publishing crate for ${GITHUB_REF}"
-          cargo publish
+          cargo publish --allow-dirty
