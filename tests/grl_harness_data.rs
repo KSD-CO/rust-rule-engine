@@ -108,7 +108,31 @@ fn data_driven_grl_cases() -> Result<(), Box<dyn std::error::Error>> {
             }
             Ok(())
         });
+        // Register action handlers for method calls used in method_calls.grl
+        engine.register_action_handler("setSpeed", |params, facts| {
+            if let Some(speed_value) = params.get("value") {
+                if let Some(car) = facts.get("TestCar") {
+                    if let Value::Object(mut car_obj) = car.clone() {
+                        car_obj.insert("Speed".to_string(), speed_value.clone());
+                        // Note: In a real implementation, you'd update the fact in the facts collection
+                        // For this test, we just ensure the handler exists and doesn't panic
+                    }
+                }
+            }
+            Ok(())
+        });
 
+        engine.register_action_handler("setSpeedUp", |params, facts| {
+            if let Some(speed_up_value) = params.get("value") {
+                if let Some(car) = facts.get("TestCar") {
+                    if let Value::Object(mut car_obj) = car.clone() {
+                        car_obj.insert("SpeedUp".to_string(), speed_up_value.clone());
+                        // Note: In a real implementation, you'd update the fact in the facts collection
+                    }
+                }
+            }
+            Ok(())
+        });
         // Register common functions used by some GRL examples (car_functions.grl etc.)
         engine.register_function("checkSpeedLimit", |args, facts| {
             let speed = args.get(0).map(|v| v.to_string()).unwrap_or_default();
@@ -165,7 +189,12 @@ fn data_driven_grl_cases() -> Result<(), Box<dyn std::error::Error>> {
             println!("📝 log: {:?}", args);
             Ok(Value::String("logged".to_string()))
         });
-
+        engine.register_function("updatePerformanceMetrics", |args, _facts| {
+            let speed = args.get(0).map(|v| v.to_string()).unwrap_or_default();
+            let distance = args.get(1).map(|v| v.to_string()).unwrap_or_default();
+            println!("📊 updatePerformanceMetrics: speed={}, distance={}", speed, distance);
+            Ok(Value::String("metrics_updated".to_string()))
+        });
         // Register a generic 'set' function used by some GRL files (e.g., no_loop_test.grl)
         engine.register_function("set", |args, facts| {
             if args.len() < 2 {
@@ -258,7 +287,29 @@ fn data_driven_grl_cases() -> Result<(), Box<dyn std::error::Error>> {
             }
             Ok(())
         });
+        // Action handler for setTotalDistance used in complete_speedup.grl
+        engine.register_action_handler("setTotalDistance", |params, facts| {
+            if let Some(val) = params.get("0").cloned().or_else(|| params.get("value").cloned()) {
+                if let Ok(v) = val.to_string().parse::<f64>() {
+                    if let Some(existing) = facts.get("DistanceRecord").or_else(|| facts.get("distanceRecord")) {
+                        if let Value::Object(obj) = existing {
+                            let mut updated = obj.clone();
+                            updated.insert("TotalDistance".to_string(), Value::Number(v));
+                            facts.add_value("DistanceRecord", Value::Object(updated)).map_err(|e| rust_rule_engine::errors::RuleEngineError::EvaluationError { message: format!("setTotalDistance failed: {}", e) })?;
+                        }
+                    }
+                }
+            }
+            Ok(())
+        });
 
+        // Action handler for updatePerformanceMetrics used in complete_speedup.grl
+        engine.register_action_handler("updatePerformanceMetrics", |params, facts| {
+            let speed = params.get("0").cloned().or_else(|| params.get("speed").cloned());
+            let distance = params.get("1").cloned().or_else(|| params.get("distance").cloned());
+            println!("📊 updatePerformanceMetrics: speed={:?}, distance={:?}", speed, distance);
+            Ok(())
+        });
             // Performance related no-op handlers
             engine.register_action_handler("analyzePerformance", simple_action);
             engine.register_action_handler("generatePerformanceReport", simple_action);
