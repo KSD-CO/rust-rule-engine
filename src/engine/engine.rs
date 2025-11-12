@@ -683,7 +683,27 @@ impl RustRuleEngine {
                 }
 
                 if let Some(value) = field_value {
-                    condition.operator.evaluate(&value, &condition.value)
+                    // condition.operator.evaluate(&value, &condition.value)
+                    // If the condition's right-hand value is a string that names another fact,
+                    // try to resolve that fact and use its value for comparison. This allows
+                    // rules like `L1 > L1Min` where the parser may have stored "L1Min"
+                    // as a string literal.
+                    let rhs = match &condition.value {
+                        crate::types::Value::String(s) => {
+                            // Try nested lookup first, then flat lookup
+                            facts
+                                .get_nested(s)
+                                .or_else(|| facts.get(s))
+                                .unwrap_or(crate::types::Value::String(s.clone()))
+                        }
+                        _ => condition.value.clone(),
+                    };
+
+                    if self.config.debug_mode {
+                        println!("      Resolved RHS for comparison: {:?}", rhs);
+                    }
+
+                    condition.operator.evaluate(&value, &rhs)
                 } else {
                     false
                 }
