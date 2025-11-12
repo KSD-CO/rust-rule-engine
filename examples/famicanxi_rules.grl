@@ -1,0 +1,24 @@
+// FamiCanxi Product Eligibility Rule
+//
+// This rule evaluates customer eligibility for FamiCanxi product
+//
+// Business logic:
+//   (Facts.L1 > Facts.L1Min) && (Facts.CM2 > Facts.Cm2Min) && (Facts.productCode == 1)
+//
+// Required Facts (type: Facts):
+//   - Facts.L1: customer's L1 value
+//   - Facts.L1Min: minimum threshold for L1
+//   - Facts.CM2: customer's CM2 value (note: Cm2Min in facts, case-sensitive)
+//   - Facts.Cm2Min: minimum threshold for CM2
+//   - Facts.productCode: product code (must equal 1 for FamiCanxi)
+//
+// Action:
+//   - Sets levelApprove to 1 when all conditions are met
+
+rule "FamiCanxi Product Eligibility Rule"
+    salience 50 {
+  when
+    (Facts.L1 > Facts.L1Min) && (Facts.CM2 > Facts.Cm2Min) && (Facts.productCode == 1)
+  then
+    Facts.levelApprove = 1;
+}

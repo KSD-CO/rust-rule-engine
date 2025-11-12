@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.13.0 🦀⚡
+# Rust Rule Engine v0.13.4 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,8 +11,23 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 
 ---
 
-## ✨ What's New in v0.13.0
+## ✨ What's New in v0.13.4
 
+⚡ **Variable-to-Variable Comparison in RETE** - Dynamic threshold comparisons!
+
+- **🔄 Compare Variables** - Direct comparison between fact fields (e.g., `Facts.L1 > Facts.L1Min`)
+- **📊 Dynamic Thresholds** - No hardcoded values, change thresholds on-the-fly
+- **🎯 RETE-UL Support** - Full integration with incremental engine
+- **📝 GRL Syntax** - Natural syntax: `when (Facts.value > Facts.threshold)`
+- **⚡ Efficient Evaluation** - Leverages RETE's pattern matching
+- **🔧 Flexible Rules** - Same rule adapts to different threshold configurations
+- **✅ Production Ready** - Battle-tested with complex eligibility rules
+
+[**See Variable Comparison Demo →**](examples/famicanxi_rete_test.rs) | [**Test Variable Comparison →**](examples/test_variable_comparison.rs)
+
+### Previous Updates
+
+### v0.13.0 (Earlier)
 ⚡ **Conflict Resolution Strategies** - CLIPS/Drools-inspired rule ordering!
 
 - **🎯 8 Strategies** - Salience, LEX, MEA, Depth, Breadth, Simplicity, Complexity, Random
@@ -90,6 +105,7 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 ### RETE-UL Engine (Recommended for 50+ rules)
 - **🚀 High Performance** - Efficient RETE algorithm with incremental updates
 - **🔥 RETE Algorithm** - Advanced pattern matching with good Drools compatibility
+- **🔄 Variable Comparison** - Compare fact fields dynamically (L1 > L1Min) *(v0.13.0)*
 - **📋 Template System** - Type-safe structured facts *(v0.10.0)*
 - **🌍 Defglobal** - Global variables across firings *(v0.10.0)*
 - **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
@@ -116,13 +132,13 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.13.0"
+rust-rule-engine = "0.13.4"
 ```
 
 ### Optional Features
 ```toml
 # Enable streaming support
-rust-rule-engine = { version = "0.13.0", features = ["streaming"] }
+rust-rule-engine = { version = "0.13.4", features = ["streaming"] }
 ```
 
 ---
@@ -213,7 +229,111 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
-## 🔧 NEW: Function Calls in WHEN Clause
+## 🔄 NEW: Variable-to-Variable Comparison (v0.13.0)
+
+**The RETE-UL engine now supports comparing variables directly with each other!**
+
+This powerful feature enables dynamic threshold comparisons without hardcoding values in rules, making your rule logic more flexible and reusable.
+
+### ✨ Why Variable Comparison?
+
+**Traditional Approach (Hardcoded):**
+```grl
+rule "CheckAge" {
+    when customer.age > 18  // Hardcoded threshold
+    then customer.eligible = true;
+}
+```
+
+**New Approach (Dynamic):**
+```grl
+rule "CheckAge" {
+    when customer.age > settings.minAge  // Dynamic threshold
+    then customer.eligible = true;
+}
+```
+
+### 📖 Real-World Example: Product Eligibility
+
+**Business Scenario:**
+FamiCanxi product requires customers to meet dynamic thresholds for L1 and CM2 scores that can vary based on market conditions.
+
+**GRL Rule** ([famicanxi_rules.grl](examples/famicanxi_rules.grl)):
+```grl
+rule "FamiCanxi Product Eligibility Rule" salience 50 {
+  when
+    (Facts.L1 > Facts.L1Min) &&
+    (Facts.CM2 > Facts.Cm2Min) &&
+    (Facts.productCode == 1)
+  then
+    Facts.levelApprove = 1;
+}
+```
+
+**RETE-UL Implementation:**
+```rust
+use rust_rule_engine::rete::{GrlReteLoader, IncrementalEngine, TypedFacts};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut engine = IncrementalEngine::new();
+
+    // Load rule with variable comparisons
+    GrlReteLoader::load_from_file("examples/famicanxi_rules.grl", &mut engine)?;
+
+    // Insert facts with dynamic thresholds
+    let mut facts = TypedFacts::new();
+    facts.set("L1", 100i64);        // Customer score
+    facts.set("L1Min", 50i64);      // Dynamic threshold (can change per request)
+    facts.set("CM2", 80i64);        // Customer CM2 score
+    facts.set("Cm2Min", 60i64);     // Dynamic threshold
+    facts.set("productCode", 1i64);
+
+    engine.insert("Facts".to_string(), facts);
+    engine.reset();
+
+    let fired = engine.fire_all();
+    println!("Rules fired: {}", fired.len()); // Output: Rules fired: 1
+
+    Ok(())
+}
+```
+
+### 🎯 Key Benefits
+
+1. **Dynamic Business Rules** - Change thresholds without modifying rule code
+2. **A/B Testing** - Test different threshold configurations easily
+3. **Multi-Tenant Support** - Different thresholds per customer/region
+4. **Configuration-Driven** - Rules adapt to configuration changes
+5. **Reduced Code Duplication** - One rule handles multiple scenarios
+
+### 📊 Supported Comparisons
+
+```grl
+// Numeric comparisons
+Facts.value > Facts.threshold
+Facts.value >= Facts.minimum
+Facts.value < Facts.maximum
+Facts.value <= Facts.limit
+Facts.value == Facts.target
+Facts.value != Facts.excluded
+
+// Mixed: variable with constant
+Facts.value > Facts.threshold && Facts.status == "active"
+
+// Multiple variable comparisons
+(Facts.minValue < Facts.value) && (Facts.value < Facts.maxValue)
+```
+
+### 🧪 Test Examples
+
+See complete working examples:
+- [famicanxi_rete_test.rs](examples/famicanxi_rete_test.rs) - RETE-UL engine with variable comparison
+- [famicanxi_grl_test.rs](examples/famicanxi_grl_test.rs) - Standard engine with GRL
+- [test_variable_comparison.rs](examples/test_variable_comparison.rs) - Comprehensive test suite
+
+---
+
+## 🔧 Function Calls in WHEN Clause
 
 **v0.10.0 introduces the ability to call functions directly in rule conditions!**
 
@@ -326,7 +446,25 @@ rule "VIPDiscount" {
 }
 ```
 
-### 2. Fraud Detection
+### 2. Dynamic Eligibility & Thresholds (NEW!)
+```grl
+// Product eligibility with dynamic thresholds
+rule "ProductEligibility" {
+    when (customer.score > settings.minScore) &&
+         (customer.income > settings.minIncome) &&
+         (customer.age >= settings.minAge)
+    then customer.eligible = true;
+}
+
+// Credit limit based on dynamic risk assessment
+rule "CreditLimit" {
+    when (customer.creditScore > risk.threshold) &&
+         (customer.debtRatio < risk.maxDebtRatio)
+    then customer.creditLimit = customer.income * risk.multiplier;
+}
+```
+
+### 3. Fraud Detection
 ```rust
 // Real-time fraud scoring
 rule "HighRiskTransaction" {
@@ -336,7 +474,7 @@ rule "HighRiskTransaction" {
 }
 ```
 
-### 3. Workflow Automation
+### 4. Workflow Automation
 ```rust
 // Multi-step approval workflows
 rule "ManagerApproval" agenda-group "approvals" {
@@ -345,7 +483,7 @@ rule "ManagerApproval" agenda-group "approvals" {
 }
 ```
 
-### 4. Real-Time Systems
+### 5. Real-Time Systems
 ```rust
 // IoT, monitoring, alerts
 rule "TemperatureAlert" {

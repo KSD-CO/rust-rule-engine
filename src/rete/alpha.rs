@@ -33,8 +33,16 @@ impl AlphaNode {
 
     /// Match with typed facts (new!)
     pub fn matches_typed(&self, facts: &TypedFacts) -> bool {
-        // Parse the value string into appropriate FactValue
-        let expected_value = self.parse_value_string(&self.value);
+        // Check if the value is a variable reference (field name in facts)
+        // This enables variable-to-variable comparison like "L1 > L1Min"
+        let expected_value = if let Some(var_value) = facts.get(&self.value) {
+            // Value is a field name - use the field's value for comparison
+            var_value.clone()
+        } else {
+            // Value is a literal - parse it
+            self.parse_value_string(&self.value)
+        };
+
         facts.evaluate_condition(&self.field, &self.operator, &expected_value)
     }
 
