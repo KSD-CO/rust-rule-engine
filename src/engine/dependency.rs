@@ -118,6 +118,10 @@ impl DependencyAnalyzer {
                 // For FORALL, we're reading the fields to check all match
                 Self::extract_fields_from_condition_group(inner, reads);
             }
+            crate::engine::rule::ConditionGroup::Accumulate { source_pattern, extract_field, .. } => {
+                // For ACCUMULATE, we're reading the source pattern and extract field
+                reads.push(format!("{}.{}", source_pattern, extract_field));
+            }
         }
     }
 

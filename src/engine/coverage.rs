@@ -70,6 +70,10 @@ fn flatten_conditions(group: &crate::engine::rule::ConditionGroup) -> Vec<crate:
         ConditionGroup::Not(inner) | ConditionGroup::Exists(inner) | ConditionGroup::Forall(inner) => {
             out.extend(flatten_conditions(inner));
         }
+        ConditionGroup::Accumulate { .. } => {
+            // Accumulate doesn't have simple single conditions to flatten
+            // Skip for now
+        }
     }
     out
 }

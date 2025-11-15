@@ -1,0 +1,74 @@
+// Sales Analytics Rules
+// Demonstrates business logic based on order data
+
+rule "HighRevenueAlert" salience 100 {
+    when
+        Order.totalRevenue > 9000
+    then
+        Alert.send("High revenue period detected!");
+        Notification.type = "high_revenue";
+}
+
+rule "HealthyOrderVolume" salience 90 {
+    when
+        Order.count >= 5
+    then
+        Status.orderVolume = "healthy";
+        Log("Healthy order volume maintained");
+}
+
+rule "LowOrderVolumeAlert" salience 90 {
+    when
+        Order.count < 5
+    then
+        Status.orderVolume = "low";
+        Alert.send("Low order volume - trigger marketing");
+}
+
+rule "HighValueCustomerBase" salience 80 {
+    when
+        Order.averageValue > 1000
+    then
+        Customer.segment = "high_value";
+        Action.offerPremiumMembership();
+}
+
+rule "StandardCustomerBase" salience 70 {
+    when
+        Order.averageValue <= 1000
+    then
+        Customer.segment = "standard";
+        Action.promoteBundleDeals();
+}
+
+rule "ElectronicsCategoryLeader" salience 60 {
+    when
+        Electronics.revenue > 8000
+    then
+        Category.leader = "electronics";
+        Inventory.allocate("electronics", "high");
+}
+
+rule "ClothingCategoryPromotion" salience 50 {
+    when
+        Clothing.revenue < 500
+    then
+        Marketing.promote("clothing");
+        Discount.apply("clothing", 0.15);
+}
+
+rule "MinimumOrderTracking" salience 40 {
+    when
+        Order.minValue < 100
+    then
+        Analytics.trackSmallOrders();
+        Log("Small order detected");
+}
+
+rule "MaximumOrderTracking" salience 40 {
+    when
+        Order.maxValue > 3000
+    then
+        Analytics.trackLargeOrders();
+        Log("Large order detected");
+}

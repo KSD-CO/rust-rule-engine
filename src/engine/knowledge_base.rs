@@ -335,6 +335,29 @@ impl ConditionGroupGRLExport for crate::engine::rule::ConditionGroup {
             crate::engine::rule::ConditionGroup::Forall(condition) => {
                 format!("forall({})", condition.to_grl())
             }
+            crate::engine::rule::ConditionGroup::Accumulate {
+                source_pattern,
+                extract_field,
+                source_conditions,
+                function,
+                function_arg,
+                ..
+            } => {
+                let conditions_str = if source_conditions.is_empty() {
+                    String::new()
+                } else {
+                    format!(", {}", source_conditions.join(", "))
+                };
+                format!(
+                    "accumulate({}(${}: {}{}), {}({}))",
+                    source_pattern,
+                    function_arg.trim_start_matches('$'),
+                    extract_field,
+                    conditions_str,
+                    function,
+                    function_arg
+                )
+            }
         }
     }
 }

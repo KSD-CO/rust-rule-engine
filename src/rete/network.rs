@@ -39,6 +39,52 @@ pub fn build_rete_ul_from_condition_group(group: &crate::rete::auto_network::Con
 }
 use std::collections::HashMap;
 
+/// Helper: Evaluate a condition string against facts (for accumulate)
+fn evaluate_condition_string(condition: &str, facts: &HashMap<String, String>) -> bool {
+    let condition = condition.trim();
+    let operators = ["==", "!=", ">=", "<=", ">", "<"];
+
+    for op in &operators {
+        if let Some(pos) = condition.find(op) {
+            let field = condition[..pos].trim();
+            let value_str = condition[pos + op.len()..]
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'');
+
+            if let Some(field_value) = facts.get(field) {
+                return compare_string_values(field_value, op, value_str);
+            } else {
+                return false;
+            }
+        }
+    }
+    false
+}
+
+/// Helper: Compare string values
+fn compare_string_values(field_value: &str, operator: &str, value_str: &str) -> bool {
+    // Try numeric comparison first
+    if let (Ok(field_num), Ok(val_num)) = (field_value.parse::<f64>(), value_str.parse::<f64>()) {
+        match operator {
+            "==" => (field_num - val_num).abs() < f64::EPSILON,
+            "!=" => (field_num - val_num).abs() >= f64::EPSILON,
+            ">" => field_num > val_num,
+            "<" => field_num < val_num,
+            ">=" => field_num >= val_num,
+            "<=" => field_num <= val_num,
+            _ => false,
+        }
+    } else {
+        // String comparison
+        match operator {
+            "==" => field_value == value_str,
+            "!=" => field_value != value_str,
+            _ => false,
+        }
+    }
+}
+
 /// Đánh giá mạng node RETE với facts
 pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>) -> bool {
     match node {
@@ -147,6 +193,84 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
                 })
             }
         }
+        ReteUlNode::UlAccumulate {
+            source_pattern,
+            extract_field,
+            source_conditions,
+            function,
+            ..
+        } => {
+            // Evaluate accumulate: collect matching facts and run function
+            use super::accumulate::*;
+
+            let pattern_prefix = format!("{}.", source_pattern);
+            let mut matching_values = Vec::new();
+
+            // Group facts by instance
+            let mut instances: std::collections::HashMap<String, std::collections::HashMap<String, String>> =
+                std::collections::HashMap::new();
+
+            for (key, value) in facts {
+                if key.starts_with(&pattern_prefix) {
+                    let parts: Vec<&str> = key.strip_prefix(&pattern_prefix).unwrap().split('.').collect();
+
+                    if parts.len() >= 2 {
+                        let instance_id = parts[0];
+                        let field_name = parts[1..].join(".");
+
+                        instances
+                            .entry(instance_id.to_string())
+                            .or_insert_with(std::collections::HashMap::new)
+                            .insert(field_name, value.clone());
+                    } else if parts.len() == 1 {
+                        instances
+                            .entry("default".to_string())
+                            .or_insert_with(std::collections::HashMap::new)
+                            .insert(parts[0].to_string(), value.clone());
+                    }
+                }
+            }
+
+            // Filter instances by source conditions
+            for (_instance_id, instance_facts) in instances {
+                let mut matches = true;
+
+                for condition_str in source_conditions {
+                    if !evaluate_condition_string(condition_str, &instance_facts) {
+                        matches = false;
+                        break;
+                    }
+                }
+
+                if matches {
+                    if let Some(value_str) = instance_facts.get(extract_field) {
+                        // Convert string to FactValue
+                        let fact_value = if let Ok(i) = value_str.parse::<i64>() {
+                            super::facts::FactValue::Integer(i)
+                        } else if let Ok(f) = value_str.parse::<f64>() {
+                            super::facts::FactValue::Float(f)
+                        } else if let Ok(b) = value_str.parse::<bool>() {
+                            super::facts::FactValue::Boolean(b)
+                        } else {
+                            super::facts::FactValue::String(value_str.clone())
+                        };
+                        matching_values.push(fact_value);
+                    }
+                }
+            }
+
+            // Run accumulate function - result determines if condition passes
+            let has_results = !matching_values.is_empty();
+
+            match function.as_str() {
+                "count" => has_results, // Count passes if there are any matches
+                "sum" | "average" | "min" | "max" => {
+                    // These functions need at least one value
+                    has_results
+                }
+                _ => true, // Unknown function - allow to continue
+            }
+        }
         ReteUlNode::UlTerminal(_) => true // Rule match
     }
 }
@@ -160,6 +284,14 @@ pub enum ReteUlNode {
     UlNot(Box<ReteUlNode>),
     UlExists(Box<ReteUlNode>),
     UlForall(Box<ReteUlNode>),
+    UlAccumulate {
+        result_var: String,
+        source_pattern: String,
+        extract_field: String,
+        source_conditions: Vec<String>,
+        function: String,
+        function_arg: String,
+    },
     UlTerminal(String), // Rule name
 }
 
@@ -464,6 +596,77 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                     return true; // Vacuous truth
                 }
                 evaluate_rete_ul_node_typed(inner, facts)
+            }
+        }
+        ReteUlNode::UlAccumulate {
+            source_pattern,
+            extract_field,
+            source_conditions,
+            function,
+            ..
+        } => {
+            // Evaluate accumulate with typed facts
+            use super::accumulate::*;
+
+            let pattern_prefix = format!("{}.", source_pattern);
+            let mut matching_values = Vec::new();
+
+            // Group facts by instance
+            let mut instances: std::collections::HashMap<String, std::collections::HashMap<String, FactValue>> =
+                std::collections::HashMap::new();
+
+            for (key, value) in facts.get_all() {
+                if key.starts_with(&pattern_prefix) {
+                    let parts: Vec<&str> = key.strip_prefix(&pattern_prefix).unwrap().split('.').collect();
+
+                    if parts.len() >= 2 {
+                        let instance_id = parts[0];
+                        let field_name = parts[1..].join(".");
+
+                        instances
+                            .entry(instance_id.to_string())
+                            .or_insert_with(std::collections::HashMap::new)
+                            .insert(field_name, value.clone());
+                    } else if parts.len() == 1 {
+                        instances
+                            .entry("default".to_string())
+                            .or_insert_with(std::collections::HashMap::new)
+                            .insert(parts[0].to_string(), value.clone());
+                    }
+                }
+            }
+
+            // Filter instances by source conditions
+            for (_instance_id, instance_facts) in instances {
+                let mut matches = true;
+
+                for condition_str in source_conditions {
+                    // Convert FactValues to strings for condition evaluation
+                    let string_facts: HashMap<String, String> = instance_facts
+                        .iter()
+                        .map(|(k, v)| (k.clone(), format!("{:?}", v)))
+                        .collect();
+
+                    if !evaluate_condition_string(condition_str, &string_facts) {
+                        matches = false;
+                        break;
+                    }
+                }
+
+                if matches {
+                    if let Some(value) = instance_facts.get(extract_field) {
+                        matching_values.push(value.clone());
+                    }
+                }
+            }
+
+            // Run accumulate function - result determines if condition passes
+            let has_results = !matching_values.is_empty();
+
+            match function.as_str() {
+                "count" => has_results,
+                "sum" | "average" | "min" | "max" => has_results,
+                _ => true,
             }
         }
         ReteUlNode::UlTerminal(_) => true

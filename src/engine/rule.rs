@@ -190,6 +190,22 @@ pub enum ConditionGroup {
     Exists(Box<ConditionGroup>),
     /// Pattern matching: check if all facts of the target type match the condition
     Forall(Box<ConditionGroup>),
+    /// Accumulate pattern: aggregate values from matching facts
+    /// Example: accumulate(Order($amount: amount, status == "completed"), sum($amount))
+    Accumulate {
+        /// Variable to bind the result to (e.g., "$total")
+        result_var: String,
+        /// Source pattern to match facts (e.g., "Order")
+        source_pattern: String,
+        /// Field to extract from matching facts (e.g., "$amount: amount")
+        extract_field: String,
+        /// Conditions on the source pattern
+        source_conditions: Vec<String>,
+        /// Accumulate function to apply (sum, avg, count, min, max)
+        function: String,
+        /// Variable passed to function (e.g., "$amount" in "sum($amount)")
+        function_arg: String,
+    },
 }
 
 impl ConditionGroup {
@@ -232,6 +248,25 @@ impl ConditionGroup {
         ConditionGroup::Forall(Box::new(condition))
     }
 
+    /// Create an accumulate condition - aggregates values from matching facts
+    pub fn accumulate(
+        result_var: String,
+        source_pattern: String,
+        extract_field: String,
+        source_conditions: Vec<String>,
+        function: String,
+        function_arg: String,
+    ) -> Self {
+        ConditionGroup::Accumulate {
+            result_var,
+            source_pattern,
+            extract_field,
+            source_conditions,
+            function,
+            function_arg,
+        }
+    }
+
     /// Evaluate this condition group against facts
     pub fn evaluate(&self, facts: &HashMap<String, Value>) -> bool {
         match self {
@@ -250,8 +285,8 @@ impl ConditionGroup {
                 }
             }
             ConditionGroup::Not(condition) => !condition.evaluate(facts),
-            ConditionGroup::Exists(_) | ConditionGroup::Forall(_) => {
-                // Pattern matching conditions need Facts struct, not HashMap
+            ConditionGroup::Exists(_) | ConditionGroup::Forall(_) | ConditionGroup::Accumulate { .. } => {
+                // Pattern matching and accumulate conditions need Facts struct, not HashMap
                 // For now, return false - these will be handled by the engine
                 false
             }
@@ -283,6 +318,12 @@ impl ConditionGroup {
             ConditionGroup::Not(condition) => !condition.evaluate_with_facts(facts),
             ConditionGroup::Exists(condition) => PatternMatcher::evaluate_exists(condition, facts),
             ConditionGroup::Forall(condition) => PatternMatcher::evaluate_forall(condition, facts),
+            ConditionGroup::Accumulate { .. } => {
+                // Accumulate conditions need special handling - they will be evaluated
+                // during the engine execution phase, not here
+                // For now, return true to allow the rule to continue evaluation
+                true
+            }
         }
     }
 }

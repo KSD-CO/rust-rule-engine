@@ -54,6 +54,14 @@ fn convert_condition_group(src: &rust_rule_engine::ConditionGroup) -> rust_rule_
         rust_rule_engine::ConditionGroup::Forall(inner) => {
             AutoGroup::Forall(Box::new(convert_condition_group(inner)))
         }
+        rust_rule_engine::ConditionGroup::Accumulate { .. } => {
+            // Accumulate is not supported in auto_network yet
+            AutoGroup::Single(AutoCond {
+                field: "true".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            })
+        }
     }
 }
 

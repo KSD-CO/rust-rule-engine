@@ -1,0 +1,30 @@
+// Test accumulate syntax in GRL
+rule "HighRevenueAlert" salience 100 {
+    when
+        accumulate(
+            Order($amount: amount, status == "completed"),
+            sum($amount)
+        )
+    then
+        Alert.type = "high_revenue";
+}
+
+rule "LargeOrderCount" salience 50 {
+    when
+        accumulate(
+            Order($id: id, status == "completed"),
+            count()
+        )
+    then
+        Status.orderCount = "high";
+}
+
+rule "AverageOrderValue" {
+    when
+        accumulate(
+            Order($amount: amount, status == "completed"),
+            average($amount)
+        )
+    then
+        Analytics.avgOrder = "calculated";
+}

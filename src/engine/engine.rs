@@ -645,6 +645,258 @@ impl RustRuleEngine {
             ConditionGroup::Forall(condition) => {
                 Ok(PatternMatcher::evaluate_forall(condition, facts))
             }
+            ConditionGroup::Accumulate {
+                result_var,
+                source_pattern,
+                extract_field,
+                source_conditions,
+                function,
+                function_arg,
+            } => {
+                // Evaluate accumulate and inject result into facts
+                self.evaluate_accumulate(
+                    result_var,
+                    source_pattern,
+                    extract_field,
+                    source_conditions,
+                    function,
+                    function_arg,
+                    facts,
+                )?;
+                // After injecting result, return true to continue
+                Ok(true)
+            }
+        }
+    }
+
+    /// Evaluate accumulate condition and inject result into facts
+    fn evaluate_accumulate(
+        &self,
+        result_var: &str,
+        source_pattern: &str,
+        extract_field: &str,
+        source_conditions: &[String],
+        function: &str,
+        function_arg: &str,
+        facts: &Facts,
+    ) -> Result<()> {
+        use crate::rete::accumulate::*;
+
+        // 1. Collect all facts matching the source pattern
+        let all_facts = facts.get_all_facts();
+        let mut matching_values = Vec::new();
+
+        // Find all facts that match the pattern (e.g., "Order.amount", "Order.status")
+        let pattern_prefix = format!("{}.", source_pattern);
+
+        // Group facts by instance (e.g., Order.1.amount, Order.1.status)
+        let mut instances: HashMap<String, HashMap<String, Value>> = HashMap::new();
+
+        for (key, value) in &all_facts {
+            if key.starts_with(&pattern_prefix) {
+                // Extract instance ID if present (e.g., "Order.1.amount" -> "1")
+                let parts: Vec<&str> = key.strip_prefix(&pattern_prefix).unwrap().split('.').collect();
+
+                if parts.len() >= 2 {
+                    // Has instance ID: Order.1.amount
+                    let instance_id = parts[0];
+                    let field_name = parts[1..].join(".");
+
+                    instances
+                        .entry(instance_id.to_string())
+                        .or_insert_with(HashMap::new)
+                        .insert(field_name, value.clone());
+                } else if parts.len() == 1 {
+                    // No instance ID: Order.amount (single instance)
+                    instances
+                        .entry("default".to_string())
+                        .or_insert_with(HashMap::new)
+                        .insert(parts[0].to_string(), value.clone());
+                }
+            }
+        }
+
+        // 2. Filter instances by source conditions
+        for (_instance_id, instance_facts) in instances {
+            // Check if this instance matches all source conditions
+            let mut matches = true;
+
+            for condition_str in source_conditions {
+                // Parse condition: "status == \"completed\""
+                if !self.evaluate_condition_string(condition_str, &instance_facts) {
+                    matches = false;
+                    break;
+                }
+            }
+
+            if matches {
+                // Extract the field value
+                if let Some(value) = instance_facts.get(extract_field) {
+                    matching_values.push(value.clone());
+                }
+            }
+        }
+
+        // 3. Run accumulate function
+        let result = match function {
+            "sum" => {
+                let mut state = SumFunction.init();
+                for value in &matching_values {
+                    state.accumulate(&self.value_to_fact_value(value));
+                }
+                self.fact_value_to_value(&state.get_result())
+            }
+            "count" => {
+                let mut state = CountFunction.init();
+                for value in &matching_values {
+                    state.accumulate(&self.value_to_fact_value(value));
+                }
+                self.fact_value_to_value(&state.get_result())
+            }
+            "average" | "avg" => {
+                let mut state = AverageFunction.init();
+                for value in &matching_values {
+                    state.accumulate(&self.value_to_fact_value(value));
+                }
+                self.fact_value_to_value(&state.get_result())
+            }
+            "min" => {
+                let mut state = MinFunction.init();
+                for value in &matching_values {
+                    state.accumulate(&self.value_to_fact_value(value));
+                }
+                self.fact_value_to_value(&state.get_result())
+            }
+            "max" => {
+                let mut state = MaxFunction.init();
+                for value in &matching_values {
+                    state.accumulate(&self.value_to_fact_value(value));
+                }
+                self.fact_value_to_value(&state.get_result())
+            }
+            _ => {
+                return Err(RuleEngineError::EvaluationError {
+                    message: format!("Unknown accumulate function: {}", function),
+                });
+            }
+        };
+
+        // 4. Inject result into facts
+        // Use pattern.function as key to avoid collision
+        let result_key = format!("{}.{}", source_pattern, function);
+
+        facts.set(&result_key, result);
+
+        if self.config.debug_mode {
+            println!("    🧮 Accumulate result: {} = {:?}", result_key, facts.get(&result_key));
+        }
+
+        Ok(())
+    }
+
+    /// Helper: Convert Value to FactValue
+    fn value_to_fact_value(&self, value: &Value) -> crate::rete::facts::FactValue {
+        use crate::rete::facts::FactValue;
+        match value {
+            Value::Integer(i) => FactValue::Integer(*i),
+            Value::Number(n) => FactValue::Float(*n),
+            Value::String(s) => FactValue::String(s.clone()),
+            Value::Boolean(b) => FactValue::Boolean(*b),
+            _ => FactValue::String(value.to_string()),
+        }
+    }
+
+    /// Helper: Convert FactValue to Value
+    fn fact_value_to_value(&self, fact_value: &crate::rete::facts::FactValue) -> Value {
+        use crate::rete::facts::FactValue;
+        match fact_value {
+            FactValue::Integer(i) => Value::Integer(*i),
+            FactValue::Float(f) => Value::Number(*f),
+            FactValue::String(s) => Value::String(s.clone()),
+            FactValue::Boolean(b) => Value::Boolean(*b),
+            FactValue::Array(_) => Value::String(format!("{:?}", fact_value)),
+            FactValue::Null => Value::String("null".to_string()),
+        }
+    }
+
+    /// Helper: Evaluate a condition string against facts
+    fn evaluate_condition_string(&self, condition: &str, facts: &HashMap<String, Value>) -> bool {
+        // Simple condition parser: "field == value" or "field != value", etc.
+        let condition = condition.trim();
+
+        // Try to parse operator
+        let operators = ["==", "!=", ">=", "<=", ">", "<"];
+
+        for op in &operators {
+            if let Some(pos) = condition.find(op) {
+                let field = condition[..pos].trim();
+                let value_str = condition[pos + op.len()..].trim()
+                    .trim_matches('"')
+                    .trim_matches('\'');
+
+                if let Some(field_value) = facts.get(field) {
+                    return self.compare_values(field_value, op, value_str);
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Helper: Compare values
+    fn compare_values(&self, field_value: &Value, operator: &str, value_str: &str) -> bool {
+        match field_value {
+            Value::String(s) => {
+                match operator {
+                    "==" => s == value_str,
+                    "!=" => s != value_str,
+                    _ => false,
+                }
+            }
+            Value::Integer(i) => {
+                if let Ok(num) = value_str.parse::<i64>() {
+                    match operator {
+                        "==" => *i == num,
+                        "!=" => *i != num,
+                        ">" => *i > num,
+                        "<" => *i < num,
+                        ">=" => *i >= num,
+                        "<=" => *i <= num,
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            }
+            Value::Number(n) => {
+                if let Ok(num) = value_str.parse::<f64>() {
+                    match operator {
+                        "==" => (*n - num).abs() < f64::EPSILON,
+                        "!=" => (*n - num).abs() >= f64::EPSILON,
+                        ">" => *n > num,
+                        "<" => *n < num,
+                        ">=" => *n >= num,
+                        "<=" => *n <= num,
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            }
+            Value::Boolean(b) => {
+                if let Ok(bool_val) = value_str.parse::<bool>() {
+                    match operator {
+                        "==" => *b == bool_val,
+                        "!=" => *b != bool_val,
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            }
+            _ => false,
         }
     }
 

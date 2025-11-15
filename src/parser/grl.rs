@@ -298,6 +298,11 @@ impl GRLParser {
             return self.parse_forall_condition(clause);
         }
 
+        // Handle ACCUMULATE condition
+        if clause.trim_start().starts_with("accumulate(") {
+            return self.parse_accumulate_condition(clause);
+        }
+
         // Single condition
         self.parse_single_condition(clause)
     }
@@ -446,6 +451,203 @@ impl GRLParser {
         let inner_clause = &clause[7..clause.len() - 1]; // Remove "forall(" and ")"
         let inner_condition = self.parse_when_clause(inner_clause)?;
         Ok(ConditionGroup::forall(inner_condition))
+    }
+
+    fn parse_accumulate_condition(&self, clause: &str) -> Result<ConditionGroup> {
+        let clause = clause.trim_start();
+        if !clause.starts_with("accumulate(") || !clause.ends_with(")") {
+            return Err(RuleEngineError::ParseError {
+                message: "Invalid accumulate syntax. Expected: accumulate(pattern, function)".to_string(),
+            });
+        }
+
+        // Extract content between parentheses
+        let inner = &clause[11..clause.len() - 1]; // Remove "accumulate(" and ")"
+
+        // Split by comma at the top level (not inside parentheses)
+        let parts = self.split_accumulate_parts(inner)?;
+
+        if parts.len() != 2 {
+            return Err(RuleEngineError::ParseError {
+                message: format!(
+                    "Invalid accumulate syntax. Expected 2 parts (pattern, function), got {}",
+                    parts.len()
+                ),
+            });
+        }
+
+        let pattern_part = parts[0].trim();
+        let function_part = parts[1].trim();
+
+        // Parse the pattern: Order($amount: amount, status == "completed")
+        let (source_pattern, extract_field, source_conditions) =
+            self.parse_accumulate_pattern(pattern_part)?;
+
+        // Parse the function: sum($amount)
+        let (function, function_arg) = self.parse_accumulate_function(function_part)?;
+
+        // For now, we'll create a placeholder result variable
+        // In a full implementation, this would be extracted from the parent context
+        // e.g., from "$total: accumulate(...)"
+        let result_var = "$result".to_string();
+
+        Ok(ConditionGroup::accumulate(
+            result_var,
+            source_pattern,
+            extract_field,
+            source_conditions,
+            function,
+            function_arg,
+        ))
+    }
+
+    fn split_accumulate_parts(&self, content: &str) -> Result<Vec<String>> {
+        let mut parts = Vec::new();
+        let mut current = String::new();
+        let mut paren_depth = 0;
+
+        for ch in content.chars() {
+            match ch {
+                '(' => {
+                    paren_depth += 1;
+                    current.push(ch);
+                }
+                ')' => {
+                    paren_depth -= 1;
+                    current.push(ch);
+                }
+                ',' if paren_depth == 0 => {
+                    parts.push(current.trim().to_string());
+                    current.clear();
+                }
+                _ => {
+                    current.push(ch);
+                }
+            }
+        }
+
+        if !current.trim().is_empty() {
+            parts.push(current.trim().to_string());
+        }
+
+        Ok(parts)
+    }
+
+    fn parse_accumulate_pattern(&self, pattern: &str) -> Result<(String, String, Vec<String>)> {
+        // Pattern format: Order($amount: amount, status == "completed", category == "electronics")
+        // We need to extract:
+        // - source_pattern: "Order"
+        // - extract_field: "amount" (from $amount: amount)
+        // - source_conditions: ["status == \"completed\"", "category == \"electronics\""]
+
+        let pattern = pattern.trim();
+
+        // Find the opening parenthesis to get the pattern type
+        let paren_pos = pattern.find('(').ok_or_else(|| RuleEngineError::ParseError {
+            message: format!("Invalid accumulate pattern: missing '(' in '{}'", pattern),
+        })?;
+
+        let source_pattern = pattern[..paren_pos].trim().to_string();
+
+        // Extract content between parentheses
+        if !pattern.ends_with(')') {
+            return Err(RuleEngineError::ParseError {
+                message: format!("Invalid accumulate pattern: missing ')' in '{}'", pattern),
+            });
+        }
+
+        let inner = &pattern[paren_pos + 1..pattern.len() - 1];
+
+        // Split by comma (respecting nested parentheses and quotes)
+        let parts = self.split_pattern_parts(inner)?;
+
+        let mut extract_field = String::new();
+        let mut source_conditions = Vec::new();
+
+        for part in parts {
+            let part = part.trim();
+
+            // Check if this is a variable binding: $var: field
+            if part.contains(':') && part.starts_with('$') {
+                let colon_pos = part.find(':').unwrap();
+                let _var_name = part[..colon_pos].trim();
+                let field_name = part[colon_pos + 1..].trim();
+                extract_field = field_name.to_string();
+            } else if part.contains("==") || part.contains("!=") ||
+                      part.contains(">=") || part.contains("<=") ||
+                      part.contains('>') || part.contains('<') {
+                // This is a condition
+                source_conditions.push(part.to_string());
+            }
+        }
+
+        Ok((source_pattern, extract_field, source_conditions))
+    }
+
+    fn split_pattern_parts(&self, content: &str) -> Result<Vec<String>> {
+        let mut parts = Vec::new();
+        let mut current = String::new();
+        let mut paren_depth = 0;
+        let mut in_quotes = false;
+        let mut quote_char = ' ';
+
+        for ch in content.chars() {
+            match ch {
+                '"' | '\'' if !in_quotes => {
+                    in_quotes = true;
+                    quote_char = ch;
+                    current.push(ch);
+                }
+                '"' | '\'' if in_quotes && ch == quote_char => {
+                    in_quotes = false;
+                    current.push(ch);
+                }
+                '(' if !in_quotes => {
+                    paren_depth += 1;
+                    current.push(ch);
+                }
+                ')' if !in_quotes => {
+                    paren_depth -= 1;
+                    current.push(ch);
+                }
+                ',' if !in_quotes && paren_depth == 0 => {
+                    parts.push(current.trim().to_string());
+                    current.clear();
+                }
+                _ => {
+                    current.push(ch);
+                }
+            }
+        }
+
+        if !current.trim().is_empty() {
+            parts.push(current.trim().to_string());
+        }
+
+        Ok(parts)
+    }
+
+    fn parse_accumulate_function(&self, function_str: &str) -> Result<(String, String)> {
+        // Function format: sum($amount) or count() or average($price)
+
+        let function_str = function_str.trim();
+
+        let paren_pos = function_str.find('(').ok_or_else(|| RuleEngineError::ParseError {
+            message: format!("Invalid accumulate function: missing '(' in '{}'", function_str),
+        })?;
+
+        let function_name = function_str[..paren_pos].trim().to_string();
+
+        if !function_str.ends_with(')') {
+            return Err(RuleEngineError::ParseError {
+                message: format!("Invalid accumulate function: missing ')' in '{}'", function_str),
+            });
+        }
+
+        let args = &function_str[paren_pos + 1..function_str.len() - 1];
+        let function_arg = args.trim().to_string();
+
+        Ok((function_name, function_arg))
     }
 
     fn parse_single_condition(&self, clause: &str) -> Result<ConditionGroup> {

@@ -109,6 +109,23 @@ impl GrlReteLoader {
                 let inner_node = Self::convert_condition_group(inner)?;
                 Ok(ReteUlNode::UlForall(Box::new(inner_node)))
             }
+            ConditionGroup::Accumulate {
+                result_var,
+                source_pattern,
+                extract_field,
+                source_conditions,
+                function,
+                function_arg,
+            } => {
+                Ok(ReteUlNode::UlAccumulate {
+                    result_var: result_var.clone(),
+                    source_pattern: source_pattern.clone(),
+                    extract_field: extract_field.clone(),
+                    source_conditions: source_conditions.clone(),
+                    function: function.clone(),
+                    function_arg: function_arg.clone(),
+                })
+            }
         }
     }
 
@@ -276,6 +293,10 @@ impl GrlReteLoader {
             | ReteUlNode::UlExists(inner)
             | ReteUlNode::UlForall(inner) => {
                 Self::extract_deps_from_node(inner, deps);
+            }
+            ReteUlNode::UlAccumulate { source_pattern, .. } => {
+                // Add source pattern as a dependency
+                deps.push(source_pattern.clone());
             }
             ReteUlNode::UlTerminal(_) => {
                 // Terminal nodes don't have dependencies

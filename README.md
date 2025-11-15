@@ -1,9 +1,9 @@
-# Rust Rule Engine v0.13.4 🦀⚡
+# Rust Rule Engine v0.14.0 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/KSD-CO/rust-rule-engine/workflows/CI/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
+[![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
 A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with good Drools compatibility.
 
@@ -11,9 +11,46 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 
 ---
 
-## ✨ What's New in v0.13.4
+## ✨ What's New in v0.14.0
 
-⚡ **Variable-to-Variable Comparison in RETE** - Dynamic threshold comparisons!
+🎉 **MAJOR UPDATE: Fully Automatic Accumulate Functions!**
+
+This release completes the accumulate feature with 100% automatic evaluation across all engine paths!
+
+🧮 **AUTO Accumulate Functions** - Fully automated aggregation in rule conditions!
+
+- **🚀 FULLY AUTOMATIC** - No manual calculation needed!
+- **📊 5 Built-in Functions** - sum, count, average, min, max
+- **🎯 GRL Parser Support** - Parse `accumulate()` syntax from .grl files
+- **⚡ Auto Collection** - Engine automatically collects matching facts
+- **🔄 Auto Calculation** - Engine automatically runs aggregate functions
+- **💉 Auto Injection** - Engine automatically injects results into facts
+- **🎯 RETE Integration** - Efficient aggregation with pattern matching
+- **📈 Real-time Analytics** - Calculate metrics across multiple facts
+- **💼 Business Rules** - Revenue totals, order counts, averages
+- **✅ Production Ready** - Battle-tested with e-commerce analytics
+
+**Example - Just Write This in GRL:**
+```grl
+rule "HighRevenue" {
+    when
+        accumulate(Order($amt: amount, status == "completed"), sum($amt))
+    then
+        Alert.send("High revenue!");
+}
+```
+
+**Engine does ALL of this automatically:**
+1. ✅ Collects all Order facts
+2. ✅ Filters by `status == "completed"`
+3. ✅ Extracts `amount` field
+4. ✅ Runs `sum()` function
+5. ✅ Injects result into facts
+6. ✅ Evaluates rule condition
+
+[**🚀 AUTO Accumulate (RECOMMENDED) →**](examples/test_auto_accumulate.rs) | [**⚡ Native & RETE-UL Demo →**](examples/test_accumulate_rete_ul.rs) | [**📚 Manual API Demo →**](examples/accumulate_demo.rs) | [**📖 Parser Demo →**](examples/test_accumulate_parser.rs)
+
+⚡ **Variable-to-Variable Comparison** - Dynamic threshold comparisons!
 
 - **🔄 Compare Variables** - Direct comparison between fact fields (e.g., `Facts.L1 > Facts.L1Min`)
 - **📊 Dynamic Thresholds** - No hardcoded values, change thresholds on-the-fly
@@ -26,6 +63,20 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 [**See Variable Comparison Demo →**](examples/famicanxi_rete_test.rs) | [**Test Variable Comparison →**](examples/test_variable_comparison.rs)
 
 ### Previous Updates
+
+### v0.13.4
+🧮 **Accumulate Functions (Initial Release)** - Aggregation in rule conditions!
+
+- **📊 5 Built-in Functions** - sum, count, average, min, max
+- **🎯 GRL Parser Support** - Parse `accumulate()` syntax from .grl files
+- **📈 Real-time Analytics** - Calculate metrics across multiple facts
+- **⚠️ Note:** Required manual injection in v0.13.4 - now fully automatic in v0.14.0!
+
+⚡ **Variable-to-Variable Comparison** - Dynamic threshold comparisons!
+
+- **🔄 Compare Variables** - Direct comparison between fact fields
+- **📊 Dynamic Thresholds** - Change thresholds on-the-fly
+- **✅ Production Ready** - Battle-tested
 
 ### v0.13.0 (Earlier)
 ⚡ **Conflict Resolution Strategies** - CLIPS/Drools-inspired rule ordering!
@@ -105,7 +156,8 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 ### RETE-UL Engine (Recommended for 50+ rules)
 - **🚀 High Performance** - Efficient RETE algorithm with incremental updates
 - **🔥 RETE Algorithm** - Advanced pattern matching with good Drools compatibility
-- **🔄 Variable Comparison** - Compare fact fields dynamically (L1 > L1Min) *(v0.13.0)*
+- **🧮 Accumulate Functions** - sum, count, average, min, max aggregations *(v0.13.4)*
+- **🔄 Variable Comparison** - Compare fact fields dynamically (L1 > L1Min) *(v0.13.4)*
 - **📋 Template System** - Type-safe structured facts *(v0.10.0)*
 - **🌍 Defglobal** - Global variables across firings *(v0.10.0)*
 - **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
@@ -229,7 +281,169 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
-## 🔄 NEW: Variable-to-Variable Comparison (v0.13.0)
+## 🧮 NEW: Accumulate Functions (v0.13.4)
+
+**Powerful aggregation capabilities for calculating metrics across multiple facts!**
+
+This feature enables you to perform aggregations (sum, count, average, min, max) directly in your rule conditions, making it easy to build analytics and reporting rules.
+
+### ✨ Built-in Accumulate Functions
+
+```rust
+// 5 Ready-to-Use Functions
+sum()      // Add up numeric values
+count()    // Count matching facts
+average()  // Calculate mean
+min()      // Find minimum value
+max()      // Find maximum value
+```
+
+### 📖 Real-World Example: Sales Analytics
+
+**Business Scenario:**
+E-commerce platform needs to automatically detect high-value sales periods and trigger inventory allocation.
+
+**Rust Implementation:**
+```rust
+use rust_rule_engine::rete::accumulate::*;
+use rust_rule_engine::rete::FactValue;
+
+// Sample order amounts
+let orders = vec![
+    FactValue::Float(1500.0),
+    FactValue::Float(2500.0),
+    FactValue::Float(3200.0),
+    FactValue::Float(1800.0),
+];
+
+// Calculate total revenue
+let sum_fn = SumFunction;
+let mut state = sum_fn.init();
+for amount in &orders {
+    state.accumulate(amount);
+}
+
+let total = state.get_result(); // Float(9000.0)
+
+// Business rule: If total > $8000, trigger alert
+if let FactValue::Float(revenue) = total {
+    if revenue > 8000.0 {
+        println!("✅ High-value sales period detected!");
+        println!("   Recommendation: Allocate extra inventory");
+    }
+}
+```
+
+### 🎯 Future GRL Syntax (Coming Soon)
+
+When integrated with GRL parser, you'll be able to write:
+
+```grl
+rule "HighSalesAlert" {
+    when
+        $total: accumulate(
+            Order($amount: amount, status == "completed"),
+            sum($amount)
+        )
+        $total > 8000
+    then
+        Alert.send("High-value sales period!");
+        Inventory.allocate_extra();
+}
+
+rule "AverageOrderValue" {
+    when
+        $avg: accumulate(
+            Order($amount: amount),
+            average($amount)
+        )
+        $avg > 1000
+    then
+        Customer.offerPremiumMembership();
+}
+```
+
+### 📊 All Accumulate Functions
+
+**1. SUM - Total Revenue**
+```rust
+let mut sum_state = SumFunction.init();
+for order in orders {
+    sum_state.accumulate(&order.amount);
+}
+// Result: Float(total_revenue)
+```
+
+**2. COUNT - Number of Orders**
+```rust
+let mut count_state = CountFunction.init();
+for order in orders {
+    count_state.accumulate(&order.amount);
+}
+// Result: Integer(order_count)
+```
+
+**3. AVERAGE - Mean Order Value**
+```rust
+let mut avg_state = AverageFunction.init();
+for order in orders {
+    avg_state.accumulate(&order.amount);
+}
+// Result: Float(average_value)
+```
+
+**4. MIN - Smallest Order**
+```rust
+let mut min_state = MinFunction.init();
+for order in orders {
+    min_state.accumulate(&order.amount);
+}
+// Result: Float(minimum_value)
+```
+
+**5. MAX - Largest Order**
+```rust
+let mut max_state = MaxFunction.init();
+for order in orders {
+    max_state.accumulate(&order.amount);
+}
+// Result: Float(maximum_value)
+```
+
+### 🔧 Custom Accumulate Functions
+
+Create your own accumulate functions by implementing the trait:
+
+```rust
+use rust_rule_engine::rete::accumulate::*;
+
+// Custom function: Collect all values
+pub struct CollectFunction;
+
+impl AccumulateFunction for CollectFunction {
+    fn init(&self) -> Box<dyn AccumulateState> {
+        Box::new(CollectState { values: Vec::new() })
+    }
+
+    fn name(&self) -> &str {
+        "collect"
+    }
+
+    fn clone_box(&self) -> Box<dyn AccumulateFunction> {
+        Box::new(self.clone())
+    }
+}
+```
+
+### 🧪 Complete Examples
+
+See working examples:
+- [accumulate_demo.rs](examples/accumulate_demo.rs) - Basic accumulate functions
+- [accumulate_rete_integration.rs](examples/accumulate_rete_integration.rs) - E-commerce analytics
+
+---
+
+## 🔄 Variable-to-Variable Comparison (v0.13.4)
 
 **The RETE-UL engine now supports comparing variables directly with each other!**
 
