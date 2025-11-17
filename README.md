@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.14.0 🦀⚡
+# Rust Rule Engine v0.14.1 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -10,6 +10,43 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
+
+## ✨ What's New in v0.14.1
+
+🗑️ **Retract Actions** - CLIPS-style fact retraction!
+
+- **🔥 Retract Facts** - Remove facts from working memory in GRL rules
+- **📝 CLIPS Syntax** - `retract($Object)` just like CLIPS
+- **🎯 GRL Parser Support** - Parse retract syntax from .grl files
+- **🧠 Working Memory** - Mark facts as retracted to prevent future matches
+- **🔄 Engine Integration** - Full support in Native, RETE, and Parallel engines
+- **✅ Production Ready** - Session cleanup, workflow completion, resource management
+
+**Example - Retract in GRL:**
+```grl
+rule "CleanupExpiredSession" {
+    when
+        Session.expired == true
+    then
+        Log("Session expired, cleaning up...");
+        retract($Session);
+}
+
+rule "RemoveInvalidUser" {
+    when
+        User.verified == false
+    then
+        retract($User);
+}
+```
+
+**Similar to CLIPS:**
+- CLIPS: `(retract ?f)`
+- Rust Rule Engine: `retract($Object)`
+
+[**🗑️ Native Engine Demo →**](examples/retract_demo.rs) | [**⚡ RETE Engine Demo →**](examples/retract_demo_rete.rs) | [**📝 GRL Examples →**](examples/rules/retract_demo.grl)
+
+### Previous Updates
 
 ## ✨ What's New in v0.14.0
 
@@ -158,6 +195,7 @@ rule "HighRevenue" {
 - **🔥 RETE Algorithm** - Advanced pattern matching with good Drools compatibility
 - **🧮 Accumulate Functions** - sum, count, average, min, max aggregations *(v0.13.4)*
 - **🔄 Variable Comparison** - Compare fact fields dynamically (L1 > L1Min) *(v0.13.4)*
+- **🗑️ Retract** - Remove facts from working memory *(v0.14.1)*
 - **📋 Template System** - Type-safe structured facts *(v0.10.0)*
 - **🌍 Defglobal** - Global variables across firings *(v0.10.0)*
 - **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
@@ -184,13 +222,13 @@ rule "HighRevenue" {
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.13.4"
+rust-rule-engine = "0.14.1"
 ```
 
 ### Optional Features
 ```toml
 # Enable streaming support
-rust-rule-engine = { version = "0.13.4", features = ["streaming"] }
+rust-rule-engine = { version = "0.14.1", features = ["streaming"] }
 ```
 
 ---

@@ -217,6 +217,11 @@ impl GrlReteLoader {
             ActionType::Update { object } => {
                 println!("🔄 UPDATE: {}", object);
             }
+            ActionType::Retract { object } => {
+                println!("🗑️ RETRACT: {}", object);
+                // Mark fact as retracted - actual retraction will be handled by engine
+                facts.set(format!("_retract_{}", object), FactValue::Boolean(true));
+            }
             ActionType::Custom { action_type, params: _ } => {
                 println!("⚙️ CUSTOM: {}", action_type);
             }

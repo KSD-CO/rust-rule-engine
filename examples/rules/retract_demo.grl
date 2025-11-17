@@ -1,0 +1,37 @@
+// Retract Demo - CLIPS-style fact retraction
+// This demonstrates the retract() action in GRL
+
+rule "DetectExpiredSession" salience 100 {
+    when
+        Session.expired == true && Session.active == true
+    then
+        Log("Session has expired, cleaning up...");
+        Session.active = false;
+        retract($Session);
+}
+
+rule "DetectInvalidUser" salience 90 {
+    when
+        User.verified == false && User.loginAttempts > 3
+    then
+        Log("User failed verification multiple times");
+        User.status = "blocked";
+        retract($User);
+}
+
+rule "CleanupCompletedOrder" salience 80 {
+    when
+        Order.status == "completed" && Order.shipped == true
+    then
+        Log("Order completed and shipped, archiving...");
+        Order.archived = true;
+        retract($Order);
+}
+
+rule "RemoveLowStockProduct" salience 70 {
+    when
+        Product.stock == 0 && Product.discontinued == true
+    then
+        Log("Product out of stock and discontinued");
+        retract($Product);
+}

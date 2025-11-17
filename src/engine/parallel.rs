@@ -317,6 +317,10 @@ impl ParallelRuleEngine {
                 // Simplified update handling
                 Ok(())
             }
+            ActionType::Retract { .. } => {
+                // Simplified retract handling
+                Ok(())
+            }
             ActionType::Custom { .. } => {
                 // Simplified custom action handling
                 Ok(())

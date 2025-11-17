@@ -390,6 +390,11 @@ pub enum ActionType {
         /// Object name to update
         object: String,
     },
+    /// Retract (delete) a fact from working memory
+    Retract {
+        /// Object/fact to retract
+        object: String,
+    },
     /// Custom action
     Custom {
         /// Action type identifier

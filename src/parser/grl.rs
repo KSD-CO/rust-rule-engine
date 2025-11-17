@@ -941,6 +941,17 @@ impl GRLParser {
                         object: object_name,
                     })
                 }
+                "retract" => {
+                    // Extract object name from $Object
+                    let object_name = if let Some(stripped) = args_str.strip_prefix('$') {
+                        stripped.to_string()
+                    } else {
+                        args_str.to_string()
+                    };
+                    Ok(ActionType::Retract {
+                        object: object_name,
+                    })
+                }
                 "log" => {
                     let message = if args_str.is_empty() {
                         "Log message".to_string()

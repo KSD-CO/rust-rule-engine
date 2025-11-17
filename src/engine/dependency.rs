@@ -138,6 +138,10 @@ impl DependencyAnalyzer {
                 crate::types::ActionType::Update { object } => {
                     writes.push(object.clone());
                 }
+                crate::types::ActionType::Retract { object } => {
+                    // Retract removes a fact, mark it as a write
+                    writes.push(format!("_retracted_{}", object));
+                }
                 crate::types::ActionType::MethodCall { object, method, .. } => {
                     // Method calls might modify the object
                     writes.push(object.clone());

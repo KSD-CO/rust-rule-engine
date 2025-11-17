@@ -433,6 +433,9 @@ impl ActionTypeGRLExport for crate::types::ActionType {
             crate::types::ActionType::Update { object } => {
                 format!("update({})", object)
             }
+            crate::types::ActionType::Retract { object } => {
+                format!("retract(${})", object)
+            }
             crate::types::ActionType::Call { function, args } => {
                 let args_str = args
                     .iter()

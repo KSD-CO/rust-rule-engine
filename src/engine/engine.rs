@@ -909,6 +909,12 @@ impl RustRuleEngine {
         self.evaluate_conditions(&rule.conditions, facts)
     }
 
+    /// Check if a fact object has been retracted
+    fn is_retracted(&self, object_name: &str, facts: &Facts) -> bool {
+        let retract_key = format!("_retracted_{}", object_name);
+        matches!(facts.get(&retract_key), Some(Value::Boolean(true)))
+    }
+
     /// Evaluate a single condition
     fn evaluate_single_condition(
         &self,
@@ -919,6 +925,17 @@ impl RustRuleEngine {
 
         let result = match &condition.expression {
             ConditionExpression::Field(field_name) => {
+                // Check if the fact object has been retracted
+                // Extract object name from field (e.g., "Session.expired" -> "Session")
+                if let Some(object_name) = field_name.split('.').next() {
+                    if self.is_retracted(object_name, facts) {
+                        if self.config.debug_mode {
+                            println!("    🗑️ Skipping retracted fact: {}", object_name);
+                        }
+                        return Ok(false);
+                    }
+                }
+
                 // Field condition - try nested first, then flat lookup
                 let field_value = facts
                     .get_nested(field_name)
@@ -1104,6 +1121,13 @@ impl RustRuleEngine {
                 }
                 // Update action is mainly for working memory management
                 // In this implementation, it's mostly a no-op since we update in place
+            }
+            ActionType::Retract { object } => {
+                if self.config.debug_mode {
+                    println!("  🗑️ Retracted {object}");
+                }
+                // Mark fact as retracted in working memory
+                facts.set(&format!("_retracted_{}", object), Value::Boolean(true));
             }
             ActionType::Custom {
                 action_type,
