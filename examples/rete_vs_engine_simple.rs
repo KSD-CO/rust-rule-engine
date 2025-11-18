@@ -171,7 +171,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let no_loop = true; // Drools-style: only fire once per rule
         let rule_name_for_action = rule.name.clone();
         let rule_name_for_struct = rule.name.clone();
-        let action = Box::new(move |facts: &mut std::collections::HashMap<String, String>| {
+        let action = std::sync::Arc::new(move |facts: &mut std::collections::HashMap<String, String>| {
             let fired_flag = format!("{}_fired", rule_name_for_action);
             if facts.get(&fired_flag) == Some(&"true".to_string()) {
                 return;
@@ -183,7 +183,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => {}
             }
             facts.insert(fired_flag, "true".to_string());
-        }) as Box<dyn FnMut(&mut std::collections::HashMap<String, String>)>;
+        });
         rete_ul_rules.push(ReteUlRule {
             name: rule_name_for_struct,
             node: rete_node,

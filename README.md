@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.14.1 🦀⚡
+# Rust Rule Engine v0.15.0 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,7 +11,14 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 
 ---
 
-## ✨ What's New in v0.14.1
+## ✨ What's New in v0.15.0
+
+🚀 **Thread-Safe RETE Engine** - Multi-threaded support for Axum & async web services!
+
+- **🔥 Send + Sync** - IncrementalEngine is now Send + Sync for multi-threaded use
+- **⚡ Axum Compatible** - Use with `Arc<Mutex<IncrementalEngine>>` in web services
+- **🎯 Breaking Change** - Action closures changed from `Box<FnMut>` to `Arc<Fn + Send + Sync>`
+- **📝 Migration** - Replace `Box::new(move |facts| ...)` with `Arc::new(move |facts| ...)`
 
 🗑️ **Retract Actions** - CLIPS-style fact retraction!
 
@@ -46,7 +53,53 @@ rule "RemoveInvalidUser" {
 
 [**🗑️ Native Engine Demo →**](examples/retract_demo.rs) | [**⚡ RETE Engine Demo →**](examples/retract_demo_rete.rs) | [**📝 GRL Examples →**](examples/rules/retract_demo.grl)
 
+### 🔄 Migration Guide: v0.14.x → v0.15.0
+
+**Breaking Change:** Action closures in RETE engine are now `Arc<Fn + Send + Sync>` instead of `Box<FnMut>`.
+
+**Before (v0.14.x):**
+```rust
+let rule = TypedReteUlRule {
+    name: "MyRule".to_string(),
+    node: my_node,
+    priority: 0,
+    no_loop: true,
+    action: Box::new(move |facts: &mut TypedFacts| {
+        facts.set("result", true);
+    }),
+};
+```
+
+**After (v0.15.0):**
+```rust
+let rule = TypedReteUlRule {
+    name: "MyRule".to_string(),
+    node: my_node,
+    priority: 0,
+    no_loop: true,
+    action: Arc::new(move |facts: &mut TypedFacts| {
+        facts.set("result", true);
+    }),
+};
+```
+
+**Why this change?**
+- Makes `IncrementalEngine` Send + Sync for use with Axum and async web frameworks
+- Enables sharing the engine across threads safely with `Arc<Mutex<IncrementalEngine>>`
+- No mutable state needed in actions (facts are passed as `&mut`)
+
+**Note:** If you use `add_rule_with_action()`, no changes needed - the function accepts closures directly.
+
 ### Previous Updates
+
+## ✨ What's New in v0.14.1
+
+🗑️ **Retract Actions** - CLIPS-style fact retraction added!
+
+- Retract facts from working memory with `retract($Object)` syntax
+- Full GRL parser support for retract in .grl files
+- Integration with Native, RETE, and Parallel engines
+- Production-ready for session cleanup and workflow completion
 
 ## ✨ What's New in v0.14.0
 
@@ -196,6 +249,7 @@ rule "HighRevenue" {
 - **🧮 Accumulate Functions** - sum, count, average, min, max aggregations *(v0.13.4)*
 - **🔄 Variable Comparison** - Compare fact fields dynamically (L1 > L1Min) *(v0.13.4)*
 - **🗑️ Retract** - Remove facts from working memory *(v0.14.1)*
+- **🔒 Thread-Safe** - Send + Sync for multi-threaded use *(v0.15.0)*
 - **📋 Template System** - Type-safe structured facts *(v0.10.0)*
 - **🌍 Defglobal** - Global variables across firings *(v0.10.0)*
 - **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
@@ -222,13 +276,13 @@ rule "HighRevenue" {
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.14.1"
+rust-rule-engine = "0.15.0"
 ```
 
 ### Optional Features
 ```toml
 # Enable streaming support
-rust-rule-engine = { version = "0.14.1", features = ["streaming"] }
+rust-rule-engine = { version = "0.15.0", features = ["streaming"] }
 ```
 
 ---

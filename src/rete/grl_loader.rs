@@ -185,8 +185,8 @@ impl GrlReteLoader {
     /// Create action closure from ActionType list
     fn create_action_closure(
         actions: Vec<crate::types::ActionType>,
-    ) -> Box<dyn FnMut(&mut TypedFacts)> {
-        Box::new(move |facts: &mut TypedFacts| {
+    ) -> std::sync::Arc<dyn Fn(&mut TypedFacts) + Send + Sync> {
+        std::sync::Arc::new(move |facts: &mut TypedFacts| {
             // Execute actions
             for action in &actions {
                 Self::execute_action(action, facts);

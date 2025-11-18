@@ -31,7 +31,7 @@ fn main() {
         }),
         priority: 10,
         no_loop: true,
-        action: Box::new(|facts| {
+        action: std::sync::Arc::new(|facts| {
             println!("  ✅ IsAdult rule fired!");
             facts.set("is_adult", true);
         }),
@@ -46,7 +46,7 @@ fn main() {
         }),
         priority: 5,
         no_loop: true,
-        action: Box::new(|facts| {
+        action: std::sync::Arc::new(|facts| {
             println!("  ✅ HighValueOrder rule fired!");
             facts.set("high_value", true);
         }),
@@ -123,7 +123,7 @@ fn main() {
             }),
             priority: i as i32,
             no_loop: true,
-            action: Box::new(move |_| {
+            action: std::sync::Arc::new(move |_| {
                 // Do nothing
             }),
         };
@@ -141,7 +141,7 @@ fn main() {
             }),
             priority: i as i32,
             no_loop: true,
-            action: Box::new(move |_| {}),
+            action: std::sync::Arc::new(move |_| {}),
         };
         engine2.add_rule(rule, vec!["Order".to_string()]);
     }
@@ -197,7 +197,7 @@ fn main() {
         }),
         priority: 0,
         no_loop: true,
-        action: Box::new(|_| {}),
+        action: std::sync::Arc::new(|_| {}),
     };
 
     let rule2 = TypedReteUlRule {
@@ -209,7 +209,7 @@ fn main() {
         }),
         priority: 0,
         no_loop: true,
-        action: Box::new(|_| {}),
+        action: std::sync::Arc::new(|_| {}),
     };
 
     let rule3 = TypedReteUlRule {
@@ -228,7 +228,7 @@ fn main() {
         ),
         priority: 0,
         no_loop: true,
-        action: Box::new(|_| {}),
+        action: std::sync::Arc::new(|_| {}),
     };
 
     engine3.add_rule(rule1, vec!["Person".to_string()]);

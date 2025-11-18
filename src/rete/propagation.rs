@@ -495,7 +495,7 @@ mod tests {
             node,
             priority: 0,
             no_loop: true,
-            action: Box::new(|_| {}),
+            action: std::sync::Arc::new(|_| {}),
         };
 
         engine.add_rule(rule, vec!["Person".to_string()]);

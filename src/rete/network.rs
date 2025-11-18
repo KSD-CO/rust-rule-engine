@@ -1,4 +1,5 @@
 use crate::rete::alpha::AlphaNode;
+use std::sync::Arc;
 /// Chuyển ConditionGroup sang ReteUlNode
 pub fn build_rete_ul_from_condition_group(group: &crate::rete::auto_network::ConditionGroup) -> ReteUlNode {
     use crate::rete::auto_network::ConditionGroup;
@@ -308,7 +309,7 @@ pub struct ReteUlRule {
     pub node: ReteUlNode,
     pub priority: i32,
     pub no_loop: bool,
-    pub action: Box<dyn FnMut(&mut std::collections::HashMap<String, String>)>,
+    pub action: Arc<dyn Fn(&mut std::collections::HashMap<String, String>) + Send + Sync>,
 }
 
 /// Drools-style RETE-UL rule firing loop
@@ -426,14 +427,14 @@ impl ReteUlEngine {
         no_loop: bool,
         action: F,
     ) where
-        F: FnMut(&mut std::collections::HashMap<String, String>) + 'static,
+        F: Fn(&mut std::collections::HashMap<String, String>) + Send + Sync + 'static,
     {
         self.rules.push(ReteUlRule {
             name,
             node,
             priority,
             no_loop,
-            action: Box::new(action),
+            action: Arc::new(action),
         });
     }
 
@@ -448,9 +449,9 @@ impl ReteUlEngine {
         let rule_name = rule.name.clone();
 
         // Default action: just mark as fired
-        let action = Box::new(move |facts: &mut std::collections::HashMap<String, String>| {
+        let action = Arc::new(move |facts: &mut std::collections::HashMap<String, String>| {
             facts.insert(format!("{}_executed", rule_name), "true".to_string());
-        }) as Box<dyn FnMut(&mut std::collections::HashMap<String, String>)>;
+        });
 
         self.rules.push(ReteUlRule {
             name: rule.name.clone(),
@@ -679,7 +680,7 @@ pub struct TypedReteUlRule {
     pub node: ReteUlNode,
     pub priority: i32,
     pub no_loop: bool,
-    pub action: Box<dyn FnMut(&mut TypedFacts)>,
+    pub action: Arc<dyn Fn(&mut TypedFacts) + Send + Sync>,
 }
 
 /// Typed RETE-UL Engine with cached nodes (Performance + Type Safety!)
@@ -707,14 +708,14 @@ impl TypedReteUlEngine {
         no_loop: bool,
         action: F,
     ) where
-        F: FnMut(&mut TypedFacts) + 'static,
+        F: Fn(&mut TypedFacts) + Send + Sync + 'static,
     {
         self.rules.push(TypedReteUlRule {
             name,
             node,
             priority,
             no_loop,
-            action: Box::new(action),
+            action: Arc::new(action),
         });
     }
 
@@ -728,9 +729,9 @@ impl TypedReteUlEngine {
         let node = build_rete_ul_from_condition_group(&rule.conditions);
         let rule_name = rule.name.clone();
 
-        let action = Box::new(move |facts: &mut TypedFacts| {
+        let action = Arc::new(move |facts: &mut TypedFacts| {
             facts.set(format!("{}_executed", rule_name), true);
-        }) as Box<dyn FnMut(&mut TypedFacts)>;
+        });
 
         self.rules.push(TypedReteUlRule {
             name: rule.name.clone(),
