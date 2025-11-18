@@ -226,6 +226,11 @@ impl RustRuleEngine {
         self.analytics.as_ref()
     }
 
+    /// Enable debug mode for detailed execution logging
+    pub fn set_debug_mode(&mut self, enabled: bool) {
+        self.config.debug_mode = enabled;
+    }
+
     /// Check if a custom function is registered
     pub fn has_function(&self, name: &str) -> bool {
         self.custom_functions.contains_key(name)
@@ -517,6 +522,9 @@ impl RustRuleEngine {
 
                 // Check no-loop: if rule has no_loop=true and already fired globally, skip
                 if rule.no_loop && self.fired_rules_global.contains(&rule.name) {
+                    if self.config.debug_mode {
+                        println!("⛔ Skipping '{}' due to no_loop (already fired)", rule.name);
+                    }
                     continue;
                 }
 
@@ -524,7 +532,7 @@ impl RustRuleEngine {
                 let rule_start = Instant::now();
 
                 if self.config.debug_mode {
-                    println!("📝 Evaluating rule: {}", rule.name);
+                    println!("📝 Evaluating rule: {} (no_loop={})", rule.name, rule.no_loop);
                 }
 
                 // Evaluate rule conditions
@@ -565,6 +573,9 @@ impl RustRuleEngine {
                     // Track that this rule fired globally (for no-loop support)
                     if rule.no_loop {
                         self.fired_rules_global.insert(rule.name.clone());
+                        if self.config.debug_mode {
+                            println!("  🔒 Marked '{}' as fired (no_loop tracking)", rule.name);
+                        }
                     }
 
                     // Mark rule as fired for agenda and activation group management
@@ -1087,13 +1098,22 @@ impl RustRuleEngine {
     fn execute_action(&mut self, action: &ActionType, facts: &Facts) -> Result<()> {
         match action {
             ActionType::Set { field, value } => {
+                // Evaluate expression if value is an Expression
+                let evaluated_value = match value {
+                    Value::Expression(expr) => {
+                        // Evaluate the expression with current facts
+                        crate::expression::evaluate_expression(expr, facts)?
+                    }
+                    _ => value.clone(),
+                };
+
                 // Try nested first, then fall back to flat key setting
-                if let Err(_) = facts.set_nested(field, value.clone()) {
+                if let Err(_) = facts.set_nested(field, evaluated_value.clone()) {
                     // If nested fails, use flat key
-                    facts.set(field, value.clone());
+                    facts.set(field, evaluated_value.clone());
                 }
                 if self.config.debug_mode {
-                    println!("  ✅ Set {field} = {value:?}");
+                    println!("  ✅ Set {field} = {evaluated_value:?}");
                 }
             }
             ActionType::Log { message } => {

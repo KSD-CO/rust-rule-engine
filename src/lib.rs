@@ -106,6 +106,8 @@ pub mod streaming;
 pub mod types;
 /// RETE module for rule evaluation
 pub mod rete;
+/// Expression evaluation (arithmetic operations)
+pub mod expression;
 
 // Re-export core types for easy access
 pub use errors::{Result, RuleEngineError};

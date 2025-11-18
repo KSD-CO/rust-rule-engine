@@ -400,6 +400,7 @@ impl ValueGRLExport for Value {
             Value::Null => "null".to_string(),
             Value::Array(_) => "[array]".to_string(),
             Value::Object(_) => "{object}".to_string(),
+            Value::Expression(expr) => expr.clone(), // Export as-is
         }
     }
 }

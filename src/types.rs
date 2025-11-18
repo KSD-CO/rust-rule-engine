@@ -18,6 +18,8 @@ pub enum Value {
     Object(HashMap<String, Value>),
     /// Null value
     Null,
+    /// Expression to be evaluated at runtime (e.g., "Order.quantity * Order.price")
+    Expression(String),
 }
 
 impl Value {
@@ -32,6 +34,7 @@ impl Value {
             Value::Array(_) => "[Array]".to_string(),
             Value::Object(_) => "[Object]".to_string(),
             Value::Null => "null".to_string(),
+            Value::Expression(expr) => format!("[Expr: {}]", expr),
         }
     }
 
@@ -87,6 +90,7 @@ impl Value {
             Value::Array(arr) => !arr.is_empty(),
             Value::Object(obj) => !obj.is_empty(),
             Value::Null => false,
+            Value::Expression(_) => false, // Expression needs to be evaluated first
         }
     }
 

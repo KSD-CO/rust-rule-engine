@@ -72,6 +72,8 @@ pub struct Activation {
     pub created_at: std::time::Instant,
     /// Number of conditions in the rule (for complexity/simplicity strategies)
     pub condition_count: usize,
+    /// Matched fact handle (which fact triggered this activation)
+    pub matched_fact_handle: Option<super::FactHandle>,
     /// Internal ID
     id: usize,
 }
@@ -90,8 +92,15 @@ impl Activation {
             auto_focus: false,
             created_at: std::time::Instant::now(),
             condition_count: 1, // Default to 1
+            matched_fact_handle: None,
             id: 0,
         }
+    }
+
+    /// Builder: Set matched fact handle
+    pub fn with_matched_fact(mut self, handle: super::FactHandle) -> Self {
+        self.matched_fact_handle = Some(handle);
+        self
     }
 
     /// Builder: Set condition count

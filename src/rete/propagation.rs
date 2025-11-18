@@ -204,6 +204,26 @@ impl IncrementalEngine {
         }
     }
 
+    /// Propagate changes for all fact types (re-evaluate all rules)
+    fn propagate_changes(&mut self) {
+        // Flatten working memory to TypedFacts for evaluation
+        let facts = self.working_memory.to_typed_facts();
+
+        // Re-evaluate ALL rules with current working memory state
+        for (rule_idx, rule) in self.rules.iter().enumerate() {
+            // Evaluate rule condition
+            let matches = super::network::evaluate_rete_ul_node_typed(&rule.node, &facts);
+
+            if matches {
+                // Create activation
+                let activation = Activation::new(rule.name.clone(), rule.priority)
+                    .with_no_loop(rule.no_loop);
+
+                self.agenda.add_activation(activation);
+            }
+        }
+    }
+
     /// Fire all pending activations
     pub fn fire_all(&mut self) -> Vec<String> {
         let mut fired_rules = Vec::new();
@@ -215,16 +235,46 @@ impl IncrementalEngine {
                 .enumerate()
                 .find(|(_, r)| r.name == activation.rule_name)
             {
-                // Execute action
-                let mut facts = self.working_memory.to_typed_facts();
-                (rule.action)(&mut facts);
+                // Execute action on a copy of all facts
+                let original_facts = self.working_memory.to_typed_facts();
+                let mut modified_facts = original_facts.clone();
+                (rule.action)(&mut modified_facts);
+
+                // Update working memory: merge changed fields back into each fact
+                // Get handles and update only the fields that changed
+                let handles: Vec<_> = self.working_memory.get_all_handles();
+                for handle in handles {
+                    if let Some(wm_fact) = self.working_memory.get(&handle) {
+                        // Start with original fact data
+                        let mut updated_data = wm_fact.data.clone();
+
+                        // Merge in any NEW fields from modified_facts
+                        // (fields that were set by the action)
+                        for (key, value) in modified_facts.get_all() {
+                            // Only update if this field wasn't in original OR has changed
+                            if !original_facts.get_all().contains_key(key) ||
+                               original_facts.get(key) != Some(value) {
+                                // Strip any prefixes to get clean field name
+                                let clean_key = if key.contains('.') {
+                                    key.split('.').last().unwrap_or(key)
+                                } else {
+                                    key
+                                };
+                                updated_data.set(clean_key, value.clone());
+                            }
+                        }
+
+                        let _ = self.working_memory.update(handle, updated_data);
+                    }
+                }
+
+                // Re-evaluate matches after working memory update
+                // This allows subsequent rules to see the updated values
+                self.propagate_changes();
 
                 // Track fired rule
                 fired_rules.push(activation.rule_name.clone());
                 self.agenda.mark_rule_fired(&activation);
-
-                // TODO: Update working memory with changed facts
-                // This is complex and would require tracking what changed
             }
         }
 

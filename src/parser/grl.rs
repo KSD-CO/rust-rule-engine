@@ -856,6 +856,12 @@ impl GRLParser {
             return Ok(Value::Number(float_val));
         }
 
+        // Expression with arithmetic operators (e.g., "Order.quantity * Order.price")
+        // Detect: contains operators AND (contains field reference OR multiple tokens)
+        if self.is_expression(trimmed) {
+            return Ok(Value::Expression(trimmed.to_string()));
+        }
+
         // Field reference (like User.Name)
         if trimmed.contains('.') {
             return Ok(Value::String(trimmed.to_string()));
@@ -863,6 +869,21 @@ impl GRLParser {
 
         // Default to string
         Ok(Value::String(trimmed.to_string()))
+    }
+
+    /// Check if a string is an arithmetic expression
+    fn is_expression(&self, s: &str) -> bool {
+        // Check for arithmetic operators
+        let has_operator = s.contains('+') || s.contains('-') || s.contains('*') || s.contains('/') || s.contains('%');
+
+        // Check for field references (contains .)
+        let has_field_ref = s.contains('.');
+
+        // Check for multiple tokens (spaces between operands/operators)
+        let has_spaces = s.contains(' ');
+
+        // Expression if: has operator AND (has field reference OR has spaces)
+        has_operator && (has_field_ref || has_spaces)
     }
 
     fn parse_then_clause(&self, then_clause: &str) -> Result<Vec<ActionType>> {

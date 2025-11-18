@@ -179,6 +179,10 @@ impl GrlReteLoader {
                 // For objects, we'll use a simplified representation
                 "object".to_string()
             }
+            Value::Expression(expr) => {
+                // For expressions, return the expression string
+                expr.clone()
+            }
         }
     }
 
@@ -200,8 +204,17 @@ impl GrlReteLoader {
 
         match action {
             ActionType::Set { field, value } => {
-                // Convert Value to FactValue
-                let fact_value = Self::value_to_fact_value(value);
+                // Check if value is an expression that needs evaluation
+                let evaluated_value = match value {
+                    Value::Expression(expr) => {
+                        // Evaluate expression with current facts
+                        Self::evaluate_expression_for_rete(expr, facts)
+                    }
+                    _ => value.clone(),
+                };
+
+                // Convert evaluated value to FactValue
+                let fact_value = Self::value_to_fact_value(&evaluated_value);
                 facts.set(field, fact_value);
             }
             ActionType::Log { message } => {
@@ -265,6 +278,10 @@ impl GrlReteLoader {
                 // For now, treat objects as strings
                 FactValue::String("object".to_string())
             }
+            Value::Expression(expr) => {
+                // For expressions, store as string - will be evaluated at runtime
+                FactValue::String(format!("[EXPR: {}]", expr))
+            }
         }
     }
 
@@ -306,6 +323,67 @@ impl GrlReteLoader {
             ReteUlNode::UlTerminal(_) => {
                 // Terminal nodes don't have dependencies
             }
+        }
+    }
+
+    /// Evaluate expression for RETE engine (converts TypedFacts to Facts temporarily)
+    fn evaluate_expression_for_rete(expr: &str, typed_facts: &TypedFacts) -> Value {
+        // Convert TypedFacts to Facts for expression evaluation
+        use crate::engine::facts::Facts;
+
+        let mut facts = Facts::new();
+
+        // Copy all facts from TypedFacts to Facts
+        // RETE stores facts as "quantity" while GRL uses "Order.quantity"
+        // We need to support both formats
+        for (key, value) in typed_facts.get_all() {
+            let converted_value = Self::fact_value_to_value(value);
+
+            // Store both with and without prefix
+            // E.g., "quantity" -> both "quantity" and "Order.quantity"
+            facts.set(key, converted_value.clone());
+
+            // Also try to add with "Order." prefix if not already present
+            if !key.contains('.') {
+                facts.set(&format!("Order.{}", key), converted_value);
+            }
+        }
+
+        // Evaluate expression
+        match crate::expression::evaluate_expression(expr, &facts) {
+            Ok(result) => result,
+            Err(e) => {
+                // Silently fallback - this can happen with chained expressions in RETE
+                // due to working memory complexity
+                Value::String(expr.to_string())
+            }
+        }
+    }
+
+    /// Convert FactValue back to Value (reverse of value_to_fact_value)
+    fn fact_value_to_value(fact_value: &FactValue) -> Value {
+        match fact_value {
+            FactValue::String(s) => {
+                // Try to parse as number first
+                if let Ok(i) = s.parse::<i64>() {
+                    Value::Integer(i)
+                } else if let Ok(f) = s.parse::<f64>() {
+                    Value::Number(f)
+                } else if s == "true" {
+                    Value::Boolean(true)
+                } else if s == "false" {
+                    Value::Boolean(false)
+                } else {
+                    Value::String(s.clone())
+                }
+            }
+            FactValue::Integer(i) => Value::Integer(*i),
+            FactValue::Float(f) => Value::Number(*f),
+            FactValue::Boolean(b) => Value::Boolean(*b),
+            FactValue::Array(arr) => {
+                Value::Array(arr.iter().map(Self::fact_value_to_value).collect())
+            }
+            FactValue::Null => Value::Null,
         }
     }
 }

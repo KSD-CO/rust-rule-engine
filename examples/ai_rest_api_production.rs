@@ -712,6 +712,7 @@ fn convert_value_to_json(value: Value) -> serde_json::Value {
             json!(json_obj)
         }
         Value::Null => json!(null),
+        Value::Expression(expr) => json!(expr), // Convert expression to string
     }
 }
 

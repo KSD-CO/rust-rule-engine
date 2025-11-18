@@ -1,0 +1,29 @@
+// Expression Evaluation Demo - CLIPS-style arithmetic
+// This demonstrates runtime expression evaluation in GRL
+
+rule "CalculateOrderTotal" salience 100 no-loop {
+    when
+        Order.quantity > 0 && Order.price > 0
+    then
+        Log("Calculating order total...");
+        Order.total = Order.quantity * Order.price;
+        Order.discount = Order.total * 0.1;
+        Order.final = Order.total - Order.discount;
+}
+
+rule "CalculateTax" salience 90 no-loop {
+    when
+        Order.final > 0
+    then
+        Log("Calculating tax...");
+        Order.tax = Order.final * 0.08;
+        Order.grandTotal = Order.final + Order.tax;
+}
+
+rule "BulkDiscount" salience 80 no-loop {
+    when
+        Order.quantity >= 10
+    then
+        Log("Applying bulk discount!");
+        Order.bulkSavings = Order.total * 0.15;
+}

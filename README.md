@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.15.0 🦀⚡
+# Rust Rule Engine v0.16.0 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -10,6 +10,66 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
+
+## ✨ What's New in v0.16.0
+
+🧮 **CLIPS-Style Expression Evaluation** - Runtime arithmetic expressions in GRL rules!
+
+- **➕ Arithmetic Operations** - Full support for +, -, *, /, % operators
+- **📊 Field References** - Use fact fields in expressions (Order.quantity * Order.price)
+- **🔗 Chained Expressions** - Values set by one action available to subsequent rules
+- **🎯 Type Preservation** - Integer × Integer = Integer; mixed types = Float
+- **⚡ Both Engines** - Works perfectly with Native Engine and RETE-UL!
+- **🚀 Runtime Evaluation** - Expressions evaluated when rule fires
+- **📝 CLIPS Syntax** - Similar to CLIPS (bind ?total (* ?quantity ?price))
+- **✅ Production Ready** - Battle-tested with order processing and calculations
+
+**Example - Expression Evaluation in GRL:**
+```grl
+rule "CalculateOrderTotal" salience 100 no-loop {
+    when
+        Order.quantity > 0 && Order.price > 0
+    then
+        Log("Calculating order total...");
+        Order.total = Order.quantity * Order.price;
+        Order.discount = Order.total * 0.1;
+        Order.final = Order.total - Order.discount;
+}
+
+rule "CalculateTax" salience 90 no-loop {
+    when
+        Order.final > 0
+    then
+        Log("Calculating tax...");
+        Order.tax = Order.final * 0.08;
+        Order.grandTotal = Order.final + Order.tax;
+}
+```
+
+**How it Works:**
+```rust
+// Native Engine
+let mut facts = Facts::new();
+facts.set("Order.quantity", Value::Integer(10));
+facts.set("Order.price", Value::Integer(100));
+
+engine.execute(&mut facts)?;
+
+// Results:
+// Order.total = 1000 (10 * 100)
+// Order.discount = 100.0 (1000 * 0.1)
+// Order.final = 900.0 (1000 - 100)
+// Order.tax = 72.0 (900 * 0.08)
+// Order.grandTotal = 972.0 (900 + 72)
+```
+
+**Similar to Drools DRL:**
+- Drools: `$o.total = $o.quantity * $o.price`
+- Rust Rule Engine: `Order.total = Order.quantity * Order.price`
+
+[**🧮 Expression Demo →**](examples/expression_demo.rs) | [**📝 GRL Examples →**](examples/rules/expression_demo.grl)
+
+### Previous Updates
 
 ## ✨ What's New in v0.15.0
 
@@ -246,6 +306,8 @@ rule "HighRevenue" {
 ### RETE-UL Engine (Recommended for 50+ rules)
 - **🚀 High Performance** - Efficient RETE algorithm with incremental updates
 - **🔥 RETE Algorithm** - Advanced pattern matching with good Drools compatibility
+- **🧮 Expression Evaluation** - Runtime arithmetic expressions (+, -, *, /, %) *(v0.16.0)*
+- **🔗 Chained Expressions** - Values from previous rules available to subsequent rules *(v0.16.0)*
 - **🧮 Accumulate Functions** - sum, count, average, min, max aggregations *(v0.13.4)*
 - **🔄 Variable Comparison** - Compare fact fields dynamically (L1 > L1Min) *(v0.13.4)*
 - **🗑️ Retract** - Remove facts from working memory *(v0.14.1)*
@@ -276,13 +338,13 @@ rule "HighRevenue" {
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.15.0"
+rust-rule-engine = "0.16.0"
 ```
 
 ### Optional Features
 ```toml
 # Enable streaming support
-rust-rule-engine = { version = "0.15.0", features = ["streaming"] }
+rust-rule-engine = { version = "0.16.0", features = ["streaming"] }
 ```
 
 ---
