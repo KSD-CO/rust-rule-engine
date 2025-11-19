@@ -228,6 +228,46 @@ impl TemplateBuilder {
         self
     }
 
+    /// Add a multislot field (CLIPS-style naming for arrays)
+    ///
+    /// This is an alias for `array_field` that uses CLIPS terminology.
+    /// In CLIPS, multislot fields can hold multiple values of the same type.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let template = TemplateBuilder::new("Order")
+    ///     .required_string("order_id")
+    ///     .multislot_field("items", FieldType::String)  // CLIPS style
+    ///     .build();
+    /// ```
+    ///
+    /// Equivalent to:
+    /// ```clips
+    /// (deftemplate order
+    ///   (slot order-id (type STRING))
+    ///   (multislot items (type STRING)))
+    /// ```
+    pub fn multislot_field(self, name: impl Into<String>, element_type: FieldType) -> Self {
+        self.array_field(name, element_type)
+    }
+
+    /// Add a required array field
+    pub fn required_array_field(mut self, name: impl Into<String>, element_type: FieldType) -> Self {
+        self.template.add_field(FieldDef {
+            name: name.into(),
+            field_type: FieldType::Array(Box::new(element_type)),
+            default_value: None,
+            required: true,
+        });
+        self
+    }
+
+    /// Add a required multislot field (CLIPS-style)
+    pub fn required_multislot_field(self, name: impl Into<String>, element_type: FieldType) -> Self {
+        self.required_array_field(name, element_type)
+    }
+
     /// Build the template
     pub fn build(self) -> Template {
         self.template

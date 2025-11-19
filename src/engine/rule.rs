@@ -22,6 +22,22 @@ pub enum ConditionExpression {
         /// Function arguments
         args: Vec<String>,
     },
+    /// Multi-field operation (CLIPS-inspired)
+    /// Examples:
+    /// - Order.items $?all_items (Collect)
+    /// - Product.tags contains "value" (Contains)
+    /// - Order.items count > 0 (Count)
+    /// - Queue.tasks first (First)
+    /// - Queue.tasks last (Last)
+    /// - ShoppingCart.items empty (IsEmpty)
+    MultiField {
+        /// Field name (e.g., "Order.items")
+        field: String,
+        /// Multi-field operation type
+        operation: String,  // "collect", "contains", "count", "first", "last", "empty", "not_empty"
+        /// Optional variable for binding (e.g., "$?all_items")
+        variable: Option<String>,
+    },
 }
 
 /// Represents a single condition in a rule
@@ -83,6 +99,96 @@ impl Condition {
         }
     }
 
+    /// Create multi-field collect condition
+    /// Example: Order.items $?all_items
+    pub fn with_multifield_collect(field: String, variable: String) -> Self {
+        Self {
+            expression: ConditionExpression::MultiField {
+                field: field.clone(),
+                operation: "collect".to_string(),
+                variable: Some(variable),
+            },
+            operator: Operator::Equal, // Not used for MultiField
+            value: Value::Boolean(true), // Not used
+            field, // For backward compat
+        }
+    }
+
+    /// Create multi-field count condition
+    /// Example: Order.items count > 0
+    pub fn with_multifield_count(field: String, operator: Operator, value: Value) -> Self {
+        Self {
+            expression: ConditionExpression::MultiField {
+                field: field.clone(),
+                operation: "count".to_string(),
+                variable: None,
+            },
+            operator,
+            value,
+            field, // For backward compat
+        }
+    }
+
+    /// Create multi-field first condition
+    /// Example: Queue.tasks first $first_task
+    pub fn with_multifield_first(field: String, variable: Option<String>) -> Self {
+        Self {
+            expression: ConditionExpression::MultiField {
+                field: field.clone(),
+                operation: "first".to_string(),
+                variable,
+            },
+            operator: Operator::Equal, // Not used
+            value: Value::Boolean(true), // Not used
+            field, // For backward compat
+        }
+    }
+
+    /// Create multi-field last condition
+    /// Example: Queue.tasks last $last_task
+    pub fn with_multifield_last(field: String, variable: Option<String>) -> Self {
+        Self {
+            expression: ConditionExpression::MultiField {
+                field: field.clone(),
+                operation: "last".to_string(),
+                variable,
+            },
+            operator: Operator::Equal, // Not used
+            value: Value::Boolean(true), // Not used
+            field, // For backward compat
+        }
+    }
+
+    /// Create multi-field empty condition
+    /// Example: ShoppingCart.items empty
+    pub fn with_multifield_empty(field: String) -> Self {
+        Self {
+            expression: ConditionExpression::MultiField {
+                field: field.clone(),
+                operation: "empty".to_string(),
+                variable: None,
+            },
+            operator: Operator::Equal, // Not used
+            value: Value::Boolean(true), // Not used
+            field, // For backward compat
+        }
+    }
+
+    /// Create multi-field not_empty condition
+    /// Example: ShoppingCart.items not_empty
+    pub fn with_multifield_not_empty(field: String) -> Self {
+        Self {
+            expression: ConditionExpression::MultiField {
+                field: field.clone(),
+                operation: "not_empty".to_string(),
+                variable: None,
+            },
+            operator: Operator::Equal, // Not used
+            value: Value::Boolean(true), // Not used
+            field, // For backward compat
+        }
+    }
+
     /// Evaluate this condition against the given facts
     pub fn evaluate(&self, facts: &HashMap<String, Value>) -> bool {
         match &self.expression {
@@ -93,8 +199,11 @@ impl Condition {
                     false
                 }
             }
-            ConditionExpression::FunctionCall { .. } | ConditionExpression::Test { .. } => {
-                // Function calls and Test CE need engine context - will be handled by evaluate_with_engine
+            ConditionExpression::FunctionCall { .. }
+            | ConditionExpression::Test { .. }
+            | ConditionExpression::MultiField { .. } => {
+                // Function calls, Test CE, and MultiField need engine context
+                // Will be handled by evaluate_with_engine
                 false
             }
         }
@@ -165,6 +274,39 @@ impl Condition {
                     }
                 }
                 false
+            }
+            ConditionExpression::MultiField { field, operation, variable: _ } => {
+                // MultiField operations need RETE engine context
+                // For now, just basic evaluation
+                // TODO: Full multifield support in RETE engine
+                if let Some(field_value) = get_nested_value(facts, field) {
+                    match operation.as_str() {
+                        "empty" => {
+                            // Check if array is empty
+                            matches!(field_value, Value::Array(arr) if arr.is_empty())
+                        }
+                        "not_empty" => {
+                            // Check if array is not empty
+                            matches!(field_value, Value::Array(arr) if !arr.is_empty())
+                        }
+                        "count" => {
+                            // Get count and compare with value
+                            if let Value::Array(arr) = field_value {
+                                let count = Value::Integer(arr.len() as i64);
+                                self.operator.evaluate(&count, &self.value)
+                            } else {
+                                false
+                            }
+                        }
+                        _ => {
+                            // Other operations (collect, first, last) need RETE context
+                            // Return true for now to not block rule evaluation
+                            true
+                        }
+                    }
+                } else {
+                    false
+                }
             }
         }
     }

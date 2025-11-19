@@ -129,18 +129,52 @@ impl GrlReteLoader {
         }
     }
 
-    /// Convert single Condition to ReteUlNode (AlphaNode)
+    /// Convert single Condition to ReteUlNode (AlphaNode or UlMultiField)
     fn convert_condition(condition: &Condition) -> Result<ReteUlNode> {
-        let operator_str = Self::operator_to_string(&condition.operator);
-        let value_str = Self::value_to_string(&condition.value);
+        use crate::engine::rule::ConditionExpression;
 
-        let alpha = AlphaNode {
-            field: condition.field.clone(),
-            operator: operator_str,
-            value: value_str,
-        };
+        // Check if this is a multifield condition
+        match &condition.expression {
+            ConditionExpression::MultiField { field, operation, variable } => {
+                // Convert to UlMultiField node
+                let operator_str = Self::operator_to_string(&condition.operator);
+                let value_str = if !matches!(condition.value, Value::Boolean(_)) {
+                    Some(Self::value_to_string(&condition.value))
+                } else {
+                    None
+                };
 
-        Ok(ReteUlNode::UlAlpha(alpha))
+                // Determine if this is a count operation with comparison
+                let (op, cmp_val) = if operation == "count" && operator_str != "==" {
+                    // Count with comparison: "count > 5"
+                    (Some(operator_str), value_str)
+                } else {
+                    // Other operations
+                    (None, value_str)
+                };
+
+                Ok(ReteUlNode::UlMultiField {
+                    field: field.clone(),
+                    operation: operation.clone(),
+                    value: if operation == "contains" { cmp_val.clone() } else { None },
+                    operator: op,
+                    compare_value: if operation == "count" { cmp_val } else { None },
+                })
+            }
+            _ => {
+                // Standard alpha node for regular conditions
+                let operator_str = Self::operator_to_string(&condition.operator);
+                let value_str = Self::value_to_string(&condition.value);
+
+                let alpha = AlphaNode {
+                    field: condition.field.clone(),
+                    operator: operator_str,
+                    value: value_str,
+                };
+
+                Ok(ReteUlNode::UlAlpha(alpha))
+            }
+        }
     }
 
     /// Convert Operator to string
@@ -304,6 +338,13 @@ impl GrlReteLoader {
                 // Extract fact type from field (e.g., "Person.age" -> "Person")
                 if let Some(dot_pos) = alpha.field.find('.') {
                     let fact_type = alpha.field[..dot_pos].to_string();
+                    deps.push(fact_type);
+                }
+            }
+            ReteUlNode::UlMultiField { field, .. } => {
+                // Extract fact type from field (e.g., "Order.items" -> "Order")
+                if let Some(dot_pos) = field.find('.') {
+                    let fact_type = field[..dot_pos].to_string();
                     deps.push(fact_type);
                 }
             }

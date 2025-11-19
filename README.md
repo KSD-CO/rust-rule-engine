@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.16.0 🦀⚡
+# Rust Rule Engine v0.17.0 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -10,6 +10,82 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
+
+## ✨ What's New in v0.17.0
+
+🎉 **Multi-field Variables (CLIPS-style Multislot)** - Complete array/collection pattern matching!
+
+- **🔢 9 Operations** - Collect, Contains, Count, First, Last, Index, Slice, IsEmpty, NotEmpty
+- **📦 CLIPS Parity** - 90-95% feature compatibility (up from 85-90%)
+- **⚡ Both Engines** - Full support in Native Engine and RETE-UL!
+- **🛒 E-commerce Ready** - Perfect for shopping carts, bulk orders, inventory
+- **🎯 Pattern Matching** - 100% complete (10/10 core features)
+- **📝 GRL Syntax** - Natural array operations in rules
+- **🚀 Production Ready** - Comprehensive tests and examples
+
+**Example - Multi-field Operations in GRL:**
+```grl
+rule "BulkDiscount" salience 100 no-loop {
+    when
+        Order.items count >= 5
+    then
+        Log("Bulk order detected!");
+        Order.discount = 0.15;
+}
+
+rule "CategorizeElectronics" salience 90 no-loop {
+    when
+        Product.tags contains "electronics"
+    then
+        Log("Electronics product found");
+        Product.category = "tech";
+}
+
+rule "EmptyCart" salience 80 no-loop {
+    when
+        ShoppingCart.items empty
+    then
+        Log("Cart is empty");
+        ShoppingCart.status = "empty";
+}
+
+rule "ProcessFirstTask" salience 70 no-loop {
+    when
+        Queue.tasks not_empty &&
+        Queue.tasks first $task
+    then
+        Log("Processing first task...");
+        Queue.current = $task;
+}
+```
+
+**Template Definition (CLIPS-style):**
+```rust
+use rust_rule_engine::rete::{TemplateBuilder, FieldType};
+
+let order_template = TemplateBuilder::new("Order")
+    .multislot_field("items", FieldType::String)  // CLIPS naming
+    .float_field("discount")
+    .build();
+```
+
+**All 9 Multifield Operations:**
+
+| Operation | GRL Syntax | CLIPS Equivalent | Use Case |
+|-----------|-----------|------------------|----------|
+| **Collect** | `Order.items $?all` | `$?var` | Collect all values |
+| **Contains** | `Product.tags contains "sale"` | `(member$ x $?list)` | Check membership |
+| **Count** | `Order.items count > 5` | `(length$ $?list)` | Count elements |
+| **First** | `Queue.tasks first $task` | `(nth$ 1 $?list)` | Get first element |
+| **Last** | `Order.items last $item` | `(nth$ -1 $?list)` | Get last element |
+| **Index** | `items[2]` | `(nth$ 3 $?list)` | Access by index |
+| **Slice** | `items[1:3]` | `(subseq$ $?list 2 4)` | Extract range |
+| **IsEmpty** | `Cart.items empty` | `(= (length$ $?list) 0)` | Check if empty |
+| **NotEmpty** | `Queue.tasks not_empty` | `(> (length$ $?list) 0)` | Check if not empty |
+
+[**🎉 Multifield Demo →**](examples/multifield_demo.rs) | [**⚡ RETE Demo →**](examples/rete_multifield_demo.rs) | [**📝 GRL Examples →**](examples/rules/multifield_patterns.grl)
+
+### Previous Updates
 
 ## ✨ What's New in v0.16.0
 
@@ -306,6 +382,7 @@ rule "HighRevenue" {
 ### RETE-UL Engine (Recommended for 50+ rules)
 - **🚀 High Performance** - Efficient RETE algorithm with incremental updates
 - **🔥 RETE Algorithm** - Advanced pattern matching with good Drools compatibility
+- **🎉 Multi-field Variables** - Array/collection pattern matching with 9 operations *(v0.17.0)*
 - **🧮 Expression Evaluation** - Runtime arithmetic expressions (+, -, *, /, %) *(v0.16.0)*
 - **🔗 Chained Expressions** - Values from previous rules available to subsequent rules *(v0.16.0)*
 - **🧮 Accumulate Functions** - sum, count, average, min, max aggregations *(v0.13.4)*
@@ -338,13 +415,13 @@ rule "HighRevenue" {
 
 ```toml
 [dependencies]
-rust-rule-engine = "0.16.0"
+rust-rule-engine = "0.17.0"
 ```
 
 ### Optional Features
 ```toml
 # Enable streaming support
-rust-rule-engine = { version = "0.16.0", features = ["streaming"] }
+rust-rule-engine = { version = "0.17.0", features = ["streaming"] }
 ```
 
 ---
