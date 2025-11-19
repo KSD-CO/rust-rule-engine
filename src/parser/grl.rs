@@ -659,6 +659,119 @@ impl GRLParser {
             trimmed_clause
         };
 
+        // === MULTI-FIELD PATTERNS ===
+        // Handle multi-field patterns before other patterns
+        // These must be checked first to avoid conflict with standard patterns
+
+        // Pattern 1: Field.array $?var (Collect operation with variable binding)
+        // Example: Order.items $?all_items
+        let multifield_collect_regex = Regex::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+(\$\?[a-zA-Z_]\w*)$"#)
+            .map_err(|e| RuleEngineError::ParseError {
+                message: format!("Multifield collect regex error: {}", e),
+            })?;
+
+        if let Some(captures) = multifield_collect_regex.captures(clause_to_parse) {
+            let field = captures.get(1).unwrap().as_str().to_string();
+            let variable = captures.get(2).unwrap().as_str().to_string();
+
+            // Create a multifield Collect condition
+            // Note: This will need to be handled by the engine
+            let condition = Condition::with_multifield_collect(field, variable);
+            return Ok(ConditionGroup::single(condition));
+        }
+
+        // Pattern 2: Field.array contains "value"
+        // Example: Product.tags contains "electronics"
+        // This is already handled by the standard regex, but we need to distinguish array contains
+
+        // Pattern 3: Field.array count operator value
+        // Example: Order.items count > 0, Order.items count >= 5
+        let multifield_count_regex = Regex::new(
+            r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+count\s*(>=|<=|==|!=|>|<)\s*(.+)$"#
+        ).map_err(|e| RuleEngineError::ParseError {
+            message: format!("Multifield count regex error: {}", e),
+        })?;
+
+        if let Some(captures) = multifield_count_regex.captures(clause_to_parse) {
+            let field = captures.get(1).unwrap().as_str().to_string();
+            let operator_str = captures.get(2).unwrap().as_str();
+            let value_str = captures.get(3).unwrap().as_str().trim();
+
+            let operator = Operator::from_str(operator_str)
+                .ok_or_else(|| RuleEngineError::InvalidOperator {
+                    operator: operator_str.to_string(),
+                })?;
+
+            let value = self.parse_value(value_str)?;
+
+            let condition = Condition::with_multifield_count(field, operator, value);
+            return Ok(ConditionGroup::single(condition));
+        }
+
+        // Pattern 4: Field.array first [optional: $var or operator value]
+        // Example: Queue.tasks first, Queue.tasks first $first_task
+        let multifield_first_regex = Regex::new(
+            r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+first(?:\s+(\$[a-zA-Z_]\w*))?$"#
+        ).map_err(|e| RuleEngineError::ParseError {
+            message: format!("Multifield first regex error: {}", e),
+        })?;
+
+        if let Some(captures) = multifield_first_regex.captures(clause_to_parse) {
+            let field = captures.get(1).unwrap().as_str().to_string();
+            let variable = captures.get(2).map(|m| m.as_str().to_string());
+
+            let condition = Condition::with_multifield_first(field, variable);
+            return Ok(ConditionGroup::single(condition));
+        }
+
+        // Pattern 5: Field.array last [optional: $var]
+        // Example: Queue.tasks last, Queue.tasks last $last_task
+        let multifield_last_regex = Regex::new(
+            r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+last(?:\s+(\$[a-zA-Z_]\w*))?$"#
+        ).map_err(|e| RuleEngineError::ParseError {
+            message: format!("Multifield last regex error: {}", e),
+        })?;
+
+        if let Some(captures) = multifield_last_regex.captures(clause_to_parse) {
+            let field = captures.get(1).unwrap().as_str().to_string();
+            let variable = captures.get(2).map(|m| m.as_str().to_string());
+
+            let condition = Condition::with_multifield_last(field, variable);
+            return Ok(ConditionGroup::single(condition));
+        }
+
+        // Pattern 6: Field.array empty
+        // Example: ShoppingCart.items empty
+        let multifield_empty_regex = Regex::new(
+            r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+empty$"#
+        ).map_err(|e| RuleEngineError::ParseError {
+            message: format!("Multifield empty regex error: {}", e),
+        })?;
+
+        if let Some(captures) = multifield_empty_regex.captures(clause_to_parse) {
+            let field = captures.get(1).unwrap().as_str().to_string();
+
+            let condition = Condition::with_multifield_empty(field);
+            return Ok(ConditionGroup::single(condition));
+        }
+
+        // Pattern 7: Field.array not_empty
+        // Example: ShoppingCart.items not_empty
+        let multifield_not_empty_regex = Regex::new(
+            r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+not_empty$"#
+        ).map_err(|e| RuleEngineError::ParseError {
+            message: format!("Multifield not_empty regex error: {}", e),
+        })?;
+
+        if let Some(captures) = multifield_not_empty_regex.captures(clause_to_parse) {
+            let field = captures.get(1).unwrap().as_str().to_string();
+
+            let condition = Condition::with_multifield_not_empty(field);
+            return Ok(ConditionGroup::single(condition));
+        }
+
+        // === END MULTI-FIELD PATTERNS ===
+
         // Handle Test CE: test(functionName(args...))
         // This is a CLIPS-inspired feature for arbitrary boolean expressions
         let test_regex = Regex::new(r#"^test\s*\(\s*([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*\)$"#)
