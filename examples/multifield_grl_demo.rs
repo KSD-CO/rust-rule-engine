@@ -6,32 +6,44 @@
 //!
 //! Run with: `cargo run --example multifield_grl_demo`
 
-use rust_rule_engine::{Facts, RustRuleEngine, Value};
+use rust_rule_engine::{Facts, KnowledgeBase, RustRuleEngine, Value};
 use std::error::Error;
+use std::fs;
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("=== Multi-field Variables from GRL File Demo ===\n");
 
-    // Create engine
-    let mut engine = RustRuleEngine::new();
+    // Create knowledge base
+    let kb = KnowledgeBase::new("multifield_demo");
 
     // Load rules from GRL file
     let grl_file = "examples/rules/multifield_patterns.grl";
     println!("📂 Loading rules from: {}\n", grl_file);
 
-    match engine.load_rules_from_file(grl_file) {
-        Ok(_) => {
-            let count = engine.get_all_rules().len();
-            println!("✅ Loaded {} rules successfully\n", count);
+    match fs::read_to_string(grl_file) {
+        Ok(grl_content) => {
+            match kb.add_rules_from_grl(&grl_content) {
+                Ok(count) => {
+                    println!("✅ Loaded {} rules successfully\n", count);
+                }
+                Err(e) => {
+                    println!("❌ Error parsing rules: {}\n", e);
+                    println!("Note: Multi-field GRL parsing is partially implemented.");
+                    println!("Some patterns may not parse correctly yet.\n");
+                    println!("Demonstrating with hardcoded examples instead...\n");
+                    return demo_with_code();
+                }
+            }
         }
         Err(e) => {
-            println!("❌ Error loading rules: {}\n", e);
-            println!("Note: Multi-field GRL parsing is partially implemented.");
-            println!("Some patterns may not parse correctly yet.\n");
+            println!("❌ Error reading file: {}\n", e);
             println!("Demonstrating with hardcoded examples instead...\n");
             return demo_with_code();
         }
     }
+
+    // Create engine
+    let mut engine = RustRuleEngine::new(kb);
 
     // Demo 1: Array count operation
     demo_array_count(&mut engine)?;
@@ -66,8 +78,8 @@ fn demo_array_count(engine: &mut RustRuleEngine) -> Result<(), Box<dyn Error>> {
     println!();
 
     // Execute rules
-    let fired = engine.execute(&mut facts)?;
-    println!("Rules fired: {:?}\n", fired);
+    let result = engine.execute(&mut facts)?;
+    println!("Rules fired: {}\n", result.rules_fired);
 
     Ok(())
 }
@@ -86,8 +98,8 @@ fn demo_array_empty(engine: &mut RustRuleEngine) -> Result<(), Box<dyn Error>> {
     println!("  ShoppingCart.items = [] (empty)");
     println!();
 
-    let fired = engine.execute(&mut facts)?;
-    println!("Rules fired: {:?}", fired);
+    let result = engine.execute(&mut facts)?;
+    println!("Rules fired: {}", result.rules_fired);
     println!("Result: ShoppingCart.status = {:?}\n", facts.get("ShoppingCart.status"));
 
     Ok(())
@@ -111,8 +123,8 @@ fn demo_array_contains(engine: &mut RustRuleEngine) -> Result<(), Box<dyn Error>
     println!("  Product.tags = [electronics, gadgets, sale]");
     println!();
 
-    let fired = engine.execute(&mut facts)?;
-    println!("Rules fired: {:?}", fired);
+    let result = engine.execute(&mut facts)?;
+    println!("Rules fired: {}", result.rules_fired);
     println!("Product.category = {:?}\n", facts.get("Product.category"));
 
     Ok(())
@@ -123,7 +135,8 @@ fn demo_with_code() -> Result<(), Box<dyn Error>> {
     use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
     use rust_rule_engine::types::{ActionType, Operator};
 
-    let mut engine = RustRuleEngine::new();
+    // Create knowledge base
+    let kb = KnowledgeBase::new("multifield_demo");
 
     // Rule 1: Check array count
     let rule1 = Rule::new(
@@ -133,29 +146,32 @@ fn demo_with_code() -> Result<(), Box<dyn Error>> {
             Operator::GreaterThan,
             Value::Integer(0),
         )),
-        vec![ActionType::Modify(
-            "Order.valid".to_string(),
-            Value::Boolean(true),
-        )],
+        vec![ActionType::Set {
+            field: "Order.valid".to_string(),
+            value: Value::Boolean(true),
+        }],
     )
     .with_priority(100);
 
-    engine.knowledge_base_mut().add_rule(rule1)?;
+    kb.add_rule(rule1)?;
 
     // Rule 2: Check array empty
     let rule2 = Rule::new(
         "CheckCartEmpty".to_string(),
         ConditionGroup::single(Condition::with_multifield_empty("ShoppingCart.items".to_string())),
-        vec![ActionType::Modify(
-            "ShoppingCart.status".to_string(),
-            Value::String("empty".to_string()),
-        )],
+        vec![ActionType::Set {
+            field: "ShoppingCart.status".to_string(),
+            value: Value::String("empty".to_string()),
+        }],
     )
     .with_priority(90);
 
-    engine.knowledge_base_mut().add_rule(rule2)?;
+    kb.add_rule(rule2)?;
 
     println!("✅ Created rules programmatically\n");
+
+    // Create engine
+    let mut engine = RustRuleEngine::new(kb);
 
     // Test with facts
     let mut facts = Facts::new();
@@ -168,8 +184,8 @@ fn demo_with_code() -> Result<(), Box<dyn Error>> {
     );
 
     println!("Testing with Order.items = [ITEM-1, ITEM-2]");
-    let fired = engine.execute(&mut facts)?;
-    println!("Rules fired: {:?}", fired);
+    let result = engine.execute(&mut facts)?;
+    println!("Rules fired: {}", result.rules_fired);
     println!("Order.valid = {:?}\n", facts.get("Order.valid"));
 
     // Test empty cart
@@ -177,8 +193,8 @@ fn demo_with_code() -> Result<(), Box<dyn Error>> {
     facts2.set("ShoppingCart.items", Value::Array(Vec::new()));
 
     println!("Testing with ShoppingCart.items = []");
-    let fired2 = engine.execute(&mut facts2)?;
-    println!("Rules fired: {:?}", fired2);
+    let result2 = engine.execute(&mut facts2)?;
+    println!("Rules fired: {}", result2.rules_fired);
     println!("ShoppingCart.status = {:?}\n", facts2.get("ShoppingCart.status"));
 
     Ok(())
