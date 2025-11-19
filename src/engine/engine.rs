@@ -1085,6 +1085,48 @@ impl RustRuleEngine {
                     false
                 }
             }
+            ConditionExpression::MultiField { field, operation, variable: _ } => {
+                // Multi-field operation condition
+                if self.config.debug_mode {
+                    println!("    📦 Evaluating multi-field: {}.{}", field, operation);
+                }
+
+                // Get the field value
+                let field_value = facts.get_nested(field).or_else(|| facts.get(field));
+
+                if let Some(value) = field_value {
+                    match operation.as_str() {
+                        "empty" => {
+                            matches!(value, Value::Array(arr) if arr.is_empty())
+                        }
+                        "not_empty" => {
+                            matches!(value, Value::Array(arr) if !arr.is_empty())
+                        }
+                        "count" => {
+                            if let Value::Array(arr) = value {
+                                let count = Value::Integer(arr.len() as i64);
+                                condition.operator.evaluate(&count, &condition.value)
+                            } else {
+                                false
+                            }
+                        }
+                        "contains" => {
+                            // Use existing contains operator
+                            condition.operator.evaluate(&value, &condition.value)
+                        }
+                        _ => {
+                            // Other operations (collect, first, last) not fully supported yet
+                            // Return true to not block rule evaluation
+                            if self.config.debug_mode {
+                                println!("      ⚠️ Operation '{}' not fully implemented yet", operation);
+                            }
+                            true
+                        }
+                    }
+                } else {
+                    false
+                }
+            }
         };
 
         if self.config.debug_mode {
