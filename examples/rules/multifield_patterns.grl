@@ -1,0 +1,98 @@
+// Multi-field (Multislot) Pattern Examples - CLIPS-inspired
+// This file demonstrates multi-field variable patterns in GRL
+// Run with: cargo run --example multifield_grl_demo
+
+// Rule 1: Collect all items from an order
+rule "CollectOrderItems" salience 100 {
+    when
+        Order.status == "pending" &&
+        Order.items $?all_items
+    then
+        Log("Processing order with items");
+        Order.status = "processing";
+}
+
+// Rule 2: Check if product has specific tag
+rule "CheckElectronicsTag" salience 90 {
+    when
+        Product.tags contains "electronics"
+    then
+        Log("Product is electronics");
+        Product.category = "tech";
+}
+
+// Rule 3: Validate order has items
+rule "ValidateOrderNotEmpty" salience 80 {
+    when
+        Order.items count > 0
+    then
+        Log("Order has items");
+        Order.valid = true;
+}
+
+// Rule 4: Process first item in queue
+rule "ProcessFirstTask" salience 70 {
+    when
+        Queue.tasks not_empty &&
+        Queue.tasks first $first_task
+    then
+        Log("Processing first task");
+        Queue.current = $first_task;
+}
+
+// Rule 5: Check minimum item count
+rule "BulkOrder" salience 60 {
+    when
+        Order.items count >= 5
+    then
+        Log("Bulk order detected");
+        Order.discount = 0.15;
+}
+
+// Rule 6: Tag-based routing
+rule "RouteByTag" salience 50 {
+    when
+        Product.tags contains "sale"
+    then
+        Product.route = "promotional";
+}
+
+// Rule 7: Access last item
+rule "ProcessLastItem" salience 40 {
+    when
+        Order.items last $last_item
+    then
+        Log("Last item in order");
+        Order.last_item = $last_item;
+}
+
+// Rule 8: Check empty array
+rule "EmptyCart" salience 30 {
+    when
+        ShoppingCart.items empty
+    then
+        Log("Cart is empty");
+        ShoppingCart.status = "empty";
+}
+
+// Rule 9: Multiple conditions with multifield
+rule "PremiumElectronicsOrder" salience 20 {
+    when
+        Order.items count > 3 &&
+        Product.tags contains "electronics" &&
+        Product.tags contains "premium"
+    then
+        Log("Premium electronics bulk order");
+        Order.priority = "high";
+        Order.discount = 0.20;
+}
+
+// Rule 10: Collect and count pattern
+rule "InventoryCheck" salience 10 {
+    when
+        Inventory.items $?all_items &&
+        Inventory.items count < 10
+    then
+        Log("Low inventory alert");
+        Inventory.alert = "low_stock";
+}
