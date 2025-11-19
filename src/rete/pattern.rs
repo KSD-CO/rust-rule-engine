@@ -9,6 +9,7 @@
 use std::collections::HashMap;
 use super::facts::{FactValue, TypedFacts};
 use super::working_memory::{WorkingMemory, FactHandle};
+use super::multifield::MultifieldOp;
 
 /// Variable name (e.g., "$name", "$age")
 pub type Variable = String;
@@ -33,6 +34,18 @@ pub enum PatternConstraint {
         operator: String,
         variable: Variable,
     },
+    /// Multi-field constraint: pattern matching on arrays/collections
+    ///
+    /// Examples:
+    /// - `Order.items $?all_items` - Collect all items (Collect)
+    /// - `Product.tags contains "electronics"` - Check containment (Contains)
+    /// - `Order.items count > 0` - Get array length (Count)
+    MultiField {
+        field: String,
+        variable: Option<Variable>,  // $?var for multi-field binding
+        operator: MultifieldOp,
+        value: Option<FactValue>,  // For operations like Contains
+    },
 }
 
 impl PatternConstraint {
@@ -49,6 +62,16 @@ impl PatternConstraint {
     /// Create variable constraint
     pub fn variable(field: String, operator: String, variable: Variable) -> Self {
         Self::Variable { field, operator, variable }
+    }
+
+    /// Create multi-field constraint
+    pub fn multifield(
+        field: String,
+        operator: MultifieldOp,
+        variable: Option<Variable>,
+        value: Option<FactValue>,
+    ) -> Self {
+        Self::MultiField { field, operator, variable, value }
     }
 
     /// Evaluate constraint against facts and bindings
@@ -84,6 +107,17 @@ impl PatternConstraint {
                 } else {
                     None // Variable not bound yet
                 }
+            }
+            PatternConstraint::MultiField { field, operator, variable, value } => {
+                // Delegate to multifield evaluation helper
+                super::multifield::evaluate_multifield_pattern(
+                    facts,
+                    field,
+                    operator,
+                    variable.as_deref(),
+                    value.as_ref(),
+                    bindings,
+                )
             }
         }
     }

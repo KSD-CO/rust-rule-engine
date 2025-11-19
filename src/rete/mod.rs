@@ -16,6 +16,7 @@ pub mod template;
 pub mod globals;
 pub mod deffacts;
 pub mod accumulate;
+pub mod multifield;
 
 pub use alpha::*;
 pub use beta::*;
@@ -32,3 +33,4 @@ pub use template::*;
 pub use globals::*;
 pub use deffacts::*;
 pub use accumulate::*;
+pub use multifield::*;

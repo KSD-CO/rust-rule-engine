@@ -272,6 +272,69 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
                 _ => true, // Unknown function - allow to continue
             }
         }
+        ReteUlNode::UlMultiField { field, operation, value, operator, compare_value } => {
+            // Evaluate multi-field operations
+            // Note: For HashMap<String, String> facts, we need to parse array representations
+            // This is a simplified implementation
+            let field_value = facts.get(field);
+
+            match operation.as_str() {
+                "empty" => {
+                    // Check if field is empty or doesn't exist
+                    field_value.map(|v| v.is_empty() || v == "[]").unwrap_or(true)
+                }
+                "not_empty" => {
+                    // Check if field is not empty
+                    field_value.map(|v| !v.is_empty() && v != "[]").unwrap_or(false)
+                }
+                "count" => {
+                    if let Some(val) = field_value {
+                        // Try to parse as array and count elements
+                        // Simple heuristic: count commas + 1 if not empty
+                        let count = if val.starts_with('[') && val.ends_with(']') {
+                            let inner = &val[1..val.len()-1];
+                            if inner.trim().is_empty() {
+                                0
+                            } else {
+                                inner.split(',').count()
+                            }
+                        } else {
+                            0
+                        };
+
+                        // Compare count with compare_value if operator exists
+                        if let (Some(op), Some(cmp_val)) = (operator, compare_value) {
+                            let cmp_num = cmp_val.parse::<i64>().unwrap_or(0);
+                            match op.as_str() {
+                                ">" => (count as i64) > cmp_num,
+                                "<" => (count as i64) < cmp_num,
+                                ">=" => (count as i64) >= cmp_num,
+                                "<=" => (count as i64) <= cmp_num,
+                                "==" => (count as i64) == cmp_num,
+                                "!=" => (count as i64) != cmp_num,
+                                _ => false,
+                            }
+                        } else {
+                            count > 0
+                        }
+                    } else {
+                        false
+                    }
+                }
+                "contains" => {
+                    if let (Some(val), Some(search)) = (field_value, value) {
+                        // Simple contains check for string representation
+                        val.contains(search)
+                    } else {
+                        false
+                    }
+                }
+                _ => {
+                    // Unknown operation
+                    false
+                }
+            }
+        }
         ReteUlNode::UlTerminal(_) => true // Rule match
     }
 }
@@ -292,6 +355,13 @@ pub enum ReteUlNode {
         source_conditions: Vec<String>,
         function: String,
         function_arg: String,
+    },
+    UlMultiField {
+        field: String,
+        operation: String, // "collect", "contains", "count", "first", "last", "empty", "not_empty"
+        value: Option<String>, // For operations like "contains"
+        operator: Option<String>, // For operations like "count > 5"
+        compare_value: Option<String>, // For operations like "count > 5"
     },
     UlTerminal(String), // Rule name
 }
@@ -668,6 +738,96 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                 "count" => has_results,
                 "sum" | "average" | "min" | "max" => has_results,
                 _ => true,
+            }
+        }
+        ReteUlNode::UlMultiField { field, operation, value, operator, compare_value } => {
+            // Evaluate multi-field operations on TypedFacts
+            use super::facts::FactValue;
+
+            let field_value = facts.get(field);
+
+            match operation.as_str() {
+                "empty" => {
+                    // Check if field is an empty array
+                    if let Some(FactValue::Array(arr)) = field_value {
+                        arr.is_empty()
+                    } else {
+                        // Field doesn't exist or is not an array, consider it empty
+                        true
+                    }
+                }
+                "not_empty" => {
+                    // Check if field is a non-empty array
+                    if let Some(FactValue::Array(arr)) = field_value {
+                        !arr.is_empty()
+                    } else {
+                        false
+                    }
+                }
+                "count" => {
+                    if let Some(FactValue::Array(arr)) = field_value {
+                        let count = arr.len() as i64;
+
+                        // Compare count with compare_value if operator exists
+                        if let (Some(op), Some(cmp_val)) = (operator, compare_value) {
+                            let cmp_num = cmp_val.parse::<i64>().unwrap_or(0);
+                            match op.as_str() {
+                                ">" => count > cmp_num,
+                                "<" => count < cmp_num,
+                                ">=" => count >= cmp_num,
+                                "<=" => count <= cmp_num,
+                                "==" => count == cmp_num,
+                                "!=" => count != cmp_num,
+                                _ => false,
+                            }
+                        } else {
+                            count > 0
+                        }
+                    } else {
+                        false
+                    }
+                }
+                "contains" => {
+                    if let (Some(FactValue::Array(arr)), Some(search)) = (field_value, value) {
+                        // Parse search value and check if array contains it
+                        // For simplicity, check as string
+                        arr.iter().any(|item| {
+                            match item {
+                                FactValue::String(s) => s == search,
+                                FactValue::Integer(i) => i.to_string() == *search,
+                                FactValue::Float(f) => f.to_string() == *search,
+                                FactValue::Boolean(b) => b.to_string() == *search,
+                                _ => false,
+                            }
+                        })
+                    } else {
+                        false
+                    }
+                }
+                "first" => {
+                    // Get first element - for pattern matching, just check it exists
+                    if let Some(FactValue::Array(arr)) = field_value {
+                        !arr.is_empty()
+                    } else {
+                        false
+                    }
+                }
+                "last" => {
+                    // Get last element - for pattern matching, just check it exists
+                    if let Some(FactValue::Array(arr)) = field_value {
+                        !arr.is_empty()
+                    } else {
+                        false
+                    }
+                }
+                "collect" => {
+                    // Collect operation - for pattern matching, just check field is an array
+                    matches!(field_value, Some(FactValue::Array(_)))
+                }
+                _ => {
+                    // Unknown operation
+                    false
+                }
             }
         }
         ReteUlNode::UlTerminal(_) => true
