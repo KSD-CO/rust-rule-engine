@@ -60,6 +60,16 @@ impl FactValue {
         }
     }
 
+    /// Convert to number (f64) for arithmetic operations
+    pub fn as_number(&self) -> Option<f64> {
+        match self {
+            FactValue::Float(f) => Some(*f),
+            FactValue::Integer(i) => Some(*i as f64),
+            FactValue::String(s) => s.parse().ok(),
+            _ => None,
+        }
+    }
+
     /// Try to convert to boolean
     pub fn as_boolean(&self) -> Option<bool> {
         match self {

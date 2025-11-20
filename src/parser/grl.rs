@@ -851,8 +851,9 @@ impl GRLParser {
 
         // Parse expressions like: User.Age >= 18, Product.Price < 100.0, user.age >= 18, etc.
         // Support both PascalCase (User.Age) and lowercase (user.age) field naming
+        // Also support arithmetic expressions like: User.Age % 3 == 0, User.Price * 2 > 100
         let condition_regex = Regex::new(
-            r#"([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#,
+            r#"([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*(?:\s*[+\-*/%]\s*[a-zA-Z0-9_\.]+)*)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#,
         )
         .map_err(|e| RuleEngineError::ParseError {
             message: format!("Condition regex error: {}", e),
@@ -864,7 +865,7 @@ impl GRLParser {
             }
         })?;
 
-        let field = captures.get(1).unwrap().as_str().to_string();
+        let left_side = captures.get(1).unwrap().as_str().trim().to_string();
         let operator_str = captures.get(2).unwrap().as_str();
         let value_str = captures.get(3).unwrap().as_str().trim();
 
@@ -875,8 +876,19 @@ impl GRLParser {
 
         let value = self.parse_value(value_str)?;
 
-        let condition = Condition::new(field, operator, value);
-        Ok(ConditionGroup::single(condition))
+        // Check if left_side contains arithmetic operators - if yes, it's an expression
+        if left_side.contains('+') || left_side.contains('-') || left_side.contains('*') 
+            || left_side.contains('/') || left_side.contains('%') {
+            // This is an arithmetic expression - use Test CE
+            // Format: test(left_side operator value)
+            let test_expr = format!("{} {} {}", left_side, operator_str, value_str);
+            let condition = Condition::with_test(test_expr, vec![]);
+            Ok(ConditionGroup::single(condition))
+        } else {
+            // Simple field reference
+            let condition = Condition::new(left_side, operator, value);
+            Ok(ConditionGroup::single(condition))
+        }
     }
 
     fn parse_conditions_within_object(&self, conditions_str: &str) -> Result<ConditionGroup> {
@@ -980,8 +992,32 @@ impl GRLParser {
             return Ok(Value::String(trimmed.to_string()));
         }
 
+        // Variable reference (identifier without quotes or dots)
+        // This handles cases like: order_qty = moq
+        // where 'moq' should be evaluated as a variable reference at runtime
+        if self.is_identifier(trimmed) {
+            return Ok(Value::Expression(trimmed.to_string()));
+        }
+
         // Default to string
         Ok(Value::String(trimmed.to_string()))
+    }
+
+    /// Check if a string is a valid identifier (variable name)
+    /// Valid identifiers: alphanumeric + underscore, starts with letter or underscore
+    fn is_identifier(&self, s: &str) -> bool {
+        if s.is_empty() {
+            return false;
+        }
+
+        // First character must be letter or underscore
+        let first_char = s.chars().next().unwrap();
+        if !first_char.is_alphabetic() && first_char != '_' {
+            return false;
+        }
+
+        // Rest must be alphanumeric or underscore
+        s.chars().all(|c| c.is_alphanumeric() || c == '_')
     }
 
     /// Check if a string is an arithmetic expression

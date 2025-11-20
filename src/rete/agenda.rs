@@ -382,6 +382,11 @@ impl AdvancedAgenda {
         }
     }
 
+    /// Check if a rule has already fired
+    pub fn has_fired(&self, rule_name: &str) -> bool {
+        self.fired_rules.contains(rule_name)
+    }
+
     /// Set focus to a specific agenda group
     pub fn set_focus(&mut self, group: String) {
         if group != self.focus {
