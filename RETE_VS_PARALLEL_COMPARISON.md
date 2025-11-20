@@ -3,7 +3,7 @@
 ## Executive Summary
 
 This document compares the performance characteristics of two optimization strategies in rust-rule-engine:
-- **RETE-UL**: Pattern matching optimization using the RETE Universal Logic algorithm
+- **RETE-UL**: Pattern matching optimization using the RETE with Unification and Lattice algorithm
 - **Parallel**: Multi-threaded rule execution with configurable thread counts
 
 ## Test Environment
