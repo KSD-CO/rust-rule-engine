@@ -211,6 +211,11 @@ impl IncrementalEngine {
 
         // Re-evaluate ALL rules with current working memory state
         for (rule_idx, rule) in self.rules.iter().enumerate() {
+            // Skip if rule has no-loop and already fired
+            if rule.no_loop && self.agenda.has_fired(&rule.name) {
+                continue;
+            }
+            
             // Evaluate rule condition
             let matches = super::network::evaluate_rete_ul_node_typed(&rule.node, &facts);
 
@@ -227,8 +232,16 @@ impl IncrementalEngine {
     /// Fire all pending activations
     pub fn fire_all(&mut self) -> Vec<String> {
         let mut fired_rules = Vec::new();
+        let max_iterations = 1000; // Prevent infinite loops
+        let mut iteration_count = 0;
 
         while let Some(activation) = self.agenda.get_next_activation() {
+            iteration_count += 1;
+            if iteration_count > max_iterations {
+                eprintln!("WARNING: Maximum iterations ({}) reached in fire_all(). Possible infinite loop!", max_iterations);
+                break;
+            }
+            
             // Find rule
             if let Some((idx, rule)) = self.rules
                 .iter_mut()
