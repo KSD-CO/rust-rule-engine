@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "0.17.0"
+version = "0.17.1"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A high-performance rule engine for Rust with RETE-UL algorithm (2-24x faster), CLIPS-inspired features (Template System, Defglobal, Deffacts, Test CE, Conflict Resolution), GRL support, and ~98% Drools compatibility"
