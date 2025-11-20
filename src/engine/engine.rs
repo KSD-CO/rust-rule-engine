@@ -7,7 +7,7 @@ use crate::engine::{
     workflow::WorkflowEngine,
 };
 use crate::errors::{Result, RuleEngineError};
-use crate::types::{ActionType, Value};
+use crate::types::{ActionType, Operator, Value};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -976,6 +976,19 @@ impl RustRuleEngine {
                                 .or_else(|| facts.get(s))
                                 .unwrap_or(crate::types::Value::String(s.clone()))
                         }
+                        crate::types::Value::Expression(expr) => {
+                            // Try to evaluate expression - could be a variable reference or arithmetic
+                            match crate::expression::evaluate_expression(expr, facts) {
+                                Ok(evaluated) => evaluated,
+                                Err(_) => {
+                                    // If evaluation fails, try as simple variable lookup
+                                    facts
+                                        .get_nested(expr)
+                                        .or_else(|| facts.get(expr))
+                                        .unwrap_or(crate::types::Value::Expression(expr.clone()))
+                                }
+                            }
+                        }
                         _ => condition.value.clone(),
                     };
 
@@ -1040,6 +1053,7 @@ impl RustRuleEngine {
                     println!("    🧪 Evaluating test CE: test({}({:?}))", name, args);
                 }
 
+                // Check if name is a registered custom function
                 if let Some(function) = self.custom_functions.get(name) {
                     // Resolve arguments from facts
                     let arg_values: Vec<Value> = args
@@ -1079,10 +1093,28 @@ impl RustRuleEngine {
                         }
                     }
                 } else {
+                    // Not a custom function - try to evaluate as arithmetic expression
+                    // Format: "User.Age % 3 == 0" where name is the full expression
                     if self.config.debug_mode {
-                        println!("      Test function '{}' not found", name);
+                        println!("      Trying to evaluate '{}' as arithmetic expression", name);
                     }
-                    false
+                    
+                    // Try to parse and evaluate the expression
+                    match self.evaluate_arithmetic_condition(name, facts) {
+                        Ok(result) => {
+                            if self.config.debug_mode {
+                                println!("      Arithmetic expression result: {}", result);
+                            }
+                            result
+                        }
+                        Err(e) => {
+                            if self.config.debug_mode {
+                                println!("      Failed to evaluate expression: {}", e);
+                                println!("      Test function '{}' not found", name);
+                            }
+                            false
+                        }
+                    }
                 }
             }
             ConditionExpression::MultiField { field, operation, variable: _ } => {
@@ -1265,6 +1297,59 @@ impl RustRuleEngine {
             }
         }
         Ok(())
+    }
+
+    /// Evaluate arithmetic condition like "User.Age % 3 == 0"
+    fn evaluate_arithmetic_condition(&self, expr: &str, facts: &Facts) -> Result<bool> {
+        // Parse expression format: "left_expr operator right_value"
+        // e.g., "User.Age % 3 == 0" or "User.Price * 2 > 100"
+        
+        let operators = [">=", "<=", "==", "!=", ">", "<"];
+        let mut split_pos = None;
+        let mut found_op = "";
+        
+        for op in &operators {
+            if let Some(pos) = expr.rfind(op) {
+                split_pos = Some(pos);
+                found_op = op;
+                break;
+            }
+        }
+        
+        if split_pos.is_none() {
+            return Err(RuleEngineError::EvaluationError {
+                message: format!("No comparison operator found in expression: {}", expr),
+            });
+        }
+        
+        let pos = split_pos.unwrap();
+        let left_expr = expr[..pos].trim();
+        let right_value = expr[pos + found_op.len()..].trim();
+        
+        // Evaluate left side arithmetic expression
+        let left_result = crate::expression::evaluate_expression(left_expr, facts)?;
+        
+        // Parse right value
+        let right_val = if let Ok(i) = right_value.parse::<i64>() {
+            Value::Integer(i)
+        } else if let Ok(f) = right_value.parse::<f64>() {
+            Value::Number(f)
+        } else {
+            // Try to evaluate as expression or get from facts
+            match crate::expression::evaluate_expression(right_value, facts) {
+                Ok(v) => v,
+                Err(_) => Value::String(right_value.to_string()),
+            }
+        };
+        
+        // Compare values
+        let operator = Operator::from_str(found_op).ok_or_else(|| {
+            RuleEngineError::InvalidOperator {
+                operator: found_op.to_string(),
+            }
+        })?;
+        
+        Ok(operator.evaluate(&left_result, &right_val))
     }
 
     /// Execute function call
