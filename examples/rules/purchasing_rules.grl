@@ -1,0 +1,131 @@
+// Purchasing Flow Business Rules
+// Pure GRL for rust-rule-engine v0.17.0
+// Expression Evaluation with arithmetic operations (no namespace)
+
+rule "CalculateShortage" salience 120 no-loop {
+    when
+        required_qty > 0
+    then
+        Log("Calculating shortage...");
+        shortage = required_qty - available_qty;
+        Log("Shortage calculated");
+}
+
+rule "ValidateSupplierActive" salience 115 no-loop {
+    when
+        is_active == false
+    then
+        order_qty = 0;
+        total_amount = 0;
+        shortage = 0;
+        need_reorder = false;
+        supplier_error = "Supplier is not active";
+}
+
+rule "OrderMOQWhenShortageIsLess" salience 110 no-loop {
+    when
+        shortage > 0 && shortage < moq && is_active == true
+    then
+        Log("Shortage less than MOQ, ordering MOQ");
+        order_qty = moq + 0;
+        Log("Order qty set to MOQ");
+}
+
+rule "OrderShortageWhenAboveMOQ" salience 110 no-loop {
+    when
+        shortage >= moq && is_active == true
+    then
+        Log("Shortage meets MOQ, ordering shortage amount");
+        order_qty = shortage + 0;
+        Log("Order qty set to shortage");
+}
+
+rule "CalculateOrderTotal" salience 105 no-loop {
+    when
+        order_qty > 0 && unit_price > 0
+    then
+        Log("Calculating order total...");
+        total_amount = order_qty * unit_price;
+        Log("Total amount calculated");
+}
+
+rule "SetReorderFlag" salience 100 no-loop {
+    when
+        shortage > 0
+    then
+        need_reorder = true;
+}
+
+rule "NoReorderNeeded" salience 100 no-loop {
+    when
+        shortage <= 0
+    then
+        need_reorder = false;
+}
+
+rule "FlagHighValueOrders" salience 95 no-loop {
+    when
+        total_amount > 10000
+    then
+        requires_approval = true;
+        approval_status = "pending";
+}
+
+rule "AutoApproveOrders" salience 90 no-loop {
+    when
+        total_amount <= 10000 && total_amount > 0
+    then
+        requires_approval = false;
+        approval_status = "auto_approved";
+}
+
+rule "ApplyBulkDiscount" salience 85 no-loop {
+    when
+        total_amount >= 50000
+    then
+        Log("Applying bulk discount!");
+        discount_amount = total_amount * 0.1;
+        final_amount = total_amount - discount_amount;
+}
+
+rule "NoDiscount" salience 85 no-loop {
+    when
+        total_amount > 0 && total_amount < 50000
+    then
+        final_amount = total_amount + 0;
+}
+
+rule "CalculateTax" salience 80 no-loop {
+    when
+        final_amount > 0
+    then
+        Log("Calculating tax...");
+        tax_amount = final_amount * 0.08;
+        grand_total = final_amount + tax_amount;
+}
+
+rule "CreatePurchaseOrderIfApproved" salience 75 no-loop {
+    when
+        need_reorder == true && approval_status == "auto_approved" && order_qty > 0
+    then
+        Log("Purchase order ready to create");
+        should_create_po = true;
+        po_status = "approved";
+}
+
+rule "CreatePurchaseOrderPendingApproval" salience 75 no-loop {
+    when
+        need_reorder == true && approval_status == "pending" && order_qty > 0
+    then
+        Log("Purchase order pending approval...");
+        should_create_po = true;
+        po_status = "pending_approval";
+}
+
+rule "SendPOToSupplier" salience 70 no-loop {
+    when
+        need_reorder == true && approval_status == "auto_approved"
+    then
+        should_send_po = true;
+        send_method = "email";
+}

@@ -3,6 +3,13 @@ use crate::engine::RustRuleEngine;
 use crate::errors::{Result, RuleEngineError};
 use crate::types::Value;
 use regex::Regex;
+use once_cell::sync::Lazy;
+
+// Cache email regex for performance
+static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+        .expect("Invalid email regex pattern")
+});
 
 /// Built-in plugin for data validation operations
 pub struct ValidationPlugin {
@@ -330,12 +337,7 @@ fn value_to_number(value: &Value) -> Result<f64> {
 }
 
 fn is_valid_email(email: &str) -> bool {
-    let email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
-    if let Ok(regex) = Regex::new(email_regex) {
-        regex.is_match(email)
-    } else {
-        false
-    }
+    EMAIL_REGEX.is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
