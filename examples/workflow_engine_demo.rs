@@ -259,6 +259,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         facts.get("Order.ShippingDate")
     );
 
+    // Verify workflow state was saved
+    println!("\n🔍 Workflow State Verification:");
+    println!("  workflow.order-process.completed = {:?}", facts.get("workflow.order-process.completed"));
+    println!("  workflow.order-process.completed_at = {:?}", facts.get("workflow.order-process.completed_at"));
+    println!("  workflow.data.status = {:?}", facts.get("workflow.data.status"));
+
     // Process any scheduled tasks
     println!("\n⏰ Processing scheduled tasks...");
     let scheduled_tasks = engine.get_ready_tasks();
