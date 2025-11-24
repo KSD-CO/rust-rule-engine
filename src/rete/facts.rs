@@ -228,6 +228,9 @@ impl From<Vec<FactValue>> for FactValue {
 #[derive(Debug, Clone)]
 pub struct TypedFacts {
     data: HashMap<String, FactValue>,
+    /// Metadata: mapping from fact type to handle for retraction
+    /// Format: "FactType" -> FactHandle
+    pub(crate) fact_handles: HashMap<String, super::FactHandle>,
 }
 
 impl TypedFacts {
@@ -235,7 +238,18 @@ impl TypedFacts {
     pub fn new() -> Self {
         Self {
             data: HashMap::new(),
+            fact_handles: HashMap::new(),
         }
+    }
+    
+    /// Set metadata about which handle corresponds to which fact type
+    pub fn set_fact_handle(&mut self, fact_type: String, handle: super::FactHandle) {
+        self.fact_handles.insert(fact_type, handle);
+    }
+    
+    /// Get handle for a fact type (for retraction)
+    pub fn get_fact_handle(&self, fact_type: &str) -> Option<super::FactHandle> {
+        self.fact_handles.get(fact_type).copied()
     }
 
     /// Set a fact
