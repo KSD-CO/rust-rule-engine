@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.17.2 🦀⚡
+# Rust Rule Engine v0.18.0 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -8,6 +8,45 @@
 A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with good Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
+
+---
+
+## ✨ What's New in v0.18.0
+
+🧠 **Truth Maintenance System (TMS)** - Intelligent fact dependency tracking!
+
+- **🔗 Justification Tracking** - Track why each fact exists (explicit or derived)
+- **⚡ Auto-Retraction** - Derived facts automatically retracted when premises become invalid
+- **🌲 Cascade Delete** - Transitively retract all dependent facts
+- **💾 Logical Assertions** - Facts derived by rules (vs explicit user assertions)
+- **🎯 Production Ready** - Full integration with RETE-UL engine
+- **📊 Statistics API** - Monitor TMS state and dependencies
+- **🔄 CLIPS Compatible** - Similar to CLIPS logical assertions
+
+**TMS Example:**
+```rust
+// Insert explicit fact (user-provided)
+let customer_handle = engine.insert_explicit("Customer".to_string(), customer_data);
+
+// Insert logical fact (rule-derived)
+let gold_handle = engine.insert_logical(
+    "GoldStatus".to_string(),
+    gold_data,
+    "PromoteToGold".to_string(),
+    vec![customer_handle], // Premise: depends on Customer fact
+);
+
+// When Customer is retracted, GoldStatus is automatically retracted too!
+engine.retract(customer_handle)?; // Cascade: GoldStatus removed automatically
+```
+
+**Technical Improvements:**
+- **Per-Fact Evaluation**: Rules check each fact separately instead of flattening all facts together
+- **Matched Handle Storage**: `Activation` struct now tracks which specific fact matched
+- **Handle Injection**: Actions receive the exact handle of the matched fact
+- **Validation Check**: Before executing action, verify matched fact still exists
+- **ActionResult Architecture**: Proper queuing and processing of action side effects
+- **TMS Integration**: Full justification tracking and cascade retraction support
 
 ---
 
@@ -459,6 +498,11 @@ rule "HighRevenue" {
 - **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
 - **🧪 Test CE** - Arbitrary boolean expressions in rules *(v0.12.0)*
 - **⚡ Conflict Resolution** - 8 CLIPS strategies (Salience, LEX, MEA, etc.) *(v0.13.0)*
+- **🧠 Truth Maintenance System (TMS)** - Automatic fact retraction and dependency tracking *(v0.16.0)*
+  - **Logical Assertions** - Facts derived by rules are auto-retracted when premises become invalid
+  - **Justifications** - Track why facts exist (explicit user input vs. derived by rules)
+  - **Cascade Retraction** - Automatically retract dependent facts when base facts are removed
+  - **CLIPS-Compatible** - `logicalAssert()` API for derived facts
 - **🎯 Incremental Updates** - Only re-evaluate affected rules
 - **🧠 Working Memory** - FactHandles with insert/update/retract
 - **🔗 Variable Binding** - Cross-pattern $var syntax
@@ -840,6 +884,204 @@ See complete working examples:
 - [famicanxi_rete_test.rs](examples/famicanxi_rete_test.rs) - RETE-UL engine with variable comparison
 - [famicanxi_grl_test.rs](examples/famicanxi_grl_test.rs) - Standard engine with GRL
 - [test_variable_comparison.rs](examples/test_variable_comparison.rs) - Comprehensive test suite
+
+---
+
+## 🧠 Truth Maintenance System (TMS)
+
+**v0.16.0 introduces automatic dependency tracking and cascade retraction!**
+
+The Truth Maintenance System (TMS) automatically tracks why facts exist and removes derived facts when their premises become invalid. This is similar to CLIPS' logical assertions.
+
+### ✨ Why TMS?
+
+**Problem Without TMS:**
+```rust
+// Rule derives Gold status from high spending
+rule "Upgrade to Gold" {
+    when Customer.totalSpent > 10000
+    then insert(GoldStatus { customerId: Customer.id });
+}
+
+// Later, spending drops below threshold
+customer.totalSpent = 5000;
+
+// ❌ GoldStatus fact still exists! Manual cleanup needed.
+```
+
+**Solution With TMS:**
+```rust
+// Rule uses logical assertion
+rule "Upgrade to Gold" {
+    when Customer.totalSpent > 10000
+    then logicalAssert(GoldStatus { customerId: Customer.id });
+}
+
+// Later, spending drops below threshold
+customer.totalSpent = 5000;
+
+// ✅ GoldStatus automatically retracted by TMS!
+```
+
+### 🎯 Key Concepts
+
+#### 1. Explicit vs Logical Facts
+
+- **Explicit Facts**: Inserted by user code, persist until manually retracted
+  ```rust
+  engine.insert("Customer", customer_data);  // Explicit
+  ```
+
+- **Logical Facts**: Derived by rules, auto-retracted when premises invalid
+  ```rust
+  engine.insert_logical("GoldStatus", status, "UpgradeRule", vec![customer_handle]);
+  ```
+
+#### 2. Justifications
+
+Each fact has one or more justifications explaining why it exists:
+- **Explicit Justification**: "User inserted this fact"
+- **Logical Justification**: "Rule X derived this from facts Y and Z"
+
+#### 3. Cascade Retraction
+
+When a premise fact is retracted, all facts logically derived from it are automatically retracted:
+
+```
+Customer(id=1, spent=15000) ──┐
+                               ├──> GoldStatus(customer=1) ──> FreeShipping(customer=1)
+                               │
+Rule: "Upgrade to Gold"  ──────┘
+
+// Retract Customer
+engine.retract(customer_handle);
+
+// ✅ Automatically retracts:
+//    - GoldStatus (derived from Customer)
+//    - FreeShipping (derived from GoldStatus)
+```
+
+### 📖 Real-World Example: Customer Tier Management
+
+**Business Scenario:**
+E-commerce platform automatically manages customer tiers based on spending. When spending changes, tier status should update automatically.
+
+**Implementation:**
+
+```rust
+use rust_rule_engine::rete::{IncrementalEngine, GrlReteLoader, TypedFacts, FactValue};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut engine = IncrementalEngine::new();
+    
+    // Load rules with logical assertions
+    let rules = r#"
+        rule "GoldTier" salience 100 {
+            when
+                Customer.totalSpent > 10000
+            then
+                Log("Customer qualifies for Gold tier");
+                logicalAssert("GoldStatus", Customer.id);
+        }
+        
+        rule "FreeShipping" salience 50 {
+            when
+                GoldStatus.customerId == Customer.id
+            then
+                Log("Gold customer gets free shipping");
+                logicalAssert("FreeShipping", Customer.id);
+        }
+    "#;
+    
+    GrlReteLoader::load_from_string(rules, &mut engine)?;
+    
+    // Insert customer (explicit fact)
+    let mut customer = TypedFacts::new();
+    customer.set("id", FactValue::String("CUST-001".to_string()));
+    customer.set("totalSpent", FactValue::Float(15000.0));
+    let customer_handle = engine.insert("Customer".to_string(), customer);
+    
+    engine.fire_all();
+    
+    // ✅ TMS now tracking:
+    //    - Customer (explicit)
+    //    - GoldStatus (logical, depends on Customer)
+    //    - FreeShipping (logical, depends on GoldStatus)
+    
+    println!("Gold customers: {}", 
+        engine.working_memory().get_by_type("GoldStatus").len());  // 1
+    
+    // Update customer spending below threshold
+    let mut updated = TypedFacts::new();
+    updated.set("totalSpent", FactValue::Float(5000.0));
+    engine.update(customer_handle, updated)?;
+    
+    engine.fire_all();
+    
+    // ✅ TMS automatically retracted:
+    //    - GoldStatus (premise invalid)
+    //    - FreeShipping (cascade from GoldStatus)
+    
+    println!("Gold customers: {}", 
+        engine.working_memory().get_by_type("GoldStatus").len());  // 0
+    
+    Ok(())
+}
+```
+
+### 🔍 TMS API
+
+```rust
+// Logical assertion (auto-retract when premises invalid)
+let handle = engine.insert_logical(
+    "GoldStatus".to_string(),
+    status_data,
+    "UpgradeRule".to_string(),
+    vec![customer_handle]  // Premise fact handles
+);
+
+// Explicit assertion (manual lifecycle)
+let handle = engine.insert_explicit(
+    "Customer".to_string(),
+    customer_data
+);
+
+// Get TMS statistics
+let stats = engine.tms().stats();
+println!("Logical facts: {}", stats.logical_facts);
+println!("Justifications: {}", stats.total_justifications);
+
+// Query justifications for a fact
+if let Some(justs) = engine.tms().get_justifications(&handle) {
+    for just in justs {
+        println!("Justified by rule: {}", just.source_rule);
+    }
+}
+```
+
+### 📋 Examples
+
+- [tms_demo.rs](examples/tms_demo.rs) - Comprehensive TMS demonstration
+- [tms_advanced_demo.rs](examples/tms_advanced_demo.rs) - Complex dependency chains
+- [tms_integration_test.rs](tests/tms_integration_test.rs) - Test suite
+
+### 🎯 Best Practices
+
+1. **Use Logical Assertions for Derived Facts**
+   - Facts calculated from other facts should be logical
+   - E.g., tier status, discount eligibility, recommendations
+
+2. **Use Explicit Assertions for Base Facts**
+   - User input, external data should be explicit
+   - E.g., customer profiles, orders, transactions
+
+3. **Track Premises Correctly**
+   - Pass all fact handles used in rule's WHEN clause
+   - Ensures proper cascade retraction
+
+4. **Monitor TMS Statistics**
+   - Check for memory leaks (orphaned justifications)
+   - Verify cascade behavior in tests
 
 ---
 
