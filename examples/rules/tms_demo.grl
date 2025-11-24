@@ -1,0 +1,83 @@
+// Truth Maintenance System Demo Rules
+// These rules demonstrate logical assertions and cascade retraction
+
+// Rule 1: Infer Premium Tier from spending
+rule "InferPremiumTier" salience 100 no-loop {
+    when
+        Customer.totalSpent > 10000 && Customer.yearsActive > 5
+    then
+        Log("Customer qualifies for Premium tier");
+        CustomerTier.level = "Premium";
+        CustomerTier.customer = Customer.name;
+}
+
+// Rule 2: Apply bulk discount on large orders
+rule "ApplyBulkDiscount" salience 90 no-loop {
+    when
+        Order.amount > 1000
+    then
+        Log("Applying bulk discount");
+        Discount.orderId = Order.id;
+        Discount.amount = Order.amount * 0.1;
+        Discount.reason = "Bulk order discount";
+}
+
+// Rule 3: Award loyalty points for discounted orders
+rule "AwardDiscountPoints" salience 80 no-loop {
+    when
+        Discount.amount > 0
+    then
+        Log("Awarding loyalty points");
+        LoyaltyPoints.orderId = Discount.orderId;
+        LoyaltyPoints.points = Discount.amount * 0.1;
+}
+
+// Rule 4: Premium status from high spending
+rule "HighValueRule" salience 70 no-loop {
+    when
+        Condition.type == "high_value"
+    then
+        Log("High value customer detected");
+        Status.status = "Premium";
+        Status.reason = "High value";
+}
+
+// Rule 5: Premium status from long-term relationship
+rule "LongTermRule" salience 70 no-loop {
+    when
+        Condition.type == "long_term"
+    then
+        Log("Long term customer detected");
+        Status.status = "Premium";
+        Status.reason = "Long term";
+}
+
+// Rule 6: Left branch from root
+rule "LeftBranch" salience 60 no-loop {
+    when
+        Root.value > 0
+    then
+        Log("Creating left branch");
+        Branch.branch = "left";
+        Branch.source = "root";
+}
+
+// Rule 7: Right branch from root
+rule "RightBranch" salience 60 no-loop {
+    when
+        Root.value > 0
+    then
+        Log("Creating right branch");
+        Branch.branch = "right";
+        Branch.source = "root";
+}
+
+// Rule 8: Merge branches to create leaf
+rule "MergeBranches" salience 50 no-loop {
+    when
+        Branch.branch == "left" || Branch.branch == "right"
+    then
+        Log("Merging branches to create leaf");
+        Leaf.result = true;
+        Leaf.merged = true;
+}
