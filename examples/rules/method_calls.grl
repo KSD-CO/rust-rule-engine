@@ -4,7 +4,6 @@ rule "SpeedUp" salience 10 {
     then
         TestCar.setSpeed(TestCar.Speed + TestCar.SpeedIncrement);
         log("Speed increased to " + TestCar.Speed);
-        update(TestCar);
 }
 
 rule "SlowDown" salience 8 {
@@ -13,7 +12,6 @@ rule "SlowDown" salience 8 {
     then
         TestCar.setSpeed(TestCar.Speed - TestCar.SpeedIncrement);
         log("Speed decreased to " + TestCar.Speed);
-        update(TestCar);
 }
 
 rule "MaxSpeedReached" salience 15 {
