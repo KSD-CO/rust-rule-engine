@@ -14,6 +14,7 @@ use super::agenda::{AdvancedAgenda, Activation};
 use super::template::TemplateRegistry;
 use super::globals::GlobalsRegistry;
 use super::deffacts::DeffactsRegistry;
+use super::tms::TruthMaintenanceSystem;
 use crate::errors::{Result, RuleEngineError};
 
 /// Track which rules are affected by which fact types
@@ -95,6 +96,8 @@ pub struct IncrementalEngine {
     deffacts: DeffactsRegistry,
     /// Custom functions for Test CE support
     custom_functions: HashMap<String, ReteCustomFunction>,
+    /// Truth Maintenance System
+    tms: TruthMaintenanceSystem,
 }
 
 impl IncrementalEngine {
@@ -110,6 +113,7 @@ impl IncrementalEngine {
             templates: TemplateRegistry::new(),
             globals: GlobalsRegistry::new(),
             deffacts: DeffactsRegistry::new(),
+            tms: TruthMaintenanceSystem::new(),
         }
     }
 
@@ -128,6 +132,9 @@ impl IncrementalEngine {
     /// Insert fact into working memory
     pub fn insert(&mut self, fact_type: String, data: TypedFacts) -> FactHandle {
         let handle = self.working_memory.insert(fact_type.clone(), data);
+        
+        // Default: Treat as explicit assertion (backward compatible)
+        self.tms.add_explicit_justification(handle);
 
         // Trigger incremental propagation for this fact type
         self.propagate_changes_for_type(&fact_type);
@@ -169,10 +176,78 @@ impl IncrementalEngine {
             message: e,
         })?;
 
+        // TMS: Handle cascade retraction
+        let cascaded_facts = self.tms.retract_with_cascade(handle);
+        
+        // Actually retract cascaded facts from working memory
+        for cascaded_handle in cascaded_facts {
+            if let Ok(fact_type) = self.working_memory
+                .get(&cascaded_handle)
+                .map(|f| f.fact_type.clone())
+                .ok_or_else(|| RuleEngineError::FieldNotFound {
+                    field: format!("FactHandle {} not found", cascaded_handle),
+                })
+            {
+                let _ = self.working_memory.retract(cascaded_handle);
+                // Propagate for each cascaded fact
+                self.propagate_changes_for_type(&fact_type);
+            }
+        }
+
         // Trigger incremental propagation for this fact type
         self.propagate_changes_for_type(&fact_type);
 
         Ok(())
+    }
+    
+    /// Insert a fact with explicit assertion (user provided)
+    /// This fact will NOT be auto-retracted by TMS
+    pub fn insert_explicit(&mut self, fact_type: String, data: TypedFacts) -> FactHandle {
+        let handle = self.working_memory.insert(fact_type.clone(), data);
+        
+        // Add explicit justification in TMS
+        self.tms.add_explicit_justification(handle);
+        
+        // Trigger incremental propagation for this fact type
+        self.propagate_changes_for_type(&fact_type);
+        
+        handle
+    }
+    
+    /// Insert a fact with logical assertion (derived by a rule)
+    /// This fact WILL be auto-retracted if its premises become invalid
+    ///
+    /// # Arguments
+    /// * `fact_type` - Type of the fact (e.g., "Customer")
+    /// * `data` - The fact data
+    /// * `source_rule` - Name of the rule deriving this fact
+    /// * `premise_handles` - Handles of facts matched in the rule's WHEN clause
+    pub fn insert_logical(
+        &mut self,
+        fact_type: String,
+        data: TypedFacts,
+        source_rule: String,
+        premise_handles: Vec<FactHandle>,
+    ) -> FactHandle {
+        let handle = self.working_memory.insert(fact_type.clone(), data);
+        
+        // Add logical justification in TMS
+        self.tms.add_logical_justification(handle, source_rule, premise_handles);
+        
+        // Trigger incremental propagation for this fact type
+        self.propagate_changes_for_type(&fact_type);
+        
+        handle
+    }
+    
+    /// Get TMS reference
+    pub fn tms(&self) -> &TruthMaintenanceSystem {
+        &self.tms
+    }
+    
+    /// Get mutable TMS reference
+    pub fn tms_mut(&mut self) -> &mut TruthMaintenanceSystem {
+        &mut self.tms
     }
 
     /// Propagate changes for a specific fact type (incremental!)
@@ -184,47 +259,75 @@ impl IncrementalEngine {
             return; // No rules depend on this fact type
         }
 
-        // Flatten working memory to TypedFacts for evaluation
-        let facts = self.working_memory.to_typed_facts();
-
-        // Re-evaluate only affected rules
+        // Get facts of this type
+        let facts_of_type = self.working_memory.get_by_type(fact_type);
+        
+        // Re-evaluate only affected rules, checking each fact individually
         for &rule_idx in &affected_rules {
             let rule = &self.rules[rule_idx];
 
-            // Evaluate rule condition
-            let matches = super::network::evaluate_rete_ul_node_typed(&rule.node, &facts);
+            // Check each fact of this type against the rule
+            for fact in &facts_of_type {
+                // Create TypedFacts for just this fact
+                let mut single_fact_data = TypedFacts::new();
+                for (key, value) in fact.data.get_all() {
+                    single_fact_data.set(format!("{}.{}", fact_type, key), value.clone());
+                }
+                // Store handle for Retract action
+                single_fact_data.set_fact_handle(fact_type.to_string(), fact.handle);
+                
+                // Evaluate rule condition with this single fact
+                let matches = super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data);
 
-            if matches {
-                // Create activation
-                let activation = Activation::new(rule.name.clone(), rule.priority)
-                    .with_no_loop(rule.no_loop);
+                if matches {
+                    // Create activation for this specific fact match
+                    let activation = Activation::new(rule.name.clone(), rule.priority)
+                        .with_no_loop(rule.no_loop)
+                        .with_matched_fact(fact.handle);
 
-                self.agenda.add_activation(activation);
+                    self.agenda.add_activation(activation);
+                }
             }
         }
     }
 
     /// Propagate changes for all fact types (re-evaluate all rules)
     fn propagate_changes(&mut self) {
-        // Flatten working memory to TypedFacts for evaluation
-        let facts = self.working_memory.to_typed_facts();
-
-        // Re-evaluate ALL rules with current working memory state
-        for (rule_idx, rule) in self.rules.iter().enumerate() {
-            // Skip if rule has no-loop and already fired
-            if rule.no_loop && self.agenda.has_fired(&rule.name) {
-                continue;
-            }
+        // Get all fact types
+        let fact_types: Vec<String> = self.working_memory.get_all_facts()
+            .iter()
+            .map(|f| f.fact_type.clone())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        
+        // Evaluate each fact type using per-fact evaluation
+        for fact_type in fact_types {
+            let facts_of_type = self.working_memory.get_by_type(&fact_type);
             
-            // Evaluate rule condition
-            let matches = super::network::evaluate_rete_ul_node_typed(&rule.node, &facts);
-
-            if matches {
-                // Create activation
-                let activation = Activation::new(rule.name.clone(), rule.priority)
-                    .with_no_loop(rule.no_loop);
-
-                self.agenda.add_activation(activation);
+            for (rule_idx, rule) in self.rules.iter().enumerate() {
+                // Skip if rule has no-loop and already fired
+                if rule.no_loop && self.agenda.has_fired(&rule.name) {
+                    continue;
+                }
+                
+                // Check each fact against the rule
+                for fact in &facts_of_type {
+                    let mut single_fact_data = TypedFacts::new();
+                    for (key, value) in fact.data.get_all() {
+                        single_fact_data.set(format!("{}.{}", fact_type, key), value.clone());
+                    }
+                    
+                    let matches = super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data);
+                    
+                    if matches {
+                        let activation = Activation::new(rule.name.clone(), rule.priority)
+                            .with_no_loop(rule.no_loop)
+                            .with_matched_fact(fact.handle);
+                        
+                        self.agenda.add_activation(activation);
+                    }
+                }
             }
         }
     }
@@ -248,42 +351,103 @@ impl IncrementalEngine {
                 .enumerate()
                 .find(|(_, r)| r.name == activation.rule_name)
             {
+                // Validate that matched fact still exists (hasn't been retracted)
+                if let Some(matched_handle) = activation.matched_fact_handle {
+                    if self.working_memory.get(&matched_handle).is_none() {
+                        // Fact was retracted, skip this activation
+                        continue;
+                    }
+                }
+                
                 // Execute action on a copy of all facts
                 let original_facts = self.working_memory.to_typed_facts();
                 let mut modified_facts = original_facts.clone();
-                (rule.action)(&mut modified_facts);
+                
+                // Inject matched fact handle if available
+                if let Some(matched_handle) = activation.matched_fact_handle {
+                    // Find the fact type from working memory
+                    if let Some(fact) = self.working_memory.get(&matched_handle) {
+                        modified_facts.set_fact_handle(fact.fact_type.clone(), matched_handle);
+                    }
+                }
+                
+                let mut action_results = super::ActionResults::new();
+                (rule.action)(&mut modified_facts, &mut action_results);
 
-                // Update working memory: merge changed fields back into each fact
-                // Get handles and update only the fields that changed
-                let handles: Vec<_> = self.working_memory.get_all_handles();
-                for handle in handles {
-                    if let Some(wm_fact) = self.working_memory.get(&handle) {
-                        // Start with original fact data
-                        let mut updated_data = wm_fact.data.clone();
-
-                        // Merge in any NEW fields from modified_facts
-                        // (fields that were set by the action)
-                        for (key, value) in modified_facts.get_all() {
-                            // Only update if this field wasn't in original OR has changed
-                            if !original_facts.get_all().contains_key(key) ||
-                               original_facts.get(key) != Some(value) {
-                                // Strip any prefixes to get clean field name
-                                let clean_key = if key.contains('.') {
-                                    key.split('.').last().unwrap_or(key)
+                // Update working memory: detect changes and apply them
+                // Build a map of fact_type -> updated fields
+                let mut updates_by_type: HashMap<String, Vec<(String, FactValue)>> = HashMap::new();
+                
+                for (key, value) in modified_facts.get_all() {
+                    // Keys are in format "FactType.field" or "FactType.handle.field"
+                    // We want to extract the FactType and field name
+                    if let Some(original_value) = original_facts.get(key) {
+                        if original_value != value {
+                            // Value changed! Extract fact type and field
+                            let parts: Vec<&str> = key.split('.').collect();
+                            if parts.len() >= 2 {
+                                let fact_type = parts[0].to_string();
+                                // Field is the last part (skip handle if present)
+                                let field = if parts.len() == 2 {
+                                    parts[1].to_string()
                                 } else {
-                                    key
+                                    parts[parts.len() - 1].to_string()
                                 };
-                                updated_data.set(clean_key, value.clone());
+                                
+                                updates_by_type
+                                    .entry(fact_type)
+                                    .or_insert_with(Vec::new)
+                                    .push((field, value.clone()));
                             }
                         }
-
-                        let _ = self.working_memory.update(handle, updated_data);
+                    } else {
+                        // New field added
+                        let parts: Vec<&str> = key.split('.').collect();
+                        if parts.len() >= 2 {
+                            let fact_type = parts[0].to_string();
+                            let field = if parts.len() == 2 {
+                                parts[1].to_string()
+                            } else {
+                                parts[parts.len() - 1].to_string()
+                            };
+                            
+                            updates_by_type
+                                .entry(fact_type)
+                                .or_insert_with(Vec::new)
+                                .push((field, value.clone()));
+                        }
+                    }
+                }
+                
+                // Apply updates to working memory facts
+                for (fact_type, field_updates) in updates_by_type {
+                    // Get handles of all facts of this type (collect to avoid borrow issues)
+                    let fact_handles: Vec<FactHandle> = self.working_memory
+                        .get_by_type(&fact_type)
+                        .iter()
+                        .map(|f| f.handle)
+                        .collect();
+                    
+                    for handle in fact_handles {
+                        if let Some(fact) = self.working_memory.get(&handle) {
+                            let mut updated_data = fact.data.clone();
+                            
+                            // Apply all field updates
+                            for (field, value) in &field_updates {
+                                updated_data.set(field, value.clone());
+                            }
+                            
+                            let _ = self.working_memory.update(handle, updated_data);
+                        }
                     }
                 }
 
                 // Re-evaluate matches after working memory update
                 // This allows subsequent rules to see the updated values
                 self.propagate_changes();
+
+                // Process action results (retractions, agenda activations, etc.)
+                self.process_action_results(action_results);
 
                 // Track fired rule
                 fired_rules.push(activation.rule_name.clone());
@@ -292,6 +456,62 @@ impl IncrementalEngine {
         }
 
         fired_rules
+    }
+
+    /// Process action results from rule execution
+    fn process_action_results(&mut self, results: super::ActionResults) {
+        for result in results.results {
+            match result {
+                super::ActionResult::Retract(handle) => {
+                    // Retract fact by handle
+                    if let Err(e) = self.retract(handle) {
+                        eprintln!("❌ Failed to retract fact {:?}: {}", handle, e);
+                    }
+                }
+                super::ActionResult::RetractByType(fact_type) => {
+                    // Retract first fact of this type
+                    let facts_of_type = self.working_memory.get_by_type(&fact_type);
+                    if let Some(fact) = facts_of_type.first() {
+                        let handle = fact.handle;
+                        if let Err(e) = self.retract(handle) {
+                            eprintln!("❌ Failed to retract fact {:?}: {}", handle, e);
+                        }
+                    }
+                }
+                super::ActionResult::Update(handle) => {
+                    // Re-evaluate rules that depend on this fact type
+                    if let Some(fact) = self.working_memory.get(&handle) {
+                        let fact_type = fact.fact_type.clone();
+                        self.propagate_changes_for_type(&fact_type);
+                    }
+                }
+                super::ActionResult::ActivateAgendaGroup(group) => {
+                    // Activate agenda group
+                    self.agenda.set_focus(group);
+                }
+                super::ActionResult::InsertFact { fact_type, data } => {
+                    // Insert new explicit fact
+                    self.insert_explicit(fact_type, data);
+                }
+                super::ActionResult::InsertLogicalFact { fact_type, data, rule_name, premises } => {
+                    // Insert new logical fact
+                    let _handle = self.insert_logical(fact_type, data, rule_name, premises);
+                }
+                super::ActionResult::CallFunction { function_name, args } => {
+                    // Log function calls (requires function registry to actually execute)
+                    println!("🔧 Function call queued: {}({:?})", function_name, args);
+                    // TODO: Implement function registry
+                }
+                super::ActionResult::ScheduleRule { rule_name, delay_ms } => {
+                    // Log scheduled rules (requires scheduler to actually execute)
+                    println!("⏰ Rule scheduled: {} after {}ms", rule_name, delay_ms);
+                    // TODO: Implement rule scheduler
+                }
+                super::ActionResult::None => {
+                    // No action needed
+                }
+            }
+        }
     }
 
     /// Get working memory
@@ -558,7 +778,7 @@ mod tests {
             node,
             priority: 0,
             no_loop: true,
-            action: std::sync::Arc::new(|_| {}),
+            action: std::sync::Arc::new(|_, _| {}),
         };
 
         engine.add_rule(rule, vec!["Person".to_string()]);

@@ -17,6 +17,8 @@ pub mod globals;
 pub mod deffacts;
 pub mod accumulate;
 pub mod multifield;
+pub mod tms;
+pub mod action_result;
 
 pub use alpha::*;
 pub use beta::*;
@@ -34,3 +36,5 @@ pub use globals::*;
 pub use deffacts::*;
 pub use accumulate::*;
 pub use multifield::*;
+pub use tms::*;
+pub use action_result::*;

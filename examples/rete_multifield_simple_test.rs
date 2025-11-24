@@ -8,6 +8,7 @@ use rust_rule_engine::rete::{
     propagation::IncrementalEngine,
     network::{ReteUlNode, TypedReteUlRule},
     facts::{TypedFacts, FactValue},
+    action_result::ActionResults,
 };
 use std::sync::Arc;
 
@@ -33,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         node: rule_node,
         priority: 10,
         no_loop: true,
-        action: Arc::new(|facts: &mut TypedFacts| {
+        action: Arc::new(|facts: &mut TypedFacts, _results: &mut ActionResults| {
             println!("✅ Rule fired: items array is empty!");
             facts.set("result", FactValue::String("empty_detected".to_string()));
         }),
@@ -65,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         node: count_rule_node,
         priority: 10,
         no_loop: true,
-        action: Arc::new(|facts: &mut TypedFacts| {
+        action: Arc::new(|facts: &mut TypedFacts, _results: &mut ActionResults| {
             println!("✅ Rule fired: more than 3 items!");
             facts.set("result", FactValue::String("count_detected".to_string()));
         }),
@@ -101,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         node: contains_rule_node,
         priority: 10,
         no_loop: true,
-        action: Arc::new(|facts: &mut TypedFacts| {
+        action: Arc::new(|facts: &mut TypedFacts, _results: &mut ActionResults| {
             println!("✅ Rule fired: electronics tag found!");
             facts.set("result", FactValue::String("contains_detected".to_string()));
         }),

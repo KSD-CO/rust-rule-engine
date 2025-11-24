@@ -840,7 +840,7 @@ pub struct TypedReteUlRule {
     pub node: ReteUlNode,
     pub priority: i32,
     pub no_loop: bool,
-    pub action: Arc<dyn Fn(&mut TypedFacts) + Send + Sync>,
+    pub action: Arc<dyn Fn(&mut TypedFacts, &mut super::ActionResults) + Send + Sync>,
 }
 
 /// Typed RETE-UL Engine with cached nodes (Performance + Type Safety!)
@@ -868,7 +868,7 @@ impl TypedReteUlEngine {
         no_loop: bool,
         action: F,
     ) where
-        F: Fn(&mut TypedFacts) + Send + Sync + 'static,
+        F: Fn(&mut TypedFacts, &mut super::ActionResults) + Send + Sync + 'static,
     {
         self.rules.push(TypedReteUlRule {
             name,
@@ -889,7 +889,7 @@ impl TypedReteUlEngine {
         let node = build_rete_ul_from_condition_group(&rule.conditions);
         let rule_name = rule.name.clone();
 
-        let action = Arc::new(move |facts: &mut TypedFacts| {
+        let action = Arc::new(move |facts: &mut TypedFacts, _results: &mut super::ActionResults| {
             facts.set(format!("{}_executed", rule_name), true);
         });
 
@@ -962,7 +962,11 @@ impl TypedReteUlEngine {
                     continue;
                 }
 
-                (rule.action)(&mut self.facts);
+                let mut action_results = super::ActionResults::new();
+                (rule.action)(&mut self.facts, &mut action_results);
+                // Note: ActionResults not processed in TypedReteUlEngine (legacy engine)
+                // Use IncrementalEngine for full ActionResults support
+                
                 fired_rules.push(rule.name.clone());
                 fired_flags.insert(rule.name.clone());
                 self.facts.set(fired_flag, true);

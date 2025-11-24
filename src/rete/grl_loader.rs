@@ -223,17 +223,21 @@ impl GrlReteLoader {
     /// Create action closure from ActionType list
     fn create_action_closure(
         actions: Vec<crate::types::ActionType>,
-    ) -> std::sync::Arc<dyn Fn(&mut TypedFacts) + Send + Sync> {
-        std::sync::Arc::new(move |facts: &mut TypedFacts| {
+    ) -> std::sync::Arc<dyn Fn(&mut TypedFacts, &mut super::ActionResults) + Send + Sync> {
+        std::sync::Arc::new(move |facts: &mut TypedFacts, results: &mut super::ActionResults| {
             // Execute actions
             for action in &actions {
-                Self::execute_action(action, facts);
+                Self::execute_action(action, facts, results);
             }
         })
     }
 
     /// Execute a single action
-    fn execute_action(action: &crate::types::ActionType, facts: &mut TypedFacts) {
+    fn execute_action(
+        action: &crate::types::ActionType, 
+        facts: &mut TypedFacts,
+        results: &mut super::ActionResults,
+    ) {
         use crate::types::ActionType;
 
         match action {
@@ -254,28 +258,98 @@ impl GrlReteLoader {
             ActionType::Log { message } => {
                 println!("📝 LOG: {}", message);
             }
-            ActionType::Call { function, args: _ } => {
-                // For function calls, we'll just log them
+            ActionType::Call { function, args } => {
+                // Queue function call to be executed by engine
+                results.add(super::ActionResult::CallFunction {
+                    function_name: function.clone(),
+                    args: args.iter().map(|v| Self::value_to_string(v)).collect(),
+                });
                 println!("🔧 CALL: {}", function);
             }
-            ActionType::MethodCall { object, method, args: _ } => {
-                println!("📞 METHOD: {}.{}", object, method);
+            ActionType::MethodCall { object, method, args } => {
+                // Method calls can be treated as function calls with object as first arg
+                let mut all_args = vec![object.clone()];
+                all_args.extend(args.iter().map(|v| Self::value_to_string(v)));
+                
+                results.add(super::ActionResult::CallFunction {
+                    function_name: format!("{}.{}", object, method),
+                    args: all_args,
+                });
+                println!("� METHOD: {}.{}", object, method);
             }
             ActionType::Update { object } => {
-                println!("🔄 UPDATE: {}", object);
+                // Mark that this fact type should trigger re-evaluation
+                // We'll use RetractByType as a signal (won't actually retract, just re-evaluate)
+                println!("� UPDATE: {}", object);
+                // Note: Update is handled automatically by the engine after fact modifications
             }
             ActionType::Retract { object } => {
-                println!("🗑️ RETRACT: {}", object);
-                // Mark fact as retracted - actual retraction will be handled by engine
-                facts.set(format!("_retract_{}", object), FactValue::Boolean(true));
+                // Strip quotes from object name if present
+                let object_name = object.trim_matches('"');
+                
+                // Try to get the handle for this fact type from metadata
+                if let Some(handle) = facts.get_fact_handle(object_name) {
+                    // Retract specific fact by handle
+                    results.add(super::ActionResult::Retract(handle));
+                    println!("🗑️ RETRACT: {} (handle: {:?})", object_name, handle);
+                } else {
+                    // Fallback: retract by type (first matching fact)
+                    results.add(super::ActionResult::RetractByType(object_name.to_string()));
+                    println!("🗑️ RETRACT: {} (by type, no handle found)", object_name);
+                }
             }
-            ActionType::Custom { action_type, params: _ } => {
+            ActionType::Custom { action_type, params } => {
                 println!("⚙️ CUSTOM: {}", action_type);
+                
+                // Handle built-in custom functions
+                match action_type.as_str() {
+                    "set" => {
+                        // set(field, value) - params should have "0" and "1" keys for positional args
+                        // or "field" and "value" for named args
+                        if let Some(field_val) = params.get("0").or_else(|| params.get("field")) {
+                            if let Some(value_val) = params.get("1").or_else(|| params.get("value")) {
+                                // Extract field name from first parameter
+                                let field_str = match field_val {
+                                    Value::String(s) => s.clone(),
+                                    Value::Expression(expr) => format!("{:?}", expr),
+                                    _ => return,
+                                };
+                                
+                                // Clean up field string
+                                let field_clean = field_str
+                                    .trim_matches(|c: char| !c.is_alphanumeric() && c != '.')
+                                    .to_string();
+                                
+                                // Evaluate the value expression
+                                let evaluated_value = match value_val {
+                                    Value::Expression(expr) => {
+                                        Self::evaluate_expression_for_rete(expr, facts)
+                                    }
+                                    _ => value_val.clone(),
+                                };
+                                
+                                // Set the value
+                                let fact_value = Self::value_to_fact_value(&evaluated_value);
+                                facts.set(&field_clean, fact_value);
+                            }
+                        }
+                    }
+                    _ => {
+                        // Unknown custom action, just log it
+                    }
+                }
             }
             ActionType::ActivateAgendaGroup { group } => {
+                // Queue agenda group activation
+                results.add(super::ActionResult::ActivateAgendaGroup(group.clone()));
                 println!("📋 ACTIVATE GROUP: {}", group);
             }
             ActionType::ScheduleRule { rule_name, delay_ms } => {
+                // Queue rule scheduling
+                results.add(super::ActionResult::ScheduleRule {
+                    rule_name: rule_name.clone(),
+                    delay_ms: *delay_ms,
+                });
                 println!("⏰ SCHEDULE: {} (delay: {}ms)", rule_name, delay_ms);
             }
             ActionType::CompleteWorkflow { workflow_name } => {

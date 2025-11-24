@@ -9,6 +9,7 @@
 use rust_rule_engine::rete::auto_network::{Rule, ConditionGroup, Condition};
 use rust_rule_engine::rete::network::{TypedReteUlEngine, build_rete_ul_from_condition_group};
 use rust_rule_engine::rete::facts::FactValue;
+use rust_rule_engine::rete::action_result::ActionResults;
 use std::time::Instant;
 
 fn main() {
@@ -72,7 +73,7 @@ fn main() {
             node,
             0,
             true,
-            move |_facts| {
+            move |_facts, _results: &mut ActionResults| {
                 println!("   ✅ Rule fired: {}", rule_name);
             },
         );
@@ -119,7 +120,7 @@ fn main() {
             node,
             0,
             true,
-            move |_facts| {
+            move |_facts, _results: &mut ActionResults| {
                 println!("   ✅ Rule fired: {}", rule_name);
             },
         );
@@ -169,7 +170,7 @@ fn main() {
             node,
             0,
             true,
-            move |_facts| {
+            move |_facts, _results: &mut ActionResults| {
                 println!("   ✅ Rule fired: {}", rule_name);
             },
         );

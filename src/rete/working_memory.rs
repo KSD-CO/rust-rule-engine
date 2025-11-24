@@ -16,7 +16,7 @@ pub struct FactHandle(u64);
 
 impl FactHandle {
     /// Create a new fact handle with a unique ID
-    fn new(id: u64) -> Self {
+    pub fn new(id: u64) -> Self {
         Self(id)
     }
 
@@ -240,10 +240,14 @@ impl WorkingMemory {
                 result.set(format!("{}.{}", prefix, key), value.clone());
             }
 
-            // Also add without prefix for simple access
+            // Also add without prefix for simple access (last fact of this type wins)
             for (key, value) in fact.data.get_all() {
                 result.set(format!("{}.{}", fact.fact_type, key), value.clone());
             }
+            
+            // Store handle for this fact type (last fact wins, but better than nothing)
+            // Actions can use Type._handle to get the handle
+            result.set_fact_handle(fact.fact_type.clone(), fact.handle);
         }
 
         result
