@@ -21,7 +21,6 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 - **💾 Logical Assertions** - Facts derived by rules (vs explicit user assertions)
 - **🎯 Production Ready** - Full integration with RETE-UL engine
 - **📊 Statistics API** - Monitor TMS state and dependencies
-- **🔄 CLIPS Compatible** - Similar to CLIPS logical assertions
 
 **TMS Example:**
 ```rust
@@ -531,6 +530,41 @@ rust-rule-engine = "0.17.0"
 ```toml
 # Enable streaming support
 rust-rule-engine = { version = "0.17.0", features = ["streaming"] }
+```
+
+---
+
+## 🔄 Migrating to v0.18.0
+
+### Breaking Change: Action Closure Signature
+
+v0.18.0 introduces a **breaking change** to fix critical bugs in action execution.
+
+#### Who is Affected?
+
+✅ **GRL Files** - **NOT AFFECTED** - No changes needed!  
+❌ **Programmatic Rules** - If you create rules with `TypedReteUlRule`, update your closures.
+
+#### Migration Steps
+
+**Step 1: Add Import**
+```rust
+use rust_rule_engine::rete::action_result::ActionResults;
+```
+
+**Step 2: Update Closure Signature**
+```rust
+// ❌ Before v0.18.0
+let action = Arc::new(|facts: &mut TypedFacts| {
+    println!("Rule fired!");
+    facts.set("status", "processed");
+});
+
+// ✅ After v0.18.0
+let action = Arc::new(|facts: &mut TypedFacts, _results: &mut ActionResults| {
+    println!("Rule fired!");
+    facts.set("status", "processed");
+});
 ```
 
 ---
