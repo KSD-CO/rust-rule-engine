@@ -45,7 +45,7 @@ engine.retract(customer_handle)?; // Cascade: GoldStatus removed automatically
 - **Handle Injection**: Actions receive the exact handle of the matched fact
 - **Validation Check**: Before executing action, verify matched fact still exists
 - **ActionResult Architecture**: Proper queuing and processing of action side effects
-- **TMS Integration**: Full justification tracking and cascade retraction support
+- ** Integration**: Full justification tracking and cascade retraction support
 
 ---
 
@@ -497,7 +497,7 @@ rule "HighRevenue" {
 - **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
 - **🧪 Test CE** - Arbitrary boolean expressions in rules *(v0.12.0)*
 - **⚡ Conflict Resolution** - 8 CLIPS strategies (Salience, LEX, MEA, etc.) *(v0.13.0)*
-- **🧠 Truth Maintenance System (TMS)** - Automatic fact retraction and dependency tracking *(v0.16.0)*
+- **🧠 Truth Maintenance System ()** - Automatic fact retraction and dependency tracking *(v0.16.0)*
   - **Logical Assertions** - Facts derived by rules are auto-retracted when premises become invalid
   - **Justifications** - Track why facts exist (explicit user input vs. derived by rules)
   - **Cascade Retraction** - Automatically retract dependent facts when base facts are removed
@@ -1096,8 +1096,6 @@ if let Some(justs) = engine.tms().get_justifications(&handle) {
 ### 📋 Examples
 
 - [tms_demo.rs](examples/tms_demo.rs) - Comprehensive TMS demonstration
-- [tms_advanced_demo.rs](examples/tms_advanced_demo.rs) - Complex dependency chains
-- [tms_integration_test.rs](tests/tms_integration_test.rs) - Test suite
 
 ### 🎯 Best Practices
 
