@@ -242,6 +242,10 @@ impl GrlReteLoader {
 
         match action {
             ActionType::Set { field, value } => {
+                // Assignment action (from "field = value" syntax in GRL)
+                // Note: Set() function syntax is NOT supported.
+                // Use: Player.score = Player.score + 10;
+                
                 // Check if value is an expression that needs evaluation
                 let evaluated_value = match value {
                     Value::Expression(expr) => {
@@ -277,12 +281,6 @@ impl GrlReteLoader {
                 });
                 println!("� METHOD: {}.{}", object, method);
             }
-            ActionType::Update { object } => {
-                // Mark that this fact type should trigger re-evaluation
-                // We'll use RetractByType as a signal (won't actually retract, just re-evaluate)
-                println!("� UPDATE: {}", object);
-                // Note: Update is handled automatically by the engine after fact modifications
-            }
             ActionType::Retract { object } => {
                 // Strip quotes from object name if present
                 let object_name = object.trim_matches('"');
@@ -298,46 +296,8 @@ impl GrlReteLoader {
                     println!("🗑️ RETRACT: {} (by type, no handle found)", object_name);
                 }
             }
-            ActionType::Custom { action_type, params } => {
-                println!("⚙️ CUSTOM: {}", action_type);
-                
-                // Handle built-in custom functions
-                match action_type.as_str() {
-                    "set" => {
-                        // set(field, value) - params should have "0" and "1" keys for positional args
-                        // or "field" and "value" for named args
-                        if let Some(field_val) = params.get("0").or_else(|| params.get("field")) {
-                            if let Some(value_val) = params.get("1").or_else(|| params.get("value")) {
-                                // Extract field name from first parameter
-                                let field_str = match field_val {
-                                    Value::String(s) => s.clone(),
-                                    Value::Expression(expr) => format!("{:?}", expr),
-                                    _ => return,
-                                };
-                                
-                                // Clean up field string
-                                let field_clean = field_str
-                                    .trim_matches(|c: char| !c.is_alphanumeric() && c != '.')
-                                    .to_string();
-                                
-                                // Evaluate the value expression
-                                let evaluated_value = match value_val {
-                                    Value::Expression(expr) => {
-                                        Self::evaluate_expression_for_rete(expr, facts)
-                                    }
-                                    _ => value_val.clone(),
-                                };
-                                
-                                // Set the value
-                                let fact_value = Self::value_to_fact_value(&evaluated_value);
-                                facts.set(&field_clean, fact_value);
-                            }
-                        }
-                    }
-                    _ => {
-                        // Unknown custom action, just log it
-                    }
-                }
+            ActionType::Custom { .. } => {
+                // Custom actions ignored - not implemented in RETE-UL
             }
             ActionType::ActivateAgendaGroup { group } => {
                 // Queue agenda group activation
@@ -353,10 +313,22 @@ impl GrlReteLoader {
                 println!("⏰ SCHEDULE: {} (delay: {}ms)", rule_name, delay_ms);
             }
             ActionType::CompleteWorkflow { workflow_name } => {
-                println!("✔️ COMPLETE WORKFLOW: {}", workflow_name);
+                // Mark workflow as completed by setting a fact
+                let completion_key = format!("workflow.{}.completed", workflow_name);
+                facts.set(&completion_key, FactValue::Boolean(true));
+                
+                let timestamp_key = format!("workflow.{}.completed_at", workflow_name);
+                facts.set(&timestamp_key, FactValue::Integer(chrono::Utc::now().timestamp()));
+                
+                println!("✔️ WORKFLOW COMPLETED: {}", workflow_name);
             }
-            ActionType::SetWorkflowData { key, value: _ } => {
-                println!("📊 SET WORKFLOW DATA: {}", key);
+            ActionType::SetWorkflowData { key, value } => {
+                // Store workflow data as facts with "workflow.data." prefix
+                let data_key = format!("workflow.data.{}", key);
+                let fact_value = Self::value_to_fact_value(value);
+                facts.set(&data_key, fact_value);
+                
+                println!("📊 WORKFLOW DATA SET: {} = {:?}", key, value);
             }
         }
     }
