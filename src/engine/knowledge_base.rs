@@ -431,9 +431,6 @@ impl ActionTypeGRLExport for crate::types::ActionType {
                     .join(", ");
                 format!("{}.{}({})", object, method, args_str)
             }
-            crate::types::ActionType::Update { object } => {
-                format!("update({})", object)
-            }
             crate::types::ActionType::Retract { object } => {
                 format!("retract(${})", object)
             }
