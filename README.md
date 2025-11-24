@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.18.0 🦀⚡
+# Rust Rule Engine v0.18.1 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -10,6 +10,15 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-insp
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
+
+## ✨ What's New in v0.18.1
+
+🔄 **Workflow Orchestration Support** - Build complex multi-stage workflows with rules!
+
+- **🎯 CompleteWorkflow** - Mark workflows as completed with automatic timestamping
+- **📊 SetWorkflowData** - Store and track workflow context data as facts
+- **🔍 Queryable State** - All workflow state stored in facts, accessible in conditions
+- **⏱️ Timestamp Tracking** - Automatic completion time recording (ISO8601 format)
 
 ## ✨ What's New in v0.18.0
 
@@ -45,7 +54,7 @@ engine.retract(customer_handle)?; // Cascade: GoldStatus removed automatically
 - **Handle Injection**: Actions receive the exact handle of the matched fact
 - **Validation Check**: Before executing action, verify matched fact still exists
 - **ActionResult Architecture**: Proper queuing and processing of action side effects
-- ** Integration**: Full justification tracking and cascade retraction support
+- **TMS Integration**: Full justification tracking and cascade retraction support
 
 ---
 
@@ -497,7 +506,7 @@ rule "HighRevenue" {
 - **📦 Deffacts** - Initial fact definitions *(v0.11.0)*
 - **🧪 Test CE** - Arbitrary boolean expressions in rules *(v0.12.0)*
 - **⚡ Conflict Resolution** - 8 CLIPS strategies (Salience, LEX, MEA, etc.) *(v0.13.0)*
-- **🧠 Truth Maintenance System ()** - Automatic fact retraction and dependency tracking *(v0.16.0)*
+- **🧠 Truth Maintenance System (TMS)** - Automatic fact retraction and dependency tracking *(v0.16.0)*
   - **Logical Assertions** - Facts derived by rules are auto-retracted when premises become invalid
   - **Justifications** - Track why facts exist (explicit user input vs. derived by rules)
   - **Cascade Retraction** - Automatically retract dependent facts when base facts are removed
@@ -1092,10 +1101,6 @@ if let Some(justs) = engine.tms().get_justifications(&handle) {
     }
 }
 ```
-
-### 📋 Examples
-
-- [tms_demo.rs](examples/tms_demo.rs) - Comprehensive TMS demonstration
 
 ### 🎯 Best Practices
 

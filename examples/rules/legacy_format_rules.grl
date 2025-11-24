@@ -13,7 +13,6 @@ rule VIPProcessing salience 20 {
         Customer.VipStatus == true
     then
         Customer.PriorityProcessing = true;
-        update(Customer);
 }
 
 rule OrderValidation {

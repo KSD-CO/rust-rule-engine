@@ -313,10 +313,6 @@ impl ParallelRuleEngine {
                 println!("     📋 {}", message);
                 Ok(())
             }
-            ActionType::Update { .. } => {
-                // Simplified update handling
-                Ok(())
-            }
             ActionType::Retract { .. } => {
                 // Simplified retract handling
                 Ok(())

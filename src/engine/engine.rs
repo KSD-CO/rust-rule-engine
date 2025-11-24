@@ -1209,13 +1209,6 @@ impl RustRuleEngine {
                     println!("  🔧 Called {object}.{method}({args:?}) -> {result}");
                 }
             }
-            ActionType::Update { object } => {
-                if self.config.debug_mode {
-                    println!("  🔄 Updated {object}");
-                }
-                // Update action is mainly for working memory management
-                // In this implementation, it's mostly a no-op since we update in place
-            }
             ActionType::Retract { object } => {
                 if self.config.debug_mode {
                     println!("  🗑️ Retracted {object}");

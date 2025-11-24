@@ -389,11 +389,6 @@ pub enum ActionType {
         /// Method arguments
         args: Vec<Value>,
     },
-    /// Update an object
-    Update {
-        /// Object name to update
-        object: String,
-    },
     /// Retract (delete) a fact from working memory
     Retract {
         /// Object/fact to retract

@@ -1088,17 +1088,6 @@ impl GRLParser {
             let args_str = captures.get(2).map(|m| m.as_str()).unwrap_or("");
 
             match function_name.to_lowercase().as_str() {
-                "update" => {
-                    // Extract object name from $Object
-                    let object_name = if let Some(stripped) = args_str.strip_prefix('$') {
-                        stripped.to_string()
-                    } else {
-                        args_str.to_string()
-                    };
-                    Ok(ActionType::Update {
-                        object: object_name,
-                    })
-                }
                 "retract" => {
                     // Extract object name from $Object
                     let object_name = if let Some(stripped) = args_str.strip_prefix('$') {
