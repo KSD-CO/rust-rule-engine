@@ -54,8 +54,6 @@ impl RuleCoverage {
     }
 }
 
-// TODO: Thêm hàm sinh test case cho facts và chạy toàn bộ rule để đo coverage
-
 /// Lấy tất cả điều kiện Single từ ConditionGroup
 
 fn flatten_conditions(group: &crate::engine::rule::ConditionGroup) -> Vec<crate::engine::rule::Condition> {

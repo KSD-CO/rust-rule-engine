@@ -1,184 +1,226 @@
-# Rule Examples Directory
+# GRL Rule Files
 
-This directory contains various GRL (Grule Rule Language) examples demonstrating different rule patterns, complexity levels, and advanced features.
+Collection of GRL (Grule Rule Language) rule files organized by functionality.
 
-## Files:
+## Directory Structure
 
-### Basic Examples
-
-#### `simple_business_rules.grl`
-- **Purpose**: Basic business rules for e-commerce
-- **Features**: Simple conditions, basic actions
-- **Use case**: Getting started with rule engine
-- **Example**: Run with `cargo run --example test_complex_parsing`
-
-#### `test_complex_rule.grl`
-- **Purpose**: Test complex nested conditions with multiple logical operators
-- **Features**: Deep parentheses nesting, OR/AND combinations
-- **Use case**: Complex business rule validation
-
-#### `advanced_nested_rules.grl`
-- **Purpose**: Advanced rules with complex nested logic
-- **Features**: Multiple condition groups, various operators
-- **Use case**: Premium customer processing, seasonal campaigns
-
-#### `legacy_format_rules.grl`
-- **Purpose**: Backward compatibility testing
-- **Features**: PascalCase field names, traditional syntax
-- **Use case**: Migration from older rule formats
-
----
-
-### Advanced Features (v0.12.0+)
-
-#### `test_ce_rules.grl` *(NEW in v0.12.0)*
-- **Purpose**: Demonstrate Test CE (Conditional Element) with arbitrary boolean expressions
-- **Features**:
-  - `test()` syntax for calling arbitrary functions in WHEN clause
-  - Function calls without operators: `test(isValidEmail(User.email))`
-  - Negation support: `!test(hasActiveSubscription(User.id))`
-  - Mixed with regular conditions: `User.age > 18 && test(checkCredit(User.id))`
-- **Example**: Run with `cargo run --example test_ce_comprehensive`
-- **Use case**: AI/ML integration, external API calls, custom validation functions
-
-#### `test_ce_rete_rules.grl` *(NEW in v0.12.0)*
-- **Purpose**: Test CE examples specifically for RETE-UL Engine
-- **Features**:
-  - RETE-compatible test() syntax
-  - Variable binding with test CE: `$var`
-  - Cross-pattern variable references
-  - Optimized for RETE pattern matching
-- **Example**: Run with `cargo run --example test_ce_rete_demo`
-- **Use case**: High-performance test CE with RETE engine (50+ rules)
-
-#### `conflict_resolution_rules.grl` *(NEW in v0.13.0)*
-- **Purpose**: Demonstrate CLIPS/Drools-inspired conflict resolution strategies
-- **Features**:
-  - **Salience levels**: Priority-based rule execution (5 to 100)
-  - **Rule complexity**: 1 to 5 conditions per rule
-  - **Business scenarios**: Fraud detection, approvals, VIP discounts, risk assessment
-  - **7 diverse rules**: FraudDetection, HighValueApproval, VIPDiscount, RiskAssessment, etc.
-- **Strategies tested**:
-  - **Salience**: Rules fire by priority (100 → 50 → 40 → ...)
-  - **Complexity**: More conditions fire first (5 conds → 3 conds → 1 cond)
-  - **Simplicity**: Fewer conditions fire first (1 cond → 3 conds → 5 conds)
-  - **LEX/MEA**: Recency and specificity-based (engine-level strategy)
-- **Example**: Run with `cargo run --example conflict_resolution_demo`
-- **Use case**: Enterprise rule ordering, mission-critical rule prioritization
-
----
-
-## Usage:
-
-### Native Engine (Simple API)
-
-```rust
-use rust_rule_engine::parser::grl::GRLParser;
-use std::fs;
-
-// Load and parse rules
-let content = fs::read_to_string("examples/rules/simple_business_rules.grl")?;
-let rules = GRLParser::parse_rules(&content)?;
-
-// Execute with Native Engine
-let mut engine = RustRuleEngine::new();
-engine.load_rules_from_file("examples/rules/simple_business_rules.grl")?;
+```
+rules/
+├── 01-basic/          # Basic rules for beginners (6 files)
+├── 02-rete/           # RETE-optimized rules (3 files)
+├── 03-advanced/       # Advanced features (7 files)
+└── 04-use-cases/      # Real-world use cases (5 files)
 ```
 
-### RETE-UL Engine (High Performance)
+**Total: 21 files** (reduced from 30 files - deleted 9 duplicate/test/legacy files)
 
+## GRL Language Overview
+
+GRL (Grule Rule Language) is a DSL for defining business rules with syntax close to natural language:
+
+```grl
+rule "RuleName" "Description" salience 10 {
+    when
+        // Conditions
+        Person.Age >= 18 && Person.VIP == true
+    then
+        // Actions
+        Person.Discount = 20;
+        Log("VIP customer gets 20% discount");
+}
+```
+
+## Quick Start
+
+### 1. Basic Rules (Start here)
+
+```bash
+# View the simplest rule
+cat 01-basic/simple_business_rules.grl
+
+# Run with example
+cargo run --example grule_demo
+```
+
+### 2. RETE-Optimized Rules
+
+```bash
+# Rules optimized for RETE engine
+cat 02-rete/rete_demo.grl
+
+cargo run --example rete_grl_demo
+```
+
+### 3. Advanced Features
+
+```bash
+# Advanced pattern matching
+cat 03-advanced/pattern_matching.grl
+
+# Conflict resolution
+cat 03-advanced/conflict_resolution_rules.grl
+```
+
+### 4. Real-World Use Cases
+
+```bash
+# Fraud detection system
+cat 04-use-cases/fraud_detection.grl
+
+# Sales analytics
+cat 04-use-cases/sales_analytics.grl
+```
+
+## Main Topics
+
+### Basics (01-basic/)
+- ✅ Simple conditions and actions
+- ✅ Method calls
+- ✅ Arithmetic expressions
+- ✅ Basic business rules
+
+### RETE Features (02-rete/)
+- ✅ Conditional Elements (exists, forall, not)
+- ✅ Multifield patterns
+- ✅ RETE-optimized structures
+
+### Advanced Features (03-advanced/)
+- ✅ Advanced pattern matching
+- ✅ Complex boolean expressions
+- ✅ Conflict resolution strategies
+- ✅ Action handlers
+- ✅ Fact retraction
+- ✅ Truth Maintenance System (TMS)
+
+### Use Cases (04-use-cases/)
+- ✅ Purchasing workflows
+- ✅ Fraud detection
+- ✅ Sales analytics
+- ✅ Automotive systems
+- ✅ Performance optimization
+
+## GRL Syntax Elements
+
+### Rule Structure
+```grl
+rule "RuleName" "Optional description" {
+    when
+        // Conditions
+    then
+        // Actions
+}
+```
+
+### Rule Attributes
+- **salience**: Priority (higher = execute first)
+- **no-loop**: Prevent infinite loops
+- **agenda-group**: Group rules
+- **activation-group**: Only one rule in group fires
+- **date-effective/expires**: Time-based activation
+
+### Conditional Elements
+- **exists**: At least one fact matches
+- **forall**: All facts match condition
+- **not/!exists**: No facts match
+- **&&, ||, !**: Boolean operators
+
+### Actions
+- Assignment: `Fact.Field = value`
+- Method calls: `Fact.Method(args)`
+- Logging: `Log("message")`
+- Retraction: `Retract("FactName")`
+
+## Integration with Rust Code
+
+### Native Engine
+```rust
+use rust_rule_engine::RuleEngineBuilder;
+
+let engine = RuleEngineBuilder::new()
+    .add_grl_file("rules/01-basic/grule_demo.grl")?
+    .build()?;
+```
+
+### RETE-UL Engine
 ```rust
 use rust_rule_engine::rete::{IncrementalEngine, GrlReteLoader};
 
-// Load rules into RETE engine
 let mut engine = IncrementalEngine::new();
 GrlReteLoader::load_from_file(
-    "examples/rules/conflict_resolution_rules.grl",
+    "rules/02-rete/rete_demo.grl",
     &mut engine
 )?;
-
-// Set conflict resolution strategy
-engine.set_conflict_resolution_strategy(
-    ConflictResolutionStrategy::Salience
-);
-
-// Fire rules
-engine.reset();
-let fired = engine.fire_all();
 ```
 
-### Test CE with Function Registry
-
+### Load from string
 ```rust
-use rust_rule_engine::rete::{IncrementalEngine, GrlReteLoader};
-
-let mut engine = IncrementalEngine::new();
-
-// Register custom test functions
-engine.register_test_function("isValidEmail", |args| {
-    // Your validation logic
-    Ok(FactValue::Bool(true))
-});
-
-// Load rules with test CE
-GrlReteLoader::load_from_file(
-    "examples/rules/test_ce_rete_rules.grl",
-    &mut engine
-)?;
+let grl_content = std::fs::read_to_string("rules/fraud_detection.grl")?;
+engine.add_grl_from_string(&grl_content)?;
 ```
 
----
+## Best Practices
 
-## Running Examples:
+### 1. Naming Conventions
+- Rule names: CamelCase or snake_case
+- Descriptive names: "CheckVIPDiscount" > "Rule1"
+- Add descriptions for complex rules
 
-### Basic Parsing
-```bash
-cargo run --example test_complex_parsing
-```
+### 2. Rule Organization
+- Group related rules
+- Use salience to control execution order
+- Comment complex conditions
 
-### Test CE (v0.12.0)
-```bash
-# Native Engine with Test CE
-cargo run --example test_ce_comprehensive
+### 3. Performance
+- Minimize redundant conditions
+- Use RETE engine for > 100 rules
+- Avoid complex calculations in when clause
 
-# RETE Engine with Test CE
-cargo run --example test_ce_rete_demo
-```
+### 4. Maintainability
+- Keep rules simple and focused
+- One responsibility per rule
+- Use meaningful variable names
 
-### Conflict Resolution (v0.13.0)
-```bash
-# Full demo with 8 strategies
-cargo run --example conflict_resolution_demo
+## Migration from Deleted Files
 
-# Shows different firing orders:
-# - Salience: Priority-based (100 → 50 → 40...)
-# - LEX: Most recent facts first
-# - Complexity: More conditions first
-# - Simplicity: Fewer conditions first
-```
+If you need functionality from deleted files:
 
----
+### Accumulate features
+See: `03-advanced/pattern_matching.grl` and refer to Rust examples
 
-## Testing:
+### No-loop testing
+See: Rule attributes in `03-advanced/conflict_resolution_rules.grl`
 
-All rule files are tested for proper parsing and can be used to verify rule engine functionality:
+### Test CE features
+See: `02-rete/test_ce_rules.grl`
 
-```bash
-# Run all tests
-cargo test
+### Legacy format
+No longer supported, please use new format
 
-# Test specific features
-cargo test test_ce
-cargo test conflict_resolution
-cargo test grl_loader
-```
+## Additional Documentation
 
----
+- Each subdirectory has its own README.md with details
+- See corresponding Rust examples in `examples/`
+- GRL syntax reference in documentation
 
-## Documentation:
+## Statistics
 
-For more information about these features:
-- **Test CE**: See [CLIPS_INSPIRED_FEATURES.md](../../CLIPS_INSPIRED_FEATURES.md)
-- **Conflict Resolution**: See [examples/conflict_resolution_demo.rs](../conflict_resolution_demo.rs)
-- **RETE Engine**: See [docs/RETE_GUIDE.md](../../docs/RETE_GUIDE.md)
-- **GRL Syntax**: See [docs/GRL_SYNTAX.md](../../docs/GRL_SYNTAX.md)
+| Category | Files | Complexity | Best For |
+|----------|-------|------------|----------|
+| 01-basic | 6 | Low | Learning GRL syntax |
+| 02-rete | 3 | Medium-High | RETE engine optimization |
+| 03-advanced | 7 | High | Complex rule patterns |
+| 04-use-cases | 5 | Very High | Production-ready examples |
+
+**Deleted 9 files:**
+- 3 duplicates (with_no_loop_test, test_ce_rete_rules, generic_method_calls)
+- 4 test files (no_loop_test, accumulate_test, rule_attributes_test, test_complex_rule)
+- 2 legacy files (legacy_format_rules, function_calls)
+
+## Contributing
+
+When adding a new GRL file:
+1. Choose the appropriate directory
+2. Give the file a descriptive name (e.g., `inventory_management.grl`)
+3. Add comments explaining the rules
+4. Update README.md
+5. Create a corresponding Rust example if needed

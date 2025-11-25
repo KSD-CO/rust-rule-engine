@@ -231,7 +231,7 @@ fn create_incremental_engine(rule_count: usize, user_count: usize) -> Incrementa
             node,
             priority: (100 - (i % 20)) as i32,
             no_loop: false,
-            action: std::sync::Arc::new(move |_facts: &mut TypedFacts| {
+            action: std::sync::Arc::new(move |_facts: &mut TypedFacts, _results: &mut rust_rule_engine::rete::action_result::ActionResults| {
                 // Action placeholder
             }),
         };

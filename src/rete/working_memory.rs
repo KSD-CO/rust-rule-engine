@@ -8,7 +8,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
-use super::facts::{FactValue, TypedFacts};
+use super::facts::TypedFacts;
 
 /// Unique handle for a fact in working memory (similar to Drools FactHandle)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

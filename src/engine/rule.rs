@@ -276,9 +276,7 @@ impl Condition {
                 false
             }
             ConditionExpression::MultiField { field, operation, variable: _ } => {
-                // MultiField operations need RETE engine context
-                // For now, just basic evaluation
-                // TODO: Full multifield support in RETE engine
+                // MultiField operations for array/collection handling
                 if let Some(field_value) = get_nested_value(facts, field) {
                     match operation.as_str() {
                         "empty" => {
@@ -298,10 +296,46 @@ impl Condition {
                                 false
                             }
                         }
+                        "first" => {
+                            // Get first element and compare with value
+                            if let Value::Array(arr) = field_value {
+                                if let Some(first) = arr.first() {
+                                    self.operator.evaluate(first, &self.value)
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                        }
+                        "last" => {
+                            // Get last element and compare with value
+                            if let Value::Array(arr) = field_value {
+                                if let Some(last) = arr.last() {
+                                    self.operator.evaluate(last, &self.value)
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                        }
+                        "contains" => {
+                            // Check if array contains the specified value
+                            if let Value::Array(arr) = field_value {
+                                arr.iter().any(|item| self.operator.evaluate(item, &self.value))
+                            } else {
+                                false
+                            }
+                        }
+                        "collect" => {
+                            // Collect operation: just check if array exists and has values
+                            // Variable binding happens in RETE engine context
+                            matches!(field_value, Value::Array(arr) if !arr.is_empty())
+                        }
                         _ => {
-                            // Other operations (collect, first, last) need RETE context
-                            // Return true for now to not block rule evaluation
-                            true
+                            // Unknown operation
+                            false
                         }
                     }
                 } else {

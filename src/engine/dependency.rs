@@ -152,10 +152,6 @@ impl DependencyAnalyzer {
                         writes.push(format!("{}.{}", object, method));
                     }
                 }
-                crate::types::ActionType::Call { function, .. } => {
-                    // Analyze function calls for side effects
-                    writes.extend(self.analyze_function_side_effects(function));
-                }
                 crate::types::ActionType::Custom {
                     action_type,
                     params,

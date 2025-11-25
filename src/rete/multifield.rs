@@ -45,7 +45,6 @@
 //! ```
 
 use crate::rete::facts::{FactValue, TypedFacts};
-use crate::errors::{Result, RuleEngineError};
 use std::collections::HashMap;
 
 /// Multi-field operations for pattern matching
