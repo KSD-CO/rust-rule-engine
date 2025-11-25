@@ -373,13 +373,6 @@ pub enum ActionType {
         /// Message to log
         message: String,
     },
-    /// Call a function
-    Call {
-        /// Function name to call
-        function: String,
-        /// Arguments to pass
-        args: Vec<Value>,
-    },
     /// Call a method on an object
     MethodCall {
         /// Object name

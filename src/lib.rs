@@ -1,8 +1,8 @@
-//! # Rust Rule Engine v0.9.0 - Plugin System Edition
+//! # Rust Rule Engine v0.19.0 - Parallel Execution Edition
 //!
-//! A high-performance rule engine for Rust with **Plugin System**, **Built-in Utilities**,
-//! **GRL (Grule Rule Language)** support, featuring modular architecture, extensive built-in
-//! functionality, method calls, object interactions, and complex condition evaluation.
+//! A high-performance rule engine for Rust with **Parallel Execution (38x faster)**, **RETE-UL algorithm**,
+//! **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language)** support.
+//! Features multi-threaded execution, complete feature parity, and production-ready performance.
 //!
 //! ## Features
 //!

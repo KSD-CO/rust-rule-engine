@@ -434,14 +434,6 @@ impl ActionTypeGRLExport for crate::types::ActionType {
             crate::types::ActionType::Retract { object } => {
                 format!("retract(${})", object)
             }
-            crate::types::ActionType::Call { function, args } => {
-                let args_str = args
-                    .iter()
-                    .map(|arg| arg.to_grl())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("{}({})", function, args_str)
-            }
             crate::types::ActionType::Custom { action_type, .. } => {
                 format!("Custom(\"{}\")", action_type)
             }

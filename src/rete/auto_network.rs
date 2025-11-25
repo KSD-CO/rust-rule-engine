@@ -1,6 +1,5 @@
 //! Auto RETE network: Rule struct and converter
-use crate::rete::network::{ReteUlNode, build_rete_ul_from_condition_group, evaluate_rete_ul_node};
-use crate::rete::alpha::AlphaNode;
+use crate::rete::network::{ReteUlNode, build_rete_ul_from_condition_group};
 
 #[derive(Debug, Clone)]
 pub struct Rule {

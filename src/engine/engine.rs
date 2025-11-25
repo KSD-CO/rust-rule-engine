@@ -3,14 +3,13 @@ use crate::engine::{
     analytics::RuleAnalytics,
     facts::Facts,
     knowledge_base::KnowledgeBase,
-    plugin::{PluginConfig, PluginHealth, PluginInfo, PluginManager, PluginStats, RulePlugin},
+    plugin::{PluginConfig, PluginInfo, PluginManager, PluginStats},
     workflow::WorkflowEngine,
 };
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Operator, Value};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// Type for custom function implementations
@@ -1192,12 +1191,6 @@ impl RustRuleEngine {
             }
             ActionType::Log { message } => {
                 println!("📋 LOG: {}", message);
-            }
-            ActionType::Call { function, args } => {
-                let result = self.execute_function_call(function, args, facts)?;
-                if self.config.debug_mode {
-                    println!("  📞 Called {function}({args:?}) -> {result}");
-                }
             }
             ActionType::MethodCall {
                 object,

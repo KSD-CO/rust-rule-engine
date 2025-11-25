@@ -262,14 +262,6 @@ impl GrlReteLoader {
             ActionType::Log { message } => {
                 println!("📝 LOG: {}", message);
             }
-            ActionType::Call { function, args } => {
-                // Queue function call to be executed by engine
-                results.add(super::ActionResult::CallFunction {
-                    function_name: function.clone(),
-                    args: args.iter().map(|v| Self::value_to_string(v)).collect(),
-                });
-                println!("🔧 CALL: {}", function);
-            }
             ActionType::MethodCall { object, method, args } => {
                 // Method calls can be treated as function calls with object as first arg
                 let mut all_args = vec![object.clone()];
@@ -296,8 +288,17 @@ impl GrlReteLoader {
                     println!("🗑️ RETRACT: {} (by type, no handle found)", object_name);
                 }
             }
-            ActionType::Custom { .. } => {
-                // Custom actions ignored - not implemented in RETE-UL
+            ActionType::Custom { action_type, params } => {
+                // Treat custom actions as function calls
+                let args: Vec<String> = params.values()
+                    .map(|v| Self::value_to_string(v))
+                    .collect();
+                
+                results.add(super::ActionResult::CallFunction {
+                    function_name: action_type.clone(),
+                    args,
+                });
+                println!("🔧 CUSTOM CALL: {}", action_type);
             }
             ActionType::ActivateAgendaGroup { group } => {
                 // Queue agenda group activation

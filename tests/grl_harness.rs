@@ -48,10 +48,10 @@ fn action_handlers_end_to_end() -> Result<(), Box<dyn std::error::Error>> {
     facts.add_value("Alert", Value::Object(alert_props))?;
 
     // Load rules from GRL file
-    let grl_content = std::fs::read_to_string("examples/rules/action_handlers.grl")?;
+    let grl_content = std::fs::read_to_string("examples/rules/03-advanced/action_handlers.grl")?;
     let rules = GRLParser::parse_rules(&grl_content)?;
 
-    let mut kb = KnowledgeBase::new("TestKB");
+    let kb = KnowledgeBase::new("TestKB");
     for rule in rules {
         kb.add_rule(rule)?;
     }
@@ -133,9 +133,9 @@ fn action_handlers_end_to_end() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn method_calls_smoke() -> Result<(), Box<dyn std::error::Error>> {
     // Ensure parsing and execution of method_calls.grl does not panic and returns Ok
-    let grl_content = std::fs::read_to_string("examples/rules/method_calls.grl")?;
+    let grl_content = std::fs::read_to_string("examples/rules/01-basic/method_calls.grl")?;
     let rules = GRLParser::parse_rules(&grl_content)?;
-    let mut kb = KnowledgeBase::new("MethodCallsTest");
+    let kb = KnowledgeBase::new("MethodCallsTest");
     for rule in rules {
         kb.add_rule(rule)?;
     }

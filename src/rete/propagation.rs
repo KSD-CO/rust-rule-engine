@@ -498,9 +498,23 @@ impl IncrementalEngine {
                     let _handle = self.insert_logical(fact_type, data, rule_name, premises);
                 }
                 super::ActionResult::CallFunction { function_name, args } => {
-                    // Log function calls (requires function registry to actually execute)
-                    println!("🔧 Function call queued: {}({:?})", function_name, args);
-                    // TODO: Implement function registry
+                    // Try to execute function if registered
+                    if let Some(func) = self.custom_functions.get(&function_name) {
+                        // Convert string args to FactValues
+                        let fact_values: Vec<FactValue> = args.iter()
+                            .map(|s| FactValue::String(s.clone()))
+                            .collect();
+                        
+                        // Execute function (ignore return value for actions)
+                        let all_facts = self.working_memory.to_typed_facts();
+                        match func(&fact_values, &all_facts) {
+                            Ok(_) => println!("✅ Called function: {}", function_name),
+                            Err(e) => eprintln!("❌ Function {} failed: {}", function_name, e),
+                        }
+                    } else {
+                        // Function not registered, just log
+                        println!("🔧 Function call queued: {}({:?})", function_name, args);
+                    }
                 }
                 super::ActionResult::ScheduleRule { rule_name, delay_ms } => {
                     // Log scheduled rules (requires scheduler to actually execute)

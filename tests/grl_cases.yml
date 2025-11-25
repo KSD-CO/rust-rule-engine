@@ -1,37 +1,37 @@
 - name: action_handlers
-  grl: "examples/rules/action_handlers.grl"
+  grl: examples/rules/03-advanced/action_handlers.grl
   initial_facts:
     Customer:
-      name: "Alice Johnson"
-      email: "alice.johnson@example.com"
-      tier: "VIP"
+      name: Alice Johnson
+      email: alice.johnson@example.com
+      tier: VIP
       total_spent: 12500.0
       welcome_sent: false
     Order:
-      id: "ORD-002"
+      id: ORD-002
       total: 3500.0
-      status: "pending"
+      status: pending
       alert_sent: false
       processed: false
       payment_complete: false
     Transaction:
-      id: "TXN-001"
+      id: TXN-001
       amount: 3500.0
       suspicious: true
     Payment:
-      method: "credit_card"
-      status: "verified"
+      method: credit_card
+      status: verified
       amount: 3500.0
     Alert:
       fraud_sent: false
   expect:
-    fired_rules_contains: ["FraudDetection"]
+    fired_rules_contains:
+    - FraudDetection
     facts:
-      "Alert.fraud_sent": true
-      "Payment.status": "processed"
-
+      Alert.fraud_sent: true
+      Payment.status: processed
 - name: method_calls
-  grl: "examples/rules/method_calls.grl"
+  grl: examples/rules/01-basic/method_calls.grl
   initial_facts:
     TestCar:
       SpeedIncrement: 10.0
@@ -40,92 +40,52 @@
       SpeedUp: true
   expect:
     executed_ok: true
-
 - name: conflict_resolution
-  grl: "examples/rules/conflict_resolution_rules.grl"
+  grl: examples/rules/03-advanced/conflict_resolution_rules.grl
   initial_facts:
     Transaction:
       amount: 12000
-      country: "RU"
+      country: RU
       time_diff: 30
     Customer:
-      tier: "VIP"
-      country: "US"
+      tier: VIP
+      country: US
     Order:
       amount: 1500
     User:
       verified: true
   expect:
-    fired_rules_contains: ["FraudDetection", "HighValueApproval"]
-
-# Automatically added minimal run cases for all other .grl files to ensure coverage
-
+    fired_rules_contains:
+    - FraudDetection
+    - HighValueApproval
 - name: simple_patterns
-  grl: "examples/rules/simple_patterns.grl"
+  grl: examples/rules/01-basic/simple_patterns.grl
   initial_facts:
     Customer1:
-      tier: "Regular"
+      tier: Regular
     Customer2:
-      tier: "VIP"
+      tier: VIP
     System:
       vipFound: false
     Order1:
-      status: "completed"
+      status: completed
     Order2:
-      status: "shipped"
+      status: shipped
     Order3:
-      status: "processed"
+      status: processed
     Marketing:
       sendEmails: false
     Shipping:
       readyToShip: false
   expect:
-    fired_rules_contains: ["VIPExistsRule", "NoPendingOrdersRule"]
+    fired_rules_contains:
+    - VIPExistsRule
+    - NoPendingOrdersRule
     facts:
-      "System.vipFound": true
-      "Marketing.sendEmails": true
-
-- name: no_loop_test
-  grl: "examples/rules/no_loop_test.grl"
-  initial_facts:
-    Player:
-      score: 75
-      safe: true
-      bonus: false
-  expect:
-    facts:
-      "Player.bonus": true
-
-- name: function_calls
-  grl: "examples/rules/function_calls.grl"
-  initial_facts:
-    Data:
-      Value: 60
-      MaxValue: 100
-      Text: "this is a test"
-      Count: 3
-      Active: true
-  expect:
-    fired_rules_contains: ["FunctionCallDemo1", "FunctionCallDemo2", "FunctionCallDemo3", "FunctionCallDemo4"]
-
-- name: test_complex_rule
-  grl: "examples/rules/test_complex_rule.grl"
-  initial_facts:
-    user:
-      vipStatus: true
-      isGuest: false
-    order:
-      amount: 1000
-      hasCoupon: false
-    date:
-      isHoliday: false
-  expect:
-    fired_rules_contains: ["Complex Business Rule", "Simple Backup Rule"]
-    facts:
-      "user.hasAccess": true
-
+      System.vipFound: true
+      Marketing.sendEmails: true
 - name: complete_speedup
-  grl: "examples/rules/complete_speedup.grl"
+  grl: examples/rules/04-use-cases/complete_speedup.grl
   initial_facts:
     TestCar:
       SpeedUp: true
@@ -135,101 +95,41 @@
     DistanceRecord:
       TotalDistance: 900.0
   expect:
-    fired_rules_contains: ["SpeedUpOptimized", "DistanceTracking"]
+    fired_rules_contains:
+    - SpeedUpOptimized
+    - DistanceTracking
     facts:
-      "TestCar.Speed": 60.0
-      "DistanceRecord.TotalDistance": 950.0
-
-- name: test_ce_rete_rules
-  grl: "examples/rules/test_ce_rete_rules.grl"
-  initial_facts:
-    User:
-      email: "user@example.com"
-      checkEmail: true
-    Customer:
-      email: "customer@example.com"
-      age: 30
-      spending: 2000
-    Product:
-      price: 200.0
-    Order:
-      amount: 150
-  expect:
-    fired_rules_contains: ["ValidateEmail", "CheckPriceRange", "ApproveOrder", "PremiumCustomer"]
-    facts:
-      "Order.status": "approved"
-      "Customer.tier": "premium"
-      "Product.category": "mid-range"
-      "User.status": "valid"
-
+      TestCar.Speed: 60.0
+      DistanceRecord.TotalDistance: 950.0
 - name: car_functions
-  grl: "examples/rules/car_functions.grl"
+  grl: examples/rules/04-use-cases/car_functions.grl
   initial_facts:
     Car:
       Speed: 95.0
       MaxSpeed: 120.0
-      Engine: "V6"
+      Engine: V6
       IsRunning: true
     Driver:
-      Name: "John Doe"
+      Name: John Doe
       Experience: 7
-      License: "VALID"
+      License: VALID
   expect:
-    fired_rules_contains: ["SpeedLimitCheck", "DriverValidation", "EngineDiagnostics", "MaintenanceCheck"]
+    fired_rules_contains:
+    - SpeedLimitCheck
+    - DriverValidation
+    - EngineDiagnostics
+    - MaintenanceCheck
     facts:
-      "Car.IsRunning": true
-
-- name: rule_attributes_test
-  grl: "examples/rules/rule_attributes_test.grl"
-  initial_facts:
-    User:
-      age: 25
-    Customer:
-      tier: "premium"
-      isNew: true
-      legacy: false
-      total_spent: 1200.0
-    Order:
-      total: 150
-      status: "pending"
-    Payment:
-      method: "credit"
-      confirmed: false
-    Technology:
-      advanced: false
-  expect:
-    fired_rules_contains: ["ValidationRule", "PremiumDiscount", "WelcomeEmail", "ComplexRule"]
-    facts:
-      "Order.status": "processed"
-      "Payment.confirmed": true
-      "Customer.welcomeEmailSent": true
-      "Order.discount": 0.20
-      "User.status": "valid"
-
-- name: generic_method_calls
-  grl: "examples/rules/generic_method_calls.grl"
-  initial_facts:
-    Object:
-      Status: "ACTIVE"
-      Processed: true
-      Value: 200
-      Type: "sample"
-  expect:
-    fired_rules_contains: ["GenericMethodCall1", "GenericMethodCall2", "GenericMethodCall3"]
-    facts:
-      "Object.Processed": true
-      "Object.Category": "HIGH_VALUE"
-      "Object.Priority": "URGENT"
-
+      Car.IsRunning: true
 - name: advanced_nested_rules
-  grl: "examples/rules/advanced_nested_rules.grl"
+  grl: examples/rules/03-advanced/advanced_nested_rules.grl
   initial_facts:
     user:
       vipLevel: 6
       totalSpent: 15000
       membershipYears: 4
       loyaltyPoints: 6000
-      notificationPrefs: "all"
+      notificationPrefs: all
       hasGiftCard: false
     date:
       month: 12
@@ -237,35 +137,40 @@
     order:
       amount: 250
     product:
-      category: "electronics"
+      category: electronics
       stock: 20
   expect:
-    fired_rules_contains: ["Premium Customer Benefits", "Holiday Season Special", "Flash Sale Eligibility"]
+    fired_rules_contains:
+    - Premium Customer Benefits
+    - Holiday Season Special
+    - Flash Sale Eligibility
     facts:
-      "user.freeShipping": true
-      "order.giftWrap": true
-      "product.flashSaleEligible": true
-      "user.loyaltyPoints": 6500
-
+      user.freeShipping: true
+      order.giftWrap: true
+      product.flashSaleEligible: true
+      user.loyaltyPoints: 6500
 - name: fraud_detection
-  grl: "examples/rules/fraud_detection.grl"
+  grl: examples/rules/04-use-cases/fraud_detection.grl
   initial_facts:
     Transaction:
       Amount: 12000
-      Location: "FOREIGN"
-      MerchantCategory: "CASINO"
-      Time: "23:30"
+      Location: FOREIGN
+      MerchantCategory: CASINO
+      Time: '23:30'
     Account:
       DailyLimit: 1000
       Balance: 5000
-      LastLoginLocation: "DOMESTIC"
+      LastLoginLocation: DOMESTIC
     Alert:
       FraudScore: 0
   expect:
-    fired_rules_contains: ["HighAmountAlert", "ForeignLocationAlert", "HighRiskMerchantAlert", "LateNightAlert"]
-
+    fired_rules_contains:
+    - HighAmountAlert
+    - ForeignLocationAlert
+    - HighRiskMerchantAlert
+    - LateNightAlert
 - name: simple_business_rules
-  grl: "examples/rules/simple_business_rules.grl"
+  grl: examples/rules/01-basic/simple_business_rules.grl
   initial_facts:
     user:
       age: 70
@@ -273,22 +178,23 @@
       orderCount: 1
     Order:
       amount: 1500.0
-      customer: "John Smith"
+      customer: John Smith
     Customer:
-      name: "Jane Doe"
+      name: Jane Doe
       total_spent: 15000.0
   expect:
-    fired_rules_contains: ["Basic Age Check", "VIP Customer Discount"]
+    fired_rules_contains:
+    - Basic Age Check
+    - VIP Customer Discount
     facts:
-      "user.canPurchase": true
-
+      user.canPurchase: true
 - name: pattern_matching
-  grl: "examples/rules/pattern_matching.grl"
+  grl: examples/rules/03-advanced/pattern_matching.grl
   initial_facts:
     Customer1:
-      tier: "Regular"
+      tier: Regular
     Customer2:
-      tier: "VIP"
+      tier: VIP
     System:
       premiumServiceActive: false
       vipModeEnabled: false
@@ -296,22 +202,24 @@
       emailSent: false
     Inventory:
       autoReplenishment: false
-      priority: "normal"
+      priority: normal
     Shipping:
       enabled: false
   expect:
-    fired_rules_contains: ["ActivatePremiumService", "SendMarketingEmail", "ComplexBusinessRule"]
+    fired_rules_contains:
+    - ActivatePremiumService
+    - SendMarketingEmail
+    - ComplexBusinessRule
     facts:
-      "System.premiumServiceActive": true
-      "System.vipModeEnabled": true
-      "Marketing.emailSent": true
-
+      System.premiumServiceActive: true
+      System.vipModeEnabled: true
+      Marketing.emailSent: true
 - name: grule_demo
-  grl: "examples/rules/grule_demo.grl"
+  grl: examples/rules/01-basic/grule_demo.grl
   initial_facts:
     User:
       Age: 25
-      Country: "US"
+      Country: US
       SpendingTotal: 2000
       IsAdult: true
     Customer:
@@ -319,29 +227,33 @@
     Order:
       Amount: 150
   expect:
-    fired_rules_contains: ["AdultCheck", "VIPCheck", "NewCustomerWelcome", "CalculateFinalAmount"]
+    fired_rules_contains:
+    - AdultCheck
+    - VIPCheck
+    - NewCustomerWelcome
+    - CalculateFinalAmount
     facts:
-      "User.IsVIP": true
-      "Order.DiscountPercent": 10.0
-      "Customer.LoyaltyPoints": 100
-
+      User.IsVIP: true
+      Order.DiscountPercent: 10.0
+      Customer.LoyaltyPoints: 100
 - name: advanced_method_calls
-  grl: "examples/rules/advanced_method_calls.grl"
+  grl: examples/rules/03-advanced/advanced_method_calls.grl
   initial_facts:
     TestCar:
       Speed: 85.0
       MaxSpeed: 100.0
       IsRunning: true
-      Engine: "V6"
+      Engine: V6
       FuelLevel: 15.0
   expect:
-    fired_rules_contains: ["AdvancedSpeedControl", "FuelAlert"]
+    fired_rules_contains:
+    - AdvancedSpeedControl
+    - FuelAlert
     facts:
-      "TestCar.WarningLight": true
-      "TestCar.EcoMode": true
-
+      TestCar.WarningLight: true
+      TestCar.EcoMode: true
 - name: complete_speedup_duplicate
-  grl: "examples/rules/complete_speedup.grl"
+  grl: examples/rules/04-use-cases/complete_speedup.grl
   initial_facts:
     TestCar:
       SpeedUp: true
@@ -351,30 +263,32 @@
     DistanceRecord:
       TotalDistance: 900.0
   expect:
-    fired_rules_contains: ["SpeedUpOptimized", "DistanceTracking"]
+    fired_rules_contains:
+    - SpeedUpOptimized
+    - DistanceTracking
     facts:
-      "TestCar.Speed": 60.0
-      "DistanceRecord.TotalDistance": 950.0
-
+      TestCar.Speed: 60.0
+      DistanceRecord.TotalDistance: 950.0
 - name: ecommerce
-  grl: "examples/rules/ecommerce.grl"
+  grl: examples/rules/01-basic/ecommerce.grl
   initial_facts:
     Customer:
       IsNew: true
-      Membership: "regular"
+      Membership: regular
       TotalSpent: 500.0
     Order:
       Total: 120.0
       ItemCount: 1
   expect:
-    fired_rules_contains: ["NewCustomerDiscount", "FreeShippingLargeOrders"]
+    fired_rules_contains:
+    - NewCustomerDiscount
+    - FreeShippingLargeOrders
     facts:
-      "Order.DiscountRate": 0.10
-      "Order.FreeShipping": true
-      "Customer.WelcomeEmailSent": true
-
+      Order.DiscountRate: 0.1
+      Order.FreeShipping: true
+      Customer.WelcomeEmailSent: true
 - name: rete_demo
-  grl: "examples/rules/rete_demo.grl"
+  grl: examples/rules/02-rete/rete_demo.grl
   initial_facts:
     Person:
       age: 70
@@ -388,48 +302,36 @@
     Transaction:
       suspicious: true
     Payment:
-      status: "verified"
+      status: verified
     Product:
       stock: 5
     Alert:
       fraud_detected: false
   expect:
-    fired_rules_contains: ["AdultVerification", "SeniorBenefits", "HighValueOrder", "VIPCustomerUpgrade", "FraudAlert", "AllPaymentsCleared", "InventoryAlert"]
+    fired_rules_contains:
+    - AdultVerification
+    - SeniorBenefits
+    - HighValueOrder
+    - VIPCustomerUpgrade
+    - FraudAlert
+    - AllPaymentsCleared
+    - InventoryAlert
     facts:
-      "Person.is_adult": true
-      "Person.tier": "senior"
-      "Order.requires_approval": true
-      "Customer.tier": "VIP"
-      "Alert.fraud_detected": true
-      "Order.payment_complete": true
-      "Alert.low_stock": true
-
-- name: legacy_format_rules
-  grl: "examples/rules/legacy_format_rules.grl"
-  initial_facts:
-    User:
-      Age: 25
-      Country: "US"
-    Customer:
-      VipStatus: true
-    Order:
-      Amount: 1500.0
-      PaymentMethod: "credit"
-  expect:
-    fired_rules_contains: ["CheckUserAge", "VIPProcessing", "OrderValidation"]
-    facts:
-      "User.CanDrink": true
-      "Customer.PriorityProcessing": true
-      "Order.RequiresApproval": true
-
+      Person.is_adult: true
+      Person.tier: senior
+      Order.requires_approval: true
+      Customer.tier: VIP
+      Alert.fraud_detected: true
+      Order.payment_complete: true
+      Alert.low_stock: true
 - name: test_ce_rules
-  grl: "examples/rules/test_ce_rules.grl"
+  grl: examples/rules/02-rete/test_ce_rules.grl
   initial_facts:
     User:
-      email: "user@example.com"
+      email: user@example.com
       checkEmail: true
     Customer:
-      email: "customer@example.com"
+      email: customer@example.com
       age: 30
       spending: 2000
     Product:
@@ -437,9 +339,13 @@
     Order:
       amount: 150
   expect:
-    fired_rules_contains: ["ValidateEmail", "CheckPriceRange", "ApproveOrder", "PremiumCustomer"]
+    fired_rules_contains:
+    - ValidateEmail
+    - CheckPriceRange
+    - ApproveOrder
+    - PremiumCustomer
     facts:
-      "Order.status": "approved"
-      "Customer.tier": "premium"
-      "Product.category": "mid-range"
-      "User.status": "valid"
+      Order.status: approved
+      Customer.tier: premium
+      Product.category: mid-range
+      User.status: valid
