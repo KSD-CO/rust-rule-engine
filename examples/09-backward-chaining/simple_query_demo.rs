@@ -77,7 +77,7 @@ fn demo_basic_query() -> Result<(), Box<dyn std::error::Error>> {
 
     // Query: Can we prove User.IsVIP == true?
     println!("\n🔍 Query: Can 'User.IsVIP == true' be proven?");
-    let result = bc_engine.query("User.IsVIP == true", &facts)?;
+    let result = bc_engine.query("User.IsVIP == true", &mut facts)?;
 
     if result.provable {
         println!("✅ YES! Goal is provable");
@@ -121,7 +121,7 @@ fn demo_proof_trace() -> Result<(), Box<dyn std::error::Error>> {
     let facts = Facts::new();
 
     println!("🔍 Query: 'Order.Discount == 0.2'");
-    let result = bc_engine.query("Order.Discount == 0.2", &facts)?;
+    let result = bc_engine.query("Order.Discount == 0.2", &mut facts)?;
 
     println!("\n📜 Proof Trace:");
     result.proof_trace.print();
@@ -157,7 +157,7 @@ fn demo_missing_facts() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     println!("🔍 Query: 'Application.Approved == true'");
-    let result = bc_engine.query("Application.Approved == true", &facts)?;
+    let result = bc_engine.query("Application.Approved == true", &mut facts)?;
 
     if !result.provable {
         println!("❌ Cannot prove goal");
@@ -187,14 +187,14 @@ fn demo_memoization() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("🔍 First query (fresh search):");
     let start = std::time::Instant::now();
-    let result1 = bc_engine.query("User.IsVIP == true", &facts)?;
+    let result1 = bc_engine.query("User.IsVIP == true", &mut facts)?;
     let duration1 = start.elapsed();
     println!("   Time: {:?}", duration1);
     println!("   Goals explored: {}", result1.stats.goals_explored);
 
     println!("\n🔍 Second query (cached):");
     let start = std::time::Instant::now();
-    let result2 = bc_engine.query("User.IsVIP == true", &facts)?;
+    let result2 = bc_engine.query("User.IsVIP == true", &mut facts)?;
     let duration2 = start.elapsed();
     println!("   Time: {:?}", duration2);
     println!("   Goals explored: {}", result2.stats.goals_explored);
