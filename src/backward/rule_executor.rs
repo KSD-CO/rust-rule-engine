@@ -156,10 +156,27 @@ impl RuleExecutor {
     fn evaluate_value_expression(&self, value: &Value, facts: &Facts) -> Result<Value> {
         match value {
             Value::Expression(expr) => {
-                // Parse and evaluate expression
-                // For now, simple field reference or literal
+                // Try simple field lookup first
                 if let Some(val) = facts.get(expr).or_else(|| facts.get_nested(expr)) {
-                    Ok(val)
+                    return Ok(val);
+                }
+
+                // Try arithmetic expression evaluation
+                if let Some(result) = self.try_evaluate_arithmetic(expr, facts) {
+                    return Ok(result);
+                }
+
+                // Try to parse as literal
+                if expr == "true" {
+                    Ok(Value::Boolean(true))
+                } else if expr == "false" {
+                    Ok(Value::Boolean(false))
+                } else if expr == "null" {
+                    Ok(Value::Null)
+                } else if let Ok(n) = expr.parse::<f64>() {
+                    Ok(Value::Number(n))
+                } else if let Ok(i) = expr.parse::<i64>() {
+                    Ok(Value::Integer(i))
                 } else {
                     // Try to parse as literal using simple parsing
                     if expr == "true" {
@@ -178,6 +195,78 @@ impl RuleExecutor {
                 }
             }
             _ => Ok(value.clone()),
+        }
+    }
+
+    /// Try to evaluate simple arithmetic expressions
+    /// Supports: +, -, *, /
+    fn try_evaluate_arithmetic(&self, expr: &str, facts: &Facts) -> Option<Value> {
+        // Check for division
+        if let Some(div_pos) = expr.find(" / ") {
+            let left = expr[..div_pos].trim();
+            let right = expr[div_pos + 3..].trim();
+
+            let left_val = self.get_numeric_value(left, facts)?;
+            let right_val = self.get_numeric_value(right, facts)?;
+
+            if right_val != 0.0 {
+                return Some(Value::Number(left_val / right_val));
+            }
+            return None;
+        }
+
+        // Check for multiplication
+        if let Some(mul_pos) = expr.find(" * ") {
+            let left = expr[..mul_pos].trim();
+            let right = expr[mul_pos + 3..].trim();
+
+            let left_val = self.get_numeric_value(left, facts)?;
+            let right_val = self.get_numeric_value(right, facts)?;
+
+            return Some(Value::Number(left_val * right_val));
+        }
+
+        // Check for addition
+        if let Some(add_pos) = expr.find(" + ") {
+            let left = expr[..add_pos].trim();
+            let right = expr[add_pos + 3..].trim();
+
+            let left_val = self.get_numeric_value(left, facts)?;
+            let right_val = self.get_numeric_value(right, facts)?;
+
+            return Some(Value::Number(left_val + right_val));
+        }
+
+        // Check for subtraction
+        if let Some(sub_pos) = expr.find(" - ") {
+            let left = expr[..sub_pos].trim();
+            let right = expr[sub_pos + 3..].trim();
+
+            let left_val = self.get_numeric_value(left, facts)?;
+            let right_val = self.get_numeric_value(right, facts)?;
+
+            return Some(Value::Number(left_val - right_val));
+        }
+
+        None
+    }
+
+    /// Get numeric value from field name or literal
+    fn get_numeric_value(&self, s: &str, facts: &Facts) -> Option<f64> {
+        // Try parsing as number first
+        if let Ok(n) = s.parse::<f64>() {
+            return Some(n);
+        }
+
+        // Try getting from facts
+        if let Some(val) = facts.get(s).or_else(|| facts.get_nested(s)) {
+            match val {
+                Value::Number(n) => Some(n),
+                Value::Integer(i) => Some(i as f64),
+                _ => None,
+            }
+        } else {
+            None
         }
     }
 }

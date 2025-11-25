@@ -87,12 +87,12 @@ impl DepthFirstSearch {
     }
     
     /// Search for a proof of the goal WITH rule execution
-    pub fn search_with_execution(&mut self, goal: &mut Goal, facts: &Facts, kb: &KnowledgeBase) -> SearchResult {
+    pub fn search_with_execution(&mut self, goal: &mut Goal, facts: &mut Facts, kb: &KnowledgeBase) -> SearchResult {
         self.goals_explored = 0;
         self.path.clear();
-        
+
         let success = self.search_recursive_with_execution(goal, facts, kb, 0);
-        
+
         SearchResult {
             success,
             path: self.path.clone(),
@@ -120,72 +120,94 @@ impl DepthFirstSearch {
     
     /// NEW: Recursive search WITH rule execution
     fn search_recursive_with_execution(
-        &mut self, 
-        goal: &mut Goal, 
-        facts: &Facts,
+        &mut self,
+        goal: &mut Goal,
+        facts: &mut Facts,  // ✅ Made mutable to allow rule execution
         kb: &KnowledgeBase,
         depth: usize
     ) -> bool {
         self.goals_explored += 1;
-        
+
         // Check depth limit
         if depth > self.max_depth {
             goal.status = GoalStatus::Unprovable;
             return false;
         }
-        
+
         // Check if goal already satisfied by existing facts
         if self.check_goal_in_facts(goal, facts) {
             goal.status = GoalStatus::Proven;
             return true;
         }
-        
+
         // Check for cycles
         if goal.status == GoalStatus::InProgress {
             goal.status = GoalStatus::Unprovable;
             return false;
         }
-        
+
         goal.status = GoalStatus::InProgress;
         goal.depth = depth;
-        
+
         // Try each candidate rule
         for rule_name in goal.candidate_rules.clone() {
             self.path.push(rule_name.clone());
-            
+
             // Get the rule from KB
             if let Some(rule) = kb.get_rule(&rule_name) {
-                // Check if rule conditions are satisfied
-                if self.check_rule_conditions(&rule, facts) {
-                    // Rule can fire! Mark goal as proven
-                    goal.status = GoalStatus::Proven;
-                    return true;
+                // ✅ FIX: Try to execute rule (checks conditions AND executes actions)
+                match self.executor.try_execute_rule(&rule, facts) {
+                    Ok(true) => {
+                        // Rule executed successfully - derived new facts!
+                        // Now check if our goal is proven
+                        if self.check_goal_in_facts(goal, facts) {
+                            goal.status = GoalStatus::Proven;
+                            return true;
+                        }
+                    }
+                    Ok(false) => {
+                        // ✅ Conditions not satisfied - try to prove them recursively!
+                        if self.try_prove_rule_conditions(&rule, facts, kb, depth + 1) {
+                            // All conditions now satisfied! Try executing rule again
+                            match self.executor.try_execute_rule(&rule, facts) {
+                                Ok(true) => {
+                                    if self.check_goal_in_facts(goal, facts) {
+                                        goal.status = GoalStatus::Proven;
+                                        self.path.pop();
+                                        return true;
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        // Execution error - continue to next rule
+                    }
                 }
-                
-                // If conditions not satisfied, try to prove them recursively
-                // This would create sub-goals for each condition
-                // For now, skip this complex logic
             }
-            
+
             self.path.pop();
         }
-        
+
         // Try sub-goals
+        let mut all_subgoals_proven = true;
         for sub_goal in &mut goal.sub_goals {
             if !self.search_recursive_with_execution(sub_goal, facts, kb, depth + 1) {
-                goal.status = GoalStatus::Unprovable;
-                return false;
+                all_subgoals_proven = false;
+                break;
             }
         }
-        
-        // If no way to prove
-        if goal.candidate_rules.is_empty() && goal.sub_goals.is_empty() {
-            goal.status = GoalStatus::Unprovable;
-            return false;
+
+        // If we have sub-goals and they're all proven, goal is proven
+        if !goal.sub_goals.is_empty() && all_subgoals_proven {
+            goal.status = GoalStatus::Proven;
+            return true;
         }
-        
-        goal.status = GoalStatus::Proven;
-        true
+
+        // If we have no candidate rules and no sub-goals, or nothing worked
+        goal.status = GoalStatus::Unprovable;
+        false
     }
     
     /// Check if goal is already satisfied by facts
@@ -239,7 +261,139 @@ impl DepthFirstSearch {
         // Use RuleExecutor for proper condition evaluation
         self.executor.evaluate_conditions(&rule.conditions, facts).unwrap_or(false)
     }
-    
+
+    /// Try to prove all conditions of a rule by creating sub-goals
+    /// This is the core of recursive backward chaining!
+    fn try_prove_rule_conditions(
+        &mut self,
+        rule: &Rule,
+        facts: &mut Facts,
+        kb: &KnowledgeBase,
+        depth: usize,
+    ) -> bool {
+        // Extract all conditions from the condition group and try to prove them
+        self.try_prove_condition_group(&rule.conditions, facts, kb, depth)
+    }
+
+    /// Recursively prove a condition group
+    fn try_prove_condition_group(
+        &mut self,
+        group: &crate::engine::rule::ConditionGroup,
+        facts: &mut Facts,
+        kb: &KnowledgeBase,
+        depth: usize,
+    ) -> bool {
+        use crate::engine::rule::ConditionGroup;
+
+        match group {
+            ConditionGroup::Single(condition) => {
+                // Try to prove this single condition
+                self.try_prove_single_condition(condition, facts, kb, depth)
+            }
+            ConditionGroup::Compound { left, operator, right } => {
+                // Handle AND/OR/NOT logic
+                use crate::types::LogicalOperator;
+                match operator {
+                    LogicalOperator::And => {
+                        // Both must be proven
+                        self.try_prove_condition_group(left, facts, kb, depth)
+                            && self.try_prove_condition_group(right, facts, kb, depth)
+                    }
+                    LogicalOperator::Or => {
+                        // At least one must be proven
+                        self.try_prove_condition_group(left, facts, kb, depth)
+                            || self.try_prove_condition_group(right, facts, kb, depth)
+                    }
+                    LogicalOperator::Not => {
+                        // Left should fail, right doesn't apply
+                        !self.try_prove_condition_group(left, facts, kb, depth)
+                    }
+                }
+            }
+            ConditionGroup::Not(_) | ConditionGroup::Exists(_) | ConditionGroup::Forall(_) | ConditionGroup::Accumulate { .. } => {
+                // For now, skip complex conditions
+                true
+            }
+        }
+    }
+
+    /// Try to prove a single condition
+    fn try_prove_single_condition(
+        &mut self,
+        condition: &crate::engine::rule::Condition,
+        facts: &mut Facts,
+        kb: &KnowledgeBase,
+        depth: usize,
+    ) -> bool {
+        // Convert condition to goal pattern
+        let goal_pattern = self.condition_to_goal_pattern(condition);
+
+        // Create a sub-goal for this condition
+        let mut sub_goal = Goal::new(goal_pattern.clone());
+        sub_goal.depth = depth;
+
+        // Find candidate rules that could prove this sub-goal
+        for candidate_rule in kb.get_rules() {
+            if self.rule_could_prove_pattern(&candidate_rule, &goal_pattern) {
+                sub_goal.add_candidate_rule(candidate_rule.name.clone());
+            }
+        }
+
+        // Try to prove this sub-goal recursively
+        self.search_recursive_with_execution(&mut sub_goal, facts, kb, depth)
+    }
+
+    /// Convert a condition to a goal pattern string
+    fn condition_to_goal_pattern(&self, condition: &crate::engine::rule::Condition) -> String {
+        use crate::engine::rule::ConditionExpression;
+
+        let field = match &condition.expression {
+            ConditionExpression::Field(f) => f.clone(),
+            ConditionExpression::FunctionCall { name, .. } => name.clone(),
+            ConditionExpression::Test { name, .. } => format!("test({})", name),
+            ConditionExpression::MultiField { field, .. } => field.clone(),
+        };
+
+        let op_str = match condition.operator {
+            crate::types::Operator::Equal => "==",
+            crate::types::Operator::NotEqual => "!=",
+            crate::types::Operator::GreaterThan => ">",
+            crate::types::Operator::LessThan => "<",
+            crate::types::Operator::GreaterThanOrEqual => ">=",
+            crate::types::Operator::LessThanOrEqual => "<=",
+            crate::types::Operator::Contains => "contains",
+            crate::types::Operator::NotContains => "not_contains",
+            crate::types::Operator::StartsWith => "starts_with",
+            crate::types::Operator::EndsWith => "ends_with",
+            crate::types::Operator::Matches => "matches",
+        };
+
+        let value_str = format!("{:?}", condition.value);
+
+        format!("{} {} {}", field, op_str, value_str)
+    }
+
+    /// Check if a rule could prove a specific goal pattern
+    fn rule_could_prove_pattern(&self, rule: &Rule, pattern: &str) -> bool {
+        // Simple heuristic: check if pattern mentions fields that this rule sets
+        for action in &rule.actions {
+            match action {
+                crate::types::ActionType::Set { field, .. } => {
+                    if pattern.contains(field) {
+                        return true;
+                    }
+                }
+                crate::types::ActionType::MethodCall { object, method, .. } => {
+                    if pattern.contains(object) || pattern.contains(method) {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
     /// OLD: Recursive search without execution
     fn search_recursive(&mut self, goal: &mut Goal, depth: usize) -> bool {
         self.goals_explored += 1;
@@ -318,55 +472,67 @@ impl BreadthFirstSearch {
     }
     
     /// Search for a proof of the goal using BFS WITH rule execution
-    pub fn search_with_execution(&mut self, root_goal: &mut Goal, facts: &Facts, kb: &KnowledgeBase) -> SearchResult {
+    pub fn search_with_execution(&mut self, root_goal: &mut Goal, facts: &mut Facts, kb: &KnowledgeBase) -> SearchResult {
         self.goals_explored = 0;
         let mut queue = VecDeque::new();
         let mut path = Vec::new();
         let mut max_depth = 0;
-        
+
         queue.push_back((root_goal as *mut Goal, 0));
-        
+
         while let Some((goal_ptr, depth)) = queue.pop_front() {
             // Safety: We maintain ownership properly
             let goal = unsafe { &mut *goal_ptr };
-            
+
             self.goals_explored += 1;
             max_depth = max_depth.max(depth);
-            
+
             if depth > self.max_depth {
                 continue;
             }
-            
+
             goal.depth = depth;
-            
+
             // Check if goal already satisfied by facts
             if self.check_goal_in_facts(goal, facts) {
                 goal.status = GoalStatus::Proven;
                 continue;
             }
-            
+
             // Try each candidate rule
             for rule_name in goal.candidate_rules.clone() {
                 path.push(rule_name.clone());
-                
+
                 // Get the rule from KB
                 if let Some(rule) = kb.get_rule(&rule_name) {
-                    // Check if rule conditions are satisfied
-                    if self.check_rule_conditions(&rule, facts) {
-                        goal.status = GoalStatus::Proven;
-                        break;
+                    // ✅ FIX: Try to execute rule (checks conditions AND executes actions)
+                    match self.executor.try_execute_rule(&rule, facts) {
+                        Ok(true) => {
+                            // Rule executed successfully - derived new facts!
+                            // Now check if our goal is proven
+                            if self.check_goal_in_facts(goal, facts) {
+                                goal.status = GoalStatus::Proven;
+                                break;
+                            }
+                        }
+                        Ok(false) => {
+                            // Conditions not satisfied - continue to next rule
+                        }
+                        Err(_) => {
+                            // Execution error - continue to next rule
+                        }
                     }
                 }
             }
-            
+
             // Add sub-goals to queue
             for sub_goal in &mut goal.sub_goals {
                 queue.push_back((sub_goal as *mut Goal, depth + 1));
             }
         }
-        
+
         let success = root_goal.is_proven();
-        
+
         SearchResult {
             success,
             path,

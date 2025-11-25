@@ -72,17 +72,17 @@ impl BackwardEngine {
     ///
     /// ```ignore
     /// let engine = BackwardEngine::new(kb);
-    /// let result = engine.query("User.IsVIP == true", &facts)?;
+    /// let result = engine.query("User.IsVIP == true", &mut facts)?;
     ///
     /// if result.provable {
     ///     println!("User is VIP!");
     /// }
     /// ```
-    pub fn query(&mut self, query_str: &str, facts: &Facts) -> Result<QueryResult> {
+    pub fn query(&mut self, query_str: &str, facts: &mut Facts) -> Result<QueryResult> {
         // Parse query into goal
         let mut goal = QueryParser::parse(query_str)
             .map_err(|e| crate::errors::RuleEngineError::ParseError { message: e })?;
-        
+
         // Check cache if memoization enabled
         if self.config.enable_memoization {
             if let Some(cached) = self.goal_manager.is_cached(query_str) {
@@ -97,10 +97,10 @@ impl BackwardEngine {
                 });
             }
         }
-        
+
         // Find candidate rules that can prove this goal
         self.find_candidate_rules(&mut goal)?;
-        
+
         // Execute search strategy
         let search_result = self.execute_search(&mut goal, facts)?;
         
@@ -177,7 +177,7 @@ impl BackwardEngine {
     }
     
     /// Execute the configured search strategy
-    fn execute_search(&mut self, goal: &mut Goal, facts: &Facts) -> Result<SearchResult> {
+    fn execute_search(&mut self, goal: &mut Goal, facts: &mut Facts) -> Result<SearchResult> {
         match self.config.strategy {
             SearchStrategy::DepthFirst => {
                 let mut dfs = DepthFirstSearch::new(self.config.max_depth, (*self.knowledge_base).clone());
@@ -218,9 +218,9 @@ impl BackwardEngine {
     }
     
     /// Explain why a goal was proven (or not)
-    pub fn explain_why(&mut self, query_str: &str, facts: &Facts) -> Result<String> {
+    pub fn explain_why(&mut self, query_str: &str, facts: &mut Facts) -> Result<String> {
         let result = self.query(query_str, facts)?;
-        
+
         if result.provable {
             Ok(format!(
                 "Goal '{}' is PROVABLE\nProof trace:\n{:#?}",

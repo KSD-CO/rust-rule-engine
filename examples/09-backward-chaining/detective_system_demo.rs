@@ -147,7 +147,7 @@ fn demo_murder_mystery() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🎯 INVESTIGATION QUERY:");
     println!("   Can we prove Richard Blackwood is guilty?");
     
-    let result = bc_engine.query("Investigation.Guilty == true", &facts)?;
+    let result = bc_engine.query("Investigation.Guilty == true", &mut facts)?;
 
     if result.provable {
         println!("\n⚖️  VERDICT: GUILTY");
@@ -259,7 +259,7 @@ fn demo_alibi_checking() -> Result<(), Box<dyn std::error::Error>> {
     println!("   ✓ Credit card used at restaurant at time of murder");
 
     let mut bc_engine = BackwardEngine::new(kb);
-    let result = bc_engine.query("Suspect.Innocent == true", &facts)?;
+    let result = bc_engine.query("Suspect.Innocent == true", &mut facts)?;
 
     if result.provable {
         println!("\n✅ ALIBI CONFIRMED: VALID");
@@ -461,7 +461,7 @@ fn demo_sherlock_mode() -> Result<(), Box<dyn std::error::Error>> {
     let mut bc_engine = BackwardEngine::with_config(kb, config);
 
     println!("\n🎯 HOLMES' QUESTION: 'Where was the suspect?'");
-    let result = bc_engine.query("Deduction.Location == 'Crime Scene Identified'", &facts)?;
+    let result = bc_engine.query("Deduction.Location == 'Crime Scene Identified'", &mut facts)?;
 
     if result.provable {
         println!("\n🔍 DEDUCTIVE CHAIN:");

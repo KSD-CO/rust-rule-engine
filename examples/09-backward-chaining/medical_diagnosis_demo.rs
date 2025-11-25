@@ -101,7 +101,7 @@ fn demo_simple_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🔍 Query: Can we diagnose 'Influenza'?");
     println!("   (Checking if Diagnosis.Disease == 'Influenza')");
     
-    let result = bc_engine.query("Diagnosis.Disease == 'Influenza'", &facts)?;
+    let result = bc_engine.query("Diagnosis.Disease == 'Influenza'", &mut facts)?;
 
     if result.provable {
         println!("\n✅ DIAGNOSIS CONFIRMED: Influenza");
@@ -188,7 +188,7 @@ fn demo_complex_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
 
     // Query for Metabolic Syndrome
     println!("\n🔍 Query: Does patient have Metabolic Syndrome?");
-    let result = bc_engine.query("Diagnosis.MetabolicSyndrome == true", &facts)?;
+    let result = bc_engine.query("Diagnosis.MetabolicSyndrome == true", &mut facts)?;
 
     if result.provable {
         println!("\n⚠️  CRITICAL DIAGNOSIS: Metabolic Syndrome Detected");
