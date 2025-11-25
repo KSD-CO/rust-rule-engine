@@ -422,7 +422,7 @@ impl ExpressionParser {
                             return Ok(Some(Value::Number(n)));
                         }
                     } else if let Ok(i) = num_str.parse::<i64>() {
-                        return Ok(Some(Value::Integer(i)));
+                        return Ok(Some(Value::Number(i as f64)));
                     }
                 }
 

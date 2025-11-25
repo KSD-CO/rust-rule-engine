@@ -88,7 +88,7 @@ impl BackwardEngine {
             if let Some(cached) = self.goal_manager.is_cached(query_str) {
                 return Ok(if cached {
                     QueryResult::success(
-                        goal.bindings.clone(),
+                        goal.bindings.to_map(), // Convert Bindings to HashMap
                         ProofTrace::from_goal(&goal),
                         QueryStats::default(),
                     )

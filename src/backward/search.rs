@@ -98,7 +98,7 @@ impl DepthFirstSearch {
             path: self.path.clone(),
             goals_explored: self.goals_explored,
             max_depth_reached: goal.depth,
-            bindings: goal.bindings.clone(),
+            bindings: goal.bindings.to_map(),
         }
     }
     
@@ -114,7 +114,7 @@ impl DepthFirstSearch {
             path: self.path.clone(),
             goals_explored: self.goals_explored,
             max_depth_reached: goal.depth,
-            bindings: goal.bindings.clone(),
+            bindings: goal.bindings.to_map(),
         }
     }
     
@@ -372,7 +372,7 @@ impl BreadthFirstSearch {
             path,
             goals_explored: self.goals_explored,
             max_depth_reached: max_depth,
-            bindings: root_goal.bindings.clone(),
+            bindings: root_goal.bindings.to_map(),
         }
     }
     
@@ -470,7 +470,7 @@ impl BreadthFirstSearch {
             path,
             goals_explored: self.goals_explored,
             max_depth_reached: max_depth,
-            bindings: root_goal.bindings.clone(),
+            bindings: root_goal.bindings.to_map(),
         }
     }
 }
