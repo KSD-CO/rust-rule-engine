@@ -1,0 +1,115 @@
+// =============================================================================
+// E-COMMERCE ORDER APPROVAL QUERIES
+// =============================================================================
+// Backward chaining queries to check auto-approval conditions
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// MAIN APPROVAL QUERY
+// -----------------------------------------------------------------------------
+
+query "CheckAutoApproval" {
+    goal: Order.AutoApproved == true && Order.RequiresManualReview != true
+    strategy: depth-first
+    max-depth: 10
+    
+    on-success: {
+        Order.Status = "APPROVED";
+        Order.ProcessingTime = "Instant";
+        Order.NotificationSent = true;
+        LogMessage("✅ Order auto-approved");
+    }
+    
+    on-failure: {
+        Order.Status = "PENDING_REVIEW";
+        Order.ProcessingTime = "1-2 business days";
+        Order.AssignedTo = "CS Team";
+        LogMessage("⏳ Order requires manual review");
+    }
+    
+    on-missing: {
+        Order.Status = "INCOMPLETE";
+        LogMessage("⚠️ Missing information for processing");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// VIP STATUS CHECK
+// -----------------------------------------------------------------------------
+
+query "CheckVIPStatus" {
+    goal: Customer.IsVIP == true
+    strategy: breadth-first
+    max-depth: 5
+    
+    on-success: {
+        Customer.Benefits = "Free shipping, Priority support, Extended warranty";
+        LogMessage("🌟 VIP customer confirmed");
+    }
+    
+    on-failure: {
+        Customer.Benefits = "Standard";
+        LogMessage("👤 Regular customer");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// RISK ASSESSMENT QUERY
+// -----------------------------------------------------------------------------
+
+query "AssessOrderRisk" {
+    goal: Order.RiskLevel == "LOW"
+    strategy: depth-first
+    max-depth: 8
+    
+    on-success: {
+        Order.ReviewRequired = false;
+        Order.FraudScore = 0;
+        LogMessage("✅ Order is safe");
+    }
+    
+    on-failure: {
+        Order.ReviewRequired = true;
+        Order.FraudScore = 50;
+        LogMessage("⚠️ Risk assessment needed");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// FAST TRACK QUERY (for VIP and small orders)
+// -----------------------------------------------------------------------------
+
+query "CheckFastTrack" {
+    goal: Order.ProcessingPriority == "HIGH"
+    strategy: depth-first
+    max-depth: 5
+    
+    on-success: {
+        Order.ShippingMethod = "Express";
+        Order.PackingPriority = "Immediate";
+        LogMessage("🚀 Fast track processing");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// PAYMENT VERIFICATION QUERY
+// -----------------------------------------------------------------------------
+
+query "VerifyPayment" {
+    goal: Payment.Verified == true
+    strategy: breadth-first
+    max-depth: 3
+    
+    on-success: {
+        Payment.Status = "CONFIRMED";
+        Order.CanShip = true;
+        LogMessage("💰 Payment confirmed");
+    }
+    
+    on-failure: {
+        Payment.Status = "PENDING";
+        Order.CanShip = false;
+        Order.HoldReason = "Awaiting payment confirmation";
+        LogMessage("⏳ Waiting for payment confirmation");
+    }
+}

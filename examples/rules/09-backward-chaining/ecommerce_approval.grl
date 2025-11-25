@@ -1,0 +1,162 @@
+// =============================================================================
+// E-COMMERCE ORDER APPROVAL RULES
+// =============================================================================
+// Automatic order approval system based on:
+// - Customer VIP status
+// - Order value
+// - Payment method
+// - Account age
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// VIP CUSTOMER RULES
+// -----------------------------------------------------------------------------
+
+// Rule: VIP customers auto-approved for orders < 10 million
+rule "AutoApproveVIP" salience 100 {
+    when
+        Customer.IsVIP == true &&
+        Order.Amount < 10000000
+    then
+        Order.AutoApproved = true;
+        Order.ApprovalReason = "VIP customer - Auto approved";
+        LogMessage("✅ VIP auto-approval: " + Order.Amount);
+}
+
+// Rule: Customers with >= 100 loyalty points become VIP
+rule "VIPFromLoyalty" salience 90 {
+    when
+        Customer.LoyaltyPoints >= 100
+    then
+        Customer.IsVIP = true;
+        Customer.VIPSource = "Loyalty Points";
+        LogMessage("🌟 VIP from loyalty points: " + Customer.LoyaltyPoints);
+}
+
+// Rule: Customers spending >= 20 million per year become VIP
+rule "VIPFromSpending" salience 90 {
+    when
+        Customer.YearlySpending >= 20000000
+    then
+        Customer.IsVIP = true;
+        Customer.VIPSource = "Yearly Spending";
+        LogMessage("🌟 VIP from yearly spending: " + Customer.YearlySpending);
+}
+
+// -----------------------------------------------------------------------------
+// SMALL ORDER RULES
+// -----------------------------------------------------------------------------
+
+// Rule: Small orders < 2 million + COD → Auto approve
+rule "AutoApproveSmallOrder" salience 80 {
+    when
+        Order.Amount < 2000000 &&
+        Payment.Method == "COD"
+    then
+        Order.AutoApproved = true;
+        Order.ApprovalReason = "Small order with safe payment";
+        Order.RiskLevel = "LOW";
+        LogMessage("✅ Small order auto-approved: " + Order.Amount);
+}
+
+// Rule: Tiny orders < 1 million always safe
+rule "TinyOrderAlwaysSafe" salience 85 {
+    when
+        Order.Amount < 1000000
+    then
+        Order.RiskLevel = "MINIMAL";
+        Order.RequiresManualReview = false;
+}
+
+// -----------------------------------------------------------------------------
+// RISK ASSESSMENT RULES
+// -----------------------------------------------------------------------------
+
+// Rule: Large orders >= 20 million + new account → Requires review
+rule "RequireVerification" salience 95 {
+    when
+        Order.Amount >= 20000000 &&
+        Customer.AccountAge == "New"
+    then
+        Order.RequiresManualReview = true;
+        Order.RiskLevel = "HIGH";
+        Order.ReviewReason = "Large order from new account";
+        LogMessage("⚠️ High risk order - manual review required");
+}
+
+// Rule: Orders >= 50 million always require review (even VIP)
+rule "HighValueReview" salience 110 {
+    when
+        Order.Amount >= 50000000
+    then
+        Order.RequiresManagerApproval = true;
+        Order.RiskLevel = "CRITICAL";
+        LogMessage("🚨 Critical value order - manager approval needed");
+}
+
+// Rule: New account + bank transfer >= 10 million → Review
+rule "NewAccountBankTransfer" salience 85 {
+    when
+        Customer.AccountAge == "New" &&
+        Payment.Method == "Bank Transfer" &&
+        Order.Amount >= 10000000
+    then
+        Order.RequiresManualReview = true;
+        Order.RiskLevel = "MEDIUM";
+        Order.ReviewReason = "New account with high-value bank transfer";
+}
+
+// -----------------------------------------------------------------------------
+// AUTO APPROVAL LOGIC
+// -----------------------------------------------------------------------------
+
+// Rule: BLOCK auto approval if manual review required (highest priority)
+rule "BlockAutoApprovalIfReviewNeeded" salience 120 {
+    when
+        Order.RequiresManualReview == true
+    then
+        Order.AutoApproved = false;
+        Order.BlockReason = "Manual review required";
+        LogMessage("🚫 Auto approval blocked - manual review needed");
+}
+
+// Rule: Auto approve if NO manual review needed and payment verified
+rule "AutoApproveVerified" salience 70 {
+    when
+        Order.RequiresManualReview == false &&
+        Payment.Verified == true
+    then
+        Order.AutoApproved = true;
+        Order.ApprovalReason = "Payment verified - No risk factors";
+}
+
+// Rule: COD payment always verified
+rule "CODAutoVerified" salience 100 {
+    when
+        Payment.Method == "COD"
+    then
+        Payment.Verified = true;
+        Payment.RiskLevel = "LOW";
+}
+
+// -----------------------------------------------------------------------------
+// BATCH PROCESSING RULES
+// -----------------------------------------------------------------------------
+
+// Rule: Priority processing for VIP
+rule "VIPPriorityProcessing" salience 100 {
+    when
+        Customer.IsVIP == true
+    then
+        Order.ProcessingPriority = "HIGH";
+        Order.EstimatedShipping = "Same day";
+}
+
+// Rule: Standard processing for non-VIP
+rule "StandardProcessing" salience 50 {
+    when
+        Customer.IsVIP == false
+    then
+        Order.ProcessingPriority = "STANDARD";
+        Order.EstimatedShipping = "2-3 days";
+}

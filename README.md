@@ -1,17 +1,127 @@
-# Rust Rule Engine v0.19.1 🦀⚡
+# Rust Rule Engine v1.0.0-alpha 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired features**, **Backward Chaining**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## ✨ What's New in v0.19.1
+## ✨ What's New in v1.0.0-alpha
+
+🧠 **Backward Chaining (Goal-Driven Reasoning)** - Query-driven inference engine! ⚠️ **ALPHA VERSION**
+
+> **⚠️ ALPHA STATUS**: Backward chaining is currently in **alpha stage** and **NOT production-ready**. The implementation is incomplete and should be used for **experimentation and feedback only**. Production use is not recommended at this time.
+
+- **🎯 Goal-Driven Reasoning** - Start from a goal and work backwards to prove it (partial implementation)
+- **🔍 Query Language** - GRL query syntax with compound goals (&&, !=)
+- **📊 Search Strategies** - Depth-first, breadth-first, and iterative deepening (basic support)
+- **🎓 Expert Systems** - Perfect for diagnosis, decision trees, and classification (experimental)
+- **✅ Hybrid Mode** - Combine forward and backward chaining for best results
+- **🔄 Proof Traces** - Full explanation of why goals are provable or not (in development)
+- **📝 GRL Integration** - Query definitions in `.grl` files alongside rules
+
+**Backward Chaining Example:**
+
+```rust
+use rust_rule_engine::backward::{BackwardEngine, GRLQueryParser, GRLQueryExecutor};
+
+// Load rules from GRL file
+let rules = load_rules_from_file("approval_rules.grl");
+let mut kb = KnowledgeBase::new("Approval");
+for rule in GRLParser::parse_rules(&rules)? {
+    kb.add_rule(rule)?;
+}
+
+// Load query definition
+let query_str = load_query_from_file("queries.grl", "CheckAutoApproval");
+
+// Set up facts
+let mut facts = Facts::new();
+facts.set("Customer.LoyaltyPoints", Value::Number(150.0));
+facts.set("Order.Amount", Value::Number(5000.0));
+
+// Execute backward chaining query
+let query = GRLQueryParser::parse(&query_str)?;
+let mut bc_engine = BackwardEngine::new(kb);
+let result = GRLQueryExecutor::execute(&query, &mut bc_engine, &mut facts)?;
+
+if result.provable {
+    println!("✅ Goal proven! Order can be auto-approved");
+} else {
+    println!("⏳ Manual review required");
+}
+```
+
+**GRL Query Syntax:**
+
+```grl
+query "CheckAutoApproval" {
+    goal: Order.AutoApproved == true && Order.RequiresManualReview != true
+    strategy: depth-first
+    max-depth: 10
+    
+    on-success: {
+        Order.Status = "APPROVED";
+        Order.ProcessingTime = "Instant";
+        LogMessage("✅ Order auto-approved");
+    }
+    
+    on-failure: {
+        Order.Status = "PENDING_REVIEW";
+        Order.ProcessingTime = "1-2 business days";
+        LogMessage("⏳ Manual review needed");
+    }
+}
+```
+
+**Use Cases:**
+- **Medical Diagnosis** - Work backwards from symptoms to identify diseases
+- **E-commerce Approval** - Determine if orders should be auto-approved
+- **Detective Systems** - Solve crimes by proving hypotheses from evidence
+- **Decision Trees** - Classification and recommendation engines
+- **Expert Systems** - Knowledge-based reasoning and inference
+
+**Examples:**
+- [Simple Query Demo](examples/09-backward-chaining/simple_query_demo.rs) - Basic backward chaining
+- [Medical Diagnosis](examples/09-backward-chaining/medical_diagnosis_demo.rs) - Disease diagnosis system
+- [E-commerce Approval](examples/09-backward-chaining/ecommerce_approval_demo.rs) - Order approval workflow
+- [Detective System](examples/09-backward-chaining/detective_system_demo.rs) - Crime-solving inference
+- [GRL Query Demo](examples/09-backward-chaining/grl_query_demo.rs) - Query language features
+
+**Technical Features:**
+- **Expression AST** - Proper parsing of compound expressions (&&, ||, !)
+- **Search Strategies** - Pluggable search algorithms (DFS, BFS, iterative)
+- **Memoization** - Cache proven goals for performance (planned)
+- **Cycle Detection** - Prevent infinite loops in recursive proofs (basic support)
+- **Missing Facts** - Track what facts are needed to prove goals (in development)
+- **Proof Traces** - Full explanation of reasoning chain (partial)
+- **Query Statistics** - Goals explored, rules evaluated, max depth
+- **Rule Executor** - Shared condition/action evaluation for both forward and backward
+
+**Alpha Limitations:**
+- ⚠️ Recursive sub-goal proving not fully implemented
+- ⚠️ Action execution during backward search is incomplete
+- ⚠️ Complex ConditionExpression evaluation is simplified
+- ⚠️ Backtracking and fact rollback not yet implemented
+- ⚠️ Limited testing and production validation
+- ⚠️ API may change significantly in future releases
+
+**Recommended Usage:**
+- ✅ Use forward chaining (RETE-UL or Native Engine) for production
+- ✅ Experiment with backward chaining in development/testing
+- ✅ Provide feedback to help improve the implementation
+- ⚠️ Do NOT use backward chaining in production systems yet
+
+[**🎯 Backward Chaining Guide →**](docs/BACKWARD_CHAINING.md) | [**📝 Examples →**](examples/09-backward-chaining/)
+
+---
+
+## ✨ Previous Updates - v0.19.1
 
 🐛 **Bug Fixes & Improvements**
 

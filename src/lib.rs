@@ -102,6 +102,9 @@ pub mod plugins;
 /// Streaming rule engine for real-time event processing
 #[cfg(feature = "streaming")]
 pub mod streaming;
+/// Backward chaining (goal-driven reasoning) - requires 'backward-chaining' feature
+#[cfg(feature = "backward-chaining")]
+pub mod backward;
 /// Core type definitions for values, operators, and actions
 pub mod types;
 /// RETE module for rule evaluation
