@@ -24,10 +24,13 @@ pub mod template;
 /// Workflow engine for rule chaining and sequential execution
 pub mod workflow;
 pub mod coverage; // Adding coverage module
+/// Shared condition evaluation logic for both forward and backward chaining
+pub mod condition_evaluator;
 
 // Re-export main components for easy access
 pub use agenda::{ActivationGroupManager, AgendaManager};
 pub use analytics::{AnalyticsConfig, ExecutionEvent, OverallStats, RuleAnalytics, RuleMetrics};
+pub use condition_evaluator::ConditionEvaluator;
 pub use dependency::{
     DependencyAnalysisResult, DependencyAnalyzer, ExecutionGroup, ExecutionMode, ExecutionStrategy,
 };

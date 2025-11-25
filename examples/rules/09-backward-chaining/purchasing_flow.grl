@@ -1,0 +1,172 @@
+// =============================================================================
+// PURCHASING FLOW BUSINESS RULES
+// =============================================================================
+// Automated purchasing and reorder system based on:
+// - Inventory levels and shortages
+// - Supplier status and MOQ (Minimum Order Quantity)
+// - Order value and approval thresholds
+// - Bulk discounts and tax calculation
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// INVENTORY & SHORTAGE CALCULATION
+// -----------------------------------------------------------------------------
+
+rule "CalculateShortage" salience 120 no-loop {
+    when
+        required_qty > 0
+    then
+        shortage = required_qty - available_qty;
+        LogMessage("✅ Shortage calculated: " + shortage);
+}
+
+// -----------------------------------------------------------------------------
+// SUPPLIER VALIDATION
+// -----------------------------------------------------------------------------
+
+rule "ValidateSupplierActive" salience 115 no-loop {
+    when
+        is_active == false
+    then
+        order_qty = 0;
+        total_amount = 0;
+        shortage = 0;
+        need_reorder = false;
+        supplier_error = "Supplier is not active";
+        LogMessage("❌ Supplier inactive - order blocked");
+}
+
+// -----------------------------------------------------------------------------
+// ORDER QUANTITY LOGIC
+// -----------------------------------------------------------------------------
+
+rule "OrderMOQWhenShortageIsLess" salience 110 no-loop {
+    when
+        shortage > 0 && shortage < moq && is_active == true
+    then
+        order_qty = moq;
+        LogMessage("📦 Shortage less than MOQ, ordering MOQ: " + moq);
+}
+
+rule "OrderShortageWhenAboveMOQ" salience 110 no-loop {
+    when
+        shortage >= moq && is_active == true
+    then
+        order_qty = shortage;
+        LogMessage("📦 Shortage meets MOQ, ordering: " + shortage);
+}
+
+// -----------------------------------------------------------------------------
+// PRICING CALCULATION
+// -----------------------------------------------------------------------------
+
+rule "CalculateOrderTotal" salience 105 no-loop {
+    when
+        order_qty > 0 && unit_price > 0
+    then
+        total_amount = order_qty * unit_price;
+        LogMessage("💰 Order total: $" + total_amount);
+}
+
+// -----------------------------------------------------------------------------
+// REORDER FLAG
+// -----------------------------------------------------------------------------
+
+rule "SetReorderFlag" salience 100 no-loop {
+    when
+        shortage > 0
+    then
+        need_reorder = true;
+        LogMessage("🔄 Reorder needed");
+}
+
+rule "NoReorderNeeded" salience 100 no-loop {
+    when
+        shortage <= 0
+    then
+        need_reorder = false;
+        LogMessage("✅ No reorder needed");
+}
+
+// -----------------------------------------------------------------------------
+// APPROVAL RULES
+// -----------------------------------------------------------------------------
+
+rule "FlagHighValueOrders" salience 95 no-loop {
+    when
+        total_amount > 10000
+    then
+        requires_approval = true;
+        approval_status = "pending";
+        LogMessage("⚠️ High value order - approval required");
+}
+
+rule "AutoApproveOrders" salience 90 no-loop {
+    when
+        total_amount <= 10000 && total_amount > 0
+    then
+        requires_approval = false;
+        approval_status = "auto_approved";
+        LogMessage("✅ Order auto-approved");
+}
+
+// -----------------------------------------------------------------------------
+// DISCOUNT & TAX CALCULATION
+// -----------------------------------------------------------------------------
+
+rule "ApplyBulkDiscount" salience 85 no-loop {
+    when
+        total_amount >= 50000
+    then
+        discount_amount = total_amount * 0.1;
+        final_amount = total_amount - discount_amount;
+        LogMessage("🎉 Bulk discount applied: $" + discount_amount);
+}
+
+rule "NoDiscount" salience 85 no-loop {
+    when
+        total_amount > 0 && total_amount < 50000
+    then
+        final_amount = total_amount;
+        LogMessage("💵 No discount applicable");
+}
+
+rule "CalculateTax" salience 80 no-loop {
+    when
+        final_amount > 0
+    then
+        tax_amount = final_amount * 0.08;
+        grand_total = final_amount + tax_amount;
+        LogMessage("📊 Tax: $" + tax_amount + " | Grand total: $" + grand_total);
+}
+
+// -----------------------------------------------------------------------------
+// PURCHASE ORDER CREATION
+// -----------------------------------------------------------------------------
+
+rule "CreatePurchaseOrderIfApproved" salience 75 no-loop {
+    when
+        need_reorder == true && approval_status == "auto_approved" && order_qty > 0
+    then
+        should_create_po = true;
+        po_status = "approved";
+        LogMessage("✅ PO ready to create - approved");
+}
+
+rule "CreatePurchaseOrderPendingApproval" salience 75 no-loop {
+    when
+        need_reorder == true && approval_status == "pending" && order_qty > 0
+    then
+        should_create_po = true;
+        po_status = "pending_approval";
+        LogMessage("⏳ PO created - pending approval");
+}
+
+rule "SendPOToSupplier" salience 70 no-loop {
+    when
+        need_reorder == true && approval_status == "auto_approved"
+    then
+        should_send_po = true;
+        send_method = "email";
+        LogMessage("📧 PO ready to send to supplier");
+}

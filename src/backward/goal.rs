@@ -3,6 +3,7 @@
 use crate::types::Value;
 use std::collections::HashMap;
 use super::expression::Expression;
+use super::unification::Bindings;
 
 /// Represents a goal to prove/achieve in backward chaining
 #[derive(Debug, Clone)]
@@ -23,7 +24,7 @@ pub struct Goal {
     pub candidate_rules: Vec<String>,
 
     /// Variable bindings accumulated during proof
-    pub bindings: HashMap<String, Value>,
+    pub bindings: Bindings,
 
     /// Depth of this goal in the search tree
     pub depth: usize,
@@ -54,7 +55,7 @@ impl Goal {
             status: GoalStatus::Pending,
             sub_goals: Vec::new(),
             candidate_rules: Vec::new(),
-            bindings: HashMap::new(),
+            bindings: Bindings::new(),
             depth: 0,
         }
     }
@@ -67,7 +68,7 @@ impl Goal {
             status: GoalStatus::Pending,
             sub_goals: Vec::new(),
             candidate_rules: Vec::new(),
-            bindings: HashMap::new(),
+            bindings: Bindings::new(),
             depth: 0,
         }
     }
