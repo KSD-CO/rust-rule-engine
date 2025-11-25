@@ -1,0 +1,701 @@
+/// GRL Query Syntax Implementation
+/// 
+/// Provides parsing and execution of backward chaining queries defined in GRL syntax.
+/// 
+/// # Example
+/// ```grl
+/// query "CheckVIPStatus" {
+///     goal: User.IsVIP == true
+///     strategy: depth-first
+///     max-depth: 10
+///     on-success: {
+///         User.DiscountRate = 0.2;
+///         LogMessage("VIP confirmed");
+///     }
+/// }
+/// ```
+
+use crate::errors::RuleEngineError;
+use crate::{Facts, Value};
+use super::backward_engine::{BackwardEngine, BackwardConfig};
+use super::search::SearchStrategy;
+use super::query::{QueryResult, QueryStats, ProofTrace};
+
+use std::collections::HashMap;
+
+/// Search strategy option for queries
+#[derive(Debug, Clone, PartialEq)]
+pub enum GRLSearchStrategy {
+    DepthFirst,
+    BreadthFirst,
+    Iterative,
+}
+
+impl Default for GRLSearchStrategy {
+    fn default() -> Self {
+        GRLSearchStrategy::DepthFirst
+    }
+}
+
+/// Action to execute based on query result
+#[derive(Debug, Clone)]
+pub struct QueryAction {
+    /// Assignment: Variable = Value (as string to be parsed)
+    pub assignments: Vec<(String, String)>,
+    /// Function/method calls
+    pub calls: Vec<String>,
+}
+
+impl QueryAction {
+    pub fn new() -> Self {
+        QueryAction {
+            assignments: Vec::new(),
+            calls: Vec::new(),
+        }
+    }
+
+    /// Execute the action on the given facts
+    pub fn execute(&self, facts: &mut Facts) -> Result<(), RuleEngineError> {
+        // Execute assignments - for now just log them
+        for (var_name, value_str) in &self.assignments {
+            // Simple value parsing
+            let value = if value_str == "true" {
+                Value::Boolean(true)
+            } else if value_str == "false" {
+                Value::Boolean(false)
+            } else if let Ok(n) = value_str.parse::<f64>() {
+                Value::Number(n)
+            } else {
+                // Remove quotes if present
+                let cleaned = value_str.trim_matches('"');
+                Value::String(cleaned.to_string())
+            };
+            
+            facts.set(var_name, value);
+        }
+
+        // Execute function calls (log, etc.)
+        for call in &self.calls {
+            // Simple logging for now
+            if call.starts_with("LogMessage") {
+                println!("[Query Action] {}", call);
+            } else if call.starts_with("Request") {
+                println!("[Query Action] {}", call);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// A GRL Query definition
+#[derive(Debug, Clone)]
+pub struct GRLQuery {
+    /// Query name
+    pub name: String,
+    
+    /// Goal pattern to prove (as string expression)
+    pub goal: String,
+    
+    /// Search strategy
+    pub strategy: GRLSearchStrategy,
+    
+    /// Maximum search depth
+    pub max_depth: usize,
+    
+    /// Maximum number of solutions
+    pub max_solutions: usize,
+    
+    /// Enable memoization
+    pub enable_memoization: bool,
+    
+    /// Action on success
+    pub on_success: Option<QueryAction>,
+    
+    /// Action on failure
+    pub on_failure: Option<QueryAction>,
+    
+    /// Action on missing facts
+    pub on_missing: Option<QueryAction>,
+    
+    /// Parameters for parameterized queries
+    pub params: HashMap<String, String>, // param_name -> type
+    
+    /// Conditional execution (as string condition)
+    pub when_condition: Option<String>,
+}
+
+impl GRLQuery {
+    /// Create a new query with defaults
+    pub fn new(name: String, goal: String) -> Self {
+        GRLQuery {
+            name,
+            goal,
+            strategy: GRLSearchStrategy::default(),
+            max_depth: 10,
+            max_solutions: 1,
+            enable_memoization: true,
+            on_success: None,
+            on_failure: None,
+            on_missing: None,
+            params: HashMap::new(),
+            when_condition: None,
+        }
+    }
+
+    /// Set search strategy
+    pub fn with_strategy(mut self, strategy: GRLSearchStrategy) -> Self {
+        self.strategy = strategy;
+        self
+    }
+
+    /// Set max depth
+    pub fn with_max_depth(mut self, max_depth: usize) -> Self {
+        self.max_depth = max_depth;
+        self
+    }
+
+    /// Set max solutions
+    pub fn with_max_solutions(mut self, max_solutions: usize) -> Self {
+        self.max_solutions = max_solutions;
+        self
+    }
+
+    /// Set memoization
+    pub fn with_memoization(mut self, enable: bool) -> Self {
+        self.enable_memoization = enable;
+        self
+    }
+
+    /// Add success action
+    pub fn with_on_success(mut self, action: QueryAction) -> Self {
+        self.on_success = Some(action);
+        self
+    }
+
+    /// Add failure action
+    pub fn with_on_failure(mut self, action: QueryAction) -> Self {
+        self.on_failure = Some(action);
+        self
+    }
+
+    /// Add missing facts action
+    pub fn with_on_missing(mut self, action: QueryAction) -> Self {
+        self.on_missing = Some(action);
+        self
+    }
+
+    /// Add parameter
+    pub fn with_param(mut self, name: String, type_name: String) -> Self {
+        self.params.insert(name, type_name);
+        self
+    }
+
+    /// Set conditional execution
+    pub fn with_when(mut self, condition: String) -> Self {
+        self.when_condition = Some(condition);
+        self
+    }
+
+    /// Check if query should execute based on when condition
+    pub fn should_execute(&self, _facts: &Facts) -> Result<bool, RuleEngineError> {
+        // TODO: Implement condition evaluation
+        // For now, always execute if no condition, or return true if condition exists
+        Ok(true)
+    }
+
+    /// Execute success actions
+    pub fn execute_success_actions(&self, facts: &mut Facts) -> Result<(), RuleEngineError> {
+        if let Some(ref action) = self.on_success {
+            action.execute(facts)?;
+        }
+        Ok(())
+    }
+
+    /// Execute failure actions
+    pub fn execute_failure_actions(&self, facts: &mut Facts) -> Result<(), RuleEngineError> {
+        if let Some(ref action) = self.on_failure {
+            action.execute(facts)?;
+        }
+        Ok(())
+    }
+
+    /// Execute missing facts actions
+    pub fn execute_missing_actions(&self, facts: &mut Facts) -> Result<(), RuleEngineError> {
+        if let Some(ref action) = self.on_missing {
+            action.execute(facts)?;
+        }
+        Ok(())
+    }
+
+    /// Convert to BackwardConfig
+    pub fn to_config(&self) -> BackwardConfig {
+        let search_strategy = match self.strategy {
+            GRLSearchStrategy::DepthFirst => SearchStrategy::DepthFirst,
+            GRLSearchStrategy::BreadthFirst => SearchStrategy::BreadthFirst,
+            GRLSearchStrategy::Iterative => SearchStrategy::DepthFirst, // TODO: implement iterative
+        };
+
+        BackwardConfig {
+            strategy: search_strategy,
+            max_depth: self.max_depth,
+            enable_memoization: self.enable_memoization,
+            max_solutions: self.max_solutions,
+        }
+    }
+}
+
+/// Parser for GRL Query syntax
+pub struct GRLQueryParser;
+
+impl GRLQueryParser {
+    /// Parse a query from string
+    /// 
+    /// # Example
+    /// ```
+    /// let query_str = r#"
+    /// query "CheckVIP" {
+    ///     goal: User.IsVIP == true
+    ///     strategy: depth-first
+    /// }
+    /// "#;
+    /// let query = GRLQueryParser::parse(query_str)?;
+    /// ```
+    pub fn parse(input: &str) -> Result<GRLQuery, RuleEngineError> {
+        let input = input.trim();
+
+        // Extract query name
+        let name = Self::extract_query_name(input)?;
+
+        // Extract goal
+        let goal = Self::extract_goal(input)?;
+
+        // Create base query
+        let mut query = GRLQuery::new(name, goal);
+
+        // Parse optional attributes
+        if let Some(strategy) = Self::extract_strategy(input) {
+            query.strategy = strategy;
+        }
+
+        if let Some(max_depth) = Self::extract_max_depth(input) {
+            query.max_depth = max_depth;
+        }
+
+        if let Some(max_solutions) = Self::extract_max_solutions(input) {
+            query.max_solutions = max_solutions;
+        }
+
+        if let Some(enable_memo) = Self::extract_memoization(input) {
+            query.enable_memoization = enable_memo;
+        }
+
+        // Parse actions
+        if let Some(action) = Self::extract_on_success(input)? {
+            query.on_success = Some(action);
+        }
+
+        if let Some(action) = Self::extract_on_failure(input)? {
+            query.on_failure = Some(action);
+        }
+
+        if let Some(action) = Self::extract_on_missing(input)? {
+            query.on_missing = Some(action);
+        }
+
+        // Parse when condition
+        if let Some(condition) = Self::extract_when_condition(input)? {
+            query.when_condition = Some(condition);
+        }
+
+        Ok(query)
+    }
+
+    fn extract_query_name(input: &str) -> Result<String, RuleEngineError> {
+        let re = regex::Regex::new(r#"query\s+"([^"]+)"\s*\{"#).unwrap();
+        if let Some(caps) = re.captures(input) {
+            Ok(caps[1].to_string())
+        } else {
+            Err(RuleEngineError::ParseError {
+                message: "Invalid query syntax: missing query name".to_string(),
+            })
+        }
+    }
+
+    fn extract_goal(input: &str) -> Result<String, RuleEngineError> {
+        let re = regex::Regex::new(r"goal:\s*([^\n}]+)").unwrap();
+        if let Some(caps) = re.captures(input) {
+            let goal_str = caps[1].trim().to_string();
+            Ok(goal_str)
+        } else {
+            Err(RuleEngineError::ParseError {
+                message: "Invalid query syntax: missing goal".to_string(),
+            })
+        }
+    }
+
+    fn extract_strategy(input: &str) -> Option<GRLSearchStrategy> {
+        let re = regex::Regex::new(r"strategy:\s*([a-z-]+)").unwrap();
+        re.captures(input).and_then(|caps| {
+            match caps[1].trim() {
+                "depth-first" => Some(GRLSearchStrategy::DepthFirst),
+                "breadth-first" => Some(GRLSearchStrategy::BreadthFirst),
+                "iterative" => Some(GRLSearchStrategy::Iterative),
+                _ => None,
+            }
+        })
+    }
+
+    fn extract_max_depth(input: &str) -> Option<usize> {
+        let re = regex::Regex::new(r"max-depth:\s*(\d+)").unwrap();
+        re.captures(input)
+            .and_then(|caps| caps[1].parse().ok())
+    }
+
+    fn extract_max_solutions(input: &str) -> Option<usize> {
+        let re = regex::Regex::new(r"max-solutions:\s*(\d+)").unwrap();
+        re.captures(input)
+            .and_then(|caps| caps[1].parse().ok())
+    }
+
+    fn extract_memoization(input: &str) -> Option<bool> {
+        let re = regex::Regex::new(r"enable-memoization:\s*(true|false)").unwrap();
+        re.captures(input).and_then(|caps| {
+            match caps[1].trim() {
+                "true" => Some(true),
+                "false" => Some(false),
+                _ => None,
+            }
+        })
+    }
+
+    fn extract_on_success(input: &str) -> Result<Option<QueryAction>, RuleEngineError> {
+        Self::extract_action_block(input, "on-success")
+    }
+
+    fn extract_on_failure(input: &str) -> Result<Option<QueryAction>, RuleEngineError> {
+        Self::extract_action_block(input, "on-failure")
+    }
+
+    fn extract_on_missing(input: &str) -> Result<Option<QueryAction>, RuleEngineError> {
+        Self::extract_action_block(input, "on-missing")
+    }
+
+    fn extract_action_block(input: &str, action_name: &str) -> Result<Option<QueryAction>, RuleEngineError> {
+        let pattern = format!(r"{}:\s*\{{([^}}]+)\}}", action_name);
+        let re = regex::Regex::new(&pattern).unwrap();
+        
+        if let Some(caps) = re.captures(input) {
+            let block = caps[1].trim();
+            let mut action = QueryAction::new();
+
+            // Parse assignments: Variable = Value
+            let assign_re = regex::Regex::new(r"([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*([^;]+);").unwrap();
+            for caps in assign_re.captures_iter(block) {
+                let var_name = caps[1].trim().to_string();
+                let value_str = caps[2].trim().to_string();
+                action.assignments.push((var_name, value_str));
+            }
+
+            // Parse function calls: Function(...)
+            let call_re = regex::Regex::new(r"([A-Za-z_][A-Za-z0-9_]*\([^)]*\));").unwrap();
+            for caps in call_re.captures_iter(block) {
+                action.calls.push(caps[1].trim().to_string());
+            }
+
+            Ok(Some(action))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn extract_when_condition(input: &str) -> Result<Option<String>, RuleEngineError> {
+        let re = regex::Regex::new(r"when:\s*([^\n}]+)").unwrap();
+        if let Some(caps) = re.captures(input) {
+            let condition_str = caps[1].trim().to_string();
+            Ok(Some(condition_str))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Parse multiple queries from a file
+    pub fn parse_queries(input: &str) -> Result<Vec<GRLQuery>, RuleEngineError> {
+        let mut queries = Vec::new();
+        
+        // Find all query blocks - use simpler approach
+        // Split by "query" keyword and process each block
+        let parts: Vec<&str> = input.split("query").collect();
+        
+        for part in parts.iter().skip(1) { // Skip first empty part
+            let query_str = format!("query{}", part);
+            // Find the matching closing brace
+            if let Some(end_idx) = find_matching_brace(&query_str) {
+                let complete_query = &query_str[..end_idx];
+                if let Ok(query) = Self::parse(complete_query) {
+                    queries.push(query);
+                }
+            }
+        }
+
+        Ok(queries)
+    }
+}
+
+// Helper function to find matching closing brace
+fn find_matching_brace(input: &str) -> Option<usize> {
+    let mut depth = 0;
+    let mut in_string = false;
+    let mut escape_next = false;
+    
+    for (i, ch) in input.chars().enumerate() {
+        if escape_next {
+            escape_next = false;
+            continue;
+        }
+        
+        match ch {
+            '\\' => escape_next = true,
+            '"' => in_string = !in_string,
+            '{' if !in_string => depth += 1,
+            '}' if !in_string => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i + 1);
+                }
+            }
+            _ => {}
+        }
+    }
+    
+    None
+}
+
+/// Executor for GRL queries
+pub struct GRLQueryExecutor;
+
+impl GRLQueryExecutor {
+    /// Execute a single query
+    pub fn execute(
+        query: &GRLQuery,
+        bc_engine: &mut BackwardEngine,
+        facts: &mut Facts,
+    ) -> Result<QueryResult, RuleEngineError> {
+        // Check when condition
+        if !query.should_execute(facts)? {
+            return Ok(QueryResult {
+                provable: false,
+                bindings: HashMap::new(),
+                proof_trace: ProofTrace { goal: String::new(), steps: Vec::new() },
+                missing_facts: Vec::new(),
+                stats: QueryStats::default(),
+            });
+        }
+
+        // Apply config
+        bc_engine.set_config(query.to_config());
+
+        // Parse compound goals (support && and !=)
+        let result = if query.goal.contains("&&") {
+            // Split on && and check all goals
+            Self::execute_compound_and_goal(&query.goal, bc_engine, facts)?
+        } else {
+            // Single goal
+            bc_engine.query(&query.goal, facts)?
+        };
+
+        // Execute appropriate actions
+        if result.provable {
+            query.execute_success_actions(facts)?;
+        } else if !result.missing_facts.is_empty() {
+            query.execute_missing_actions(facts)?;
+        } else {
+            query.execute_failure_actions(facts)?;
+        }
+
+        Ok(result)
+    }
+
+    /// Execute compound AND goal (all must be true)
+    fn execute_compound_and_goal(
+        goal_expr: &str,
+        bc_engine: &mut BackwardEngine,
+        facts: &mut Facts,
+    ) -> Result<QueryResult, RuleEngineError> {
+        let sub_goals: Vec<&str> = goal_expr.split("&&").map(|s| s.trim()).collect();
+        
+        let mut all_provable = true;
+        let mut combined_bindings = HashMap::new();
+        let mut all_missing = Vec::new();
+        let mut combined_stats = QueryStats::default();
+        
+        for (i, sub_goal) in sub_goals.iter().enumerate() {
+            // Handle != by using expression parser directly
+            let goal_satisfied = if sub_goal.contains("!=") {
+                // Parse and evaluate the expression directly
+                use crate::backward::expression::ExpressionParser;
+
+                match ExpressionParser::parse(sub_goal) {
+                    Ok(expr) => expr.is_satisfied(facts),
+                    Err(_) => false,
+                }
+            } else {
+                // Normal == comparison, use backward chaining
+                let result = bc_engine.query(sub_goal, facts)?;
+                result.provable
+            };
+
+            if !goal_satisfied {
+                all_provable = false;
+            }
+
+            // Note: For compound goals with !=, we don't track missing facts well yet
+            // This is a simplification for now
+        }
+        
+        Ok(QueryResult {
+            provable: all_provable,
+            bindings: combined_bindings,
+            proof_trace: ProofTrace { 
+                goal: goal_expr.to_string(), 
+                steps: Vec::new() 
+            },
+            missing_facts: all_missing,
+            stats: combined_stats,
+        })
+    }
+
+    /// Execute multiple queries
+    pub fn execute_queries(
+        queries: &[GRLQuery],
+        bc_engine: &mut BackwardEngine,
+        facts: &mut Facts,
+    ) -> Result<Vec<QueryResult>, RuleEngineError> {
+        let mut results = Vec::new();
+
+        for query in queries {
+            let result = Self::execute(query, bc_engine, facts)?;
+            results.push(result);
+        }
+
+        Ok(results)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_simple_query() {
+        let input = r#"
+        query "TestQuery" {
+            goal: User.IsVIP == true
+        }
+        "#;
+
+        let query = GRLQueryParser::parse(input).unwrap();
+        assert_eq!(query.name, "TestQuery");
+        assert_eq!(query.strategy, GRLSearchStrategy::DepthFirst);
+        assert_eq!(query.max_depth, 10);
+    }
+
+    #[test]
+    fn test_parse_query_with_strategy() {
+        let input = r#"
+        query "TestQuery" {
+            goal: User.IsVIP == true
+            strategy: breadth-first
+            max-depth: 5
+        }
+        "#;
+
+        let query = GRLQueryParser::parse(input).unwrap();
+        assert_eq!(query.strategy, GRLSearchStrategy::BreadthFirst);
+        assert_eq!(query.max_depth, 5);
+    }
+
+    #[test]
+    fn test_parse_query_with_actions() {
+        let input = r#"
+        query "TestQuery" {
+            goal: User.IsVIP == true
+            on-success: {
+                User.DiscountRate = 0.2;
+                LogMessage("VIP confirmed");
+            }
+        }
+        "#;
+
+        let query = GRLQueryParser::parse(input).unwrap();
+        assert!(query.on_success.is_some());
+        
+        let action = query.on_success.unwrap();
+        assert_eq!(action.assignments.len(), 1);
+        assert_eq!(action.calls.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_query_with_when_condition() {
+        let input = r#"
+        query "TestQuery" {
+            goal: User.IsVIP == true
+            when: Environment.Mode == "Production"
+        }
+        "#;
+
+        let query = GRLQueryParser::parse(input).unwrap();
+        assert!(query.when_condition.is_some());
+    }
+
+    #[test]
+    fn test_parse_multiple_queries() {
+        let input = r#"
+        query "Query1" {
+            goal: A == true
+        }
+        
+        query "Query2" {
+            goal: B == true
+            strategy: breadth-first
+        }
+        "#;
+
+        let queries = GRLQueryParser::parse_queries(input).unwrap();
+        assert_eq!(queries.len(), 2);
+        assert_eq!(queries[0].name, "Query1");
+        assert_eq!(queries[1].name, "Query2");
+    }
+
+    #[test]
+    fn test_query_config_conversion() {
+        let query = GRLQuery::new(
+            "Test".to_string(),
+            "X == true".to_string(),
+        )
+        .with_strategy(GRLSearchStrategy::BreadthFirst)
+        .with_max_depth(15)
+        .with_memoization(false);
+
+        let config = query.to_config();
+        assert_eq!(config.max_depth, 15);
+        assert_eq!(config.enable_memoization, false);
+    }
+
+    #[test]
+    fn test_action_execution() {
+        let mut facts = Facts::new();
+
+        let mut action = QueryAction::new();
+        action.assignments.push((
+            "User.DiscountRate".to_string(),
+            "0.2".to_string(),
+        ));
+
+        action.execute(&mut facts).unwrap();
+
+        // Check that assignment was executed
+        let value = facts.get("User.DiscountRate");
+        assert!(value.is_some());
+    }
+}
