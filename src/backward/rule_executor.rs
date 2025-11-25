@@ -178,7 +178,20 @@ impl RuleExecutor {
                 } else if let Ok(i) = expr.parse::<i64>() {
                     Ok(Value::Integer(i))
                 } else {
-                    Ok(value.clone())
+                    // Try to parse as literal using simple parsing
+                    if expr == "true" {
+                        Ok(Value::Boolean(true))
+                    } else if expr == "false" {
+                        Ok(Value::Boolean(false))
+                    } else if expr == "null" {
+                        Ok(Value::Null)
+                    } else if let Ok(n) = expr.parse::<f64>() {
+                        Ok(Value::Number(n))
+                    } else if let Ok(i) = expr.parse::<i64>() {
+                        Ok(Value::Integer(i))
+                    } else {
+                        Ok(value.clone())
+                    }
                 }
             }
             _ => Ok(value.clone()),
