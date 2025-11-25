@@ -1,0 +1,128 @@
+// =============================================================================
+// PURCHASING FLOW BACKWARD CHAINING QUERIES
+// =============================================================================
+// Queries to answer key business questions about purchasing decisions
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// MAIN QUERY: Should Create Purchase Order?
+// -----------------------------------------------------------------------------
+
+query "ShouldCreatePO" {
+    goal: should_create_po == true && po_status != "blocked"
+    strategy: depth-first
+    max-depth: 15
+    
+    on-success: {
+        LogMessage("✅ Purchase order should be created");
+        LogMessage("   PO Status: " + po_status);
+        LogMessage("   Order Qty: " + order_qty);
+        LogMessage("   Grand Total: $" + grand_total);
+    }
+    
+    on-failure: {
+        LogMessage("❌ Cannot create purchase order");
+        LogMessage("   Check: reorder needed, approval status, order quantity");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// QUERY: Is Reorder Needed?
+// -----------------------------------------------------------------------------
+
+query "IsReorderNeeded" {
+    goal: need_reorder == true
+    strategy: depth-first
+    max-depth: 10
+    
+    on-success: {
+        LogMessage("🔄 Reorder is needed");
+        LogMessage("   Shortage: " + shortage);
+        LogMessage("   Order Qty: " + order_qty);
+    }
+    
+    on-failure: {
+        LogMessage("✅ No reorder needed - inventory sufficient");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// QUERY: Is Order Approved?
+// -----------------------------------------------------------------------------
+
+query "IsOrderApproved" {
+    goal: approval_status == "auto_approved"
+    strategy: depth-first
+    max-depth: 10
+    
+    on-success: {
+        LogMessage("✅ Order is auto-approved");
+        LogMessage("   Total Amount: $" + total_amount);
+        LogMessage("   Can proceed with PO creation");
+    }
+    
+    on-failure: {
+        LogMessage("⏳ Order requires manual approval");
+        LogMessage("   Reason: High value order (>$10,000)");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// QUERY: Should Send PO to Supplier?
+// -----------------------------------------------------------------------------
+
+query "ShouldSendPO" {
+    goal: should_send_po == true && send_method == "email"
+    strategy: depth-first
+    max-depth: 12
+    
+    on-success: {
+        LogMessage("📧 PO ready to send to supplier");
+        LogMessage("   Method: " + send_method);
+        LogMessage("   Order approved and verified");
+    }
+    
+    on-failure: {
+        LogMessage("⏸️ Cannot send PO yet");
+        LogMessage("   Check approval status and reorder flag");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// QUERY: Is Supplier Valid?
+// -----------------------------------------------------------------------------
+
+query "IsSupplierValid" {
+    goal: is_active == true && supplier_error != "Supplier is not active"
+    strategy: depth-first
+    max-depth: 5
+    
+    on-success: {
+        LogMessage("✅ Supplier is active and valid");
+    }
+    
+    on-failure: {
+        LogMessage("❌ Supplier validation failed");
+        LogMessage("   Error: " + supplier_error);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// QUERY: Qualifies for Bulk Discount?
+// -----------------------------------------------------------------------------
+
+query "QualifiesForDiscount" {
+    goal: discount_amount > 0
+    strategy: depth-first
+    max-depth: 12
+    
+    on-success: {
+        LogMessage("🎉 Qualifies for bulk discount!");
+        LogMessage("   Discount: $" + discount_amount);
+        LogMessage("   Final Amount: $" + final_amount);
+    }
+    
+    on-failure: {
+        LogMessage("💵 No discount - order below $50,000 threshold");
+    }
+}

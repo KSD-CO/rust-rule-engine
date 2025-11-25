@@ -24,6 +24,29 @@ Backward chaining queries for order approval:
 
 **Used by:** `examples/09-backward-chaining/ecommerce_approval_demo.rs`
 
+### purchasing_flow.grl
+Business rules for purchasing and reorder system:
+- Inventory shortage calculation
+- Supplier validation (active/inactive)
+- Order quantity logic (MOQ handling)
+- Pricing and tax calculation
+- Approval rules (high-value orders)
+- Bulk discount application
+- Purchase order creation logic
+
+**Used by:** `examples/09-backward-chaining/purchasing_flow_demo.rs`
+
+### purchasing_queries.grl
+Backward chaining queries for purchasing decisions:
+- `ShouldCreatePO` - Should a purchase order be created?
+- `IsReorderNeeded` - Is reorder needed based on inventory?
+- `IsOrderApproved` - Is the order auto-approved?
+- `ShouldSendPO` - Should PO be sent to supplier?
+- `IsSupplierValid` - Is supplier active and valid?
+- `QualifiesForDiscount` - Does order qualify for bulk discount?
+
+**Used by:** `examples/09-backward-chaining/purchasing_flow_demo.rs`
+
 ## Usage
 
 These rule files are loaded by the backward chaining examples:

@@ -131,3 +131,8 @@ required-features = ["backward-chaining"]
 name = "ecommerce_approval_demo"
 path = "examples/09-backward-chaining/ecommerce_approval_demo.rs"
 required-features = ["backward-chaining"]
+
+[[example]]
+name = "purchasing_flow_demo"
+path = "examples/09-backward-chaining/purchasing_flow_demo.rs"
+required-features = ["backward-chaining"]
