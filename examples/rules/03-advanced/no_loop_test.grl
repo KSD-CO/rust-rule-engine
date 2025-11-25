@@ -1,0 +1,24 @@
+rule SafeScoreIncrementer "Safely increment score without infinite loop" salience 100 no-loop {
+    when
+        player: Player(score < 100)
+    then
+        player.score = player.score + 10;
+        Log("SafeScoreIncrementer fired - incremented score");
+}
+
+rule BonusApplier "Apply bonus points with no-loop protection" salience 90 no-loop {
+    when
+        player: Player(hasBonus == true, bonusApplied == false)
+    then
+        player.score = player.score + 50;
+        player.bonusApplied = true;
+        Log("BonusApplier fired - added 50 bonus points");
+}
+
+rule ScoreIncrementer "Increment score without no-loop (dangerous)" salience 80 {
+    when
+        player: Player(score < 50, dangerousMode == true)
+    then
+        player.score = player.score + 5;
+        Log("ScoreIncrementer fired - score is now updated");
+}

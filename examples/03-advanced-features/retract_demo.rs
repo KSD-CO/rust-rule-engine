@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("-------------------------------------");
 
     // Load and parse GRL rules
-    let grl_content = std::fs::read_to_string("examples/rules/retract_demo.grl")?;
+    let grl_content = std::fs::read_to_string("examples/rules/03-advanced/retract_demo.grl")?;
     let rules = GRLParser::parse_rules(&grl_content)?;
 
     let mut kb = KnowledgeBase::new("retract_demo");

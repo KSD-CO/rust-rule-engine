@@ -159,7 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📋 Step 3: Load Business Rules from GRL");
     println!("────────────────────────────────────────");
 
-    let grl_path = "examples/rules/sales_analytics.grl";
+    let grl_path = "examples/rules/04-use-cases/sales_analytics.grl";
     println!("   Loading rules from: {}", grl_path);
 
     let mut kb = KnowledgeBase::new("SalesAnalytics");
