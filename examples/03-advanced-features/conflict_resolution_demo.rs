@@ -241,7 +241,7 @@ fn demo_grl_loading() -> Result<()> {
     let mut engine = IncrementalEngine::new();
 
     // Load rules from GRL file
-    let grl_file = "examples/rules/conflict_resolution_rules.grl";
+    let grl_file = "examples/rules/03-advanced/conflict_resolution_rules.grl";
     println!("   📄 Loading rules from: {}", grl_file);
 
     match GrlReteLoader::load_from_file(grl_file, &mut engine) {

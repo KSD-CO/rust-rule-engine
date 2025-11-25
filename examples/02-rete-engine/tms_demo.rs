@@ -6,7 +6,7 @@
 /// - Multiple justifications
 /// - Dependency tracking
 ///
-/// This demo loads rules from examples/rules/tms_demo.grl
+/// This demo loads rules from examples/rules/03-advanced/tms_demo.grl
 
 use rust_rule_engine::rete::{
     IncrementalEngine, TypedFacts, FactValue, GrlReteLoader,
@@ -17,9 +17,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("========================================\n");
 
     // Load rules from GRL file
-    println!("📁 Loading rules from examples/rules/tms_demo.grl...");
+    println!("📁 Loading rules from examples/rules/03-advanced/tms_demo.grl...");
     let mut engine = IncrementalEngine::new();
-    GrlReteLoader::load_from_file("examples/rules/tms_demo.grl", &mut engine)?;
+    GrlReteLoader::load_from_file("examples/rules/03-advanced/tms_demo.grl", &mut engine)?;
     println!("✅ Rules loaded successfully\n");
 
     // Example 1: Explicit vs Logical Facts
@@ -70,7 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("-------------------------------------------");
     
     let mut engine2 = IncrementalEngine::new();
-    GrlReteLoader::load_from_file("examples/rules/tms_demo.grl", &mut engine2)?;
+    GrlReteLoader::load_from_file("examples/rules/03-advanced/tms_demo.grl", &mut engine2)?;
     
     // Build dependency chain: Order → Discount → Loyalty Points
     let mut order = TypedFacts::new();
@@ -120,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("--------------------------------------");
     
     let mut engine3 = IncrementalEngine::new();
-    GrlReteLoader::load_from_file("examples/rules/tms_demo.grl", &mut engine3)?;
+    GrlReteLoader::load_from_file("examples/rules/03-advanced/tms_demo.grl", &mut engine3)?;
     
     // Two different rules can derive the same fact
     let mut condition1 = TypedFacts::new();
@@ -171,7 +171,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("-----------------------------------------");
     
     let mut engine4 = IncrementalEngine::new();
-    GrlReteLoader::load_from_file("examples/rules/tms_demo.grl", &mut engine4)?;
+    GrlReteLoader::load_from_file("examples/rules/03-advanced/tms_demo.grl", &mut engine4)?;
     
     println!("Creating diamond pattern:");
     println!("         Root");
@@ -231,7 +231,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("-----------------------------");
     
     let mut engine5 = IncrementalEngine::new();
-    GrlReteLoader::load_from_file("examples/rules/tms_demo.grl", &mut engine5)?;
+    GrlReteLoader::load_from_file("examples/rules/03-advanced/tms_demo.grl", &mut engine5)?;
     
     // Add various facts
     for i in 0..5 {

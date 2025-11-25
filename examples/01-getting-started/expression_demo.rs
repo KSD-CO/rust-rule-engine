@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================\n");
 
     // Load and parse GRL rules
-    let grl_content = std::fs::read_to_string("examples/rules/expression_demo.grl")?;
+    let grl_content = std::fs::read_to_string("examples/rules/01-basic/expression_demo.grl")?;
     let rules = GRLParser::parse_rules(&grl_content)?;
 
     let mut kb = KnowledgeBase::new("expression_demo");

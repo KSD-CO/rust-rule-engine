@@ -1,4 +1,4 @@
-# Rust Rule Engine v0.19.0 🦀⚡
+# Rust Rule Engine v0.19.1 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -8,6 +8,16 @@
 A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
+
+---
+
+## ✨ What's New in v0.19.1
+
+🐛 **Bug Fixes & Improvements**
+
+- **Fixed**: GRL parser attribute matching for `no-loop` and `lock-on-active` keywords
+- **Updated**: Example files now use reorganized GRL file paths structure
+- **Added**: Missing test files for examples
 
 ---
 

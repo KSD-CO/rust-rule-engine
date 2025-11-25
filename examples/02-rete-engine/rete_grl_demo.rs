@@ -20,7 +20,7 @@ fn main() {
     let mut engine = IncrementalEngine::new();
 
     // Load rules from file
-    let grl_file = "examples/rules/simple_business_rules.grl";
+    let grl_file = "examples/rules/01-basic/simple_business_rules.grl";
     match GrlReteLoader::load_from_file(grl_file, &mut engine) {
         Ok(count) => {
             println!("✅ Loaded {} rules from {}", count, grl_file);

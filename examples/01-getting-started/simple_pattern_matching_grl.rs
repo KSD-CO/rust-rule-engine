@@ -11,8 +11,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=========================================");
 
     // Read simple GRL file
-    let grl_content = fs::read_to_string("examples/rules/simple_patterns.grl")?;
-    println!("📄 Reading rules from: examples/rules/simple_patterns.grl");
+    let grl_content = fs::read_to_string("examples/rules/01-basic/simple_patterns.grl")?;
+    println!("📄 Reading rules from: examples/rules/01-basic/simple_patterns.grl");
 
     // Parse rules from GRL
     let rules = GRLParser::parse_rules(&grl_content)?;

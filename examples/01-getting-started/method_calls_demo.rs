@@ -11,7 +11,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("===================================\n");
 
     // Read rules from file
-    let rule_file_path = "examples/rules/method_calls.grl";
+    let rule_file_path = "examples/rules/01-basic/method_calls.grl";
     println!("📄 Reading rules from file: {}", rule_file_path);
 
     let rule_content = fs::read_to_string(rule_file_path)

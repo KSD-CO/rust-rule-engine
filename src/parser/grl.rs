@@ -226,11 +226,45 @@ impl GRLParser {
     fn parse_rule_attributes(&self, rule_header: &str) -> Result<RuleAttributes> {
         let mut attributes = RuleAttributes::default();
 
-        // Check for simple boolean attributes
-        if rule_header.contains("no-loop") {
+        // Extract the attributes section (after rule name/description, before opening brace)
+        // This ensures we don't match keywords inside description strings
+        // Strategy: Find all quoted strings and remove them, then check for attributes
+        let mut attrs_section = rule_header.to_string();
+        
+        // Remove all quoted strings (descriptions) to avoid false matches
+        let quoted_regex = Regex::new(r#""[^"]*""#).map_err(|e| RuleEngineError::ParseError {
+            message: format!("Invalid quoted string regex: {}", e),
+        })?;
+        attrs_section = quoted_regex.replace_all(&attrs_section, "").to_string();
+        
+        // Also remove the "rule" keyword and rule name (if unquoted)
+        if let Some(rule_pos) = attrs_section.find("rule") {
+            // Find the next space or attribute keyword after "rule"
+            let after_rule = &attrs_section[rule_pos + 4..];
+            if let Some(first_keyword) = after_rule.find("salience")
+                .or_else(|| after_rule.find("no-loop"))
+                .or_else(|| after_rule.find("lock-on-active"))
+                .or_else(|| after_rule.find("agenda-group"))
+                .or_else(|| after_rule.find("activation-group"))
+                .or_else(|| after_rule.find("date-effective"))
+                .or_else(|| after_rule.find("date-expires"))
+            {
+                attrs_section = after_rule[first_keyword..].to_string();
+            }
+        }
+        
+        // Now check for boolean attributes using word boundaries
+        let no_loop_regex = Regex::new(r"\bno-loop\b").map_err(|e| RuleEngineError::ParseError {
+            message: format!("Invalid no-loop regex: {}", e),
+        })?;
+        let lock_on_active_regex = Regex::new(r"\block-on-active\b").map_err(|e| RuleEngineError::ParseError {
+            message: format!("Invalid lock-on-active regex: {}", e),
+        })?;
+        
+        if no_loop_regex.is_match(&attrs_section) {
             attributes.no_loop = true;
         }
-        if rule_header.contains("lock-on-active") {
+        if lock_on_active_regex.is_match(&attrs_section) {
             attributes.lock_on_active = true;
         }
 

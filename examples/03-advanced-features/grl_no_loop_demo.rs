@@ -26,7 +26,7 @@ fn test_grl_no_loop_parsing() -> Result<()> {
     println!("📋 Testing GRL No-Loop Parsing");
     println!("-------------------------------");
 
-    let grl_content = std::fs::read_to_string("examples/rules/no_loop_test.grl")
+    let grl_content = std::fs::read_to_string("examples/rules/03-advanced/no_loop_test.grl")
         .expect("Failed to read no_loop_test.grl");
 
     let rules = GRLParser::parse_rules(&grl_content)?;
@@ -82,7 +82,7 @@ fn test_no_loop_execution() -> Result<()> {
         ..Default::default()
     };
     let kb = KnowledgeBase::new("NoLoopTest");
-    let grl_content = std::fs::read_to_string("examples/rules/no_loop_test.grl")
+    let grl_content = std::fs::read_to_string("examples/rules/03-advanced/no_loop_test.grl")
         .expect("Failed to read no_loop_test.grl");
     let rules = GRLParser::parse_rules(&grl_content)?;
     for rule in rules {

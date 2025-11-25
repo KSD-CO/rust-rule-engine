@@ -78,8 +78,8 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // 📄 Load rules from GRL file
     println!("\n📄 Loading Rules from GRL File...");
-    let grl_content = std::fs::read_to_string("examples/rules/action_handlers.grl")?;
-    println!("   File: examples/rules/action_handlers.grl");
+    let grl_content = std::fs::read_to_string("examples/rules/03-advanced/action_handlers.grl")?;
+    println!("   File: examples/rules/03-advanced/action_handlers.grl");
     println!("   Size: {} bytes", grl_content.len());
 
     // Parse rules from GRL
