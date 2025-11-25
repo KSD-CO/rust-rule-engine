@@ -1,13 +1,38 @@
-# Rust Rule Engine v0.18.1 🦀⚡
+# Rust Rule Engine v0.19.0 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with good Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
+
+---
+
+## ✨ What's New in v0.19.0
+
+🚀 **Parallel Rule Engine - Production Ready!** - Multi-threaded execution with full feature parity!
+
+- **🎯 Full Feature Support** - ALL advanced features now work in parallel mode:
+  - ✅ Custom function calls (thread-safe with Arc/RwLock)
+  - ✅ Pattern matching (exists/forall via PatternMatcher)
+  - ✅ Accumulate operations (sum/avg/min/max/count/collect)
+  - ✅ MultiField operations (all 7 operations)
+  - ✅ Expression evaluation with variable resolution
+  - ✅ Nested field access
+  - ✅ AND/OR/NOT compound conditions
+- **🔄 Smart Parallelization** - Auto-detects when to parallelize based on rule count
+- **📊 Benchmarked** - Extensively tested with simple & complex conditions
+- **🎯 Zero Limitations** - No restrictions on rule complexity or features
+- **🔒 Thread-Safe** - Proper synchronization with Arc/Mutex/RwLock
+- **📈 Linear Scaling** - Performance improves with more CPU cores
+
+**When to Use Each Engine:**
+- **Native Engine**: Simple rules, low latency requirements, single-threaded environments
+- **Parallel Engine**: High-throughput, many rules (100+), multi-core systems, batch processing
+- **RETE Engine**: Incremental updates, fact changes, complex pattern matching, state tracking
 
 ---
 
