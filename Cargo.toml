@@ -1,9 +1,9 @@
 [package]
 name = "rust-rule-engine"
-version = "1.0.4"
+version = "1.1.0"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
-description = "A high-performance rule engine for Rust with RETE-UL algorithm (2-24x faster), CLIPS-inspired features (Template System, Defglobal, Deffacts, Test CE, Conflict Resolution), Parallel Execution, Backward Chaining (Production Ready)"
+description = "A high-performance rule engine for Rust with RETE-UL algorithm (2-24x faster), CLIPS-inspired features, Parallel Execution, and Production-Ready Backward Chaining with 100-1000x speedup via O(1) Conclusion Index"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/KSD-CO/rust-rule-engine"
@@ -66,6 +66,11 @@ harness = false
 [[bench]]
 name = "rete_comparison_benchmarks"
 harness = false
+
+[[bench]]
+name = "backward_chaining_benchmarks"
+harness = false
+required-features = ["backward-chaining"]
 
 # Optional benchmarks (can run manually if needed)
 # [[bench]]
