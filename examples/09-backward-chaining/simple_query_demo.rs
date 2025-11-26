@@ -60,20 +60,15 @@ fn demo_basic_query() -> Result<(), Box<dyn std::error::Error>> {
     // Create backward chaining engine
     let mut bc_engine = BackwardEngine::new(kb);
 
-    // Create facts
-    let facts = Facts::new();
-    facts.set("User", Value::Object({
-        let mut user = HashMap::new();
-        user.insert("SpendingTotal".to_string(), Value::Number(1500.0));
-        user.insert("Score".to_string(), Value::Number(0.0));
-        user.insert("IsVIP".to_string(), Value::Boolean(false));
-        user
-    }));
+    // Create facts (use flat structure to match rule actions)
+    // Don't set User.Score or User.IsVIP initially - let backward chaining derive them
+    let mut facts = Facts::new();
+    facts.set("User.SpendingTotal", Value::Number(1500.0));
 
     println!("\n💾 Initial Facts:");
-    if let Some(user) = facts.get("User") {
-        println!("   User: {:?}", user);
-    }
+    println!("   User.SpendingTotal: {:?}", facts.get("User.SpendingTotal"));
+    println!("   User.Score: {:?}", facts.get("User.Score"));
+    println!("   User.IsVIP: {:?}", facts.get("User.IsVIP"));
 
     // Query: Can we prove User.IsVIP == true?
     println!("\n🔍 Query: Can 'User.IsVIP == true' be proven?");
@@ -118,7 +113,7 @@ fn demo_proof_trace() -> Result<(), Box<dyn std::error::Error>> {
     kb.add_rules_from_grl(rules)?;
 
     let mut bc_engine = BackwardEngine::new(kb);
-    let facts = Facts::new();
+    let mut facts = Facts::new();
 
     println!("🔍 Query: 'Order.Discount == 0.2'");
     let result = bc_engine.query("Order.Discount == 0.2", &mut facts)?;
@@ -147,8 +142,8 @@ fn demo_missing_facts() -> Result<(), Box<dyn std::error::Error>> {
     kb.add_rules_from_grl(rules)?;
 
     let mut bc_engine = BackwardEngine::new(kb);
-    let facts = Facts::new();
-    
+    let mut facts = Facts::new();
+
     // Only set CreditScore, not Income
     facts.set("Applicant", Value::Object({
         let mut applicant = HashMap::new();
@@ -183,7 +178,7 @@ fn demo_memoization() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     let mut bc_engine = BackwardEngine::with_config(kb, config);
-    let facts = Facts::new();
+    let mut facts = Facts::new();
 
     println!("🔍 First query (fresh search):");
     let start = std::time::Instant::now();

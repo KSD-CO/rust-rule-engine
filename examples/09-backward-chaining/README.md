@@ -109,3 +109,50 @@ cargo run --example grl_query_demo --features backward-chaining
 - Forward for continuous monitoring
 - Backward for on-demand queries
 - Best of both worlds
+
+## Testing & Verification
+
+This directory includes comprehensive test suites that verify all backward chaining features:
+
+### **comprehensive_backward_test.rs** - All Features Test
+12 comprehensive tests covering all major features:
+- Basic goal proving, search strategies (DFS, BFS, Iterative)
+- Complex conditions (AND, OR, NOT), multi-level chaining
+- Built-in functions, GRL query syntax, action handlers
+- Memoization, TMS integration, missing facts detection, proof traces
+
+**Run:**
+```bash
+cargo run --example comprehensive_backward_test --features backward-chaining
+```
+
+### **backward_edge_cases_test.rs** - Correctness Tests
+8 critical edge case tests for correctness verification:
+- Rollback on failure, NOT condition evaluation
+- Backtracking, false positive prevention
+- Speculative changes rollback, EXISTS/FORALL conditions
+- Nested rollback
+
+**Run:**
+```bash
+cargo run --example backward_edge_cases_test --features backward-chaining
+```
+
+### **backward_critical_missing_tests.rs** - Critical Tests
+10 previously untested critical cases:
+- OR edge cases, cycle detection, max depth limit
+- Complex nested conditions, string operators
+- Function edge cases, action types, diamond dependency
+- Empty knowledge base, large rule chains
+
+**Run:**
+```bash
+cargo run --example backward_critical_missing_tests --features backward-chaining
+```
+
+### Test Coverage Summary
+See **[BACKWARD_CHAINING_TEST_SUMMARY.md](BACKWARD_CHAINING_TEST_SUMMARY.md)** for complete test coverage analysis:
+- 109 total tests (73 unit + 5 doc + 1 integration + 30 example)
+- 95% feature coverage
+- All critical bugs documented and fixed
+- Production readiness assessment

@@ -101,7 +101,7 @@ fn test_no_loop_execution() -> Result<()> {
     for rule in &rules {
         let test_facts_list = rust_rule_engine::engine::coverage::generate_test_facts_for_rule(rule);
         for (i, facts) in test_facts_list.iter().enumerate() {
-            let _ = engine.execute_with_callback(facts, |rule_name, _facts_id| {
+            let _ = engine.execute_with_callback(facts, |rule_name, _facts: &rust_rule_engine::Facts| {
                 coverage.record_hit(rule_name, &format!("{}_{}_auto", rule_name, i));
             });
             total_run += 1;

@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.0.2-alpha"
+version = "1.0.3-beta"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A high-performance rule engine for Rust with RETE-UL algorithm (2-24x faster), CLIPS-inspired features (Template System, Defglobal, Deffacts, Test CE, Conflict Resolution), Parallel Execution"
@@ -160,4 +160,20 @@ required-features = ["backward-chaining"]
 [[example]]
 name = "product_recommendation_demo"
 path = "examples/09-backward-chaining/product_recommendation_demo.rs"
+required-features = ["backward-chaining"]
+
+# Backward chaining test suites
+[[example]]
+name = "comprehensive_backward_test"
+path = "examples/09-backward-chaining/comprehensive_backward_test.rs"
+required-features = ["backward-chaining"]
+
+[[example]]
+name = "backward_edge_cases_test"
+path = "examples/09-backward-chaining/backward_edge_cases_test.rs"
+required-features = ["backward-chaining"]
+
+[[example]]
+name = "backward_critical_missing_tests"
+path = "examples/09-backward-chaining/backward_critical_missing_tests.rs"
 required-features = ["backward-chaining"]

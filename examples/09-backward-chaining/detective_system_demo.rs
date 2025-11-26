@@ -102,7 +102,7 @@ fn demo_murder_mystery() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Status: Under investigation");
 
     // Evidence collected
-    let facts = Facts::new();
+    let mut facts = Facts::new();
     facts.set("Suspect", Value::Object({
         let mut suspect = HashMap::new();
         suspect.insert("InheritsMoney".to_string(), Value::Boolean(true));
@@ -224,7 +224,7 @@ fn demo_alibi_checking() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Claim: 'I was at Giovanni's Restaurant'");
     println!("   Time: 10:00 PM - 11:30 PM");
 
-    let facts = Facts::new();
+    let mut facts = Facts::new();
     facts.set("Witness", Value::Object({
         let mut witness = HashMap::new();
         witness.insert("Count".to_string(), Value::Number(3.0));
@@ -315,7 +315,7 @@ fn demo_motive_analysis() -> Result<(), Box<dyn std::error::Error>> {
 
     // Suspect 1: Financial
     println!("👤 SUSPECT 1: Business Partner");
-    let facts1 = Facts::new();
+    let mut facts1 = Facts::new();
     facts1.set("Suspect", Value::Object({
         let mut s = HashMap::new();
         s.insert("BenefitsFinancially".to_string(), Value::Boolean(true));
@@ -329,7 +329,7 @@ fn demo_motive_analysis() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     let mut bc1 = BackwardEngine::new(kb.clone());
-    let r1 = bc1.query("Motive.Type == 'Financial'", &facts1)?;
+    let r1 = bc1.query("Motive.Type == 'Financial'", &mut facts1)?;
     
     if r1.provable {
         println!("   ✓ Motive: FINANCIAL (Strong)");
@@ -338,7 +338,7 @@ fn demo_motive_analysis() -> Result<(), Box<dyn std::error::Error>> {
 
     // Suspect 2: Revenge
     println!("\n👤 SUSPECT 2: Ex-Employee");
-    let facts2 = Facts::new();
+    let mut facts2 = Facts::new();
     facts2.set("Relationship", Value::Object({
         let mut r = HashMap::new();
         r.insert("History".to_string(), Value::String("Conflict".to_string()));
@@ -351,7 +351,7 @@ fn demo_motive_analysis() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     let mut bc2 = BackwardEngine::new(kb.clone());
-    let r2 = bc2.query("Motive.Type == 'Revenge'", &facts2)?;
+    let r2 = bc2.query("Motive.Type == 'Revenge'", &mut facts2)?;
     
     if r2.provable {
         println!("   ✓ Motive: REVENGE (Strong)");
@@ -360,7 +360,7 @@ fn demo_motive_analysis() -> Result<(), Box<dyn std::error::Error>> {
 
     // Suspect 3: Jealousy
     println!("\n👤 SUSPECT 3: Romantic Rival");
-    let facts3 = Facts::new();
+    let mut facts3 = Facts::new();
     facts3.set("Relationship", Value::Object({
         let mut r = HashMap::new();
         r.insert("Type".to_string(), Value::String("Love Triangle".to_string()));
@@ -373,7 +373,7 @@ fn demo_motive_analysis() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     let mut bc3 = BackwardEngine::new(kb);
-    let r3 = bc3.query("Motive.Type == 'Passion'", &facts3)?;
+    let r3 = bc3.query("Motive.Type == 'Passion'", &mut facts3)?;
     
     if r3.provable {
         println!("   ✓ Motive: PASSION/JEALOUSY (Moderate)");
@@ -437,20 +437,13 @@ fn demo_sherlock_mode() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔬 INITIAL OBSERVATION:");
     println!("   'The suspect has reddish mud on their boots...'");
 
-    let facts = Facts::new();
+    let mut facts = Facts::new();
     facts.set("Physical", Value::Object({
         let mut p = HashMap::new();
         p.insert("BootsWorn".to_string(), Value::Boolean(true));
         p.insert("MudColor".to_string(), Value::String("Reddish".to_string()));
         p
     }));
-    
-    facts.set("Lab", Value::Object({
-        let mut l = HashMap::new();
-        l.insert("MudComposition".to_string(), Value::String("Red Clay with Iron Oxide".to_string()));
-        l
-    }));
-
     let config = BackwardConfig {
         max_depth: 10,
         strategy: SearchStrategy::DepthFirst,

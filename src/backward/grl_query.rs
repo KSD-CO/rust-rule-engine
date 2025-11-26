@@ -1,19 +1,87 @@
-/// GRL Query Syntax Implementation
-/// 
-/// Provides parsing and execution of backward chaining queries defined in GRL syntax.
-/// 
-/// # Example
-/// ```grl
-/// query "CheckVIPStatus" {
-///     goal: User.IsVIP == true
-///     strategy: depth-first
-///     max-depth: 10
-///     on-success: {
-///         User.DiscountRate = 0.2;
-///         LogMessage("VIP confirmed");
-///     }
-/// }
-/// ```
+//! GRL Query Syntax Implementation
+//!
+//! This module provides parsing and execution of backward chaining queries defined in GRL
+//! (Goal-driven Rule Language) syntax. GRL queries allow you to define goal-driven reasoning
+//! tasks with configurable search strategies and action handlers.
+//!
+//! # Features
+//!
+//! - **Declarative query syntax** - Define queries in a readable, structured format
+//! - **Multiple search strategies** - Choose between depth-first, breadth-first, or iterative deepening
+//! - **Action handlers** - Execute actions on query success, failure, or missing facts
+//! - **Conditional execution** - Use `when` clauses to conditionally execute queries
+//! - **Parameterized queries** - Support for query parameters (future enhancement)
+//!
+//! # GRL Query Syntax
+//!
+//! ```grl
+//! query "QueryName" {
+//!     goal: <expression>                    // Required: Goal to prove
+//!     strategy: <depth-first|breadth-first|iterative>  // Optional: Search strategy
+//!     max-depth: <number>                   // Optional: Maximum search depth
+//!     max-solutions: <number>               // Optional: Maximum solutions to find
+//!     enable-memoization: <true|false>      // Optional: Enable result caching
+//!
+//!     when: <condition>                     // Optional: Only execute if condition is true
+//!
+//!     on-success: {                         // Optional: Actions on successful proof
+//!         <variable> = <value>;
+//!         <FunctionName>(<args>);
+//!     }
+//!
+//!     on-failure: {                         // Optional: Actions on proof failure
+//!         <actions>
+//!     }
+//!
+//!     on-missing: {                         // Optional: Actions when facts are missing
+//!         <actions>
+//!     }
+//! }
+//! ```
+//!
+//! # Example
+//!
+//! ```rust
+//! use rust_rule_engine::backward::grl_query::{GRLQueryParser, GRLQueryExecutor};
+//! use rust_rule_engine::backward::BackwardEngine;
+//! use rust_rule_engine::{KnowledgeBase, Facts, Value};
+//!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let query_str = r#"
+//! query "CheckVIPStatus" {
+//!     goal: User.IsVIP == true
+//!     strategy: depth-first
+//!     max-depth: 10
+//!     on-success: {
+//!         User.DiscountRate = 0.2;
+//!         LogMessage("VIP confirmed");
+//!     }
+//!     on-failure: {
+//!         LogMessage("Not a VIP user");
+//!     }
+//! }
+//! "#;
+//!
+//! let query = GRLQueryParser::parse(query_str)?;
+//! let mut bc_engine = BackwardEngine::new(KnowledgeBase::new("kb"));
+//! let mut facts = Facts::new();
+//! facts.set("User.LoyaltyPoints", Value::Number(1500.0));
+//!
+//! let result = GRLQueryExecutor::execute(&query, &mut bc_engine, &mut facts)?;
+//!
+//! if result.provable {
+//!     println!("Goal proven!");
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Supported Functions in Actions
+//!
+//! - `LogMessage(message)` - Print a log message
+//! - `Request(message)` - Send a request message
+//! - `Print(message)` - Print output
+//! - `Debug(message)` - Print debug output to stderr
 
 use crate::errors::RuleEngineError;
 use crate::{Facts, Value};
@@ -74,14 +142,61 @@ impl QueryAction {
             facts.set(var_name, value);
         }
 
-        // Execute function calls (log, etc.)
+        // Execute function calls
         for call in &self.calls {
-            // Simple logging for now
-            if call.starts_with("LogMessage") {
-                println!("[Query Action] {}", call);
-            } else if call.starts_with("Request") {
-                println!("[Query Action] {}", call);
+            self.execute_function_call(call)?;
+        }
+
+        Ok(())
+    }
+
+    /// Execute a single function call
+    fn execute_function_call(&self, call: &str) -> Result<(), RuleEngineError> {
+        let call = call.trim();
+
+        // Parse function name and arguments
+        if let Some(open_paren) = call.find('(') {
+            let func_name = call[..open_paren].trim();
+
+            // Extract arguments (everything between first ( and last ))
+            if let Some(close_paren) = call.rfind(')') {
+                let args_str = &call[open_paren + 1..close_paren];
+
+                match func_name {
+                    "LogMessage" => {
+                        // Parse string argument (remove quotes if present)
+                        let message = args_str.trim().trim_matches('"').trim_matches('\'');
+                        println!("[LOG] {}", message);
+                    }
+                    "Request" => {
+                        // Parse request call
+                        let message = args_str.trim().trim_matches('"').trim_matches('\'');
+                        println!("[REQUEST] {}", message);
+                    }
+                    "Print" => {
+                        // Generic print function
+                        let message = args_str.trim().trim_matches('"').trim_matches('\'');
+                        println!("{}", message);
+                    }
+                    "Debug" => {
+                        // Debug output
+                        let message = args_str.trim().trim_matches('"').trim_matches('\'');
+                        eprintln!("[DEBUG] {}", message);
+                    }
+                    other => {
+                        // Unknown function - log warning but don't fail
+                        eprintln!("[WARNING] Unknown function call in query action: {}({})", other, args_str);
+                    }
+                }
+            } else {
+                return Err(RuleEngineError::ParseError {
+                    message: format!("Malformed function call (missing closing paren): {}", call),
+                });
             }
+        } else {
+            return Err(RuleEngineError::ParseError {
+                message: format!("Malformed function call (missing opening paren): {}", call),
+            });
         }
 
         Ok(())
@@ -199,9 +314,22 @@ impl GRLQuery {
 
     /// Check if query should execute based on when condition
     pub fn should_execute(&self, _facts: &Facts) -> Result<bool, RuleEngineError> {
-        // TODO: Implement condition evaluation
-        // For now, always execute if no condition, or return true if condition exists
-        Ok(true)
+        // If there's no when condition, execute by default
+        if self.when_condition.is_none() {
+            return Ok(true);
+        }
+
+        // Parse and evaluate the when condition expression against the current facts
+        if let Some(ref cond_str) = self.when_condition {
+            use crate::backward::expression::ExpressionParser;
+
+            match ExpressionParser::parse(cond_str) {
+                Ok(expr) => Ok(expr.is_satisfied(_facts)),
+                Err(e) => Err(e),
+            }
+        } else {
+            Ok(true)
+        }
     }
 
     /// Execute success actions
@@ -233,7 +361,7 @@ impl GRLQuery {
         let search_strategy = match self.strategy {
             GRLSearchStrategy::DepthFirst => SearchStrategy::DepthFirst,
             GRLSearchStrategy::BreadthFirst => SearchStrategy::BreadthFirst,
-            GRLSearchStrategy::Iterative => SearchStrategy::DepthFirst, // TODO: implement iterative
+            GRLSearchStrategy::Iterative => SearchStrategy::Iterative,
         };
 
         BackwardConfig {
@@ -259,7 +387,7 @@ impl GRLQueryParser {
     ///     strategy: depth-first
     /// }
     /// "#;
-    /// let query = GRLQueryParser::parse(query_str)?;
+    /// let query = rust_rule_engine::backward::GRLQueryParser::parse(query_str).unwrap();
     /// ```
     pub fn parse(input: &str) -> Result<GRLQuery, RuleEngineError> {
         let input = input.trim();
@@ -697,5 +825,49 @@ mod tests {
         // Check that assignment was executed
         let value = facts.get("User.DiscountRate");
         assert!(value.is_some());
+    }
+
+    #[test]
+    fn test_should_execute_no_condition() {
+        let query = GRLQuery::new("Q".to_string(), "X == true".to_string());
+        let facts = Facts::new();
+        // No when condition -> should execute
+        let res = query.should_execute(&facts).unwrap();
+        assert!(res);
+    }
+
+    #[test]
+    fn test_should_execute_condition_true() {
+        let mut facts = Facts::new();
+        facts.set("Environment.Mode", Value::String("Production".to_string()));
+
+        let query = GRLQuery::new("Q".to_string(), "X == true".to_string())
+            .with_when("Environment.Mode == \"Production\"".to_string());
+
+        let res = query.should_execute(&facts).unwrap();
+        assert!(res, "expected when condition to be satisfied");
+    }
+
+    #[test]
+    fn test_should_execute_condition_false() {
+        let mut facts = Facts::new();
+        facts.set("Environment.Mode", Value::String("Development".to_string()));
+
+        let query = GRLQuery::new("Q".to_string(), "X == true".to_string())
+            .with_when("Environment.Mode == \"Production\"".to_string());
+
+        let res = query.should_execute(&facts).unwrap();
+        assert!(!res, "expected when condition to be unsatisfied");
+    }
+
+    #[test]
+    fn test_should_execute_parse_error_propagates() {
+        let facts = Facts::new();
+        // Use an unterminated string literal to force a parse error from the expression parser
+        let query = GRLQuery::new("Q".to_string(), "X == true".to_string())
+            .with_when("Environment.Mode == \"Production".to_string());
+
+        let res = query.should_execute(&facts);
+        assert!(res.is_err(), "expected parse error to propagate");
     }
 }

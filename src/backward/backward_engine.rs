@@ -1,7 +1,7 @@
 //! Backward chaining engine implementation
 
 use super::goal::{Goal, GoalManager, GoalStatus};
-use super::search::{DepthFirstSearch, SearchStrategy, SearchResult};
+use super::search::{DepthFirstSearch, BreadthFirstSearch, IterativeDeepeningSearch, SearchStrategy, SearchResult};
 use super::query::{QueryParser, QueryResult, QueryStats, ProofTrace};
 use crate::{Facts, KnowledgeBase};
 use crate::errors::Result;
@@ -79,6 +79,17 @@ impl BackwardEngine {
     /// }
     /// ```
     pub fn query(&mut self, query_str: &str, facts: &mut Facts) -> Result<QueryResult> {
+        // Backward-compatible: no RETE engine provided
+        self.query_with_rete_engine(query_str, facts, None)
+    }
+
+    /// Query with optional RETE IncrementalEngine for TMS integration
+    pub fn query_with_rete_engine(
+        &mut self,
+        query_str: &str,
+        facts: &mut Facts,
+        rete_engine: Option<std::sync::Arc<std::sync::Mutex<crate::rete::propagation::IncrementalEngine>>>,
+    ) -> Result<QueryResult> {
         // Parse query into goal
         let mut goal = QueryParser::parse(query_str)
             .map_err(|e| crate::errors::RuleEngineError::ParseError { message: e })?;
@@ -101,14 +112,27 @@ impl BackwardEngine {
         // Find candidate rules that can prove this goal
         self.find_candidate_rules(&mut goal)?;
 
-        // Execute search strategy
-        let search_result = self.execute_search(&mut goal, facts)?;
-        
+        // Execute search strategy with optional rete_engine
+        let search_result = match self.config.strategy {
+            SearchStrategy::DepthFirst => {
+                let mut dfs = DepthFirstSearch::new_with_engine(self.config.max_depth, (*self.knowledge_base).clone(), rete_engine.clone());
+                dfs.search_with_execution(&mut goal, facts, &self.knowledge_base)
+            }
+            SearchStrategy::BreadthFirst => {
+                let mut bfs = BreadthFirstSearch::new_with_engine(self.config.max_depth, (*self.knowledge_base).clone(), rete_engine.clone());
+                bfs.search_with_execution(&mut goal, facts, &self.knowledge_base)
+            }
+            SearchStrategy::Iterative => {
+                let mut ids = IterativeDeepeningSearch::new_with_engine(self.config.max_depth, (*self.knowledge_base).clone(), rete_engine.clone());
+                ids.search_with_execution(&mut goal, facts, &self.knowledge_base)
+            }
+        };
+
         // Cache result if enabled
         if self.config.enable_memoization {
             self.goal_manager.cache_result(query_str.to_string(), search_result.success);
         }
-        
+
         // Build query result
         let stats = QueryStats {
             goals_explored: search_result.goals_explored,
@@ -116,7 +140,7 @@ impl BackwardEngine {
             max_depth: search_result.max_depth_reached,
             duration_ms: None,
         };
-        
+
         Ok(if search_result.success {
             QueryResult::success(
                 search_result.bindings,
@@ -134,7 +158,7 @@ impl BackwardEngine {
         // 1. Parse goal pattern
         // 2. Find rules whose conclusions match the goal
         // 3. Add them as candidate rules
-        
+
         // For now, add all rules as candidates
         for rule in self.knowledge_base.get_rules() {
             // Simple check: if rule name or actions might prove this goal
@@ -142,7 +166,7 @@ impl BackwardEngine {
                 goal.add_candidate_rule(rule.name.clone());
             }
         }
-        
+
         Ok(())
     }
     
@@ -150,12 +174,12 @@ impl BackwardEngine {
     fn rule_could_prove_goal(&self, rule: &crate::engine::rule::Rule, goal: &Goal) -> bool {
         // Simple heuristic: check if goal pattern appears in rule actions
         // In a full implementation, this would be more sophisticated
-        
+
         // Check rule name
         if goal.pattern.contains(&rule.name) {
             return true;
         }
-        
+
         // Check actions
         for action in &rule.actions {
             match action {
@@ -172,31 +196,10 @@ impl BackwardEngine {
                 _ => {}
             }
         }
-        
+
         false
     }
-    
-    /// Execute the configured search strategy
-    fn execute_search(&mut self, goal: &mut Goal, facts: &mut Facts) -> Result<SearchResult> {
-        match self.config.strategy {
-            SearchStrategy::DepthFirst => {
-                let mut dfs = DepthFirstSearch::new(self.config.max_depth, (*self.knowledge_base).clone());
-                // Pass KB and facts so search can execute rules
-                Ok(dfs.search_with_execution(goal, facts, &self.knowledge_base))
-            }
-            SearchStrategy::BreadthFirst => {
-                // For now, fall back to DFS
-                let mut dfs = DepthFirstSearch::new(self.config.max_depth, (*self.knowledge_base).clone());
-                Ok(dfs.search_with_execution(goal, facts, &self.knowledge_base))
-            }
-            SearchStrategy::Iterative => {
-                // For now, fall back to DFS
-                let mut dfs = DepthFirstSearch::new(self.config.max_depth, (*self.knowledge_base).clone());
-                Ok(dfs.search_with_execution(goal, facts, &self.knowledge_base))
-            }
-        }
-    }
-    
+
     /// Find what facts are missing to prove a goal
     fn find_missing_facts(&self, goal: &Goal) -> Vec<String> {
         let mut missing = Vec::new();
@@ -280,10 +283,10 @@ mod tests {
     fn test_query_simple() {
         let kb = KnowledgeBase::new("test");
         let mut engine = BackwardEngine::new(kb);
-        let facts = Facts::new();
+        let mut facts = Facts::new();
 
         // This will fail because no rules, but tests the flow
-        let result = engine.query("User.IsVIP == true", &facts);
+        let result = engine.query("User.IsVIP == true", &mut facts);
         assert!(result.is_ok());
     }
 
@@ -316,7 +319,7 @@ mod tests {
         facts.set("User.Name", Value::String("John".to_string()));
 
         // Query if User.HasLongName == true
-        let result = engine.query("User.HasLongName == true", &facts);
+        let result = engine.query("User.HasLongName == true", &mut facts);
         assert!(result.is_ok());
         let query_result = result.unwrap();
 
@@ -352,7 +355,7 @@ mod tests {
         let mut facts = Facts::new();
         facts.set("User.Description", Value::String("A great user".to_string()));
 
-        let result = engine.query("User.HasDescription == true", &facts);
+        let result = engine.query("User.HasDescription == true", &mut facts);
         assert!(result.is_ok());
         let query_result = result.unwrap();
 
@@ -390,7 +393,7 @@ mod tests {
         let mut facts = Facts::new();
         facts.set("User.Email", Value::String("user@example.com".to_string()));
 
-        let result = engine.query("User.HasEmail == true", &facts);
+        let result = engine.query("User.HasEmail == true", &mut facts);
         assert!(result.is_ok());
         let query_result = result.unwrap();
 
@@ -439,7 +442,7 @@ mod tests {
         ]);
         facts.set("User.Orders", orders);
 
-        let result = engine.query("User.IsFrequentBuyer == true", &facts);
+        let result = engine.query("User.IsFrequentBuyer == true", &mut facts);
         assert!(result.is_ok());
         let query_result = result.unwrap();
 
@@ -475,7 +478,7 @@ mod tests {
         facts.set("User.Age", Value::Number(25.0));
 
         // Query will trigger rule execution which should set User.IsAdult
-        let result = engine.query("User.IsAdult == true", &facts);
+        let result = engine.query("User.IsAdult == true", &mut facts);
         assert!(result.is_ok());
         let query_result = result.unwrap();
 
@@ -542,7 +545,7 @@ mod tests {
         // 4. Verify User.LoyaltyPoints > 100 (satisfied)
         // 5. Execute rule1 action -> sets User.IsVIP = true
         // 6. Now rule2 conditions satisfied -> sets Order.AutoApproved = true
-        let result = engine.query("Order.AutoApproved == true", &facts);
+        let result = engine.query("Order.AutoApproved == true", &mut facts);
         assert!(result.is_ok());
         let query_result = result.unwrap();
 
@@ -581,7 +584,7 @@ mod tests {
         let mut facts = Facts::new();
         facts.set("User.Score", Value::Number(95.0));
 
-        let result = engine.query("User.HasHighScore == true", &facts);
+        let result = engine.query("User.HasHighScore == true", &mut facts);
         assert!(result.is_ok());
         let query_result = result.unwrap();
 

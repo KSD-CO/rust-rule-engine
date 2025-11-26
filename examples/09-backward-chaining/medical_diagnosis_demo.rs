@@ -78,7 +78,7 @@ fn demo_simple_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Patient observations (lab results and symptoms)
-    let facts = Facts::new();
+    let mut facts = Facts::new();
     facts.set("Patient", Value::Object({
         let mut patient = HashMap::new();
         patient.insert("WhiteBloodCellCount".to_string(), Value::Number(12500.0));
@@ -98,10 +98,10 @@ fn demo_simple_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     let mut bc_engine = BackwardEngine::new(kb);
 
     // Query: Does patient have Influenza?
-    println!("\n🔍 Query: Can we diagnose 'Influenza'?");
-    println!("   (Checking if Diagnosis.Disease == 'Influenza')");
+    println!("\n🔍 Query: Can we diagnose \"Influenza\"?");
+    println!("   (Checking if Diagnosis.Disease == \"Influenza\")");
     
-    let result = bc_engine.query("Diagnosis.Disease == 'Influenza'", &mut facts)?;
+    let result = bc_engine.query(r#"Diagnosis.Disease == "Influenza""#, &mut facts)?;
 
     if result.provable {
         println!("\n✅ DIAGNOSIS CONFIRMED: Influenza");
@@ -167,7 +167,7 @@ fn demo_complex_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     
     kb.add_rules_from_grl(rules)?;
 
-    let facts = Facts::new();
+    let mut facts = Facts::new();
     facts.set("Patient", Value::Object({
         let mut patient = HashMap::new();
         patient.insert("FastingHours".to_string(), Value::Number(10.0));
@@ -188,7 +188,7 @@ fn demo_complex_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
 
     // Query for Metabolic Syndrome
     println!("\n🔍 Query: Does patient have Metabolic Syndrome?");
-    let result = bc_engine.query("Diagnosis.MetabolicSyndrome == true", &mut facts)?;
+    let result = bc_engine.query(r#"Diagnosis.MetabolicSyndrome == true"#, &mut facts)?;
 
     if result.provable {
         println!("\n⚠️  CRITICAL DIAGNOSIS: Metabolic Syndrome Detected");
@@ -268,7 +268,7 @@ fn demo_differential_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n📋 SCENARIO 1: Emergency Case");
     println!("------------------------------");
     
-    let facts1 = Facts::new();
+    let mut facts1 = Facts::new();
     facts1.set("Symptoms", Value::Object({
         let mut symptoms = HashMap::new();
         symptoms.insert("ChestPain".to_string(), Value::String("Crushing".to_string()));
@@ -282,7 +282,7 @@ fn demo_differential_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     let mut bc_engine = BackwardEngine::new(kb.clone());
-    let result = bc_engine.query("Diagnosis.Critical == 'Myocardial Infarction'", &facts1)?;
+    let result = bc_engine.query(r#"Diagnosis.Critical == "Myocardial Infarction""#, &mut facts1)?;
 
     if result.provable {
         println!("🚨 CRITICAL: Myocardial Infarction (Heart Attack)");
@@ -295,7 +295,7 @@ fn demo_differential_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n\n📋 SCENARIO 2: Non-Emergency Case");
     println!("----------------------------------");
     
-    let facts2 = Facts::new();
+    let mut facts2 = Facts::new();
     facts2.set("Symptoms", Value::Object({
         let mut symptoms = HashMap::new();
         symptoms.insert("ChestPain".to_string(), Value::String("Burning".to_string()));
@@ -309,7 +309,7 @@ fn demo_differential_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     let mut bc_engine2 = BackwardEngine::new(kb);
-    let result2 = bc_engine2.query("Diagnosis.Condition == 'GERD'", &facts2)?;
+    let result2 = bc_engine2.query(r#"Diagnosis.Condition == "GERD""#, &mut facts2)?;
 
     if result2.provable {
         println!("✅ DIAGNOSIS: GERD (Gastroesophageal Reflux Disease)");
@@ -372,7 +372,7 @@ fn demo_explain_reasoning() -> Result<(), Box<dyn std::error::Error>> {
     
     kb.add_rules_from_grl(rules)?;
 
-    let facts = Facts::new();
+    let mut facts = Facts::new();
     facts.set("Patient", Value::Object({
         let mut patient = HashMap::new();
         patient.insert("Temperature".to_string(), Value::Number(39.5));
@@ -407,7 +407,7 @@ fn demo_explain_reasoning() -> Result<(), Box<dyn std::error::Error>> {
     let mut bc_engine = BackwardEngine::with_config(kb, config);
 
     println!("\n🔍 Query: Can we diagnose Pneumonia?");
-    let explanation = bc_engine.explain_why("Diagnosis.Disease == 'Pneumonia'", &facts)?;
+    let explanation = bc_engine.explain_why(r#"Diagnosis.Disease == "Pneumonia""#, &mut facts)?;
     
     println!("\n📖 Medical Reasoning Explanation:");
     println!("{}", explanation);

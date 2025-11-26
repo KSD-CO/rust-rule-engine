@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.0.2-alpha 🦀⚡
+# Rust Rule Engine v1.0.3-beta 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,28 +11,77 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel E
 
 ---
 
-## ✨ What's New in v1.0.2-alpha
+## ✨ What's New in v1.0.3-beta
 
-🚀 **Backward Chaining NOW WORKS!** - Recursive sub-goal proving implemented! ⚠️ **ALPHA VERSION**
+🚀 **Backward Chaining - Production Ready (BETA)**
 
-### Major Improvements:
-- **✅ Recursive Sub-Goal Proving** - Full backward chaining with automatic sub-goal creation
-- **✅ Rule Execution During Search** - Rules execute and derive facts during backward reasoning
-- **✅ Chain Reasoning** - Multi-level inference chains work correctly
-- **✅ Arithmetic Expressions** - Support for +, -, *, / in rule actions
-- **✅ Compound Conditions** - Full AND, OR, NOT logic support
-- **📊 Real Results** - 69-185 goals explored (vs 1 before), facts derived correctly
+This release marks a major milestone: **backward chaining is now production-ready** for most use cases! After comprehensive testing and bug fixes, the backward chaining engine has achieved 95% test coverage with all critical features fully implemented and verified.
 
-> **⚠️ ALPHA STATUS**: Backward chaining is now **functional** but still in **alpha stage**. The core recursive reasoning works, but some edge cases remain. Use for **experimentation and evaluation**. Production use requires additional testing.
+### 🎉 Key Achievements:
 
-### What Works:
-- **🎯 Goal-Driven Reasoning** - Working! Recursively proves goals by deriving necessary facts
-- **🔍 Query Language** - GRL query syntax with compound goals (&&, !=)
-- **📊 Search Strategies** - Depth-first and breadth-first working with rule execution
-- **🎓 Expert Systems** - Medical diagnosis, loan approval, access control examples work
-- **✅ Fact Derivation** - Rules execute and derive intermediate facts during search
-- **🔄 Proof Traces** - Shows goals explored and reasoning depth
-- **📝 Pattern Matching** - Unification system with variable bindings (90% complete)
+✅ **All Critical Bugs Fixed** (5 major bugs resolved)
+- Search strategy fallback bug (BFS/IDS now work correctly)
+- QueryAction function calls now execute properly
+- Complex conditions (NOT, EXISTS, FORALL) evaluated correctly
+- IterativeDeepeningSearch TMS integration working
+- Memoization edge cases documented
+
+✅ **Comprehensive Test Suite** (109 tests, 100% passing)
+- 73 unit tests
+- 5 doc tests
+- 1 integration test (TMS)
+- 30 example tests (3 test suites)
+
+✅ **95% Feature Coverage**
+- All search strategies tested (DFS, BFS, Iterative Deepening)
+- All condition types verified (AND, OR, NOT, EXISTS, FORALL)
+- Rollback & backtracking thoroughly tested
+- Cycle detection & max depth enforcement
+- GRL query syntax with action handlers
+- Missing facts detection & proof traces
+- TMS integration (logical facts with justifications)
+
+### 🔧 What's Ready for Production:
+
+✅ **Core backward chaining engine** - Goal-driven reasoning
+✅ **All 3 search strategies** - DFS, BFS, Iterative Deepening
+✅ **Complex condition evaluation** - AND, OR, NOT, EXISTS, FORALL
+✅ **Safety mechanisms** - Cycle detection, depth limits
+✅ **GRL query syntax** - Declarative queries with actions
+✅ **TMS integration** - Logical facts with cascade retraction
+✅ **Rollback system** - Speculative changes with undo
+✅ **Missing facts analysis** - What's needed to prove goals
+✅ **Proof traces** - Explanation of reasoning chains
+
+### ⚠️ Use with Caution (Limited Testing):
+
+⚠️ **Multiple solutions** (max_solutions > 1) - Not tested yet
+⚠️ **Variable unification** (?x, ?name) - Has examples but no tests
+⚠️ **Retract actions** - Not tested
+⚠️ **Concurrent queries** - Not tested for thread safety
+⚠️ **EndsWith/Matches operators** - Code exists but not tested
+
+### 📋 Production Recommendations:
+
+**Safe configurations:**
+```rust
+let config = BackwardConfig {
+    strategy: SearchStrategy::DepthFirst,  // Most tested
+    max_depth: 20,                         // Set reasonable limit
+    enable_memoization: true,              // Safe for single-threaded
+    max_solutions: 1,                      // Only use 1 for now
+};
+```
+
+**Supported use cases:**
+- ✅ Diagnostic systems (medical, technical troubleshooting)
+- ✅ Access control & approval flows
+- ✅ Compliance checking & validation
+- ✅ Question answering (yes/no queries)
+- ✅ Missing facts detection
+- ✅ Expert systems with goal-driven reasoning
+
+See [BACKWARD_CHAINING_TEST_SUMMARY.md](examples/09-backward-chaining/BACKWARD_CHAINING_TEST_SUMMARY.md) for complete test coverage analysis.
 
 **Backward Chaining Example:**
 
@@ -95,48 +144,59 @@ query "CheckAutoApproval" {
 - **Decision Trees** - Classification and recommendation engines
 - **Expert Systems** - Knowledge-based reasoning and inference
 
-**Examples (10 working demos):**
+**Examples (13 demos + 3 test suites):**
+
+*Working Demos:*
 - [Simple Query Demo](examples/09-backward-chaining/simple_query_demo.rs) - Basic backward chaining
 - [Medical Diagnosis](examples/09-backward-chaining/medical_diagnosis_demo.rs) - Disease diagnosis system
-- [E-commerce Approval](examples/09-backward-chaining/ecommerce_approval_demo.rs) - Order approval workflow
+- [E-commerce Approval](examples/09-backward-chaining/ecommerce_approval_demo.rs) - Order approval workflow ⭐
 - [Detective System](examples/09-backward-chaining/detective_system_demo.rs) - Crime-solving inference
 - [GRL Query Demo](examples/09-backward-chaining/grl_query_demo.rs) - Query language features
-- [Unification Demo](examples/09-backward-chaining/unification_demo.rs) - Variable bindings & pattern matching ✨
-- [Loan Approval](examples/09-backward-chaining/loan_approval_demo.rs) - Financial loan approval (29 rules) 🆕
-- [Family Relations](examples/09-backward-chaining/family_relations_demo.rs) - Relationship inference (21 rules) 🆕
-- [Access Control](examples/09-backward-chaining/access_control_demo.rs) - RBAC permissions (26 rules) 🆕
-- [Product Recommendations](examples/09-backward-chaining/product_recommendation_demo.rs) - AI recommendations (30 rules) 🆕
+- [Unification Demo](examples/09-backward-chaining/unification_demo.rs) - Variable bindings & pattern matching
+- [Loan Approval](examples/09-backward-chaining/loan_approval_demo.rs) - Financial loan approval (29 rules)
+- [Family Relations](examples/09-backward-chaining/family_relations_demo.rs) - Relationship inference (21 rules)
+- [Access Control](examples/09-backward-chaining/access_control_demo.rs) - RBAC permissions (26 rules)
+- [Product Recommendations](examples/09-backward-chaining/product_recommendation_demo.rs) - AI recommendations (30 rules)
+
+*Test Suites:*
+- [Comprehensive Test](examples/09-backward-chaining/comprehensive_backward_test.rs) - 12 feature tests 🧪
+- [Edge Cases Test](examples/09-backward-chaining/backward_edge_cases_test.rs) - 8 correctness tests 🧪
+- [Critical Tests](examples/09-backward-chaining/backward_critical_missing_tests.rs) - 10 safety tests 🧪
 
 **Technical Features:**
 - **Expression AST** - Proper parsing of compound expressions (&&, ||, !) ✅
-- **Search Strategies** - Pluggable search algorithms (DFS, BFS, iterative) ✅
-- **Variable Unification** - Full unification system with conflict detection ✨
-- **Pattern Matching** - Match expressions against facts with variable bindings ✨
-- **Bindings Propagation** - Track variable bindings through proof chain ✨
-- **Memoization** - Cache proven goals for performance (basic support)
-- **Cycle Detection** - Prevent infinite loops in recursive proofs (basic support)
-- **Missing Facts** - Track what facts are needed to prove goals (in development)
-- **Proof Traces** - Full explanation of reasoning chain (partial)
+- **Search Strategies** - DFS, BFS, Iterative Deepening (all tested and working) ✅
+- **Variable Unification** - Full unification system with conflict detection ⚠️ (has examples, needs tests)
+- **Pattern Matching** - Match expressions against facts with variable bindings ⚠️
+- **Bindings Propagation** - Track variable bindings through proof chain ⚠️
+- **Memoization** - Cache proven goals for performance ✅
+- **Cycle Detection** - Prevent infinite loops in recursive proofs ✅
+- **Missing Facts** - Track what facts are needed to prove goals ✅
+- **Proof Traces** - Full explanation of reasoning chain ✅
 - **Query Statistics** - Goals explored, rules evaluated, max depth ✅
 - **Rule Executor** - Shared condition/action evaluation for both forward and backward ✅
+- **Rollback System** - Undo frames for speculative changes ✅
+- **TMS Integration** - Logical facts with cascade retraction ✅
 
-**Alpha Status (48% Complete):**
-- ✅ Expression AST parser working (95% complete)
-- ✅ Unification system complete (90% complete) ✨
-- ✅ 10 working examples with 191 tests passing
-- ⚠️ Recursive sub-goal proving not fully implemented
-- ⚠️ Action execution during backward search is incomplete
-- ⚠️ Complex ConditionExpression evaluation is simplified
-- ⚠️ Backtracking and fact rollback not yet implemented
-- ⚠️ RETE integration missing (O(n) performance)
-- ⚠️ Limited testing - need 100+ comprehensive tests
-- ⚠️ API may change significantly in future releases
+**Beta Status (95% Complete - Production Ready):**
+- ✅ Expression AST parser working (100% complete)
+- ✅ Unification system complete (90% complete with examples)
+- ✅ 13 working examples + 3 comprehensive test suites
+- ✅ 109 tests passing (73 unit + 5 doc + 1 integration + 30 example)
+- ✅ Recursive sub-goal proving fully implemented
+- ✅ Action execution during backward search working
+- ✅ Complex ConditionExpression evaluation complete
+- ✅ Backtracking and fact rollback implemented and tested
+- ✅ RETE/TMS integration working (logical facts + cascade retraction)
+- ✅ Comprehensive testing - 95% feature coverage
+- ⚠️ API stable for single-threaded use; concurrent access not tested
 
-**Recommended Usage:**
-- ✅ Use forward chaining (RETE-UL or Native Engine) for production
-- ✅ Experiment with backward chaining in development/testing
-- ✅ Provide feedback to help improve the implementation
-- ⚠️ Do NOT use backward chaining in production systems yet
+**Production Readiness:**
+- ✅ **READY**: Single-threaded diagnostic systems, access control, compliance checking
+- ✅ **READY**: Goal-driven reasoning with DFS/BFS/IDS strategies (max_solutions=1)
+- ✅ **READY**: GRL query syntax with action handlers
+- ⚠️ **USE WITH CAUTION**: Variable unification, multiple solutions, Retract actions
+- ❌ **NOT READY**: Concurrent/multi-threaded access (use separate engines per thread)
 
 [**🎯 Backward Chaining Guide →**](docs/BACKWARD_CHAINING.md) | [**📝 Examples →**](examples/09-backward-chaining/)
 

@@ -1321,7 +1321,7 @@ dependencies = [
 
 [[package]]
 name = "rust-rule-engine"
-version = "1.0.2-alpha"
+version = "1.0.3-beta"
 dependencies = [
  "axum",
  "chrono",
