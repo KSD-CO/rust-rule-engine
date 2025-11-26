@@ -2,6 +2,9 @@
 
 use super::goal::{Goal, GoalStatus};
 use super::rule_executor::RuleExecutor;
+use std::sync::{Arc, Mutex};
+use crate::rete::propagation::IncrementalEngine;
+use crate::rete::working_memory::FactHandle;
 use crate::Facts;
 use crate::types::Value;
 use crate::KnowledgeBase;
@@ -82,7 +85,35 @@ impl DepthFirstSearch {
             max_depth,
             goals_explored: 0,
             path: Vec::new(),
-            executor: RuleExecutor::new(kb),
+            executor: RuleExecutor::new_with_inserter(kb, None),
+        }
+    }
+
+    /// Create a new depth-first search and wire an optional IncrementalEngine
+    /// to enable TMS logical insertion. The engine is provided as Arc<Mutex<>>
+    /// and the inserter closure will call `insert_logical` on it.
+    pub fn new_with_engine(
+        max_depth: usize,
+        kb: KnowledgeBase,
+        engine: Option<Arc<Mutex<IncrementalEngine>>>,
+    ) -> Self {
+        // Build inserter closure if engine is provided
+        let inserter = engine.map(|eng| {
+            let eng = eng.clone();
+            std::sync::Arc::new(move |fact_type: String, data: crate::rete::TypedFacts, rule_name: String, premises: Vec<String>| {
+                if let Ok(mut e) = eng.lock() {
+                    // Resolve premise keys into FactHandles when possible
+                    let handles = e.resolve_premise_keys(premises);
+                    let _ = e.insert_logical(fact_type, data, rule_name, handles);
+                }
+            }) as std::sync::Arc<dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync>
+        });
+
+        Self {
+            max_depth,
+            goals_explored: 0,
+            path: Vec::new(),
+            executor: RuleExecutor::new_with_inserter(kb, inserter),
         }
     }
     
@@ -153,31 +184,37 @@ impl DepthFirstSearch {
         for rule_name in goal.candidate_rules.clone() {
             self.path.push(rule_name.clone());
 
+            // Start an undo frame before trying this candidate so we can rollback
+            // any speculative changes if this candidate doesn't lead to a proof.
+            facts.begin_undo_frame();
+
             // Get the rule from KB
             if let Some(rule) = kb.get_rule(&rule_name) {
-                // ✅ FIX: Try to execute rule (checks conditions AND executes actions)
+                // Try to execute rule (checks conditions AND executes actions)
                 match self.executor.try_execute_rule(&rule, facts) {
                     Ok(true) => {
                         // Rule executed successfully - derived new facts!
                         // Now check if our goal is proven
                         if self.check_goal_in_facts(goal, facts) {
                             goal.status = GoalStatus::Proven;
-                            return true;
+                            return true; // keep changes
                         }
+                        // Not proven yet: fallthrough and rollback below
                     }
                     Ok(false) => {
-                        // ✅ Conditions not satisfied - try to prove them recursively!
+                        // Conditions not satisfied - try to prove them recursively!
                         if self.try_prove_rule_conditions(&rule, facts, kb, depth + 1) {
                             // All conditions now satisfied! Try executing rule again
                             match self.executor.try_execute_rule(&rule, facts) {
                                 Ok(true) => {
                                     if self.check_goal_in_facts(goal, facts) {
                                         goal.status = GoalStatus::Proven;
-                                        self.path.pop();
-                                        return true;
+                                        return true; // keep changes
                                     }
                                 }
-                                _ => {}
+                                _ => {
+                                    // execution failed on second attempt
+                                }
                             }
                         }
                     }
@@ -187,22 +224,32 @@ impl DepthFirstSearch {
                 }
             }
 
+            // Candidate failed to prove goal — rollback speculative changes
+            facts.rollback_undo_frame();
             self.path.pop();
         }
 
-        // Try sub-goals
+        // Try sub-goals (begin undo frame before attempting sub-goals so we can rollback
+        // if any sub-goal fails)
         let mut all_subgoals_proven = true;
-        for sub_goal in &mut goal.sub_goals {
-            if !self.search_recursive_with_execution(sub_goal, facts, kb, depth + 1) {
-                all_subgoals_proven = false;
-                break;
+        if !goal.sub_goals.is_empty() {
+            facts.begin_undo_frame();
+            for sub_goal in &mut goal.sub_goals {
+                if !self.search_recursive_with_execution(sub_goal, facts, kb, depth + 1) {
+                    all_subgoals_proven = false;
+                    break;
+                }
             }
-        }
 
-        // If we have sub-goals and they're all proven, goal is proven
-        if !goal.sub_goals.is_empty() && all_subgoals_proven {
-            goal.status = GoalStatus::Proven;
-            return true;
+            if all_subgoals_proven {
+                // commit sub-goal frame (keep changes)
+                facts.commit_undo_frame();
+                goal.status = GoalStatus::Proven;
+                return true;
+            }
+
+            // rollback any changes from failed sub-goal exploration
+            facts.rollback_undo_frame();
         }
 
         // If we have no candidate rules and no sub-goals, or nothing worked
@@ -211,55 +258,98 @@ impl DepthFirstSearch {
     }
     
     /// Check if goal is already satisfied by facts
+    ///
+    /// This method now reuses ConditionEvaluator for proper evaluation
     fn check_goal_in_facts(&self, goal: &Goal, facts: &Facts) -> bool {
-        // Parse goal pattern like "Order.AutoApproved == true"
-        let pattern = &goal.pattern;
-        
-        // Simple parser for "Field == Value" or "Field != Value"
-        if let Some(eq_pos) = pattern.find("==") {
-            let field = pattern[..eq_pos].trim();
-            let expected = pattern[eq_pos + 2..].trim();
-
-            if let Some(actual) = facts.get(field) {
-                return self.value_matches(&actual, expected);
-            }
-            return false;
-        }
-
-        if let Some(ne_pos) = pattern.find("!=") {
-            let field = pattern[..ne_pos].trim();
-            let not_expected = pattern[ne_pos + 2..].trim();
-
-            if let Some(actual) = facts.get(field) {
-                return !self.value_matches(&actual, not_expected);
-            }
-            // If field doesn't exist, != is considered true
-            return true;
-        }
-
-        false
-    }
-    
-    /// Check if value matches expected string
-    fn value_matches(&self, value: &Value, expected: &str) -> bool {
-        match value {
-            Value::Boolean(b) => {
-                expected == "true" && *b || expected == "false" && !*b
-            }
-            Value::String(s) => {
-                s == expected || s == expected.trim_matches('"')
-            }
-            Value::Number(n) => {
-                expected.parse::<f64>().map(|e| (n - e).abs() < 0.0001).unwrap_or(false)
-            }
-            _ => false,
+        // Parse goal pattern into a Condition and use ConditionEvaluator
+        if let Some(condition) = self.parse_goal_pattern(&goal.pattern) {
+            // Use RuleExecutor's evaluator (which delegates to ConditionEvaluator)
+            self.executor.evaluate_condition(&condition, facts).unwrap_or(false)
+        } else {
+            false
         }
     }
-    
-    /// Check if rule conditions are satisfied using RuleExecutor
-    fn check_rule_conditions(&self, rule: &Rule, facts: &Facts) -> bool {
-        // Use RuleExecutor for proper condition evaluation
-        self.executor.evaluate_conditions(&rule.conditions, facts).unwrap_or(false)
+
+    /// Parse goal pattern string into a Condition object
+    ///
+    /// Examples:
+    /// - "User.Score >= 80" → Condition { field: "User.Score", operator: GreaterThanOrEqual, value: Number(80) }
+    /// - "User.IsVIP == true" → Condition { field: "User.IsVIP", operator: Equal, value: Boolean(true) }
+    fn parse_goal_pattern(&self, pattern: &str) -> Option<crate::engine::rule::Condition> {
+        use crate::engine::rule::{Condition, ConditionExpression};
+        use crate::types::Operator;
+
+        // Try parsing operators in order (longest first to avoid conflicts)
+        let operators = [
+            (">=", Operator::GreaterThanOrEqual),
+            ("<=", Operator::LessThanOrEqual),
+            ("==", Operator::Equal),
+            ("!=", Operator::NotEqual),
+            (" > ", Operator::GreaterThan),
+            (" < ", Operator::LessThan),
+            (" contains ", Operator::Contains),
+            (" not_contains ", Operator::NotContains),
+            (" starts_with ", Operator::StartsWith),
+            (" startsWith ", Operator::StartsWith),
+            (" ends_with ", Operator::EndsWith),
+            (" endsWith ", Operator::EndsWith),
+            (" matches ", Operator::Matches),
+        ];
+
+        for (op_str, operator) in operators {
+            if let Some(pos) = pattern.find(op_str) {
+                let field = pattern[..pos].trim().to_string();
+                let value_str = pattern[pos + op_str.len()..].trim();
+
+                // Parse value
+                let value = self.parse_value_string(value_str);
+
+                return Some(Condition {
+                    field: field.clone(),
+                    expression: ConditionExpression::Field(field),
+                    operator,
+                    value,
+                });
+            }
+        }
+
+        None
+    }
+
+    /// Parse value string into a Value
+    fn parse_value_string(&self, s: &str) -> Value {
+        let s = s.trim();
+
+        // Boolean
+        if s == "true" {
+            return Value::Boolean(true);
+        }
+        if s == "false" {
+            return Value::Boolean(false);
+        }
+
+        // Null
+        if s == "null" {
+            return Value::Null;
+        }
+
+        // String (quoted)
+        if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
+            return Value::String(s[1..s.len()-1].to_string());
+        }
+
+        // Number (float)
+        if let Ok(n) = s.parse::<f64>() {
+            return Value::Number(n);
+        }
+
+        // Integer
+        if let Ok(i) = s.parse::<i64>() {
+            return Value::Integer(i);
+        }
+
+        // Default to string
+        Value::String(s.to_string())
     }
 
     /// Try to prove all conditions of a rule by creating sub-goals
@@ -311,8 +401,10 @@ impl DepthFirstSearch {
                 }
             }
             ConditionGroup::Not(_) | ConditionGroup::Exists(_) | ConditionGroup::Forall(_) | ConditionGroup::Accumulate { .. } => {
-                // For now, skip complex conditions
-                true
+                // Complex conditions (Not, Exists, Forall, Accumulate) cannot be proven backward;
+                // they can only be evaluated against current facts.
+                // Use the executor's condition evaluator to check them.
+                self.executor.evaluate_conditions(group, facts).unwrap_or(false)
             }
         }
     }
@@ -325,7 +417,14 @@ impl DepthFirstSearch {
         kb: &KnowledgeBase,
         depth: usize,
     ) -> bool {
-        // Convert condition to goal pattern
+        // First check if condition is already satisfied by facts
+        if let Ok(satisfied) = self.executor.evaluate_condition(condition, facts) {
+            if satisfied {
+                return true;
+            }
+        }
+
+        // Condition not satisfied - try to prove it by finding rules that can derive it
         let goal_pattern = self.condition_to_goal_pattern(condition);
 
         // Create a sub-goal for this condition
@@ -368,7 +467,15 @@ impl DepthFirstSearch {
             crate::types::Operator::Matches => "matches",
         };
 
-        let value_str = format!("{:?}", condition.value);
+        // Convert value to string format that matches goal patterns
+        let value_str = match &condition.value {
+            Value::Boolean(b) => b.to_string(),
+            Value::Number(n) => n.to_string(),
+            Value::Integer(i) => i.to_string(),
+            Value::String(s) => format!("\"{}\"", s),
+            Value::Null => "null".to_string(),
+            _ => format!("{:?}", condition.value),
+        };
 
         format!("{} {} {}", field, op_str, value_str)
     }
@@ -461,13 +568,106 @@ pub struct BreadthFirstSearch {
     executor: RuleExecutor,
 }
 
+/// Iterative deepening search implementation
+pub struct IterativeDeepeningSearch {
+    max_depth: usize,
+    goals_explored: usize,
+    kb: KnowledgeBase,
+    engine: Option<Arc<Mutex<IncrementalEngine>>>,
+}
+
+impl IterativeDeepeningSearch {
+    /// Create a new iterative deepening search
+    pub fn new(max_depth: usize, kb: KnowledgeBase) -> Self {
+        Self { max_depth, goals_explored: 0, kb, engine: None }
+    }
+
+    /// Create with optional IncrementalEngine for TMS integration
+    pub fn new_with_engine(max_depth: usize, kb: KnowledgeBase, engine: Option<Arc<Mutex<IncrementalEngine>>>) -> Self {
+        // Store the engine so we can pass it to DFS instances
+        Self { max_depth, goals_explored: 0, kb, engine }
+    }
+
+    /// Search with execution: probe with increasing depth using non-executing DFS,
+    /// then run a final executing DFS at the discovered depth to mutate facts.
+    pub fn search_with_execution(&mut self, root_goal: &mut Goal, facts: &mut Facts, kb: &KnowledgeBase) -> SearchResult {
+        self.goals_explored = 0;
+        let mut cumulative_goals = 0usize;
+
+        // Try increasing depth limits
+        for depth_limit in 0..=self.max_depth {
+            // Probe using a non-executing depth-first search on a cloned goal
+            let mut probe_goal = root_goal.clone();
+            let probe_kb = self.kb.clone();
+            let mut probe_dfs = DepthFirstSearch::new(depth_limit, probe_kb);
+            let probe_result = probe_dfs.search(&mut probe_goal, facts);
+            cumulative_goals += probe_result.goals_explored;
+
+            if probe_result.success {
+                // Found a depth where a proof exists; execute for real at this depth
+                let exec_kb = self.kb.clone();
+                let mut exec_dfs = DepthFirstSearch::new_with_engine(depth_limit, exec_kb, self.engine.clone());
+                let exec_result = exec_dfs.search_with_execution(root_goal, facts, kb);
+                // Aggregate explored goals
+                let mut final_result = exec_result;
+                final_result.goals_explored += cumulative_goals - final_result.goals_explored;
+                return final_result;
+            }
+        }
+
+        // Nothing proved up to max_depth
+        SearchResult::failure(cumulative_goals, self.max_depth)
+    }
+
+    /// Non-executing search using iterative deepening (probes only)
+    pub fn search(&mut self, root_goal: &mut Goal, facts: &Facts) -> SearchResult {
+        self.goals_explored = 0;
+        let mut cumulative_goals = 0usize;
+
+        for depth_limit in 0..=self.max_depth {
+            let mut probe_goal = root_goal.clone();
+            let probe_kb = self.kb.clone();
+            let mut probe_dfs = DepthFirstSearch::new(depth_limit, probe_kb);
+            let probe_result = probe_dfs.search(&mut probe_goal, facts);
+            cumulative_goals += probe_result.goals_explored;
+            if probe_result.success {
+                // Return the successful probe result (with aggregated goals explored)
+                let mut res = probe_result;
+                res.goals_explored = cumulative_goals;
+                return res;
+            }
+        }
+
+        SearchResult::failure(cumulative_goals, self.max_depth)
+    }
+}
+
 impl BreadthFirstSearch {
     /// Create a new breadth-first search
     pub fn new(max_depth: usize, kb: KnowledgeBase) -> Self {
         Self {
             max_depth,
             goals_explored: 0,
-            executor: RuleExecutor::new(kb),
+            executor: RuleExecutor::new_with_inserter(kb, None),
+        }
+    }
+
+    /// Create BFS with optional engine for TMS integration
+    pub fn new_with_engine(max_depth: usize, kb: KnowledgeBase, engine: Option<Arc<Mutex<IncrementalEngine>>>) -> Self {
+        // If engine provided, create inserter closure
+        let inserter = engine.map(|eng| {
+            let eng = eng.clone();
+            std::sync::Arc::new(move |fact_type: String, data: crate::rete::TypedFacts, rule_name: String, _premises: Vec<String>| {
+                if let Ok(mut e) = eng.lock() {
+                    let _ = e.insert_logical(fact_type, data, rule_name, Vec::new());
+                }
+            }) as std::sync::Arc<dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync>
+        });
+
+        Self {
+            max_depth,
+            goals_explored: 0,
+            executor: RuleExecutor::new_with_inserter(kb, inserter),
         }
     }
     
@@ -543,52 +743,98 @@ impl BreadthFirstSearch {
     }
     
     /// Check if goal is already satisfied by facts
+    ///
+    /// This method now reuses ConditionEvaluator for proper evaluation
     fn check_goal_in_facts(&self, goal: &Goal, facts: &Facts) -> bool {
-        let pattern = &goal.pattern;
-        
-        if let Some(eq_pos) = pattern.find("==") {
-            let field = pattern[..eq_pos].trim();
-            let expected = pattern[eq_pos + 2..].trim();
-            
-            if let Some(actual) = facts.get(field) {
-                return self.value_matches(&actual, expected);
-            }
-            return false;
-        }
-        
-        if let Some(ne_pos) = pattern.find("!=") {
-            let field = pattern[..ne_pos].trim();
-            let not_expected = pattern[ne_pos + 2..].trim();
-            
-            if let Some(actual) = facts.get(field) {
-                return !self.value_matches(&actual, not_expected);
-            }
-            return true;
-        }
-        
-        false
-    }
-    
-    /// Check if value matches expected string
-    fn value_matches(&self, value: &Value, expected: &str) -> bool {
-        match value {
-            Value::Boolean(b) => {
-                expected == "true" && *b || expected == "false" && !*b
-            }
-            Value::String(s) => {
-                s == expected || s == expected.trim_matches('"')
-            }
-            Value::Number(n) => {
-                expected.parse::<f64>().map(|e| (n - e).abs() < 0.0001).unwrap_or(false)
-            }
-            _ => false,
+        // Parse goal pattern into a Condition and use ConditionEvaluator
+        if let Some(condition) = self.parse_goal_pattern(&goal.pattern) {
+            // Use RuleExecutor's evaluator (which delegates to ConditionEvaluator)
+            self.executor.evaluate_condition(&condition, facts).unwrap_or(false)
+        } else {
+            false
         }
     }
-    
-    /// Check if rule conditions are satisfied using RuleExecutor
-    fn check_rule_conditions(&self, rule: &Rule, facts: &Facts) -> bool {
-        // Use RuleExecutor for proper condition evaluation
-        self.executor.evaluate_conditions(&rule.conditions, facts).unwrap_or(false)
+
+    /// Parse goal pattern string into a Condition object
+    ///
+    /// Examples:
+    /// - "User.Score >= 80" → Condition { field: "User.Score", operator: GreaterThanOrEqual, value: Number(80) }
+    /// - "User.IsVIP == true" → Condition { field: "User.IsVIP", operator: Equal, value: Boolean(true) }
+    fn parse_goal_pattern(&self, pattern: &str) -> Option<crate::engine::rule::Condition> {
+        use crate::engine::rule::{Condition, ConditionExpression};
+        use crate::types::Operator;
+
+        // Try parsing operators in order (longest first to avoid conflicts)
+        let operators = [
+            (">=", Operator::GreaterThanOrEqual),
+            ("<=", Operator::LessThanOrEqual),
+            ("==", Operator::Equal),
+            ("!=", Operator::NotEqual),
+            (" > ", Operator::GreaterThan),
+            (" < ", Operator::LessThan),
+            (" contains ", Operator::Contains),
+            (" not_contains ", Operator::NotContains),
+            (" starts_with ", Operator::StartsWith),
+            (" startsWith ", Operator::StartsWith),
+            (" ends_with ", Operator::EndsWith),
+            (" endsWith ", Operator::EndsWith),
+            (" matches ", Operator::Matches),
+        ];
+
+        for (op_str, operator) in operators {
+            if let Some(pos) = pattern.find(op_str) {
+                let field = pattern[..pos].trim().to_string();
+                let value_str = pattern[pos + op_str.len()..].trim();
+
+                // Parse value
+                let value = self.parse_value_string(value_str);
+
+                return Some(Condition {
+                    field: field.clone(),
+                    expression: ConditionExpression::Field(field),
+                    operator,
+                    value,
+                });
+            }
+        }
+
+        None
+    }
+
+    /// Parse value string into a Value
+    fn parse_value_string(&self, s: &str) -> Value {
+        let s = s.trim();
+
+        // Boolean
+        if s == "true" {
+            return Value::Boolean(true);
+        }
+        if s == "false" {
+            return Value::Boolean(false);
+        }
+
+        // Null
+        if s == "null" {
+            return Value::Null;
+        }
+
+        // String (quoted)
+        if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
+            return Value::String(s[1..s.len()-1].to_string());
+        }
+
+        // Number (float)
+        if let Ok(n) = s.parse::<f64>() {
+            return Value::Number(n);
+        }
+
+        // Integer
+        if let Ok(i) = s.parse::<i64>() {
+            return Value::Integer(i);
+        }
+
+        // Default to string
+        Value::String(s.to_string())
     }
     
     /// Search for a proof of the goal using BFS (old method, kept for compatibility)
@@ -700,5 +946,34 @@ mod tests {
 
         assert!(result.success);
         assert_eq!(result.goals_explored, 1);
+    }
+
+    #[test]
+    fn test_iterative_deepening_search_success() {
+        let kb = KnowledgeBase::new("test");
+        let mut ids = IterativeDeepeningSearch::new(5, kb.clone());
+        let mut root = Goal::new("test".to_string());
+        root.add_candidate_rule("TestRule".to_string());
+
+        // Facts empty; DFS probe should succeed because candidate rules mark provable
+        let mut facts = Facts::new();
+        let res = ids.search(&mut root, &facts);
+        assert!(res.success);
+    }
+
+    #[test]
+    fn test_iterative_deepening_search_depth_limit() {
+        let kb = KnowledgeBase::new("test");
+        // Set max_depth to 0 so even shallow proofs that require depth >0 fail
+        let mut ids = IterativeDeepeningSearch::new(0, kb.clone());
+        let mut root = Goal::new("test".to_string());
+        // Add a subgoal to force depth > 0
+        let mut sub = Goal::new("sub".to_string());
+        sub.add_candidate_rule("SubRule".to_string());
+        root.sub_goals.push(sub);
+
+        let facts = Facts::new();
+        let res = ids.search(&mut root, &facts);
+        assert!(!res.success);
     }
 }

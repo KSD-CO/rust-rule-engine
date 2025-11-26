@@ -3,6 +3,7 @@ use crate::types::{Context, Value};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use std::collections::HashSet;
 
 /// Facts - represents the working memory of data objects
 /// Similar to Grule's DataContext concept
@@ -10,6 +11,10 @@ use std::sync::{Arc, RwLock};
 pub struct Facts {
     data: Arc<RwLock<HashMap<String, Value>>>,
     fact_types: Arc<RwLock<HashMap<String, String>>>,
+    /// Undo log frames for lightweight snapshots (stack of frames)
+    /// Each frame records per-key previous values so rollback can restore only
+    /// changed keys instead of cloning the whole facts map.
+    undo_frames: Arc<RwLock<Vec<Vec<UndoEntry>>>>,
 }
 
 impl Facts {
@@ -27,6 +32,7 @@ impl Facts {
         Self {
             data: Arc::new(RwLock::new(HashMap::new())),
             fact_types: Arc::new(RwLock::new(HashMap::new())),
+            undo_frames: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
@@ -92,6 +98,9 @@ impl Facts {
 
     /// Set a fact value
     pub fn set(&self, name: &str, value: Value) {
+        // Record previous value for undo if an undo frame is active
+        self.record_undo_for_key(name);
+
         let mut data = self.data.write().unwrap();
         data.insert(name.to_string(), value);
     }
@@ -105,7 +114,10 @@ impl Facts {
             });
         }
 
-        let mut data = self.data.write().unwrap();
+    // Record previous top-level key for undo semantics
+    self.record_undo_for_key(parts[0]);
+
+    let mut data = self.data.write().unwrap();
 
         if parts.len() == 1 {
             data.insert(parts[0].to_string(), value);
@@ -163,6 +175,9 @@ impl Facts {
 
     /// Remove a fact
     pub fn remove(&self, name: &str) -> Option<Value> {
+        // Record undo before removing
+        self.record_undo_for_key(name);
+
         let mut data = self.data.write().unwrap();
         let mut types = self.fact_types.write().unwrap();
 
@@ -276,6 +291,75 @@ pub struct FactsSnapshot {
     pub data: HashMap<String, Value>,
     /// Type information for each fact
     pub fact_types: HashMap<String, String>,
+}
+
+/// Undo entry for a single key
+#[derive(Debug, Clone)]
+struct UndoEntry {
+    key: String,
+    prev_value: Option<Value>,
+    prev_type: Option<String>,
+}
+
+impl Facts {
+    /// Start a new undo frame. Call `rollback_undo_frame` to revert or
+    /// `commit_undo_frame` to discard recorded changes.
+    pub fn begin_undo_frame(&self) {
+        let mut frames = self.undo_frames.write().unwrap();
+        frames.push(Vec::new());
+    }
+
+    /// Commit (discard) the top-most undo frame
+    pub fn commit_undo_frame(&self) {
+        let mut frames = self.undo_frames.write().unwrap();
+        frames.pop();
+    }
+
+    /// Rollback the top-most undo frame, restoring prior values
+    pub fn rollback_undo_frame(&self) {
+        let mut frames = self.undo_frames.write().unwrap();
+        if let Some(frame) = frames.pop() {
+            // Restore in reverse order
+            let mut data = self.data.write().unwrap();
+            let mut types = self.fact_types.write().unwrap();
+
+            for entry in frame.into_iter().rev() {
+                match entry.prev_value {
+                    Some(v) => { data.insert(entry.key.clone(), v); }
+                    None => { data.remove(&entry.key); }
+                }
+
+                match entry.prev_type {
+                    Some(t) => { types.insert(entry.key.clone(), t); }
+                    None => { types.remove(&entry.key); }
+                }
+            }
+        }
+    }
+
+    /// Record prior state for a top-level key if an undo frame is active
+    fn record_undo_for_key(&self, key: &str) {
+        let mut frames = self.undo_frames.write().unwrap();
+        if let Some(frame) = frames.last_mut() {
+            // capture previous value & type
+            let data = self.data.read().unwrap();
+            let types = self.fact_types.read().unwrap();
+
+            // Only record once per key in this frame
+            if frame.iter().any(|e: &UndoEntry| e.key == key) {
+                return;
+            }
+
+            let prev_value = data.get(key).cloned();
+            let prev_type = types.get(key).cloned();
+
+            frame.push(UndoEntry {
+                key: key.to_string(),
+                prev_value,
+                prev_type,
+            });
+        }
+    }
 }
 
 /// Trait for objects that can be used as facts

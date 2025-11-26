@@ -76,7 +76,7 @@ impl RustRuleEngine {
     /// Execute all rules and call callback when a rule is fired
     pub fn execute_with_callback<F>(&mut self, facts: &Facts, mut on_rule_fired: F) -> Result<GruleExecutionResult>
     where
-        F: FnMut(&str, &str),
+        F: FnMut(&str, &Facts),
     {
         use chrono::Utc;
         let timestamp = Utc::now();
@@ -138,8 +138,8 @@ impl RustRuleEngine {
                     }
                     self.agenda_manager.mark_rule_fired(rule);
                     self.activation_group_manager.mark_fired(rule);
-                    // Gọi callback khi rule fired
-                    on_rule_fired(&rule.name, "facts"); // TODO: truyền id facts thực tế nếu có
+                    // Gọi callback khi rule fired - truyền tham chiếu tới facts
+                    on_rule_fired(&rule.name, facts);
                 }
             }
             if !any_rule_fired {

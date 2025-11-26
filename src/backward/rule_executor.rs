@@ -1,7 +1,115 @@
-/// Rule execution for backward chaining
-///
-/// This module provides proper condition evaluation and action execution
-/// for backward chaining, replacing the "fake" stub implementations.
+//! Rule execution for backward chaining
+//!
+//! This module provides proper condition evaluation and action execution for backward
+//! chaining queries. It integrates with the Truth Maintenance System (TMS) to support
+//! logical fact insertion and justification-based retraction.
+//!
+//! # Features
+//!
+//! - **Condition evaluation** - Evaluate rule conditions against current facts
+//! - **Action execution** - Execute rule actions (Set, MethodCall, Log, Retract)
+//! - **TMS integration** - Optional logical fact insertion with justifications
+//! - **Function support** - Built-in functions (len, isEmpty, exists, etc.)
+//! - **Type conversion** - Convert between Facts (string-based) and TypedFacts (RETE)
+//!
+//! # Architecture
+//!
+//! ```text
+//! ┌──────────────────┐
+//! │  RuleExecutor    │
+//! │                  │
+//! │  ┌────────────┐  │
+//! │  │ Condition  │──┼──> ConditionEvaluator
+//! │  │ Evaluator  │  │       │
+//! │  └────────────┘  │       ├─> Built-in functions
+//! │                  │       └─> Field comparison
+//! │  ┌────────────┐  │
+//! │  │   Action   │──┼──> Set, MethodCall, Log
+//! │  │ Executor   │  │       │
+//! │  └────────────┘  │       └─> TMS Inserter (optional)
+//! └──────────────────┘
+//! ```
+//!
+//! # Example: Basic Rule Execution
+//!
+//! ```rust
+//! use rust_rule_engine::backward::rule_executor::RuleExecutor;
+//! use rust_rule_engine::engine::rule::{Rule, Condition, ConditionGroup};
+//! use rust_rule_engine::types::{Operator, ActionType, Value};
+//! use rust_rule_engine::{KnowledgeBase, Facts};
+//!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let kb = KnowledgeBase::new("test");
+//! let executor = RuleExecutor::new(kb);
+//!
+//! // Define a rule: If User.Age > 18, then User.IsAdult = true
+//! let conditions = ConditionGroup::Single(
+//!     Condition::new(
+//!         "User.Age".to_string(),
+//!         Operator::GreaterThan,
+//!         Value::Number(18.0),
+//!     )
+//! );
+//! let actions = vec![ActionType::Set {
+//!     field: "User.IsAdult".to_string(),
+//!     value: Value::Boolean(true),
+//! }];
+//! let rule = Rule::new("CheckAdult".to_string(), conditions, actions);
+//!
+//! // Execute rule
+//! let mut facts = Facts::new();
+//! facts.set("User.Age", Value::Number(25.0));
+//!
+//! let executed = executor.try_execute_rule(&rule, &mut facts)?;
+//! assert!(executed); // Rule should execute successfully
+//! assert_eq!(facts.get("User.IsAdult"), Some(Value::Boolean(true)));
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Example: TMS Integration
+//!
+//! ```rust
+//! use rust_rule_engine::backward::rule_executor::RuleExecutor;
+//! use rust_rule_engine::rete::propagation::IncrementalEngine;
+//! use rust_rule_engine::{KnowledgeBase, Facts};
+//! use std::sync::{Arc, Mutex};
+//!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let kb = KnowledgeBase::new("test");
+//! let rete_engine = Arc::new(Mutex::new(IncrementalEngine::new()));
+//!
+//! // Create TMS inserter callback
+//! let inserter = {
+//!     let eng = rete_engine.clone();
+//!     Arc::new(move |fact_type: String, data, rule_name: String, premises: Vec<String>| {
+//!         if let Ok(mut e) = eng.lock() {
+//!             let handles = e.resolve_premise_keys(premises);
+//!             let _ = e.insert_logical(fact_type, data, rule_name, handles);
+//!         }
+//!     })
+//! };
+//!
+//! let executor = RuleExecutor::new_with_inserter(kb, Some(inserter));
+//! // Now rule executions will insert facts logically with justifications
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Supported Action Types
+//!
+//! - **Set** - Set a fact value: `field: value`
+//! - **MethodCall** - Call a method on an object: `object.method(args)`
+//! - **Log** - Log a message: `log("message")`
+//! - **Retract** - Retract a fact: `retract(field)`
+//!
+//! # Built-in Functions
+//!
+//! The executor supports these built-in functions for condition evaluation:
+//! - `len(field)` - Get string/array length
+//! - `isEmpty(field)` - Check if string/array is empty
+//! - `exists(field)` - Check if field exists
+//! - `count(field)` - Count array elements
 
 use crate::engine::rule::{Condition, ConditionGroup, Rule};
 use crate::engine::condition_evaluator::ConditionEvaluator;
@@ -11,16 +119,33 @@ use crate::errors::{Result, RuleEngineError};
 
 /// Rule executor for backward chaining
 pub struct RuleExecutor {
-    knowledge_base: KnowledgeBase,
     evaluator: ConditionEvaluator,
+    /// Optional TMS inserter callback: (fact_type, typed_data, source_rule, premise_keys)
+    /// premise_keys are strings in the format: "Type.field=value" which the inserter
+    /// can use to resolve to working-memory FactHandles.
+    tms_inserter: Option<std::sync::Arc<dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync>>,
 }
 
 impl RuleExecutor {
     /// Create a new rule executor
-    pub fn new(knowledge_base: KnowledgeBase) -> Self {
+    ///
+    /// Note: The knowledge_base parameter is kept for API compatibility but is not used.
+    /// Rule evaluation is done through the ConditionEvaluator.
+    pub fn new(_knowledge_base: KnowledgeBase) -> Self {
+        Self::new_with_inserter(_knowledge_base, None)
+    }
+
+    /// Create a new executor with optional TMS inserter callback
+    ///
+    /// Note: The knowledge_base parameter is kept for API compatibility but is not used.
+    /// Rule evaluation is done through the ConditionEvaluator.
+    pub fn new_with_inserter(
+        _knowledge_base: KnowledgeBase,
+        inserter: Option<std::sync::Arc<dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync>>,
+    ) -> Self {
         Self {
-            knowledge_base,
             evaluator: ConditionEvaluator::with_builtin_functions(),
+            tms_inserter: inserter,
         }
     }
 
@@ -65,18 +190,56 @@ impl RuleExecutor {
     /// Execute rule actions
     fn execute_actions(&self, rule: &Rule, facts: &mut Facts) -> Result<()> {
         for action in &rule.actions {
-            self.execute_action(action, facts)?;
+            self.execute_action(Some(rule), action, facts)?;
         }
 
         Ok(())
     }
 
-    /// Execute a single action
-    fn execute_action(&self, action: &ActionType, facts: &mut Facts) -> Result<()> {
+    /// Execute a single action (has access to rule for TMS justifications)
+    fn execute_action(&self, rule: Option<&Rule>, action: &ActionType, facts: &mut Facts) -> Result<()> {
         match action {
             ActionType::Set { field, value } => {
                 // Evaluate value expression if needed
                 let evaluated_value = self.evaluate_value_expression(value, facts)?;
+
+                // If we have a TMS inserter and the field looks like "Type.field",
+                // attempt to create a TypedFacts wrapper and call the inserter as a logical assertion.
+                if let Some(inserter) = &self.tms_inserter {
+                    if let Some(dot_pos) = field.find('.') {
+                        let fact_type = field[..dot_pos].to_string();
+                        let field_name = field[dot_pos + 1..].to_string();
+
+                        // Build TypedFacts with this single field
+                        let mut typed = crate::rete::TypedFacts::new();
+                        // Map crate::types::Value -> rete::FactValue
+                        let fv = match &evaluated_value {
+                            crate::types::Value::String(s) => crate::rete::FactValue::String(s.clone()),
+                            crate::types::Value::Integer(i) => crate::rete::FactValue::Integer(*i),
+                            crate::types::Value::Number(n) => crate::rete::FactValue::Float(*n),
+                            crate::types::Value::Boolean(b) => crate::rete::FactValue::Boolean(*b),
+                            _ => crate::rete::FactValue::String(format!("{:?}", evaluated_value)),
+                        };
+
+                        typed.set(field_name, fv);
+
+                        // Build premise keys from the rule's conditions (best-effort):
+                        // format: "Type.field=value" so the RETE engine can map to handles.
+                        let premises = match rule {
+                            Some(r) => self.collect_premise_keys_from_rule(r, facts),
+                            None => Vec::new(),
+                        };
+
+                        // Call inserter with rule name (string-based premises)
+                        let source_name = rule.map(|r| r.name.clone()).unwrap_or_else(|| "<unknown>".to_string());
+                        (inserter)(fact_type, typed, source_name, premises);
+                        // Also apply to local Facts representation so backward search sees it
+                        facts.set(field, evaluated_value);
+                        return Ok(());
+                    }
+                }
+
+                // Fallback: just set into Facts
                 facts.set(field, evaluated_value);
                 Ok(())
             }
@@ -150,6 +313,54 @@ impl RuleExecutor {
                 Ok(())
             }
         }
+    }
+
+    /// Collect a best-effort list of premise keys from the rule's conditions.
+    /// Each entry has the format: "Type.field=value" when possible. This is
+    /// intentionally conservative: only field-based conditions with a dotted
+    /// "Type.field" expression are collected.
+    fn collect_premise_keys_from_rule(&self, rule: &Rule, facts: &Facts) -> Vec<String> {
+        use crate::engine::rule::{ConditionGroup, ConditionExpression};
+
+        let mut keys = Vec::new();
+
+        fn collect_from_group(group: &ConditionGroup, keys: &mut Vec<String>, facts: &Facts) {
+            match group {
+                ConditionGroup::Single(cond) => {
+                    if let ConditionExpression::Field(f) = &cond.expression {
+                        if let Some(dot_pos) = f.find('.') {
+                            let fact_type = &f[..dot_pos];
+                            let field_name = &f[dot_pos + 1..];
+
+                            // Try to get value from facts
+                            if let Some(val) = facts.get(f).or_else(|| facts.get_nested(f)) {
+                                let value_str = match val {
+                                    crate::types::Value::String(s) => s.clone(),
+                                    crate::types::Value::Integer(i) => i.to_string(),
+                                    crate::types::Value::Number(n) => n.to_string(),
+                                    crate::types::Value::Boolean(b) => b.to_string(),
+                                    _ => format!("{:?}", val),
+                                };
+
+                                keys.push(format!("{}.{}={}", fact_type, field_name, value_str));
+                            } else {
+                                // If we don't have a value at this time, still record the key without value
+                                keys.push(format!("{}.{}=", fact_type, field_name));
+                            }
+                        }
+                    }
+                }
+                ConditionGroup::Compound { left, right, .. } => {
+                    collect_from_group(left, keys, facts);
+                    collect_from_group(right, keys, facts);
+                }
+                // For other complex groups, skip
+                _ => {}
+            }
+        }
+
+        collect_from_group(&rule.conditions, &mut keys, facts);
+        keys
     }
 
     /// Evaluate value expression
@@ -325,7 +536,7 @@ mod tests {
             value: Value::Boolean(true),
         };
 
-        executor.execute_action(&action, &mut facts).unwrap();
+    executor.execute_action(None, &action, &mut facts).unwrap();
 
         assert_eq!(facts.get("User.IsVIP"), Some(Value::Boolean(true)));
     }

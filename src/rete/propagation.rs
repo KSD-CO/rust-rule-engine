@@ -239,6 +239,97 @@ impl IncrementalEngine {
         
         handle
     }
+
+    /// Resolve premise keys (format: "Type.field=value" or "Type.field=")
+    /// to a Vec<FactHandle> by looking up facts of the given type and matching
+    /// the field value when provided. If value is empty, return the most recent
+    /// handle for that type (if any).
+    pub fn resolve_premise_keys(&self, premise_keys: Vec<String>) -> Vec<FactHandle> {
+        let mut handles = Vec::new();
+
+        for key in premise_keys {
+            // Split into type.field=value
+            if let Some(eq_pos) = key.find('=') {
+                let left = &key[..eq_pos];
+                let value_part = &key[eq_pos + 1..];
+
+                if let Some(dot_pos) = left.find('.') {
+                    let fact_type = &left[..dot_pos];
+                    let field = &left[dot_pos + 1..];
+
+                    // Search facts of this type
+                    let facts = self.working_memory.get_by_type(fact_type);
+                    // If value_part is empty, pick last handle if any
+                    if value_part.is_empty() {
+                        // Prefer the most recent non-retracted fact for this type
+                        if let Some(fact) = facts.iter().rev().find(|f| !f.metadata.retracted) {
+                            handles.push(fact.handle);
+                            continue;
+                        }
+                    } else {
+                        // Try to match provided value text against the field in TypedFacts
+                        // Parse the provided value into a FactValue-like expectation so we
+                        // can compare numbers/booleans properly instead of relying on string equality.
+                        fn parse_literal(s: &str) -> super::facts::FactValue {
+                            let s = s.trim();
+                            if s == "true" {
+                                return super::facts::FactValue::Boolean(true);
+                            }
+                            if s == "false" {
+                                return super::facts::FactValue::Boolean(false);
+                            }
+                            // Quoted string
+                            if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
+                                return super::facts::FactValue::String(s[1..s.len()-1].to_string());
+                            }
+                            // Integer
+                            if let Ok(i) = s.parse::<i64>() {
+                                return super::facts::FactValue::Integer(i);
+                            }
+                            // Float
+                            if let Ok(f) = s.parse::<f64>() {
+                                return super::facts::FactValue::Float(f);
+                            }
+
+                            // Fallback to string
+                            super::facts::FactValue::String(s.to_string())
+                        }
+
+                        fn fact_value_equal(a: &super::facts::FactValue, b: &super::facts::FactValue) -> bool {
+                            use super::facts::FactValue;
+                            match (a, b) {
+                                (FactValue::Boolean(x), FactValue::Boolean(y)) => x == y,
+                                (FactValue::Integer(x), FactValue::Integer(y)) => x == y,
+                                (FactValue::Float(x), FactValue::Float(y)) => (x - y).abs() < 1e-9,
+                                // Number cross-type comparisons
+                                (FactValue::Integer(x), FactValue::Float(y)) => ((*x as f64) - *y).abs() < 1e-9,
+                                (FactValue::Float(x), FactValue::Integer(y)) => (*x - (*y as f64)).abs() < 1e-9,
+                                (FactValue::String(x), FactValue::String(y)) => x == y,
+                                // Mixed string vs other: compare stringified forms
+                                _ => a.as_string() == b.as_string(),
+                            }
+                        }
+
+                        let expected = parse_literal(value_part);
+
+                        // Prefer the most recent non-retracted matching fact for determinism
+                        if let Some(fact) = facts.iter().rev().find(|fact| {
+                            if fact.metadata.retracted { return false; }
+                            if let Some(fv) = fact.data.get(field) {
+                                fact_value_equal(fv, &expected) || fv.as_string() == value_part
+                            } else {
+                                false
+                            }
+                        }) {
+                            handles.push(fact.handle);
+                        }
+                    }
+                }
+            }
+        }
+
+        handles
+    }
     
     /// Get TMS reference
     pub fn tms(&self) -> &TruthMaintenanceSystem {

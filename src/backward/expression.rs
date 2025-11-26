@@ -1,15 +1,90 @@
-/// Expression AST for backward chaining queries
-///
-/// This module provides a proper Abstract Syntax Tree (AST) for parsing
-/// and evaluating backward chaining query expressions.
-///
-/// # Example
-/// ```ignore
-/// use rust_rule_engine::backward::expression::{Expression, ExpressionParser};
-///
-/// let expr = ExpressionParser::parse("User.IsVIP == true && Order.Amount > 1000")?;
-/// let result = expr.evaluate(&facts)?;
-/// ```
+//! Expression AST for backward chaining queries
+//!
+//! This module provides a robust Abstract Syntax Tree (AST) implementation for parsing
+//! and evaluating goal expressions in backward chaining queries. It uses a recursive
+//! descent parser to build a typed expression tree that can be evaluated against facts.
+//!
+//! # Features
+//!
+//! - **Field references** - Access fact values using dot notation (e.g., `User.Name`, `Order.Total`)
+//! - **Literal values** - Support for boolean, numeric, and string literals
+//! - **Comparison operators** - `==`, `!=`, `>`, `<`, `>=`, `<=`
+//! - **Logical operators** - `&&` (AND), `||` (OR), `!` (NOT)
+//! - **Parenthesized expressions** - Group sub-expressions with parentheses
+//! - **Variable binding** - Placeholder variables for unification (e.g., `?x`, `?name`)
+//! - **Operator precedence** - Proper precedence: `||` < `&&` < comparisons
+//!
+//! # Expression Syntax
+//!
+//! ```text
+//! Expression Grammar:
+//!   expr        ::= or_expr
+//!   or_expr     ::= and_expr ('||' and_expr)*
+//!   and_expr    ::= comparison ('&&' comparison)*
+//!   comparison  ::= primary (COMP_OP primary)?
+//!   primary     ::= '!' primary
+//!                 | '(' expr ')'
+//!                 | field
+//!                 | literal
+//!                 | variable
+//!
+//!   COMP_OP     ::= '==' | '!=' | '>' | '<' | '>=' | '<='
+//!   field       ::= IDENT ('.' IDENT)*
+//!   literal     ::= boolean | number | string
+//!   variable    ::= '?' IDENT
+//! ```
+//!
+//! # Example
+//!
+//! ```rust
+//! use rust_rule_engine::backward::expression::{Expression, ExpressionParser};
+//! use rust_rule_engine::{Facts, Value};
+//!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Parse a complex expression
+//! let expr = ExpressionParser::parse(
+//!     "User.IsVIP == true && Order.Amount > 1000"
+//! )?;
+//!
+//! // Create facts
+//! let mut facts = Facts::new();
+//! facts.set("User.IsVIP", Value::Boolean(true));
+//! facts.set("Order.Amount", Value::Number(1500.0));
+//!
+//! // Evaluate expression
+//! let satisfied = expr.is_satisfied(&facts);
+//! assert!(satisfied);
+//!
+//! // Extract referenced fields
+//! let fields = expr.extract_fields();
+//! assert!(fields.contains(&"User.IsVIP".to_string()));
+//! assert!(fields.contains(&"Order.Amount".to_string()));
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Supported Operators
+//!
+//! ## Comparison Operators (left-to-right, equal precedence)
+//! - `==` - Equal to
+//! - `!=` - Not equal to
+//! - `>` - Greater than
+//! - `<` - Less than
+//! - `>=` - Greater than or equal to
+//! - `<=` - Less than or equal to
+//!
+//! ## Logical Operators (precedence: low to high)
+//! - `||` - Logical OR (lowest precedence)
+//! - `&&` - Logical AND (medium precedence)
+//! - `!` - Logical NOT (highest precedence)
+//!
+//! # Error Handling
+//!
+//! The parser returns descriptive errors for invalid syntax:
+//! - Unclosed parentheses
+//! - Unterminated strings
+//! - Invalid operators
+//! - Unexpected tokens
 
 use crate::types::{Value, Operator};
 use crate::errors::{Result, RuleEngineError};
