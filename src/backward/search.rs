@@ -27,23 +27,36 @@ pub enum SearchStrategy {
     Iterative,
 }
 
+/// A single solution found during search
+#[derive(Debug, Clone)]
+pub struct Solution {
+    /// Path taken to prove the goal (sequence of rule names)
+    pub path: Vec<String>,
+
+    /// Variable bindings from this proof
+    pub bindings: std::collections::HashMap<String, Value>,
+}
+
 /// Result of a search operation
 #[derive(Debug)]
 pub struct SearchResult {
     /// Whether the goal was successfully proven
     pub success: bool,
-    
+
     /// Path taken to prove the goal (sequence of rule names)
     pub path: Vec<String>,
-    
+
     /// Number of goals explored
     pub goals_explored: usize,
-    
+
     /// Maximum depth reached
     pub max_depth_reached: usize,
-    
+
     /// Variable bindings from the proof
     pub bindings: std::collections::HashMap<String, Value>,
+
+    /// All solutions found (if max_solutions > 1)
+    pub solutions: Vec<Solution>,
 }
 
 impl SearchResult {
@@ -55,9 +68,10 @@ impl SearchResult {
             goals_explored,
             max_depth_reached: max_depth,
             bindings: std::collections::HashMap::new(),
+            solutions: Vec::new(),
         }
     }
-    
+
     /// Create a failed search result
     pub fn failure(goals_explored: usize, max_depth: usize) -> Self {
         Self {
@@ -66,6 +80,7 @@ impl SearchResult {
             goals_explored,
             max_depth_reached: max_depth,
             bindings: std::collections::HashMap::new(),
+            solutions: Vec::new(),
         }
     }
 }
@@ -76,6 +91,8 @@ pub struct DepthFirstSearch {
     goals_explored: usize,
     path: Vec<String>,
     executor: RuleExecutor,
+    max_solutions: usize,
+    solutions: Vec<Solution>,
 }
 
 impl DepthFirstSearch {
@@ -86,7 +103,15 @@ impl DepthFirstSearch {
             goals_explored: 0,
             path: Vec::new(),
             executor: RuleExecutor::new_with_inserter(kb, None),
+            max_solutions: 1,
+            solutions: Vec::new(),
         }
+    }
+
+    /// Set maximum number of solutions to find
+    pub fn with_max_solutions(mut self, max_solutions: usize) -> Self {
+        self.max_solutions = max_solutions;
+        self
     }
 
     /// Create a new depth-first search and wire an optional IncrementalEngine
@@ -114,6 +139,8 @@ impl DepthFirstSearch {
             goals_explored: 0,
             path: Vec::new(),
             executor: RuleExecutor::new_with_inserter(kb, inserter),
+            max_solutions: 1,
+            solutions: Vec::new(),
         }
     }
     
@@ -121,6 +148,7 @@ impl DepthFirstSearch {
     pub fn search_with_execution(&mut self, goal: &mut Goal, facts: &mut Facts, kb: &KnowledgeBase) -> SearchResult {
         self.goals_explored = 0;
         self.path.clear();
+        self.solutions.clear();
 
         let success = self.search_recursive_with_execution(goal, facts, kb, 0);
 
@@ -130,6 +158,7 @@ impl DepthFirstSearch {
             goals_explored: self.goals_explored,
             max_depth_reached: goal.depth,
             bindings: goal.bindings.to_map(),
+            solutions: self.solutions.clone(),
         }
     }
     
@@ -137,15 +166,16 @@ impl DepthFirstSearch {
     pub fn search(&mut self, goal: &mut Goal, _facts: &Facts) -> SearchResult {
         self.goals_explored = 0;
         self.path.clear();
-        
+
         let success = self.search_recursive(goal, 0);
-        
+
         SearchResult {
             success,
             path: self.path.clone(),
             goals_explored: self.goals_explored,
             max_depth_reached: goal.depth,
             bindings: goal.bindings.to_map(),
+            solutions: Vec::new(),
         }
     }
     
@@ -197,7 +227,23 @@ impl DepthFirstSearch {
                         // Now check if our goal is proven
                         if self.check_goal_in_facts(goal, facts) {
                             goal.status = GoalStatus::Proven;
-                            return true; // keep changes
+
+                            // Save this solution
+                            self.solutions.push(Solution {
+                                path: self.path.clone(),
+                                bindings: goal.bindings.to_map(),
+                            });
+
+                            // If we only want one solution OR we've found enough, stop searching
+                            if self.max_solutions == 1 || self.solutions.len() >= self.max_solutions {
+                                return true; // keep changes
+                            }
+
+                            // Otherwise (max_solutions > 1 and not enough yet), rollback and continue
+                            // This allows us to find alternative proof paths
+                            facts.rollback_undo_frame();
+                            self.path.pop();
+                            continue;
                         }
                         // Not proven yet: fallthrough and rollback below
                     }
@@ -209,7 +255,22 @@ impl DepthFirstSearch {
                                 Ok(true) => {
                                     if self.check_goal_in_facts(goal, facts) {
                                         goal.status = GoalStatus::Proven;
-                                        return true; // keep changes
+
+                                        // Save this solution
+                                        self.solutions.push(Solution {
+                                            path: self.path.clone(),
+                                            bindings: goal.bindings.to_map(),
+                                        });
+
+                                        // If we only want one solution OR we've found enough, stop searching
+                                        if self.max_solutions == 1 || self.solutions.len() >= self.max_solutions {
+                                            return true; // keep changes
+                                        }
+
+                                        // Otherwise, rollback and continue searching
+                                        facts.rollback_undo_frame();
+                                        self.path.pop();
+                                        continue;
                                     }
                                 }
                                 _ => {
@@ -250,6 +311,12 @@ impl DepthFirstSearch {
 
             // rollback any changes from failed sub-goal exploration
             facts.rollback_undo_frame();
+        }
+
+        // If we found at least one solution (even if less than max_solutions), consider it proven
+        if !self.solutions.is_empty() {
+            goal.status = GoalStatus::Proven;
+            return true;
         }
 
         // If we have no candidate rules and no sub-goals, or nothing worked
@@ -739,6 +806,7 @@ impl BreadthFirstSearch {
             goals_explored: self.goals_explored,
             max_depth_reached: max_depth,
             bindings: root_goal.bindings.to_map(),
+            solutions: Vec::new(),
         }
     }
     
@@ -876,13 +944,14 @@ impl BreadthFirstSearch {
         }
         
         let success = root_goal.is_proven();
-        
+
         SearchResult {
             success,
             path,
             goals_explored: self.goals_explored,
             max_depth_reached: max_depth,
             bindings: root_goal.bindings.to_map(),
+            solutions: Vec::new(),
         }
     }
 }
@@ -1056,6 +1125,7 @@ mod tests {
             goals_explored: 5,
             max_depth_reached: 3,
             bindings: bindings.clone(),
+            solutions: Vec::new(),
         };
 
         assert_eq!(result.bindings.len(), 2);

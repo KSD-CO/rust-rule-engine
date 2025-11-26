@@ -126,7 +126,8 @@ impl BackwardEngine {
         // Execute search strategy with optional rete_engine
         let search_result = match self.config.strategy {
             SearchStrategy::DepthFirst => {
-                let mut dfs = DepthFirstSearch::new_with_engine(self.config.max_depth, (*self.knowledge_base).clone(), rete_engine.clone());
+                let mut dfs = DepthFirstSearch::new_with_engine(self.config.max_depth, (*self.knowledge_base).clone(), rete_engine.clone())
+                    .with_max_solutions(self.config.max_solutions);
                 dfs.search_with_execution(&mut goal, facts, &self.knowledge_base)
             }
             SearchStrategy::BreadthFirst => {
