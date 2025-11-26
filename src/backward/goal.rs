@@ -233,11 +233,114 @@ mod tests {
     #[test]
     fn test_candidate_rules() {
         let mut goal = Goal::new("test".to_string());
-        
+
         goal.add_candidate_rule("Rule1".to_string());
         goal.add_candidate_rule("Rule2".to_string());
         goal.add_candidate_rule("Rule1".to_string()); // Duplicate
-        
+
         assert_eq!(goal.candidate_rules.len(), 2);
+    }
+
+    #[test]
+    fn test_goal_with_expression() {
+        use super::super::expression::Expression;
+        use crate::types::{Operator, Value};
+
+        let expr = Expression::Comparison {
+            left: Box::new(Expression::Field("User.IsVIP".to_string())),
+            operator: Operator::Equal,
+            right: Box::new(Expression::Literal(Value::Boolean(true))),
+        };
+
+        let goal = Goal::with_expression("User.IsVIP == true".to_string(), expr);
+        assert!(goal.expression.is_some());
+        assert_eq!(goal.pattern, "User.IsVIP == true");
+        assert_eq!(goal.status, GoalStatus::Pending);
+    }
+
+    #[test]
+    fn test_subgoals_not_all_proven() {
+        let mut parent = Goal::new("parent".to_string());
+        let mut child1 = Goal::new("child1".to_string());
+        let mut child2 = Goal::new("child2".to_string());
+
+        child1.status = GoalStatus::Proven;
+        child2.status = GoalStatus::Pending; // Not proven yet
+
+        parent.add_subgoal(child1);
+        parent.add_subgoal(child2);
+
+        assert_eq!(parent.sub_goals.len(), 2);
+        assert!(!parent.all_subgoals_proven());
+    }
+
+    #[test]
+    fn test_goal_manager_next_pending() {
+        let mut manager = GoalManager::new(5);
+
+        let mut goal1 = Goal::new("goal1".to_string());
+        goal1.status = GoalStatus::Proven; // Already proven
+
+        let goal2 = Goal::new("goal2".to_string()); // Pending
+
+        let mut goal3 = Goal::new("goal3".to_string());
+        goal3.status = GoalStatus::InProgress;
+
+        manager.add_goal(goal1);
+        manager.add_goal(goal2);
+        manager.add_goal(goal3);
+
+        // Should return goal2 as it's the only pending one
+        let next = manager.next_pending();
+        assert!(next.is_some());
+        assert_eq!(next.unwrap().pattern, "goal2");
+    }
+
+    #[test]
+    fn test_goal_manager_clear() {
+        let mut manager = GoalManager::new(5);
+
+        manager.add_goal(Goal::new("goal1".to_string()));
+        manager.add_goal(Goal::new("goal2".to_string()));
+        manager.cache_result("goal1".to_string(), true);
+
+        assert_eq!(manager.goals().len(), 2);
+        assert!(manager.is_cached("goal1").is_some());
+
+        manager.clear();
+
+        assert_eq!(manager.goals().len(), 0);
+        assert!(manager.is_cached("goal1").is_none());
+    }
+
+    #[test]
+    fn test_goal_bindings() {
+        let mut goal = Goal::new("User.?X == true".to_string());
+
+        // Test that bindings start empty
+        assert!(goal.bindings.get("X").is_none());
+
+        // Add a binding
+        goal.bindings.bind("X".to_string(), Value::String("IsVIP".to_string())).ok();
+
+        // Verify binding was added
+        assert!(goal.bindings.get("X").is_some());
+        assert_eq!(goal.bindings.get("X"), Some(&Value::String("IsVIP".to_string())));
+    }
+
+    #[test]
+    fn test_goal_depth() {
+        let mut goal = Goal::new("test".to_string());
+        assert_eq!(goal.depth, 0);
+
+        goal.depth = 5;
+        assert_eq!(goal.depth, 5);
+    }
+
+    #[test]
+    fn test_goal_manager_default() {
+        let manager = GoalManager::default();
+        assert_eq!(manager.max_depth, 10);
+        assert_eq!(manager.goals().len(), 0);
     }
 }

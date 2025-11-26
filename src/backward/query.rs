@@ -281,8 +281,122 @@ mod tests {
             max_depth: 2,
             duration_ms: Some(100),
         };
-        
+
         assert_eq!(stats.goals_explored, 5);
         assert_eq!(stats.duration_ms, Some(100));
+    }
+
+    #[test]
+    fn test_query_stats_default() {
+        let stats = QueryStats::default();
+        assert_eq!(stats.goals_explored, 0);
+        assert_eq!(stats.rules_evaluated, 0);
+        assert_eq!(stats.max_depth, 0);
+        assert_eq!(stats.duration_ms, None);
+    }
+
+    #[test]
+    fn test_query_result_with_bindings() {
+        let mut bindings = HashMap::new();
+        bindings.insert("X".to_string(), Value::String("VIP".to_string()));
+        bindings.insert("Y".to_string(), Value::Number(1000.0));
+
+        let stats = QueryStats::default();
+        let result = QueryResult::success(bindings, ProofTrace::empty(), stats);
+
+        assert!(result.provable);
+        assert_eq!(result.bindings.len(), 2);
+        assert_eq!(result.bindings.get("X"), Some(&Value::String("VIP".to_string())));
+        assert_eq!(result.bindings.get("Y"), Some(&Value::Number(1000.0)));
+    }
+
+    #[test]
+    fn test_query_result_failure_with_missing_facts() {
+        let missing = vec![
+            "User.IsVIP".to_string(),
+            "Order.Total".to_string(),
+        ];
+
+        let stats = QueryStats::default();
+        let result = QueryResult::failure(missing, stats);
+
+        assert!(!result.provable);
+        assert_eq!(result.missing_facts.len(), 2);
+        assert!(result.bindings.is_empty());
+    }
+
+    #[test]
+    fn test_proof_trace_from_goal() {
+        let mut goal = Goal::new("User.IsVIP == true".to_string());
+        goal.depth = 1;
+        goal.add_candidate_rule("VIPRule".to_string());
+
+        let mut subgoal = Goal::new("User.Points > 1000".to_string());
+        subgoal.depth = 2;
+        subgoal.add_candidate_rule("PointsRule".to_string());
+
+        goal.add_subgoal(subgoal);
+
+        let trace = ProofTrace::from_goal(&goal);
+
+        assert_eq!(trace.goal, "User.IsVIP == true");
+        assert_eq!(trace.steps.len(), 1);
+        assert_eq!(trace.steps[0].rule_name, "VIPRule");
+        assert_eq!(trace.steps[0].sub_steps.len(), 1);
+    }
+
+    #[test]
+    fn test_proof_step_nested() {
+        let sub_step = ProofStep {
+            rule_name: "SubRule".to_string(),
+            goal: "subgoal".to_string(),
+            sub_steps: Vec::new(),
+            depth: 2,
+        };
+
+        let step = ProofStep {
+            rule_name: "MainRule".to_string(),
+            goal: "main".to_string(),
+            sub_steps: vec![sub_step],
+            depth: 1,
+        };
+
+        assert_eq!(step.sub_steps.len(), 1);
+        assert_eq!(step.sub_steps[0].rule_name, "SubRule");
+        assert_eq!(step.sub_steps[0].depth, 2);
+    }
+
+    #[test]
+    fn test_query_parser_complex_expressions() {
+        // Test AND expression
+        let and_result = QueryParser::parse("User.IsVIP == true && Order.Total > 1000");
+        assert!(and_result.is_ok());
+
+        // Test OR expression
+        let or_result = QueryParser::parse("User.Points > 500 || User.IsVIP == true");
+        assert!(or_result.is_ok());
+
+        // Test NOT expression
+        let not_result = QueryParser::parse("!(User.IsBanned == true)");
+        assert!(not_result.is_ok());
+    }
+
+    #[test]
+    fn test_query_parser_invalid_syntax() {
+        // Empty query
+        assert!(QueryParser::parse("").is_err());
+
+        // Unclosed parenthesis
+        assert!(QueryParser::parse("(User.IsVIP == true").is_err());
+
+        // Invalid operator sequence
+        assert!(QueryParser::parse("User.IsVIP == == true").is_err());
+    }
+
+    #[test]
+    fn test_proof_trace_empty() {
+        let trace = ProofTrace::empty();
+        assert!(trace.goal.is_empty());
+        assert!(trace.steps.is_empty());
     }
 }

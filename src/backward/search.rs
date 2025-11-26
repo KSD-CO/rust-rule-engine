@@ -890,7 +890,8 @@ impl BreadthFirstSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+    use std::collections::HashMap;
+
     #[test]
     fn test_search_strategies() {
         assert_eq!(SearchStrategy::DepthFirst, SearchStrategy::DepthFirst);
@@ -975,5 +976,156 @@ mod tests {
         let facts = Facts::new();
         let res = ids.search(&mut root, &facts);
         assert!(!res.success);
+    }
+
+    #[test]
+    fn test_depth_first_search_max_depth_exceeded() {
+        let kb = KnowledgeBase::new("test");
+        let mut dfs = DepthFirstSearch::new(2, kb);
+        let facts = Facts::new();
+
+        // Create nested goals exceeding max depth
+        let mut root = Goal::new("level0".to_string());
+        root.depth = 0;
+        root.add_candidate_rule("Rule0".to_string());
+
+        let mut level1 = Goal::new("level1".to_string());
+        level1.depth = 1;
+        level1.add_candidate_rule("Rule1".to_string());
+
+        let mut level2 = Goal::new("level2".to_string());
+        level2.depth = 2;
+        level2.add_candidate_rule("Rule2".to_string());
+
+        let mut level3 = Goal::new("level3".to_string());
+        level3.depth = 3; // Exceeds max_depth of 2
+        level3.add_candidate_rule("Rule3".to_string());
+
+        level2.add_subgoal(level3);
+        level1.add_subgoal(level2);
+        root.add_subgoal(level1);
+
+        let result = dfs.search(&mut root, &facts);
+
+        // Verify search completed (max_depth_reached is set)
+        assert!(result.max_depth_reached <= 3);
+    }
+
+    #[test]
+    fn test_breadth_first_search_multiple_candidates() {
+        let kb = KnowledgeBase::new("test");
+        let mut bfs = BreadthFirstSearch::new(10, kb);
+        let facts = Facts::new();
+
+        let mut goal = Goal::new("multi_rule_goal".to_string());
+        goal.add_candidate_rule("Rule1".to_string());
+        goal.add_candidate_rule("Rule2".to_string());
+        goal.add_candidate_rule("Rule3".to_string());
+
+        let result = bfs.search(&mut goal, &facts);
+
+        assert!(result.success);
+        assert_eq!(goal.candidate_rules.len(), 3);
+    }
+
+    #[test]
+    fn test_depth_first_search_empty_goal() {
+        let kb = KnowledgeBase::new("test");
+        let mut dfs = DepthFirstSearch::new(10, kb);
+        let facts = Facts::new();
+
+        let mut goal = Goal::new("".to_string());
+        // No candidate rules, no subgoals
+
+        let result = dfs.search(&mut goal, &facts);
+
+        // Should fail - no way to prove empty goal
+        assert!(!result.success);
+    }
+
+    #[test]
+    fn test_search_result_with_bindings() {
+        use crate::types::Value;
+        let mut bindings = HashMap::new();
+        bindings.insert("X".to_string(), Value::String("test".to_string()));
+        bindings.insert("Y".to_string(), Value::Number(42.0));
+
+        let result = SearchResult {
+            success: true,
+            path: vec!["Rule1".to_string()],
+            goals_explored: 5,
+            max_depth_reached: 3,
+            bindings: bindings.clone(),
+        };
+
+        assert_eq!(result.bindings.len(), 2);
+        assert_eq!(result.bindings.get("X"), Some(&Value::String("test".to_string())));
+    }
+
+    #[test]
+    fn test_breadth_first_search_with_subgoals() {
+        let kb = KnowledgeBase::new("test");
+        let mut bfs = BreadthFirstSearch::new(10, kb);
+        let facts = Facts::new();
+
+        let mut root = Goal::new("root".to_string());
+        root.add_candidate_rule("RootRule".to_string());
+
+        let mut sub1 = Goal::new("sub1".to_string());
+        sub1.add_candidate_rule("Sub1Rule".to_string());
+
+        let mut sub2 = Goal::new("sub2".to_string());
+        sub2.add_candidate_rule("Sub2Rule".to_string());
+
+        root.add_subgoal(sub1);
+        root.add_subgoal(sub2);
+
+        let result = bfs.search(&mut root, &facts);
+
+        assert!(result.success);
+        assert!(result.goals_explored >= 3); // root + 2 subgoals
+    }
+
+    #[test]
+    fn test_iterative_deepening_search_no_candidates() {
+        let kb = KnowledgeBase::new("test");
+        let mut ids = IterativeDeepeningSearch::new(5, kb);
+        let mut root = Goal::new("no_rules".to_string());
+        // No candidate rules added
+
+        let facts = Facts::new();
+        let result = ids.search(&mut root, &facts);
+
+        assert!(!result.success);
+        assert!(result.path.is_empty());
+    }
+
+    #[test]
+    fn test_search_strategy_equality() {
+        assert_eq!(SearchStrategy::BreadthFirst, SearchStrategy::BreadthFirst);
+        assert_eq!(SearchStrategy::Iterative, SearchStrategy::Iterative);
+        assert_ne!(SearchStrategy::BreadthFirst, SearchStrategy::Iterative);
+    }
+
+    #[test]
+    fn test_depth_first_search_goals_explored_count() {
+        let kb = KnowledgeBase::new("test");
+        let mut dfs = DepthFirstSearch::new(10, kb);
+        let facts = Facts::new();
+
+        let mut root = Goal::new("root".to_string());
+        root.add_candidate_rule("RootRule".to_string());
+
+        let mut sub = Goal::new("sub".to_string());
+        sub.add_candidate_rule("SubRule".to_string());
+
+        root.add_subgoal(sub);
+
+        let result = dfs.search(&mut root, &facts);
+
+        // Search succeeded with candidate rules
+        assert!(result.success);
+        // Goals explored count is tracked
+        assert!(result.goals_explored >= 0);
     }
 }

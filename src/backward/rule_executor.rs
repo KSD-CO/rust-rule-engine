@@ -536,8 +536,309 @@ mod tests {
             value: Value::Boolean(true),
         };
 
-    executor.execute_action(None, &action, &mut facts).unwrap();
+        executor.execute_action(None, &action, &mut facts).unwrap();
 
         assert_eq!(facts.get("User.IsVIP"), Some(Value::Boolean(true)));
+    }
+
+    #[test]
+    fn test_evaluate_compound_and_condition() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Age", Value::Number(25.0));
+        facts.set("User.Country", Value::String("US".to_string()));
+
+        let conditions = ConditionGroup::Compound {
+            left: Box::new(ConditionGroup::Single(Condition::new(
+                "User.Age".to_string(),
+                Operator::GreaterThan,
+                Value::Number(18.0),
+            ))),
+            operator: crate::types::LogicalOperator::And,
+            right: Box::new(ConditionGroup::Single(Condition::new(
+                "User.Country".to_string(),
+                Operator::Equal,
+                Value::String("US".to_string()),
+            ))),
+        };
+
+        let result = executor.evaluate_conditions(&conditions, &facts).unwrap();
+        assert!(result);
+    }
+
+    #[test]
+    fn test_evaluate_compound_or_condition() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Age", Value::Number(15.0));
+        facts.set("User.HasParentalConsent", Value::Boolean(true));
+
+        let conditions = ConditionGroup::Compound {
+            left: Box::new(ConditionGroup::Single(Condition::new(
+                "User.Age".to_string(),
+                Operator::GreaterThan,
+                Value::Number(18.0),
+            ))),
+            operator: crate::types::LogicalOperator::Or,
+            right: Box::new(ConditionGroup::Single(Condition::new(
+                "User.HasParentalConsent".to_string(),
+                Operator::Equal,
+                Value::Boolean(true),
+            ))),
+        };
+
+        let result = executor.evaluate_conditions(&conditions, &facts).unwrap();
+        assert!(result); // True because HasParentalConsent is true
+    }
+
+    #[test]
+    fn test_evaluate_not_condition() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.IsBanned", Value::Boolean(false));
+
+        let conditions = ConditionGroup::Not(Box::new(ConditionGroup::Single(
+            Condition::new(
+                "User.IsBanned".to_string(),
+                Operator::Equal,
+                Value::Boolean(true),
+            )
+        )));
+
+        let result = executor.evaluate_conditions(&conditions, &facts).unwrap();
+        assert!(result); // True because NOT banned
+    }
+
+    #[test]
+    fn test_evaluate_function_isempty() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Description", Value::String("".to_string()));
+
+        let condition = Condition::with_function(
+            "isEmpty".to_string(),
+            vec!["User.Description".to_string()],
+            Operator::Equal,
+            Value::Boolean(true),
+        );
+
+        let result = executor.evaluate_condition(&condition, &facts).unwrap();
+        assert!(result); // Empty string
+    }
+
+    #[test]
+    fn test_evaluate_test_expression_exists() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Email", Value::String("user@example.com".to_string()));
+
+        let condition = Condition {
+            field: "User.Email".to_string(),
+            expression: crate::engine::rule::ConditionExpression::Test {
+                name: "exists".to_string(),
+                args: vec!["User.Email".to_string()],
+            },
+            operator: Operator::Equal,
+            value: Value::Boolean(true),
+        };
+
+        let result = executor.evaluate_condition(&condition, &facts).unwrap();
+        assert!(result);
+    }
+
+    #[test]
+    fn test_execute_log_action() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+
+        let action = ActionType::Log {
+            message: "Test log message".to_string(),
+        };
+
+        // Should not panic
+        executor.execute_action(None, &action, &mut facts).unwrap();
+    }
+
+    #[test]
+    fn test_try_execute_rule_success() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Age", Value::Number(25.0));
+
+        let conditions = ConditionGroup::Single(Condition::new(
+            "User.Age".to_string(),
+            Operator::GreaterThan,
+            Value::Number(18.0),
+        ));
+
+        let actions = vec![ActionType::Set {
+            field: "User.IsAdult".to_string(),
+            value: Value::Boolean(true),
+        }];
+
+        let rule = Rule::new("CheckAdult".to_string(), conditions, actions);
+
+        let executed = executor.try_execute_rule(&rule, &mut facts).unwrap();
+        assert!(executed);
+        assert_eq!(facts.get("User.IsAdult"), Some(Value::Boolean(true)));
+    }
+
+    #[test]
+    fn test_try_execute_rule_failure() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Age", Value::Number(15.0));
+
+        let conditions = ConditionGroup::Single(Condition::new(
+            "User.Age".to_string(),
+            Operator::GreaterThan,
+            Value::Number(18.0),
+        ));
+
+        let actions = vec![ActionType::Set {
+            field: "User.IsAdult".to_string(),
+            value: Value::Boolean(true),
+        }];
+
+        let rule = Rule::new("CheckAdult".to_string(), conditions, actions);
+
+        let executed = executor.try_execute_rule(&rule, &mut facts).unwrap();
+        assert!(!executed); // Conditions not met
+        assert_eq!(facts.get("User.IsAdult"), None); // Action not executed
+    }
+
+    #[test]
+    fn test_evaluate_string_operators() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Email", Value::String("user@example.com".to_string()));
+
+        // Test Contains
+        let condition = Condition::new(
+            "User.Email".to_string(),
+            Operator::Contains,
+            Value::String("@example".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test StartsWith
+        let condition = Condition::new(
+            "User.Email".to_string(),
+            Operator::StartsWith,
+            Value::String("user".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test EndsWith
+        let condition = Condition::new(
+            "User.Email".to_string(),
+            Operator::EndsWith,
+            Value::String(".com".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+    }
+
+    #[test]
+    fn test_evaluate_numeric_operators() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("Order.Amount", Value::Number(1500.0));
+
+        // Test GreaterThanOrEqual
+        let condition = Condition::new(
+            "Order.Amount".to_string(),
+            Operator::GreaterThanOrEqual,
+            Value::Number(1500.0),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test LessThan
+        let condition = Condition::new(
+            "Order.Amount".to_string(),
+            Operator::LessThan,
+            Value::Number(2000.0),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test NotEqual
+        let condition = Condition::new(
+            "Order.Amount".to_string(),
+            Operator::NotEqual,
+            Value::Number(1000.0),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+    }
+
+    #[test]
+    fn test_evaluate_missing_field() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let facts = Facts::new(); // Empty facts
+
+        let condition = Condition::new(
+            "User.Age".to_string(),
+            Operator::GreaterThan,
+            Value::Number(18.0),
+        );
+
+        let result = executor.evaluate_condition(&condition, &facts).unwrap();
+        assert!(!result); // Missing field evaluates to false
+    }
+
+    #[test]
+    fn test_execute_multiple_actions() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Points", Value::Number(150.0));
+
+        let conditions = ConditionGroup::Single(Condition::new(
+            "User.Points".to_string(),
+            Operator::GreaterThan,
+            Value::Number(100.0),
+        ));
+
+        let actions = vec![
+            ActionType::Set {
+                field: "User.IsVIP".to_string(),
+                value: Value::Boolean(true),
+            },
+            ActionType::Log {
+                message: "User promoted to VIP".to_string(),
+            },
+            ActionType::Set {
+                field: "User.Discount".to_string(),
+                value: Value::Number(0.2),
+            },
+        ];
+
+        let rule = Rule::new("PromoteToVIP".to_string(), conditions, actions);
+
+        let executed = executor.try_execute_rule(&rule, &mut facts).unwrap();
+        assert!(executed);
+        assert_eq!(facts.get("User.IsVIP"), Some(Value::Boolean(true)));
+        assert_eq!(facts.get("User.Discount"), Some(Value::Number(0.2)));
     }
 }

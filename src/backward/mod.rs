@@ -30,6 +30,7 @@ pub mod grl_query;
 pub mod expression;
 pub mod rule_executor;
 pub mod unification;
+pub mod conclusion_index;
 
 // Re-export main types
 pub use goal::{Goal, GoalStatus, GoalManager};
@@ -40,3 +41,4 @@ pub use grl_query::{GRLQuery, GRLQueryParser, GRLQueryExecutor, GRLSearchStrateg
 pub use expression::{Expression, ExpressionParser};
 pub use rule_executor::RuleExecutor;
 pub use unification::{Bindings, Unifier};
+pub use conclusion_index::{ConclusionIndex, IndexStats};

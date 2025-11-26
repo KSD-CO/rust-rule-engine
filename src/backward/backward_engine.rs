@@ -3,6 +3,7 @@
 use super::goal::{Goal, GoalManager, GoalStatus};
 use super::search::{DepthFirstSearch, BreadthFirstSearch, IterativeDeepeningSearch, SearchStrategy, SearchResult};
 use super::query::{QueryParser, QueryResult, QueryStats, ProofTrace};
+use super::conclusion_index::ConclusionIndex;
 use crate::{Facts, KnowledgeBase};
 use crate::errors::Result;
 use std::sync::Arc;
@@ -39,24 +40,34 @@ pub struct BackwardEngine {
     knowledge_base: Arc<KnowledgeBase>,
     config: BackwardConfig,
     goal_manager: GoalManager,
+    /// RETE-style conclusion index for O(1) rule lookup
+    conclusion_index: ConclusionIndex,
 }
 
 impl BackwardEngine {
     /// Create a new backward chaining engine
     pub fn new(kb: KnowledgeBase) -> Self {
+        let rules = kb.get_rules();
+        let conclusion_index = ConclusionIndex::from_rules(&rules);
+
         Self {
             knowledge_base: Arc::new(kb),
             config: BackwardConfig::default(),
             goal_manager: GoalManager::default(),
+            conclusion_index,
         }
     }
-    
+
     /// Create with custom configuration
     pub fn with_config(kb: KnowledgeBase, config: BackwardConfig) -> Self {
+        let rules = kb.get_rules();
+        let conclusion_index = ConclusionIndex::from_rules(&rules);
+
         Self {
             knowledge_base: Arc::new(kb),
             goal_manager: GoalManager::new(config.max_depth),
             config,
+            conclusion_index,
         }
     }
     
@@ -153,17 +164,25 @@ impl BackwardEngine {
     }
     
     /// Find all candidate rules that could prove a goal
+    ///
+    /// This uses the RETE-style conclusion index for O(1) lookup
+    /// instead of O(n) iteration through all rules.
     fn find_candidate_rules(&self, goal: &mut Goal) -> Result<()> {
-        // In a full implementation, we would:
-        // 1. Parse goal pattern
-        // 2. Find rules whose conclusions match the goal
-        // 3. Add them as candidate rules
+        // Use conclusion index for O(1) lookup
+        let candidates = self.conclusion_index.find_candidates(&goal.pattern);
 
-        // For now, add all rules as candidates
-        for rule in self.knowledge_base.get_rules() {
-            // Simple check: if rule name or actions might prove this goal
-            if self.rule_could_prove_goal(&rule, goal) {
-                goal.add_candidate_rule(rule.name.clone());
+        // Add candidate rules to goal
+        for rule_name in candidates {
+            goal.add_candidate_rule(rule_name);
+        }
+
+        // If no candidates found via index, fall back to checking all rules
+        // This handles edge cases where index might miss some patterns
+        if goal.candidate_rules.is_empty() {
+            for rule in self.knowledge_base.get_rules() {
+                if self.rule_could_prove_goal(&rule, goal) {
+                    goal.add_candidate_rule(rule.name.clone());
+                }
             }
         }
 
@@ -245,6 +264,17 @@ impl BackwardEngine {
     /// Get the knowledge base
     pub fn knowledge_base(&self) -> &KnowledgeBase {
         &self.knowledge_base
+    }
+
+    /// Get conclusion index statistics
+    pub fn index_stats(&self) -> super::conclusion_index::IndexStats {
+        self.conclusion_index.stats()
+    }
+
+    /// Rebuild the conclusion index (call after modifying knowledge base)
+    pub fn rebuild_index(&mut self) {
+        let rules = self.knowledge_base.get_rules();
+        self.conclusion_index = ConclusionIndex::from_rules(&rules);
     }
 }
 
