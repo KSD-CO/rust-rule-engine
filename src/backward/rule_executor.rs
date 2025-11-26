@@ -841,4 +841,311 @@ mod tests {
         assert_eq!(facts.get("User.IsVIP"), Some(Value::Boolean(true)));
         assert_eq!(facts.get("User.Discount"), Some(Value::Number(0.2)));
     }
+
+    #[test]
+    fn test_evaluate_endswith_operator() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Email", Value::String("user@example.com".to_string()));
+        facts.set("File.Name", Value::String("document.pdf".to_string()));
+        facts.set("Domain.URL", Value::String("https://api.example.org".to_string()));
+
+        // Test EndsWith with .com suffix
+        let condition = Condition::new(
+            "User.Email".to_string(),
+            Operator::EndsWith,
+            Value::String(".com".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test EndsWith with .pdf suffix
+        let condition = Condition::new(
+            "File.Name".to_string(),
+            Operator::EndsWith,
+            Value::String(".pdf".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test EndsWith with .org suffix
+        let condition = Condition::new(
+            "Domain.URL".to_string(),
+            Operator::EndsWith,
+            Value::String(".org".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test EndsWith that should fail
+        let condition = Condition::new(
+            "User.Email".to_string(),
+            Operator::EndsWith,
+            Value::String(".net".to_string()),
+        );
+        assert!(!executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test EndsWith with full string match
+        let condition = Condition::new(
+            "File.Name".to_string(),
+            Operator::EndsWith,
+            Value::String("document.pdf".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+    }
+
+    #[test]
+    fn test_evaluate_endswith_edge_cases() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("Empty.String", Value::String("".to_string()));
+        facts.set("Single.Char", Value::String("a".to_string()));
+        facts.set("Number.Value", Value::Number(123.0));
+
+        // Test EndsWith with empty string (should match everything)
+        let condition = Condition::new(
+            "Empty.String".to_string(),
+            Operator::EndsWith,
+            Value::String("".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test EndsWith on single character
+        let condition = Condition::new(
+            "Single.Char".to_string(),
+            Operator::EndsWith,
+            Value::String("a".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test EndsWith with non-string value (should fail gracefully)
+        let condition = Condition::new(
+            "Number.Value".to_string(),
+            Operator::EndsWith,
+            Value::String(".0".to_string()),
+        );
+        assert!(!executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test EndsWith on missing field (should fail gracefully)
+        let condition = Condition::new(
+            "Missing.Field".to_string(),
+            Operator::EndsWith,
+            Value::String("test".to_string()),
+        );
+        assert!(!executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test case sensitivity
+        let mut facts2 = Facts::new();
+        facts2.set("Text.Value", Value::String("HelloWorld".to_string()));
+
+        let condition = Condition::new(
+            "Text.Value".to_string(),
+            Operator::EndsWith,
+            Value::String("world".to_string()),
+        );
+        assert!(!executor.evaluate_condition(&condition, &facts2).unwrap()); // Should fail due to case mismatch
+
+        let condition = Condition::new(
+            "Text.Value".to_string(),
+            Operator::EndsWith,
+            Value::String("World".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts2).unwrap()); // Should pass with correct case
+    }
+
+    #[test]
+    fn test_evaluate_matches_operator() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("User.Email", Value::String("user@example.com".to_string()));
+        facts.set("Product.Name", Value::String("Premium Laptop Model X".to_string()));
+        facts.set("Log.Message", Value::String("Error: Connection timeout".to_string()));
+
+        // Test Matches with pattern "example"
+        let condition = Condition::new(
+            "User.Email".to_string(),
+            Operator::Matches,
+            Value::String("example".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test Matches with pattern "Premium"
+        let condition = Condition::new(
+            "Product.Name".to_string(),
+            Operator::Matches,
+            Value::String("Premium".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test Matches with pattern "Error"
+        let condition = Condition::new(
+            "Log.Message".to_string(),
+            Operator::Matches,
+            Value::String("Error".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test Matches that should fail
+        let condition = Condition::new(
+            "User.Email".to_string(),
+            Operator::Matches,
+            Value::String("notfound".to_string()),
+        );
+        assert!(!executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test Matches with partial pattern
+        let condition = Condition::new(
+            "Product.Name".to_string(),
+            Operator::Matches,
+            Value::String("Laptop".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test Matches with full string
+        let condition = Condition::new(
+            "Log.Message".to_string(),
+            Operator::Matches,
+            Value::String("Error: Connection timeout".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+    }
+
+    #[test]
+    fn test_evaluate_matches_edge_cases() {
+        let kb = KnowledgeBase::new("test");
+        let executor = RuleExecutor::new(kb);
+
+        let mut facts = Facts::new();
+        facts.set("Empty.String", Value::String("".to_string()));
+        facts.set("Single.Char", Value::String("x".to_string()));
+        facts.set("Number.Value", Value::Number(456.0));
+        facts.set("Special.Chars", Value::String("test@#$%^&*()".to_string()));
+
+        // Test Matches with empty pattern (should match empty string)
+        let condition = Condition::new(
+            "Empty.String".to_string(),
+            Operator::Matches,
+            Value::String("".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test Matches on single character
+        let condition = Condition::new(
+            "Single.Char".to_string(),
+            Operator::Matches,
+            Value::String("x".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test Matches with non-string value (should fail gracefully)
+        let condition = Condition::new(
+            "Number.Value".to_string(),
+            Operator::Matches,
+            Value::String("456".to_string()),
+        );
+        assert!(!executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test Matches on missing field (should fail gracefully)
+        let condition = Condition::new(
+            "Missing.Field".to_string(),
+            Operator::Matches,
+            Value::String("pattern".to_string()),
+        );
+        assert!(!executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test Matches with special characters
+        let condition = Condition::new(
+            "Special.Chars".to_string(),
+            Operator::Matches,
+            Value::String("@#$".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts).unwrap());
+
+        // Test case sensitivity
+        let mut facts2 = Facts::new();
+        facts2.set("Text.Value", Value::String("HelloWorld".to_string()));
+
+        let condition = Condition::new(
+            "Text.Value".to_string(),
+            Operator::Matches,
+            Value::String("hello".to_string()),
+        );
+        assert!(!executor.evaluate_condition(&condition, &facts2).unwrap()); // Should fail due to case mismatch
+
+        let condition = Condition::new(
+            "Text.Value".to_string(),
+            Operator::Matches,
+            Value::String("Hello".to_string()),
+        );
+        assert!(executor.evaluate_condition(&condition, &facts2).unwrap()); // Should pass with correct case
+    }
+
+    #[test]
+    fn test_endswith_matches_in_rules() {
+        // Integration test: EndsWith and Matches in actual rules
+        let kb = KnowledgeBase::new("test");
+
+        // Rule 1: If email ends with .edu, set IsStudent = true
+        let condition1 = Condition::new(
+            "User.Email".to_string(),
+            Operator::EndsWith,
+            Value::String(".edu".to_string()),
+        );
+        let actions1 = vec![ActionType::Set {
+            field: "User.IsStudent".to_string(),
+            value: Value::Boolean(true),
+        }];
+        let rule1 = Rule::new(
+            "StudentEmailRule".to_string(),
+            ConditionGroup::Single(condition1),
+            actions1,
+        );
+
+        // Rule 2: If product name matches "Premium", set IsPremium = true
+        let condition2 = Condition::new(
+            "Product.Name".to_string(),
+            Operator::Matches,
+            Value::String("Premium".to_string()),
+        );
+        let actions2 = vec![ActionType::Set {
+            field: "Product.IsPremium".to_string(),
+            value: Value::Boolean(true),
+        }];
+        let rule2 = Rule::new(
+            "PremiumProductRule".to_string(),
+            ConditionGroup::Single(condition2),
+            actions2,
+        );
+
+        let _ = kb.add_rule(rule1.clone());
+        let _ = kb.add_rule(rule2.clone());
+
+        let executor = RuleExecutor::new(kb);
+
+        // Test scenario 1: Student email
+        let mut facts1 = Facts::new();
+        facts1.set("User.Email", Value::String("student@university.edu".to_string()));
+
+        let executed = executor.try_execute_rule(&rule1, &mut facts1).unwrap();
+        assert!(executed);
+        assert_eq!(facts1.get("User.IsStudent"), Some(Value::Boolean(true)));
+
+        // Test scenario 2: Premium product
+        let mut facts2 = Facts::new();
+        facts2.set("Product.Name", Value::String("Premium Laptop X1".to_string()));
+
+        let executed = executor.try_execute_rule(&rule2, &mut facts2).unwrap();
+        assert!(executed);
+        assert_eq!(facts2.get("Product.IsPremium"), Some(Value::Boolean(true)));
+
+        // Test scenario 3: Non-matching cases
+        let mut facts3 = Facts::new();
+        facts3.set("User.Email", Value::String("user@company.com".to_string()));
+
+        let executed = executor.try_execute_rule(&rule1, &mut facts3).unwrap();
+        assert!(!executed); // Should not execute because email doesn't end with .edu
+    }
 }

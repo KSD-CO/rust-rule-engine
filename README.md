@@ -66,9 +66,9 @@ This release brings **massive performance improvements** to backward chaining wi
 
 ### ⚠️ Use with Caution (Limited Testing):
 
+✅ **EndsWith/Matches operators** - Fully tested with comprehensive test suite (5 tests)
 ⚠️ **Multiple solutions** (max_solutions > 1) - Not tested yet
 ⚠️ **Concurrent queries** - Not tested for thread safety
-⚠️ **EndsWith/Matches operators** - Code exists but limited testing
 
 ### 📋 Production Recommendations:
 
