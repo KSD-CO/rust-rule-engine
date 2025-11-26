@@ -1,17 +1,17 @@
-# Rust Rule Engine v1.0.4-beta 🦀⚡
+# Rust Rule Engine v1.0.4 🦀⚡
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired features**, **Backward Chaining**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired features**, **Backward Chaining (Production Ready)**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## ✨ What's New in v1.0.4-beta
+## ✨ What's New in v1.0.4
 
 🚀 **Major Performance Update: RETE Integration Complete!**
 
@@ -67,8 +67,8 @@ This release brings **massive performance improvements** to backward chaining wi
 ### ⚠️ Use with Caution (Limited Testing):
 
 ✅ **EndsWith/Matches operators** - Fully tested with comprehensive test suite (5 tests)
+✅ **Concurrent queries** - Fully tested with 5 thread safety tests (wrap in `Arc<Mutex<>>`) ⭐
 ⚠️ **Multiple solutions** (max_solutions > 1) - Not tested yet
-⚠️ **Concurrent queries** - Not tested for thread safety
 
 ### 📋 Production Recommendations:
 
