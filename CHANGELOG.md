@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-11-27
+
+### Added
+- **Multiple Solutions Example** - New GRL-based demo showcasing finding all proof paths
+  - `examples/09-backward-chaining/multiple_solutions_demo.rs` - Find multiple solutions for same goal
+  - `examples/rules/09-backward-chaining/discount_rules.grl` - Discount qualification rules
+  - `examples/rules/09-backward-chaining/access_rules.grl` - Access control rules
+  - Demonstrates `max_solutions > 1` configuration
+  - Shows discount paths and resource access scenarios
+
+### Changed
+- **QueryResult API Enhancement** - Added `solutions` field to expose all found proof paths
+  - New field: `pub solutions: Vec<Solution>` in `QueryResult`
+  - New method: `QueryResult::success_with_solutions()` for creating results with multiple solutions
+  - Re-exported `Solution` struct from `backward::search` module
+  - `BackwardEngine` now populates `solutions` field when `max_solutions > 1`
+
+### Fixed
+- Multiple solutions example now uses fresh `Facts` instances to avoid state pollution
+- Corrected GRL file paths in example using `include_str!`
+
 ## [1.0.4-beta] - 2025-11-26
 
 ### Added - RETE Integration & Performance

@@ -617,6 +617,7 @@ impl GRLQueryExecutor {
                 proof_trace: ProofTrace { goal: String::new(), steps: Vec::new() },
                 missing_facts: Vec::new(),
                 stats: QueryStats::default(),
+                solutions: Vec::new(),
             });
         }
 
@@ -684,12 +685,13 @@ impl GRLQueryExecutor {
         Ok(QueryResult {
             provable: all_provable,
             bindings: combined_bindings,
-            proof_trace: ProofTrace { 
-                goal: goal_expr.to_string(), 
-                steps: Vec::new() 
+            proof_trace: ProofTrace {
+                goal: goal_expr.to_string(),
+                steps: Vec::new()
             },
             missing_facts: all_missing,
             stats: combined_stats,
+            solutions: Vec::new(),
         })
     }
 

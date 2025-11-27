@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A high-performance rule engine for Rust with RETE-UL algorithm (2-24x faster), CLIPS-inspired features, Parallel Execution, and Production-Ready Backward Chaining with 100-1000x speedup via O(1) Conclusion Index"
@@ -125,6 +125,11 @@ required-features = ["backward-chaining"]
 [[example]]
 name = "detective_system_demo"
 path = "examples/09-backward-chaining/detective_system_demo.rs"
+required-features = ["backward-chaining"]
+
+[[example]]
+name = "multiple_solutions_demo"
+path = "examples/09-backward-chaining/multiple_solutions_demo.rs"
 required-features = ["backward-chaining"]
 
 [[example]]

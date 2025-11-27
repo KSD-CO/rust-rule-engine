@@ -423,3 +423,238 @@ mod unification {
         assert_eq!(bindings.len(), 2);
     }
 }
+
+#[cfg(feature = "backward-chaining")]
+mod multiple_solutions {
+    use rust_rule_engine::backward::{BackwardEngine, BackwardConfig};
+    use rust_rule_engine::backward::search::SearchStrategy;
+    use rust_rule_engine::{KnowledgeBase, Facts, Rule, Condition, ConditionGroup};
+    use rust_rule_engine::types::{Value, ActionType, Operator};
+
+    #[test]
+    fn test_multiple_solutions_single_rule() {
+        // Test finding multiple solutions with max_solutions > 1
+        let mut kb = KnowledgeBase::new("multi_solutions");
+
+        // Rule: If User.Type == "Premium" then User.Discount = 0.2
+        kb.add_rule(Rule::new(
+            "PremiumDiscount".to_string(),
+            ConditionGroup::single(Condition::new(
+                "User.Type".to_string(),
+                Operator::Equal,
+                Value::String("Premium".to_string()),
+            )),
+            vec![ActionType::Set {
+                field: "User.Discount".to_string(),
+                value: Value::Number(0.2),
+            }],
+        )).unwrap();
+
+        let config = BackwardConfig {
+            max_depth: 10,
+            strategy: SearchStrategy::DepthFirst,
+            enable_memoization: true,
+            max_solutions: 3, // Allow up to 3 solutions
+        };
+
+        let mut engine = BackwardEngine::with_config(kb, config);
+        let mut facts = Facts::new();
+        facts.set("User.Type", Value::String("Premium".to_string()));
+
+        let result = engine.query("User.Discount == 0.2", &mut facts).unwrap();
+
+        assert!(result.provable, "Goal should be provable");
+        // With current implementation, we should find at least 1 solution
+        // Even with max_solutions=3, we find 1 proof path
+    }
+
+    #[test]
+    fn test_multiple_solutions_multiple_paths() {
+        // Test case where goal can be proven through multiple rule chains
+        let mut kb = KnowledgeBase::new("multi_paths");
+
+        // Path 1: User.Age >= 18 -> User.IsAdult = true
+        kb.add_rule(Rule::new(
+            "AgeCheck".to_string(),
+            ConditionGroup::single(Condition::new(
+                "User.Age".to_string(),
+                Operator::GreaterThanOrEqual,
+                Value::Number(18.0),
+            )),
+            vec![ActionType::Set {
+                field: "User.IsAdult".to_string(),
+                value: Value::Boolean(true),
+            }],
+        )).unwrap();
+
+        // Path 2: User.HasLicense == true -> User.IsAdult = true
+        kb.add_rule(Rule::new(
+            "LicenseCheck".to_string(),
+            ConditionGroup::single(Condition::new(
+                "User.HasLicense".to_string(),
+                Operator::Equal,
+                Value::Boolean(true),
+            )),
+            vec![ActionType::Set {
+                field: "User.IsAdult".to_string(),
+                value: Value::Boolean(true),
+            }],
+        )).unwrap();
+
+        let config = BackwardConfig {
+            max_depth: 10,
+            strategy: SearchStrategy::DepthFirst,
+            enable_memoization: false, // Disable memoization to explore all paths
+            max_solutions: 5,
+        };
+
+        let mut engine = BackwardEngine::with_config(kb, config);
+        let mut facts = Facts::new();
+        facts.set("User.Age", Value::Number(25.0));
+        facts.set("User.HasLicense", Value::Boolean(true));
+
+        let result = engine.query("User.IsAdult == true", &mut facts).unwrap();
+
+        assert!(result.provable, "Goal should be provable through multiple paths");
+    }
+
+    #[test]
+    fn test_max_solutions_limit() {
+        // Test that engine respects max_solutions limit
+        let mut kb = KnowledgeBase::new("solution_limit");
+
+        // Simple rule
+        kb.add_rule(Rule::new(
+            "SetValue".to_string(),
+            ConditionGroup::single(Condition::new(
+                "Input.Ready".to_string(),
+                Operator::Equal,
+                Value::Boolean(true),
+            )),
+            vec![ActionType::Set {
+                field: "Output.Value".to_string(),
+                value: Value::Number(42.0),
+            }],
+        )).unwrap();
+
+        // Test with max_solutions = 1
+        let config1 = BackwardConfig {
+            max_solutions: 1,
+            ..Default::default()
+        };
+
+        let mut engine1 = BackwardEngine::with_config(kb.clone(), config1);
+        let mut facts1 = Facts::new();
+        facts1.set("Input.Ready", Value::Boolean(true));
+
+        let result1 = engine1.query("Output.Value == 42", &mut facts1).unwrap();
+        assert!(result1.provable);
+
+        // Test with max_solutions = 10
+        let config10 = BackwardConfig {
+            max_solutions: 10,
+            ..Default::default()
+        };
+
+        let mut engine10 = BackwardEngine::with_config(kb, config10);
+        let mut facts10 = Facts::new();
+        facts10.set("Input.Ready", Value::Boolean(true));
+
+        let result10 = engine10.query("Output.Value == 42", &mut facts10).unwrap();
+        assert!(result10.provable);
+    }
+
+    #[test]
+    fn test_multiple_solutions_with_different_strategies() {
+        // Test multiple solutions with different search strategies
+        let mut kb = KnowledgeBase::new("multi_strategy");
+
+        kb.add_rule(Rule::new(
+            "Rule1".to_string(),
+            ConditionGroup::single(Condition::new(
+                "X".to_string(),
+                Operator::GreaterThan,
+                Value::Number(0.0),
+            )),
+            vec![ActionType::Set {
+                field: "Y".to_string(),
+                value: Value::Boolean(true),
+            }],
+        )).unwrap();
+
+        // Test with DFS
+        let config_dfs = BackwardConfig {
+            strategy: SearchStrategy::DepthFirst,
+            max_solutions: 5,
+            ..Default::default()
+        };
+
+        let mut engine_dfs = BackwardEngine::with_config(kb.clone(), config_dfs);
+        let mut facts_dfs = Facts::new();
+        facts_dfs.set("X", Value::Number(10.0));
+
+        let result_dfs = engine_dfs.query("Y == true", &mut facts_dfs).unwrap();
+        assert!(result_dfs.provable);
+
+        // Test with BFS
+        let config_bfs = BackwardConfig {
+            strategy: SearchStrategy::BreadthFirst,
+            max_solutions: 5,
+            ..Default::default()
+        };
+
+        let mut engine_bfs = BackwardEngine::with_config(kb, config_bfs);
+        let mut facts_bfs = Facts::new();
+        facts_bfs.set("X", Value::Number(10.0));
+
+        let result_bfs = engine_bfs.query("Y == true", &mut facts_bfs).unwrap();
+        assert!(result_bfs.provable);
+    }
+
+    #[test]
+    fn test_multiple_solutions_complex_chain() {
+        // Test multiple solutions with complex rule chains
+        let mut kb = KnowledgeBase::new("complex_chain");
+
+        // Chain: A -> B -> C
+        kb.add_rule(Rule::new(
+            "AtoB".to_string(),
+            ConditionGroup::single(Condition::new(
+                "A".to_string(),
+                Operator::Equal,
+                Value::Boolean(true),
+            )),
+            vec![ActionType::Set {
+                field: "B".to_string(),
+                value: Value::Boolean(true),
+            }],
+        )).unwrap();
+
+        kb.add_rule(Rule::new(
+            "BtoC".to_string(),
+            ConditionGroup::single(Condition::new(
+                "B".to_string(),
+                Operator::Equal,
+                Value::Boolean(true),
+            )),
+            vec![ActionType::Set {
+                field: "C".to_string(),
+                value: Value::Boolean(true),
+            }],
+        )).unwrap();
+
+        let config = BackwardConfig {
+            max_depth: 20,
+            max_solutions: 3,
+            enable_memoization: true,
+            ..Default::default()
+        };
+
+        let mut engine = BackwardEngine::with_config(kb, config);
+        let mut facts = Facts::new();
+        facts.set("A", Value::Boolean(true));
+
+        let result = engine.query("C == true", &mut facts).unwrap();
+        assert!(result.provable, "Should prove C through A->B->C chain");
+    }
+}

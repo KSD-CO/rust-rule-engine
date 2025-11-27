@@ -58,8 +58,81 @@ pub struct StreamRuleEngine;
 
 #[cfg(not(feature = "streaming"))]
 impl StreamRuleEngine {
-    /// Placeholder for non-streaming builds
+    /// Create a new stream rule engine (non-streaming placeholder)
     pub fn new() -> Self {
         StreamRuleEngine
+    }
+
+    /// Create with custom configuration (requires streaming feature)
+    pub fn with_config(_config: StreamConfig) -> Self {
+        panic!("StreamRuleEngine configuration methods require the 'streaming' feature to be enabled. Enable it in Cargo.toml: features = [\"streaming\"]");
+    }
+
+    /// Add streaming rule from GRL string (requires streaming feature)
+    pub async fn add_rule(&mut self, _grl_rule: &str) -> Result<()> {
+        Err(crate::RuleEngineError::FeatureNotEnabled {
+            feature: "streaming".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+        })
+    }
+
+    /// Add streaming rule from file (requires streaming feature)
+    pub async fn add_rule_file<P: AsRef<std::path::Path>>(&mut self, _path: P) -> Result<()> {
+        Err(crate::RuleEngineError::FeatureNotEnabled {
+            feature: "streaming".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+        })
+    }
+
+    /// Register action handler (requires streaming feature)
+    pub async fn register_action_handler<F>(&self, _action_type: &str, _handler: F)
+    where
+        F: Fn(&StreamAction) + Send + Sync + 'static,
+    {
+        panic!("StreamRuleEngine action handlers require the 'streaming' feature to be enabled. Enable it in Cargo.toml: features = [\"streaming\"]");
+    }
+
+    /// Start the streaming engine (requires streaming feature)
+    pub async fn start(&mut self) -> Result<()> {
+        Err(crate::RuleEngineError::FeatureNotEnabled {
+            feature: "streaming".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+        })
+    }
+
+    /// Stop the streaming engine (requires streaming feature)
+    pub async fn stop(&self) {
+        panic!("StreamRuleEngine stop method requires the 'streaming' feature to be enabled. Enable it in Cargo.toml: features = [\"streaming\"]");
+    }
+
+    /// Send event to streaming engine (requires streaming feature)
+    pub async fn send_event(&self, _event: StreamEvent) -> Result<()> {
+        Err(crate::RuleEngineError::FeatureNotEnabled {
+            feature: "streaming".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+        })
+    }
+
+    /// Execute rules manually (requires streaming feature)
+    pub async fn execute_rules(&mut self) -> Result<StreamExecutionResult> {
+        Err(crate::RuleEngineError::FeatureNotEnabled {
+            feature: "streaming".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+        })
+    }
+
+    /// Get window statistics (requires streaming feature)
+    pub async fn get_window_statistics(&self) -> crate::streaming::window::WindowStatistics {
+        panic!("StreamRuleEngine window statistics require the 'streaming' feature to be enabled. Enable it in Cargo.toml: features = [\"streaming\"]");
+    }
+
+    /// Get field analytics (requires streaming feature)
+    pub async fn get_field_analytics(&self, _field: &str) -> std::collections::HashMap<String, crate::types::Value> {
+        panic!("StreamRuleEngine field analytics require the 'streaming' feature to be enabled. Enable it in Cargo.toml: features = [\"streaming\"]");
+    }
+
+    /// Check if engine is running (requires streaming feature)
+    pub async fn is_running(&self) -> bool {
+        panic!("StreamRuleEngine running status requires the 'streaming' feature to be enabled. Enable it in Cargo.toml: features = [\"streaming\"]");
     }
 }

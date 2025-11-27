@@ -1,0 +1,30 @@
+// Multiple Resource Access Paths
+// This demonstrates different ways to gain access to a resource
+
+rule "AdminAccess" salience 10 {
+    when
+        User.Role == "Admin"
+    then
+        User.CanAccessResource = true;
+}
+
+rule "OwnerAccess" salience 10 {
+    when
+        User.IsOwner == true
+    then
+        User.CanAccessResource = true;
+}
+
+rule "CollaboratorAccess" salience 10 {
+    when
+        User.IsCollaborator == true
+    then
+        User.CanAccessResource = true;
+}
+
+rule "PublicAccess" salience 10 {
+    when
+        Resource.IsPublic == true
+    then
+        User.CanAccessResource = true;
+}

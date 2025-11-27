@@ -34,7 +34,7 @@ pub mod conclusion_index;
 
 // Re-export main types
 pub use goal::{Goal, GoalStatus, GoalManager};
-pub use search::{SearchStrategy, SearchResult};
+pub use search::{SearchStrategy, SearchResult, Solution};
 pub use backward_engine::{BackwardEngine, BackwardConfig};
 pub use query::{QueryResult, ProofTrace};
 pub use grl_query::{GRLQuery, GRLQueryParser, GRLQueryExecutor, GRLSearchStrategy, QueryAction};

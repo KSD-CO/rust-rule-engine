@@ -268,7 +268,7 @@ impl StreamRuleEngine {
     }
 
     /// Execute rules against current window state
-    pub async fn execute_rules(&self) -> Result<StreamExecutionResult> {
+    pub async fn execute_rules(&mut self) -> Result<StreamExecutionResult> {
         let start_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
