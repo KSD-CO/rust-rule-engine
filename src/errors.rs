@@ -91,6 +91,13 @@ pub enum RuleEngineError {
         /// Error message
         message: String,
     },
+
+    /// Module system error
+    #[error("Module error: {message}")]
+    ModuleError {
+        /// Error message
+        message: String,
+    },
 }
 
 /// Convenient Result type alias for rule engine operations

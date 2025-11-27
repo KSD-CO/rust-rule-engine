@@ -26,6 +26,8 @@ pub mod workflow;
 pub mod coverage; // Adding coverage module
 /// Shared condition evaluation logic for both forward and backward chaining
 pub mod condition_evaluator;
+/// Module system for namespace isolation (CLIPS-inspired defmodule)
+pub mod module;
 
 // Re-export main components for easy access
 pub use agenda::{ActivationGroupManager, AgendaManager};

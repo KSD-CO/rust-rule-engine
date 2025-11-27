@@ -192,3 +192,7 @@ required-features = ["backward-chaining"]
 name = "backward_critical_missing_tests"
 path = "examples/09-backward-chaining/backward_critical_missing_tests.rs"
 required-features = ["backward-chaining"]
+
+[[example]]
+name = "module_demo"
+path = "examples/10-module-system/module_demo.rs"
