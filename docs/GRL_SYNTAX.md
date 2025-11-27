@@ -2,6 +2,8 @@
 
 Complete reference for Grule Rule Language (GRL) syntax supported by rust-rule-engine v1.1.0.
 
+**NEW in v1.1.0**: Module system for organizing rules into namespaces with controlled visibility and imports. See [Modules section](#modules-v110---new) for details.
+
 ---
 
 ## Table of Contents
@@ -9,10 +11,11 @@ Complete reference for Grule Rule Language (GRL) syntax supported by rust-rule-e
 2. [Rule Attributes](#rule-attributes)
 3. [Conditions](#conditions)
 4. [Actions](#actions)
-5. [Advanced Features (v0.17.x)](#advanced-features)
-6. [Built-in Functions](#built-in-functions)
-7. [Best Practices](#best-practices)
-8. [Common Patterns](#common-patterns)
+5. [Modules (v1.1.0)](#modules-v110---new) ⭐ NEW
+6. [Advanced Features (v0.17.x)](#advanced-features)
+7. [Built-in Functions](#built-in-functions)
+8. [Best Practices](#best-practices)
+9. [Common Patterns](#common-patterns)
 
 ---
 
@@ -127,6 +130,654 @@ rule "HolidaySale"
     when Order.amount > 100
     then Order.discount = 0.20;
 }
+```
+
+---
+
+## Modules (v1.1.0) - NEW ⭐
+
+Organize rules into modules for namespace isolation, controlled visibility, and layered system architecture.
+
+### Module Definition
+
+Declare modules at the top of your GRL file with export/import specifications:
+
+```grl
+;; Define module namespace
+defmodule SENSORS {
+  export: all
+}
+
+defmodule CONTROL {
+  import: SENSORS (rules * (templates temperature humidity))
+  export: all
+}
+
+defmodule ALERT {
+  import: SENSORS (rules * (templates temperature))
+  import: CONTROL (rules * (templates hvac light))
+  export: all
+}
+
+defmodule LOGGER {
+  import: SENSORS (rules * (templates *))
+  import: CONTROL (rules * (templates *))
+  import: ALERT (rules * (templates *))
+  export: all
+}
+```
+
+### Module Syntax
+
+```grl
+defmodule MODULE_NAME {
+  export: all              ;; Or: none, or specific rules/templates
+  import: SOURCE_MODULE (rules PATTERN (templates PATTERN))
+  import: SOURCE_MODULE (rules PATTERN (templates PATTERN))
+}
+```
+
+**Key Terms**:
+- `MODULE_NAME`: Unique module identifier (UPPERCASE recommended)
+- `export: all`: Export all rules, templates, and facts
+- `export: none`: Module is private (not visible to others)
+- `import: MODULE_NAME`: Import specific items from another module
+- `rules PATTERN`: Rule names matching pattern (use `*` for all)
+- `templates PATTERN`: Template names matching pattern (use `*` for all)
+
+### Pattern Matching
+
+Modules support wildcard patterns for flexible imports/exports:
+
+```grl
+;; Export specific rules matching pattern
+defmodule AUTH {
+  export: all
+}
+
+;; CONTROL imports only auth-related rules from AUTH
+defmodule CONTROL {
+  import: AUTH (rules auth-* (templates *))
+  export: all
+}
+
+;; DASHBOARD imports only display-related rules
+defmodule DASHBOARD {
+  import: AUTH (rules * (templates user-*))
+  export: all
+}
+```
+
+**Pattern Examples**:
+- `sensor-*`: All rules starting with "sensor-"
+- `*-check`: All rules ending with "-check"
+- `*`: All rules/templates
+- `temperature`: Exact match
+
+### Module Organization Strategies
+
+#### Strategy 1: Layered Architecture
+Best for IoT, data pipelines, or processing workflows:
+
+```grl
+;; Layer 1: Input Processing
+defmodule INPUT {
+  export: all
+}
+
+;; Layer 2: Data Validation
+defmodule VALIDATION {
+  import: INPUT (rules * (templates *))
+  export: all
+}
+
+;; Layer 3: Business Logic
+defmodule PROCESSING {
+  import: VALIDATION (rules * (templates *))
+  import: INPUT (rules * (templates *))
+  export: all
+}
+
+;; Layer 4: Output/Notifications
+defmodule OUTPUT {
+  import: PROCESSING (rules * (templates *))
+  import: VALIDATION (rules * (templates *))
+  export: all
+}
+```
+
+Rules organized by concern:
+- **INPUT**: Check sensor data, validate input format
+- **VALIDATION**: Verify business rules and constraints
+- **PROCESSING**: Decision logic and transformations
+- **OUTPUT**: Generate alerts, logs, side effects
+
+#### Strategy 2: Domain-Based Modules
+Organize by business domains:
+
+```grl
+;; User Management Domain
+defmodule USER_DOMAIN {
+  export: all
+}
+
+;; Order Management Domain  
+defmodule ORDER_DOMAIN {
+  import: USER_DOMAIN (rules * (templates user-*))
+  export: all
+}
+
+;; Payment Domain
+defmodule PAYMENT_DOMAIN {
+  import: ORDER_DOMAIN (rules * (templates *))
+  import: USER_DOMAIN (rules * (templates *))
+  export: all
+}
+
+;; Shared Utilities
+defmodule SHARED {
+  export: all
+}
+```
+
+#### Strategy 3: Multi-Tenant System
+Isolate rules per customer or environment:
+
+```grl
+defmodule CUSTOMER_A {
+  export: none  ;; Private rules
+}
+
+defmodule CUSTOMER_B {
+  export: none  ;; Private rules
+}
+
+defmodule CUSTOMER_C {
+  export: none  ;; Private rules
+}
+
+;; Shared validation across all customers
+defmodule SHARED_VALIDATION {
+  export: all
+}
+
+;; Core engine - imports from specific customer modules
+defmodule ENGINE {
+  import: CUSTOMER_A (rules * (templates *))
+  import: SHARED_VALIDATION (rules * (templates *))
+  export: all
+}
+```
+
+### Rules Assignment to Modules
+
+**Best Practice**: Use clear comment markers to indicate which module each rule belongs to:
+
+```grl
+defmodule SENSORS {
+  export: all
+}
+
+defmodule CONTROL {
+  import: SENSORS (rules * (templates temperature))
+  export: all
+}
+
+defmodule ALERT {
+  export: all
+}
+
+;; ============================================
+;; MODULE: SENSORS
+;; ============================================
+
+rule "CheckTemperature" salience 100 {
+  when temperature.value > 28
+  then println("⚠️ High temperature");
+}
+
+rule "CheckHumidity" salience 90 {
+  when humidity.value > 70
+  then println("⚠️ High humidity");
+}
+
+;; ============================================
+;; MODULE: CONTROL
+;; ============================================
+
+rule "ActivateCooling" salience 80 {
+  when temperature.value > 28 && hvac.state == "OFF"
+  then hvac.state = "ON";
+}
+
+rule "ActivateHeating" salience 80 {
+  when temperature.value < 16 && hvac.state == "OFF"
+  then hvac.state = "ON";
+}
+
+;; ============================================
+;; MODULE: ALERT
+;; ============================================
+
+rule "CriticalTemperature" salience 110 {
+  when temperature.value > 35
+  then println("🚨 CRITICAL");
+}
+```
+
+**How It Works**:
+- Rules are assigned to the **last declared module** before they appear
+- Use **clear comment sections** to make module boundaries obvious
+- Parser automatically maps each rule to its module based on file order
+- In Rust, you can verify with: `rule_modules.get("RuleName")`
+
+### Complete Real-World Example
+
+Smart home system with organized rule modules:
+
+```grl
+;; ============================================
+;; MODULE DEFINITIONS
+;; ============================================
+
+defmodule SENSORS {
+  export: all
+}
+
+defmodule CONTROL {
+  import: SENSORS (rules * (templates temperature humidity motion))
+  export: all
+}
+
+defmodule ALERT {
+  import: SENSORS (rules * (templates temperature))
+  import: CONTROL (rules * (templates hvac light))
+  export: all
+}
+
+defmodule LOGGER {
+  import: SENSORS (rules * (templates *))
+  import: CONTROL (rules * (templates *))
+  import: ALERT (rules * (templates *))
+  export: all
+}
+
+;; ============================================
+;; SENSORS MODULE - Temperature & Humidity
+;; ============================================
+
+rule "CheckHighTemperature" salience 100 {
+  when temperature.value > 28
+  then println("⚠️ TEMPERATURE: " + temperature.location + " = " + temperature.value + "°C");
+}
+
+rule "CheckLowTemperature" salience 100 {
+  when temperature.value < 16
+  then println("❄️ COLD: " + temperature.location + " = " + temperature.value + "°C");
+}
+
+rule "CheckHighHumidity" salience 90 {
+  when humidity.value > 70
+  then println("⚠️ HUMIDITY: " + humidity.location + " = " + humidity.value + "%");
+}
+
+;; ============================================
+;; CONTROL MODULE - Decision Making
+;; ============================================
+
+rule "ActivateCooling" salience 80 {
+  when temperature.value > 28 && hvac.state == "OFF"
+  then
+    println("🔧 CONTROL: AC activated");
+    hvac.state = "ON";
+    hvac.mode = "COOL";
+}
+
+rule "ActivateHeating" salience 80 {
+  when temperature.value < 16 && hvac.state == "OFF"
+  then
+    println("🔧 CONTROL: Heating activated");
+    hvac.state = "ON";
+    hvac.mode = "HEAT";
+}
+
+rule "TurnOnLights" salience 70 {
+  when motion.detected == true && light.state == "OFF"
+  then
+    println("💡 CONTROL: Lights ON");
+    light.state = "ON";
+}
+
+;; ============================================
+;; ALERT MODULE - Notifications
+;; ============================================
+
+rule "CriticalTemperature" salience 110 {
+  when temperature.value > 35
+  then println("🚨 ALERT: CRITICAL - " + temperature.value + "°C");
+}
+
+rule "LogACActivation" salience 50 {
+  when hvac.state == "ON" && hvac.mode == "COOL"
+  then println("📝 LOG: AC system activated");
+}
+
+rule "LogHeatingActivation" salience 50 {
+  when hvac.state == "ON" && hvac.mode == "HEAT"
+  then println("📝 LOG: Heating system activated");
+}
+
+;; ============================================
+;; LOGGER MODULE - System Logging
+;; ============================================
+
+rule "LogAllTemperatureEvents" salience 40 {
+  when temperature.value > 0
+  then println("📝 LOGGER: Temperature event - " + temperature.value + "°C");
+}
+
+rule "LogSystemStatus" salience 30 {
+  when hvac.state != ""
+  then println("📝 LOGGER: HVAC Status - " + hvac.state + " (" + hvac.mode + ")");
+}
+```
+
+### Loading and Using Modules in Rust
+
+```rust
+use rust_rule_engine::parser::grl::GRLParser;
+use std::fs;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load GRL file with modules
+    let grl_content = fs::read_to_string("smart_home.grl")?;
+    
+    // Parse GRL with module support
+    let parsed = GRLParser::parse_with_modules(&grl_content)?;
+    
+    // Access parsed components
+    let mut module_manager = parsed.module_manager;
+    let rules = parsed.rules;
+    let rule_modules = parsed.rule_modules;  // rule_name -> module_name mapping
+    
+    // Get module structure
+    println!("Modules: {:?}", module_manager.list_modules());
+    
+    // Check visibility
+    println!("Can CONTROL see check-temperature? {}", 
+        module_manager.is_rule_visible("CheckTemperature", "CONTROL")?);
+    
+    // Set module focus for execution
+    module_manager.set_focus("SENSORS")?;
+    println!("Current focus: {}", module_manager.get_focus());
+    
+    // Get visible rules in current module
+    let visible = module_manager.get_visible_rules("CONTROL")?;
+    println!("Rules visible to CONTROL: {:?}", visible);
+    
+    Ok(())
+}
+```
+
+### Module Visibility Rules
+
+How visibility is determined:
+
+1. **Own Items**: Always visible
+   - SENSORS can see all SENSORS rules/templates
+
+2. **Imported Items**: Visible if pattern matches
+   - CONTROL imports `SENSORS (rules *)` → sees all SENSORS rules
+   - CONTROL imports `SENSORS (rules check-*)` → sees only rules starting with "check-"
+
+3. **Unimported Items**: Not visible
+   - CONTROL cannot see ALERT rules unless explicitly imported
+
+4. **Private Modules**: Export none
+   ```grl
+   defmodule PRIVATE {
+     export: none
+   }
+   ```
+   - No other module can see PRIVATE rules/templates
+
+### How Module Assignment Works
+
+Rules are automatically assigned to modules based on **which module was declared last** before the rule appears:
+
+```grl
+defmodule SENSORS { export: all }
+
+;; ✅ CheckTemperature belongs to SENSORS
+rule "CheckTemperature" salience 100 {
+  when temperature.value > 28
+  then println("High temp");
+}
+
+defmodule CONTROL { 
+  import: SENSORS (rules * (templates *))
+  export: all 
+}
+
+;; ✅ ActivateCooling belongs to CONTROL
+rule "ActivateCooling" salience 80 {
+  when temperature.value > 28
+  then hvac.state = "ON";
+}
+
+;; ❌ NO MODULE DECLARED - rule stays in MAIN
+rule "UnassignedRule" {
+  when true
+  then println("This is in MAIN module");
+}
+```
+
+**Key Points**:
+- First rule after `defmodule SENSORS` → assigned to SENSORS
+- Rules stay assigned until next `defmodule` declaration
+- Rules before any `defmodule` → assigned to MAIN module
+- **Always use clear comment sections** to make module boundaries visible
+
+### Module Best Practices
+
+#### 1. Always Use Clear Comment Markers for Module Boundaries ⭐ IMPORTANT
+
+```grl
+;; ============================================
+;; MODULE: SENSORS - Data Collection
+;; ============================================
+;; Purpose: Collect and validate sensor data
+;; Rules: Check temperature, humidity, motion
+;; Exports: All
+;; ============================================
+
+defmodule SENSORS {
+  export: all
+}
+
+rule "SensorCheckTemperature" salience 100 {
+  when temperature.value > 28
+  then println("High temp");
+}
+
+rule "SensorCheckHumidity" salience 90 {
+  when humidity.value > 70
+  then println("High humidity");
+}
+
+;; ============================================
+;; MODULE: CONTROL - Decision Making
+;; ============================================
+;; Purpose: Make control decisions
+;; Imports: SENSORS (all rules and templates)
+;; Exports: All control rules
+;; ============================================
+
+defmodule CONTROL {
+  import: SENSORS (rules * (templates *))
+  export: all
+}
+
+rule "ControlActivateCooling" salience 80 {
+  when temperature.value > 28 && hvac.state == "OFF"
+  then hvac.state = "ON";
+}
+
+rule "ControlActivateHeating" salience 80 {
+  when temperature.value < 16 && hvac.state == "OFF"
+  then hvac.state = "ON";
+}
+```
+
+**Why This Matters**:
+- ✅ Easy to see which module each rule belongs to
+- ✅ Documents purpose and dependencies
+- ✅ Easy to navigate large GRL files
+- ✅ Parser automatically groups rules by module
+
+#### 2. Plan Module Hierarchy
+```grl
+;; Good: Clear dependency direction
+SENSORS → CONTROL → ALERT → LOGGER
+(top to bottom, no backtracking)
+
+;; Avoid: Circular dependencies
+MODULE_A → MODULE_B → MODULE_C → MODULE_A ❌
+```
+
+#### 2. Plan Module Hierarchy
+```grl
+;; Good: Clear dependency direction
+SENSORS → CONTROL → ALERT → LOGGER
+(top to bottom, no backtracking)
+
+;; Avoid: Circular dependencies
+MODULE_A → MODULE_B → MODULE_C → MODULE_A ❌
+```
+
+#### 3. Use Specific Imports
+```grl
+;; ✅ Good: Import only needed rules
+defmodule CONTROL {
+  import: SENSORS (rules temperature-* (templates temperature))
+  export: all
+}
+
+;; ❌ Bad: Import everything
+defmodule CONTROL {
+  import: SENSORS (rules * (templates *))
+  export: all
+}
+```
+
+#### 3. Use Specific Imports
+```grl
+;; ✅ Good: Import only needed rules
+defmodule CONTROL {
+  import: SENSORS (rules temperature-* (templates temperature))
+  export: all
+}
+
+;; ❌ Bad: Import everything
+defmodule CONTROL {
+  import: SENSORS (rules * (templates *))
+  export: all
+}
+```
+
+#### 4. Document Module Purpose
+```grl
+;; ============================================
+;; SENSORS MODULE
+;; ============================================
+;; Purpose: Collect and validate sensor data
+;; Input: Raw sensor readings
+;; Output: Validated temperature, humidity, motion facts
+;; Exports: All rules and templates
+;; Imports: None
+;; ============================================
+
+defmodule SENSORS {
+  export: all
+}
+```
+
+#### 4. Document Module Purpose
+```grl
+;; ============================================
+;; SENSORS MODULE
+;; ============================================
+;; Purpose: Collect and validate sensor data
+;; Input: Raw sensor readings
+;; Output: Validated temperature, humidity, motion facts
+;; Exports: All rules and templates
+;; Imports: None
+;; ============================================
+
+defmodule SENSORS {
+  export: all
+}
+```
+
+#### 5. Organize by Salience Within Module
+```grl
+defmodule CONTROL {
+  import: SENSORS (rules * (templates *))
+  export: all
+}
+
+;; Critical decisions first (salience 80-100)
+rule "CriticalDecision" salience 100 { ... }
+
+;; Normal decisions (salience 40-60)
+rule "NormalDecision" salience 50 { ... }
+
+;; Cleanup/logging (salience 1-20)
+rule "LogDecision" salience 10 { ... }
+```
+
+#### 5. Organize by Salience Within Module
+```grl
+defmodule CONTROL {
+  import: SENSORS (rules * (templates *))
+  export: all
+}
+
+;; Critical decisions first (salience 80-100)
+rule "CriticalDecision" salience 100 { ... }
+
+;; Normal decisions (salience 40-60)
+rule "NormalDecision" salience 50 { ... }
+
+;; Cleanup/logging (salience 1-20)
+rule "LogDecision" salience 10 { ... }
+```
+
+#### 6. Use Consistent Naming
+```grl
+;; Rule names reflect their module
+defmodule SENSORS {
+  export: all
+}
+
+rule "SensorCheckTemperature" { ... }
+rule "SensorCheckHumidity" { ... }
+
+defmodule CONTROL {
+  import: SENSORS (rules * (templates *))
+  export: all
+}
+
+rule "ControlActivateCooling" { ... }
+rule "ControlActivateHeating" { ... }
+
+defmodule ALERT {
+  import: SENSORS (rules * (templates *))
+  import: CONTROL (rules * (templates *))
+  export: all
+}
+
+rule "AlertCriticalTemperature" { ... }
 ```
 
 ---

@@ -1,21 +1,50 @@
-# Rust Rule Engine v1.1.0 🦀⚡🚀
+# Rust Rule Engine v1.2.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired features**, **Production-Ready Backward Chaining (100-1000x faster!)**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired Module System**, **Production-Ready Backward Chaining (100-1000x faster!)**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## ✨ What's New in v1.1.0 🎉
+## ✨ What's New in v1.2.0 🎉
 
-🚀 **Production-Ready Backward Chaining with 100-1000x Performance!**
+🎯 **Module System for Large-Scale Rule Organization!**
 
-This major release brings **production-grade backward chaining** with comprehensive testing, benchmarks, and documentation. The system achieves **100-1000x speedup** through O(1) conclusion indexing and is ready for real-world use!
+This release introduces **CLIPS-inspired module system** for organizing and managing large-scale rule bases. Organize complex applications with modular rule organization, import/export control, and namespace management.
+
+### 🎉 Major Features:
+
+✅ **CLIPS-Inspired Module System** (NEW!)
+- ✅ Modular rule organization with namespaces
+- ✅ Import/Export directives for visibility control
+- ✅ Clear module boundaries with GRL syntax
+- ✅ Module-specific rule focusing
+- ✅ 100% backward compatible with v1.1.x
+- ✅ All 85 existing examples work unchanged
+
+✅ **GRL Parser Enhancements** (NEW!)
+- ✅ `defmodule` directive support for module declarations
+- ✅ Module context markers (`;; MODULE: NAME`) for rule organization
+- ✅ Export/import specifications with visibility control
+- ✅ New `parse_with_modules()` API for module-aware parsing
+- ✅ Automatic rule-to-module mapping via backward search algorithm
+- ✅ Performance: <1ms for typical files
+
+✅ **Module Management APIs** (NEW!)
+- ✅ ModuleManager for complete module lifecycle
+- ✅ Module visibility and access control enforcement
+- ✅ Rule-to-module mapping with HashMap lookup
+- ✅ Export/import directive enforcement
+- ✅ Namespace isolation for large-scale rule bases
+
+✅ **Production-Ready Backward Chaining**
+- ✅ 100-1000x performance with O(1) indexing
+- ✅ All v1.1.x features fully integrated
 
 ### 🎉 Major Milestones:
 
@@ -25,6 +54,15 @@ This major release brings **production-grade backward chaining** with comprehens
 - ✅ Phase 3 optimization 65% complete
 - ✅ **100-1000x proven speedup** with O(1) Conclusion Index
 - ✅ Scales to 10,000+ rules efficiently
+
+✅ **Module System** (NEW in v1.2.0!)
+- ✅ CLIPS-inspired module system with full support
+- ✅ GRL parser with defmodule directives
+- ✅ Import/export control with visibility rules
+- ✅ Module-aware rule focusing
+- ✅ 100% backward compatible (all 85 examples work unchanged)
+- ✅ Automatic module assignment via backward search
+- ✅ Performance: <1ms parsing for typical files
 
 ✅ **Comprehensive Testing** (39 unit tests + 15 examples)
 - ✅ 21 expression parser tests
@@ -48,8 +86,9 @@ This major release brings **production-grade backward chaining** with comprehens
 
 ### 🔧 What's Ready for Production:
 
-✅ **RETE-style conclusion index** - O(1) rule lookup (NEW!)
-✅ **Unification system** - Variable bindings & pattern matching (NEW!)
+✅ **Module System** - Organize large rule bases (NEW!)
+✅ **RETE-style conclusion index** - O(1) rule lookup
+✅ **Unification system** - Variable bindings & pattern matching
 ✅ **Core backward chaining engine** - Goal-driven reasoning
 ✅ **All 3 search strategies** - DFS, BFS, Iterative Deepening
 ✅ **Complex condition evaluation** - AND, OR, NOT, EXISTS, FORALL
@@ -59,7 +98,7 @@ This major release brings **production-grade backward chaining** with comprehens
 ✅ **Rollback system** - Speculative changes with undo
 ✅ **Missing facts analysis** - What's needed to prove goals
 ✅ **Proof traces** - Explanation of reasoning chains
-✅ **Performance benchmarks** - Comprehensive benchmark suite (NEW!)
+✅ **Performance benchmarks** - Comprehensive benchmark suite
 
 
 ### 📋 Production Recommendations:
@@ -85,11 +124,62 @@ let config = BackwardConfig {
 - ✅ Product recommendations & AI systems
 
 **Documentation:**
-- **[Quick Start Guide](docs/BACKWARD_CHAINING_QUICK_START.md)** - 5-minute getting started 🆕
-- **[Troubleshooting Guide](docs/BACKWARD_CHAINING_TROUBLESHOOTING.md)** - Common issues & FAQ 🆕
-- **[Performance Analysis](.planning/BACKWARD_CHAINING_PERFORMANCE.md)** - Benchmark results 🆕
-- **[Architecture Overview](BACKWARD_CHAINING_ARCHITECTURE.md)** - Technical details 🆕
-- **[Full Changelog](.planning/CHANGELOG_v1.1.0.md)** - Complete v1.1.0 changes 🆕
+- **[Module System Guide](docs/GRL_SYNTAX.md#module-system)** - Module organization & best practices 🆕
+- **[Module Parsing Guide](docs/MODULE_PARSING_GUIDE.md)** - Parser internals & algorithms 🆕
+- **[Parser Examples](docs/MODULE_PARSING_EXAMPLES.md)** - Real-world module examples 🆕
+- **[Quick Start Guide](docs/BACKWARD_CHAINING_QUICK_START.md)** - 5-minute getting started
+- **[Troubleshooting Guide](docs/BACKWARD_CHAINING_TROUBLESHOOTING.md)** - Common issues & FAQ
+- **[Performance Analysis](.planning/BACKWARD_CHAINING_PERFORMANCE.md)** - Benchmark results
+- **[Architecture Overview](BACKWARD_CHAINING_ARCHITECTURE.md)** - Technical details
+- **[Full Changelog](.planning/CHANGELOG_v1.1.0.md)** - Complete v1.1.0 changes
+
+**Module System Example:**
+
+```grl
+; Define modules with export/import control
+defmodule SENSORS {
+  export: all
+}
+
+defmodule CONTROL {
+  import: SENSORS (rules * (templates *))
+  export: all
+}
+
+; Module context for SENSORS rules
+;; MODULE: SENSORS
+rule "CheckHighTemperature" {
+    when: Temperature > 30
+    then: ActivateCooling();
+}
+
+; Module context for CONTROL rules  
+;; MODULE: CONTROL
+rule "ActivateCooling" {
+    when: CoolingNeeded == true
+    then: System.Cooling = "ON";
+}
+```
+
+**Module System Usage:**
+
+```rust
+use rust_rule_engine::parser::grl::GRLParser;
+use rust_rule_engine::engine::module::ModuleManager;
+
+// Parse GRL with module support
+let grl_content = std::fs::read_to_string("smart_home.grl")?;
+let parsed = GRLParser::parse_with_modules(&grl_content)?;
+
+// Access parsed rules and module information
+println!("Modules: {:?}", parsed.module_manager.list_modules());
+println!("Rule -> Module mapping: {:?}", parsed.rule_modules);
+
+// Load rules into engine with module context
+let mut engine = RuleEngine::new();
+engine.load_rules(parsed.rules);
+engine.execute();
+```
 
 **Backward Chaining Example:**
 

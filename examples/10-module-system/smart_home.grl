@@ -1,0 +1,176 @@
+;; Smart Home System - GRL Format
+;; Demonstrates rule organization for smart home control
+;;
+;; MODULE ORGANIZATION (NOW SUPPORTED):
+;;   defmodule SENSORS {
+;;     export: all
+;;   }
+;;   
+;;   defmodule CONTROL {
+;;     import: SENSORS (rules temperature, humidity)
+;;   }
+;;
+;;   defmodule ALERT {
+;;     import: SENSORS, CONTROL
+;;   }
+
+;; =========================================
+;; MODULE DEFINITIONS
+;; =========================================
+
+defmodule SENSORS {
+  export: all
+}
+
+defmodule CONTROL {
+  import: SENSORS (rules * (templates temperature))
+  export: all
+}
+
+defmodule ALERT {
+  import: SENSORS (rules * (templates temperature))
+  import: CONTROL (rules * (templates hvac))
+  export: all
+}
+
+defmodule LOGGER {
+  import: SENSORS (rules * (templates temperature humidity motion))
+  import: CONTROL (rules * (templates hvac light))
+  import: ALERT (rules * (templates alert-log))
+  export: all
+}
+
+;; =========================================
+;; MODULE: SENSORS - Temperature Monitoring
+;; =========================================
+;; Purpose: Collect and monitor sensor data
+;; Exports: All (temperature, humidity, motion rules)
+;; Imports: None
+
+rule "CheckHighTemperature" salience 100 {
+  when
+    temperature.location != "" && temperature.value > 28
+  then
+    println("⚠️  TEMPERATURE ALERT: " + temperature.location + " is " + temperature.value + "°C");
+}
+
+rule "CheckLowTemperature" salience 100 {
+  when
+    temperature.location != "" && temperature.value < 16
+  then
+    println("❄️  COLD ALERT: " + temperature.location + " is " + temperature.value + "°C");
+}
+
+rule "CheckHighHumidity" salience 90 {
+  when
+    humidity.location != "" && humidity.value > 70
+  then
+    println("⚠️  HUMIDITY ALERT: " + humidity.location + " is " + humidity.value + "%");
+}
+
+rule "CheckLowHumidity" salience 90 {
+  when
+    humidity.location != "" && humidity.value < 30
+  then
+    println("🏜️  DRY ALERT: " + humidity.location + " is " + humidity.value + "%");
+}
+
+;; =========================================
+;; MODULE: CONTROL - Decision Making
+;; =========================================
+;; Purpose: Make control decisions based on sensor data
+;; Imports: SENSORS (temperature, humidity, motion rules)
+;; Exports: All (cooling, heating, light control rules)
+
+rule "ActivateCooling" salience 80 {
+  when
+    temperature.location != "" && temperature.value > 28 &&
+    hvac.state == "OFF"
+  then
+    println("🔧 CONTROL: AC activated at " + temperature.location);
+    hvac.state = "ON";
+    hvac.mode = "COOL";
+}
+
+rule "ActivateHeating" salience 80 {
+  when
+    temperature.location != "" && temperature.value < 16 &&
+    hvac.state == "OFF"
+  then
+    println("🔧 CONTROL: Heating activated at " + temperature.location);
+    hvac.state = "ON";
+    hvac.mode = "HEAT";
+}
+
+rule "TurnOnLights" salience 70 {
+  when
+    motion.location != "" && motion.detected == true &&
+    light.state == "OFF"
+  then
+    println("💡 CONTROL: Lights turned ON at " + motion.location);
+    light.state = "ON";
+    light.brightness = 80;
+}
+
+;; =========================================
+;; MODULE: ALERT - Notifications & Logging
+;; =========================================
+;; Purpose: Generate alerts for critical conditions and log events
+;; Imports: SENSORS (temperature, humidity), CONTROL (hvac state)
+;; Exports: Alert rules for system-wide visibility
+
+rule "CriticalTemperatureAlert" salience 110 {
+  when
+    temperature.location != "" && temperature.value > 35
+  then
+    println("🚨 ALERT: CRITICAL TEMPERATURE at " + temperature.location + " (" + temperature.value + "°C)");
+}
+
+rule "LogACActivation" salience 50 {
+  when
+    hvac.state == "ON" && hvac.mode == "COOL"
+  then
+    println("📝 LOG: AC system activated");
+}
+
+rule "LogHeatingActivation" salience 50 {
+  when
+    hvac.state == "ON" && hvac.mode == "HEAT"
+  then
+    println("📝 LOG: Heating system activated");
+}
+
+rule "LogMotionEvent" salience 60 {
+  when
+    motion.location != "" && motion.detected == true
+  then
+    println("📝 LOG: Motion detected at " + motion.location);
+}
+
+;; =========================================
+;; MODULE: LOGGER - System Logging
+;; =========================================
+;; Purpose: Log all system events and state changes
+;; Imports: SENSORS (all), CONTROL (hvac, light), ALERT (alerts)
+;; Exports: Logging rules for system-wide visibility
+
+rule "LogAllTemperatureEvents" salience 40 {
+  when
+    temperature.location != "" && temperature.value > 0
+  then
+    println("📝 LOGGER: Temperature event at " + temperature.location + ": " + temperature.value + "°C");
+}
+
+rule "LogAllHumidityEvents" salience 40 {
+  when
+    humidity.location != "" && humidity.value > 0
+  then
+    println("📝 LOGGER: Humidity event at " + humidity.location + ": " + humidity.value + "%");
+}
+
+rule "LogSystemStatus" salience 30 {
+  when
+    hvac.state != ""
+  then
+    println("📝 LOGGER: System Status - HVAC: " + hvac.state + " (" + hvac.mode + ")");
+}
