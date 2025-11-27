@@ -1,6 +1,6 @@
 # GRL Syntax Reference
 
-Complete reference for Grule Rule Language (GRL) syntax supported by rust-rule-engine v0.17.1.
+Complete reference for Grule Rule Language (GRL) syntax supported by rust-rule-engine v1.1.0.
 
 ---
 
@@ -58,7 +58,7 @@ rule "NormalPriority" salience 50 {
 
 **Default**: 0 (if not specified)
 
-### No-Loop (v0.17.1)
+### No-Loop (v1.1.0)
 Prevents infinite loops when rule modifies facts that triggered it.
 
 ```grl
@@ -153,7 +153,7 @@ when
     (A && B) || (C && D)                // Grouped expressions
 ```
 
-### Arithmetic Expressions (v0.17.1) ⭐ NEW
+### Arithmetic Expressions (v1.1.0) ⭐ NEW
 Direct arithmetic in conditions without pre-calculation.
 
 ```grl
@@ -181,7 +181,7 @@ rule "ComplexMath" {
 
 **Supported Operators**: `+`, `-`, `*`, `/`, `%` (modulo)
 
-### Variable References (v0.17.1) ⭐ NEW
+### Variable References (v1.1.0) ⭐ NEW
 Compare fact values dynamically (variable-to-variable).
 
 ```grl
@@ -245,7 +245,7 @@ when
 
 ## Advanced Features
 
-### Test CE (Custom Expressions) (v0.17.1)
+### Test CE (Custom Expressions) (v1.1.0)
 Execute arbitrary boolean expressions for complex logic.
 
 ```grl
@@ -376,7 +376,7 @@ then
     Log.message = "Order " + Order.id + " processed at " + Now();
 ```
 
-### Variable-to-Variable Assignment (v0.17.1)
+### Variable-to-Variable Assignment (v1.1.0)
 ```grl
 then
     order_qty = moq;              // Copy value
@@ -674,7 +674,7 @@ rule "RejectIfInvalid" salience 50 {
 }
 ```
 
-### Dynamic Threshold Comparison (v0.17.1)
+### Dynamic Threshold Comparison (v1.1.0)
 ```grl
 rule "CheckL1Level" salience 50 no-loop true {
     when
@@ -810,11 +810,11 @@ See [examples/](../examples/) directory for complete working examples:
 - `examples/expression_demo.rs` - Expression evaluation
 - `examples/custom_functions_demo.rs` - Custom function usage
 
-### Advanced Examples (v0.17.x)
-- `examples/assignment_test.rs` - Variable assignment (v0.17.1)
-- `examples/assignment_test_rete.rs` - RETE variable assignment (v0.17.1)
-- `examples/test_modulo_execution.rs` - Arithmetic expressions (v0.17.1)
-- `examples/famicanxi_rete_test.rs` - Dynamic thresholds (v0.17.1)
+### Advanced Examples (v1.1.x)
+- `examples/assignment_test.rs` - Variable assignment (v1.1.0)
+- `examples/assignment_test_rete.rs` - RETE variable assignment (v1.1.0)
+- `examples/test_modulo_execution.rs` - Arithmetic expressions (v1.1.0)
+- `examples/famicanxi_rete_test.rs` - Dynamic thresholds (v1.1.0)
 
 ### RETE Examples
 - `examples/famicanxi_rules.grl` - Production RETE rules with no-loop
@@ -825,7 +825,7 @@ See [examples/](../examples/) directory for complete working examples:
 
 ## Migration Guide
 
-### From v0.16.x to v0.17.x
+### From v0.17.x to v1.1.x
 
 **New Features:**
 1. **Arithmetic in conditions**: `User.Age % 3 == 0`

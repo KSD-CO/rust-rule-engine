@@ -82,6 +82,15 @@ pub enum RuleEngineError {
         /// Error message
         message: String,
     },
+
+    /// Feature not enabled error
+    #[error("Feature not enabled: {feature} - {message}")]
+    FeatureNotEnabled {
+        /// Feature name
+        feature: String,
+        /// Error message
+        message: String,
+    },
 }
 
 /// Convenient Result type alias for rule engine operations
