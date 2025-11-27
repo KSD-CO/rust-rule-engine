@@ -201,7 +201,4 @@ path = "examples/10-module-system/module_demo.rs"
 name = "smart_home_modules"
 path = "examples/10-module-system/smart_home_modules.rs"
 
-[[example]]
-name = "test_grl_parser"
-path = "examples/10-module-system/test_grl_parser.rs"
 
