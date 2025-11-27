@@ -61,11 +61,6 @@ This major release brings **production-grade backward chaining** with comprehens
 ✅ **Proof traces** - Explanation of reasoning chains
 ✅ **Performance benchmarks** - Comprehensive benchmark suite (NEW!)
 
-### ⚠️ Use with Caution (Limited Testing):
-
-✅ **EndsWith/Matches operators** - Fully tested with comprehensive test suite (5 tests)
-✅ **Concurrent queries** - Fully tested with 5 thread safety tests (wrap in `Arc<Mutex<>>`) ⭐
-✅ **Multiple solutions** (max_solutions > 1) - Fully implemented and tested (5 comprehensive tests) 🆕
 
 ### 📋 Production Recommendations:
 
@@ -157,11 +152,12 @@ query "CheckAutoApproval" {
 - **Decision Trees** - Classification and recommendation engines
 - **Expert Systems** - Knowledge-based reasoning and inference
 
-**Examples (15 working examples):**
+**Examples (16 working examples):**
 
-*Demo Applications (11):*
+*Demo Applications (12):*
 - [Simple Query Demo](examples/09-backward-chaining/simple_query_demo.rs) - Basic backward chaining
-- [RETE Index Demo](examples/09-backward-chaining/rete_index_demo.rs) - O(1) performance showcase 🔥 NEW!
+- [RETE Index Demo](examples/09-backward-chaining/rete_index_demo.rs) - O(1) performance showcase 🔥
+- [Multiple Solutions Demo](examples/09-backward-chaining/multiple_solutions_demo.rs) - Find all proof paths (GRL-based) 🆕
 - [Medical Diagnosis](examples/09-backward-chaining/medical_diagnosis_demo.rs) - Disease diagnosis system
 - [E-commerce Approval](examples/09-backward-chaining/ecommerce_approval_demo.rs) - Order approval workflow
 - [Detective System](examples/09-backward-chaining/detective_system_demo.rs) - Crime-solving inference

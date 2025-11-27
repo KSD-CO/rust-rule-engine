@@ -1,6 +1,7 @@
 //! Query interface for backward chaining
 
 use super::goal::Goal;
+use super::search::Solution;
 use crate::types::Value;
 use std::collections::HashMap;
 
@@ -9,18 +10,21 @@ use std::collections::HashMap;
 pub struct QueryResult {
     /// Whether the query goal is provable
     pub provable: bool,
-    
+
     /// Variable bindings that satisfy the query
     pub bindings: HashMap<String, Value>,
-    
+
     /// Trace of how the goal was proven
     pub proof_trace: ProofTrace,
-    
+
     /// Facts that are missing to prove the goal
     pub missing_facts: Vec<String>,
-    
+
     /// Execution statistics
     pub stats: QueryStats,
+
+    /// All solutions found (when max_solutions > 1)
+    pub solutions: Vec<Solution>,
 }
 
 /// Trace showing how a goal was proven
@@ -74,9 +78,27 @@ impl QueryResult {
             proof_trace: proof,
             missing_facts: Vec::new(),
             stats,
+            solutions: Vec::new(),
         }
     }
-    
+
+    /// Create a successful query result with multiple solutions
+    pub fn success_with_solutions(
+        bindings: HashMap<String, Value>,
+        proof: ProofTrace,
+        stats: QueryStats,
+        solutions: Vec<Solution>,
+    ) -> Self {
+        Self {
+            provable: true,
+            bindings,
+            proof_trace: proof,
+            missing_facts: Vec::new(),
+            stats,
+            solutions,
+        }
+    }
+
     /// Create a failed query result
     pub fn failure(missing: Vec<String>, stats: QueryStats) -> Self {
         Self {
@@ -85,6 +107,7 @@ impl QueryResult {
             proof_trace: ProofTrace::empty(),
             missing_facts: missing,
             stats,
+            solutions: Vec::new(),
         }
     }
 }

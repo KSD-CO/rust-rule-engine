@@ -154,10 +154,12 @@ impl BackwardEngine {
         };
 
         Ok(if search_result.success {
-            QueryResult::success(
+            // Use success_with_solutions to include all found solutions
+            QueryResult::success_with_solutions(
                 search_result.bindings,
                 ProofTrace::from_goal(&goal),
                 stats,
+                search_result.solutions,
             )
         } else {
             QueryResult::failure(self.find_missing_facts(&goal), stats)

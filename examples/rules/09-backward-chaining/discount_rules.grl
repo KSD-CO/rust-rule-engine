@@ -1,0 +1,30 @@
+// Multiple Discount Qualification Paths
+// This demonstrates finding multiple solutions for the same goal
+
+rule "VIPDiscount" salience 10 {
+    when
+        User.Points >= 1000
+    then
+        User.HasDiscount = true;
+}
+
+rule "BirthdayDiscount" salience 10 {
+    when
+        User.IsBirthdayMonth == true
+    then
+        User.HasDiscount = true;
+}
+
+rule "FirstTimerDiscount" salience 10 {
+    when
+        User.IsFirstTime == true
+    then
+        User.HasDiscount = true;
+}
+
+rule "ReferralDiscount" salience 10 {
+    when
+        User.HasReferralCode == true
+    then
+        User.HasDiscount = true;
+}

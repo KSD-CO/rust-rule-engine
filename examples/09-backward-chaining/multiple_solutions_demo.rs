@@ -9,9 +9,8 @@
 //! ```
 
 use rust_rule_engine::backward::{BackwardEngine, BackwardConfig};
-use rust_rule_engine::backward::search::SearchStrategy;
-use rust_rule_engine::{KnowledgeBase, Facts, Rule, Condition, ConditionGroup};
-use rust_rule_engine::types::{Value, ActionType, Operator};
+use rust_rule_engine::{KnowledgeBase, Facts};
+use rust_rule_engine::types::Value;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Multiple Solutions Demo ===\n");
@@ -35,69 +34,17 @@ fn demo_multiple_discount_paths() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut kb = KnowledgeBase::new("discount_system");
 
-    // Path 1: VIP members (1000+ points) get discount
-    kb.add_rule(Rule::new(
-        "VIPDiscount".to_string(),
-        ConditionGroup::single(Condition::new(
-            "User.Points".to_string(),
-            Operator::GreaterThanOrEqual,
-            Value::Number(1000.0),
-        )),
-        vec![ActionType::Set {
-            field: "User.HasDiscount".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
+    // Load discount rules from GRL file
+    let rules_grl = include_str!("../rules/09-backward-chaining/discount_rules.grl");
+    kb.add_rules_from_grl(rules_grl)?;
 
-    // Path 2: Birthday this month gets discount
-    kb.add_rule(Rule::new(
-        "BirthdayDiscount".to_string(),
-        ConditionGroup::single(Condition::new(
-            "User.IsBirthdayMonth".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        )),
-        vec![ActionType::Set {
-            field: "User.HasDiscount".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
+    println!("📋 Loaded {} discount qualification rules:", kb.get_rules().len());
+    for rule in kb.get_rules() {
+        println!("   • {}", rule.name);
+    }
+    println!();
 
-    // Path 3: First-time buyers get discount
-    kb.add_rule(Rule::new(
-        "FirstTimerDiscount".to_string(),
-        ConditionGroup::single(Condition::new(
-            "User.IsFirstTime".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        )),
-        vec![ActionType::Set {
-            field: "User.HasDiscount".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
-
-    // Path 4: Referral code gets discount
-    kb.add_rule(Rule::new(
-        "ReferralDiscount".to_string(),
-        ConditionGroup::single(Condition::new(
-            "User.HasReferralCode".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        )),
-        vec![ActionType::Set {
-            field: "User.HasDiscount".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
-
-    // Test with a user who qualifies through MULTIPLE paths
-    let mut facts = Facts::new();
-    facts.set("User.Points", Value::Number(1500.0));           // ✅ VIP (Path 1)
-    facts.set("User.IsBirthdayMonth", Value::Boolean(true));   // ✅ Birthday (Path 2)
-    facts.set("User.IsFirstTime", Value::Boolean(false));      // ❌ Not first time
-    facts.set("User.HasReferralCode", Value::Boolean(true));   // ✅ Referral (Path 3)
-
+    // Test scenario: user who qualifies through MULTIPLE paths
     println!("User Profile:");
     println!("  Points: 1500 (VIP)");
     println!("  Birthday Month: Yes");
@@ -113,7 +60,11 @@ fn demo_multiple_discount_paths() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let mut engine1 = BackwardEngine::with_config(kb.clone(), config1);
-    let mut facts1 = facts.clone();
+    let mut facts1 = Facts::new();
+    facts1.set("User.Points", Value::Number(1500.0));
+    facts1.set("User.IsBirthdayMonth", Value::Boolean(true));
+    facts1.set("User.IsFirstTime", Value::Boolean(false));
+    facts1.set("User.HasReferralCode", Value::Boolean(true));
     let result1 = engine1.query("User.HasDiscount == true", &mut facts1)?;
 
     println!("  ✅ Goal provable: {}", result1.provable);
@@ -131,7 +82,11 @@ fn demo_multiple_discount_paths() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let mut engine_all = BackwardEngine::with_config(kb, config_all);
-    let mut facts_all = facts.clone();
+    let mut facts_all = Facts::new();
+    facts_all.set("User.Points", Value::Number(1500.0));
+    facts_all.set("User.IsBirthdayMonth", Value::Boolean(true));
+    facts_all.set("User.IsFirstTime", Value::Boolean(false));
+    facts_all.set("User.HasReferralCode", Value::Boolean(true));
     let result_all = engine_all.query("User.HasDiscount == true", &mut facts_all)?;
 
     println!("  ✅ Goal provable: {}", result_all.provable);
@@ -153,61 +108,15 @@ fn demo_multiple_access_paths() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut kb = KnowledgeBase::new("access_system");
 
-    // Path 1: Admin role
-    kb.add_rule(Rule::new(
-        "AdminAccess".to_string(),
-        ConditionGroup::single(Condition::new(
-            "User.Role".to_string(),
-            Operator::Equal,
-            Value::String("Admin".to_string()),
-        )),
-        vec![ActionType::Set {
-            field: "User.CanAccessResource".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
+    // Load access rules from GRL file
+    let rules_grl = include_str!("../rules/09-backward-chaining/access_rules.grl");
+    kb.add_rules_from_grl(rules_grl)?;
 
-    // Path 2: Owner of resource
-    kb.add_rule(Rule::new(
-        "OwnerAccess".to_string(),
-        ConditionGroup::single(Condition::new(
-            "User.IsOwner".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        )),
-        vec![ActionType::Set {
-            field: "User.CanAccessResource".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
-
-    // Path 3: Collaborator with permissions
-    kb.add_rule(Rule::new(
-        "CollaboratorAccess".to_string(),
-        ConditionGroup::single(Condition::new(
-            "User.IsCollaborator".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        )),
-        vec![ActionType::Set {
-            field: "User.CanAccessResource".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
-
-    // Path 4: Public resource
-    kb.add_rule(Rule::new(
-        "PublicAccess".to_string(),
-        ConditionGroup::single(Condition::new(
-            "Resource.IsPublic".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        )),
-        vec![ActionType::Set {
-            field: "User.CanAccessResource".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
+    println!("📋 Loaded {} access control rules:", kb.get_rules().len());
+    for rule in kb.get_rules() {
+        println!("   • {}", rule.name);
+    }
+    println!();
 
     // Test with a user who has multiple access rights
     let mut facts = Facts::new();
