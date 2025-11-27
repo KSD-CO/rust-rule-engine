@@ -1,4 +1,5 @@
 use crate::engine::rule::{Condition, ConditionGroup, Rule};
+use crate::engine::module::{Module, ModuleManager, ExportList, ExportItem, ItemType, ImportDecl, ImportType};
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Operator, Value};
 use chrono::{DateTime, Utc};
@@ -15,6 +16,17 @@ static RULE_REGEX: Lazy<Regex> = Lazy::new(|| {
 static RULE_SPLIT_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"(?s)rule\s+(?:"[^"]+"|[a-zA-Z_]\w*).*?\}"#)
         .expect("Invalid rule split regex pattern")
+});
+
+// Module directives regex
+static DEFMODULE_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"defmodule\s+([A-Z_]\w*)\s*\{([^}]*)\}"#)
+        .expect("Invalid defmodule regex pattern")
+});
+
+static DEFMODULE_SPLIT_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?s)defmodule\s+[A-Z_]\w*\s*\{[^}]*\}"#)
+        .expect("Invalid defmodule split regex pattern")
 });
 
 static WHEN_THEN_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -108,6 +120,27 @@ struct RuleAttributes {
     pub date_expires: Option<DateTime<Utc>>,
 }
 
+/// Result from parsing GRL with modules
+#[derive(Debug, Clone)]
+pub struct ParsedGRL {
+    /// Parsed rules
+    pub rules: Vec<Rule>,
+    /// Module manager with configured modules
+    pub module_manager: ModuleManager,
+    /// Map of rule name to module name
+    pub rule_modules: HashMap<String, String>,
+}
+
+impl ParsedGRL {
+    pub fn new() -> Self {
+        Self {
+            rules: Vec::new(),
+            module_manager: ModuleManager::new(),
+            rule_modules: HashMap::new(),
+        }
+    }
+}
+
 impl GRLParser {
     /// Parse a single rule from GRL syntax
     ///
@@ -131,6 +164,176 @@ impl GRLParser {
         let mut parser = GRLParser;
         parser.parse_multiple_rules(grl_text)
     }
+
+    /// Parse GRL text with module support
+    ///
+    /// Example:
+    /// ```grl
+    /// defmodule SENSORS {
+    ///   export: all
+    /// }
+    ///
+    /// defmodule CONTROL {
+    ///   import: SENSORS (rules * (templates temperature))
+    /// }
+    ///
+    /// rule "CheckTemp" {
+    ///   when temperature.value > 28
+    ///   then println("Hot");
+    /// }
+    /// ```
+    pub fn parse_with_modules(grl_text: &str) -> Result<ParsedGRL> {
+        let mut parser = GRLParser;
+        parser.parse_grl_with_modules(grl_text)
+    }
+
+    fn parse_grl_with_modules(&mut self, grl_text: &str) -> Result<ParsedGRL> {
+        let mut result = ParsedGRL::new();
+
+        // First, parse and register all modules
+        for module_match in DEFMODULE_SPLIT_REGEX.find_iter(grl_text) {
+            let module_def = module_match.as_str();
+            self.parse_and_register_module(module_def, &mut result.module_manager)?;
+        }
+
+        // Remove all defmodule blocks from text before parsing rules
+        let rules_text = DEFMODULE_SPLIT_REGEX.replace_all(grl_text, "");
+
+        // Then parse all rules from cleaned text
+        let rules = self.parse_multiple_rules(&rules_text)?;
+        
+        // Try to assign rules to modules based on comments
+        for rule in rules {
+            let module_name = self.extract_module_from_context(grl_text, &rule.name);
+            result.rule_modules.insert(rule.name.clone(), module_name.clone());
+            
+            // Add rule to module in manager
+            if let Ok(module) = result.module_manager.get_module_mut(&module_name) {
+                module.add_rule(&rule.name);
+            }
+            
+            result.rules.push(rule);
+        }
+
+        Ok(result)
+    }
+
+    fn parse_and_register_module(&self, module_def: &str, manager: &mut ModuleManager) -> Result<()> {
+        // Parse: defmodule MODULE_NAME { export: all/none, import: ... }
+        if let Some(captures) = DEFMODULE_REGEX.captures(module_def) {
+            let module_name = captures.get(1).unwrap().as_str().to_string();
+            let module_body = captures.get(2).unwrap().as_str();
+
+            // Create module (ignore if already exists)
+            let _ = manager.create_module(&module_name);
+            let module = manager.get_module_mut(&module_name)?;
+
+            // Parse export directive
+            if let Some(export_type) = self.extract_directive(module_body, "export:") {
+                let exports = if export_type.trim() == "all" {
+                    ExportList::All
+                } else if export_type.trim() == "none" {
+                    ExportList::None
+                } else {
+                    // Parse pattern-based exports
+                    ExportList::Specific(vec![
+                        ExportItem {
+                            item_type: ItemType::All,
+                            pattern: export_type.trim().to_string(),
+                        }
+                    ])
+                };
+                module.set_exports(exports);
+            }
+
+            // Parse import directives
+            let import_lines: Vec<&str> = module_body
+                .lines()
+                .filter(|line| line.trim().starts_with("import:"))
+                .collect();
+
+            for import_line in import_lines {
+                if let Some(import_spec) = self.extract_directive(import_line, "import:") {
+                    // Parse: "MODULE_A (rules * (templates foo))"
+                    self.parse_import_spec(&module_name, &import_spec, manager)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn extract_directive(&self, text: &str, directive: &str) -> Option<String> {
+        if let Some(pos) = text.find(directive) {
+            let after_directive = &text[pos + directive.len()..];
+            
+            // Find the end of the directive (next directive, or end of block)
+            let end = after_directive
+                .find("import:")
+                .or_else(|| after_directive.find("export:"))
+                .unwrap_or(after_directive.len());
+
+            Some(after_directive[..end].trim().to_string())
+        } else {
+            None
+        }
+    }
+
+    fn parse_import_spec(&self, importing_module: &str, spec: &str, manager: &mut ModuleManager) -> Result<()> {
+        // Parse: "SENSORS (rules * (templates temperature))"
+        let parts: Vec<&str> = spec.splitn(2, '(').collect();
+        if parts.is_empty() {
+            return Ok(());
+        }
+
+        let source_module = parts[0].trim().to_string();
+        let rest = if parts.len() > 1 { parts[1] } else { "" };
+
+        // Check if we're importing rules or templates
+        if rest.contains("rules") {
+            manager.import_from(
+                importing_module,
+                &source_module,
+                ImportType::AllRules,
+                "*",
+            )?;
+        }
+
+        if rest.contains("templates") {
+            manager.import_from(
+                importing_module,
+                &source_module,
+                ImportType::AllTemplates,
+                "*",
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn extract_module_from_context(&self, grl_text: &str, rule_name: &str) -> String {
+        // Look backward from rule to find the module comment
+        if let Some(rule_pos) = grl_text.find(&format!("rule \"{}\"", rule_name))
+            .or_else(|| grl_text.find(&format!("rule {}", rule_name)))
+        {
+            // Look backward for ;; MODULE: comment
+            let before = &grl_text[..rule_pos];
+            if let Some(module_pos) = before.rfind(";; MODULE:") {
+                let after_module_marker = &before[module_pos + 10..];
+                if let Some(end_of_line) = after_module_marker.find('\n') {
+                    let module_line = &after_module_marker[..end_of_line].trim();
+                    // Extract module name from "SENSORS - Temperature Monitoring"
+                    if let Some(first_word) = module_line.split_whitespace().next() {
+                        return first_word.to_string();
+                    }
+                }
+            }
+        }
+
+        // Default to MAIN
+        "MAIN".to_string()
+    }
+
 
     fn parse_single_rule(&mut self, grl_text: &str) -> Result<Rule> {
         let cleaned = self.clean_text(grl_text);

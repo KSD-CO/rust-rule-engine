@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.1.1"
+version = "1.2.0"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A high-performance rule engine for Rust with RETE-UL algorithm (2-24x faster), CLIPS-inspired features, Parallel Execution, and Production-Ready Backward Chaining with 100-1000x speedup via O(1) Conclusion Index"
@@ -192,3 +192,13 @@ required-features = ["backward-chaining"]
 name = "backward_critical_missing_tests"
 path = "examples/09-backward-chaining/backward_critical_missing_tests.rs"
 required-features = ["backward-chaining"]
+
+[[example]]
+name = "module_demo"
+path = "examples/10-module-system/module_demo.rs"
+
+[[example]]
+name = "smart_home_modules"
+path = "examples/10-module-system/smart_home_modules.rs"
+
+
