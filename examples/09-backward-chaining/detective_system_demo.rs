@@ -329,7 +329,7 @@ fn demo_motive_analysis() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     let mut bc1 = BackwardEngine::new(kb.clone());
-    let r1 = bc1.query("Motive.Type == 'Financial'", &mut facts1)?;
+    let r1 = bc1.query("Motive.Type == \"Financial\"", &mut facts1)?;
     
     if r1.provable {
         println!("   ✓ Motive: FINANCIAL (Strong)");
@@ -351,7 +351,7 @@ fn demo_motive_analysis() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     let mut bc2 = BackwardEngine::new(kb.clone());
-    let r2 = bc2.query("Motive.Type == 'Revenge'", &mut facts2)?;
+    let r2 = bc2.query("Motive.Type == \"Revenge\"", &mut facts2)?;
     
     if r2.provable {
         println!("   ✓ Motive: REVENGE (Strong)");
@@ -373,7 +373,7 @@ fn demo_motive_analysis() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     let mut bc3 = BackwardEngine::new(kb);
-    let r3 = bc3.query("Motive.Type == 'Passion'", &mut facts3)?;
+    let r3 = bc3.query("Motive.Type == \"Passion\"", &mut facts3)?;
     
     if r3.provable {
         println!("   ✓ Motive: PASSION/JEALOUSY (Moderate)");
@@ -454,7 +454,7 @@ fn demo_sherlock_mode() -> Result<(), Box<dyn std::error::Error>> {
     let mut bc_engine = BackwardEngine::with_config(kb, config);
 
     println!("\n🎯 HOLMES' QUESTION: 'Where was the suspect?'");
-    let result = bc_engine.query("Deduction.Location == 'Crime Scene Identified'", &mut facts)?;
+    let result = bc_engine.query("Deduction.Location == \"Crime Scene Identified\"", &mut facts)?;
 
     if result.provable {
         println!("\n🔍 DEDUCTIVE CHAIN:");

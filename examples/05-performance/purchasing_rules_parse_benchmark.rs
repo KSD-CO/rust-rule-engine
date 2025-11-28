@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📊 Purchasing Rules Parse Benchmark");
     println!("====================================\n");
 
-    let rules_path = "examples/rules/purchasing_rules.grl";
+    let rules_path = "examples/rules/05-performance/purchasing_rules.grl";
     println!("📄 File: {}", rules_path);
     let rules_content = fs::read_to_string(rules_path)?;
     

@@ -93,6 +93,15 @@ fn demo_complete_speedup_rule() -> std::result::Result<(), Box<dyn Error>> {
 
     // Execute rules multiple cycles
     println!("\n🚀 Executing SpeedUp rule...");
+    // Register 'update' action handler so rules using update(obj) work as custom actions
+    engine.register_action_handler("update", |params, facts| {
+        if let Some(Value::String(obj_name)) = params.get("0") {
+            if let Some(obj_val) = facts.get(obj_name) {
+                facts.add_value(obj_name, obj_val)?;
+            }
+        }
+        Ok(())
+    });
     for i in 1..=5 {
         println!("\n--- Cycle {} ---", i);
         let result = engine.execute(&facts)?;

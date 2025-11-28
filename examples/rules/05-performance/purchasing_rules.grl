@@ -1,0 +1,13 @@
+rule "PurchaseRule1" salience 10 {
+    when
+        Order.Amount > 50.0
+    then
+        Log("Purchase over 50 detected");
+}
+
+rule "PurchaseVIP" salience 5 {
+    when
+        User.IsVIP == true
+    then
+        Log("VIP purchase");
+}

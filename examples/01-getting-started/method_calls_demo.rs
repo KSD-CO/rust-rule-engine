@@ -3,8 +3,40 @@ use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::parser::grl::GRLParser;
 use rust_rule_engine::types::Value;
+use rust_rule_engine::expression;
 use std::collections::HashMap;
 use std::fs;
+
+// Helper: flatten nested objects in Facts into a new Facts instance with dotted keys
+fn flatten_facts_for_eval(orig: &Facts) -> Facts {
+    let flat = Facts::new();
+
+    fn recurse(flat: &Facts, prefix: &str, val: &Value) {
+        match val {
+            Value::Object(map) => {
+                for (k, v) in map.iter() {
+                    let key = if prefix.is_empty() {
+                        k.clone()
+                    } else {
+                        format!("{}.{}", prefix, k)
+                    };
+
+                    recurse(flat, &key, v);
+                }
+            }
+            _ => {
+                flat.set(prefix, val.clone());
+            }
+        }
+    }
+
+    let all = orig.get_all_facts();
+    for (k, v) in all.iter() {
+        recurse(&flat, k, v);
+    }
+
+    flat
+}
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("🎯 Method Calls Demo with Rule File");
@@ -102,6 +134,64 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             }
         }
         Ok(Value::String("Speed decrease attempted".to_string()))
+    });
+
+    // Register action handlers for method calls parsed as custom actions
+    engine.register_action_handler("TestCar.setSpeed", |params, facts| {
+        if let Some(val) = params.get("0").cloned() {
+            // If value is an expression, try to evaluate it against facts
+            let resolved = match val {
+                Value::Expression(expr) => {
+                    // Create a flattened facts view where nested object fields are available as dotted keys
+                    let flat = flatten_facts_for_eval(facts);
+                    match expression::evaluate_expression(&expr, &flat) {
+                        Ok(v) => v,
+                        Err(_) => Value::Expression(expr),
+                    }
+                }
+                other => other,
+            };
+
+            let _ = facts.set_nested("TestCar.Speed", resolved.clone());
+            println!("  ⚙️ Action Handler: TestCar.Speed set to {:?}", resolved);
+        }
+        Ok(())
+    });
+
+    engine.register_action_handler("TestCar.setSpeedUp", |params, facts| {
+        if let Some(val) = params.get("0").cloned() {
+            let _ = facts.set_nested("TestCar.SpeedUp", val);
+            println!("  ⚙️ Action Handler: TestCar.SpeedUp set to {:?}", params.get("0"));
+        }
+        Ok(())
+    });
+
+    // Short-name handlers in case parser emits method calls as 'setSpeed'/'setSpeedUp'
+    engine.register_action_handler("setSpeed", |params, facts| {
+        if let Some(val) = params.get("0").cloned() {
+            let resolved = match val {
+                Value::Expression(expr) => {
+                    let flat = flatten_facts_for_eval(facts);
+                    match expression::evaluate_expression(&expr, &flat) {
+                        Ok(v) => v,
+                        Err(_) => Value::Expression(expr),
+                    }
+                }
+                other => other,
+            };
+
+            let _ = facts.set_nested("TestCar.Speed", resolved.clone());
+            println!("  ⚙️ Action Handler (short): TestCar.Speed set to {:?}", resolved);
+        }
+        Ok(())
+    });
+
+    engine.register_action_handler("setSpeedUp", |params, facts| {
+        if let Some(val) = params.get("0").cloned() {
+            let _ = facts.set_nested("TestCar.SpeedUp", val);
+            println!("  ⚙️ Action Handler (short): TestCar.SpeedUp set to {:?}", params.get("0"));
+        }
+        Ok(())
     });
 
     // Execute rules

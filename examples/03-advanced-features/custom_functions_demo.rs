@@ -51,14 +51,23 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         vec![
             ActionType::Custom {
                 action_type: "checkSpeedLimit".to_string(),
-                params: std::collections::HashMap::from([("args", vec![Value::String("Car.Speed".to_string()), Value::Number(80.0)],
+                params: std::collections::HashMap::from([(
+                    "args".to_string(),
+                    Value::Array(vec![
+                        Value::String("Car.Speed".to_string()),
+                        Value::Number(80.0),
+                    ]),
+                )]),
             },
             ActionType::Custom {
                 action_type: "sendAlert".to_string(),
-                params: std::collections::HashMap::from([("args", vec![
-                    Value::String("Speed limit exceeded!".to_string()),
-                    Value::String("Driver.Name".to_string()),
-                ],
+                params: std::collections::HashMap::from([(
+                    "args".to_string(),
+                    Value::Array(vec![
+                        Value::String("Speed limit exceeded!".to_string()),
+                        Value::String("Driver.Name".to_string()),
+                    ]),
+                )]),
             },
         ],
     )
@@ -75,17 +84,23 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         vec![
             ActionType::Custom {
                 action_type: "validateDriver".to_string(),
-                params: std::collections::HashMap::from([("args", vec![
-                    Value::String("Driver.Name".to_string()),
-                    Value::String("Driver.Experience".to_string()),
-                ],
+                params: std::collections::HashMap::from([(
+                    "args".to_string(),
+                    Value::Array(vec![
+                        Value::String("Driver.Name".to_string()),
+                        Value::String("Driver.Experience".to_string()),
+                    ]),
+                )]),
             },
             ActionType::Custom {
                 action_type: "calculateInsurance".to_string(),
-                params: std::collections::HashMap::from([("args", vec![
-                    Value::String("Driver.Experience".to_string()),
-                    Value::String("Car.Engine".to_string()),
-                ],
+                params: std::collections::HashMap::from([(
+                    "args".to_string(),
+                    Value::Array(vec![
+                        Value::String("Driver.Experience".to_string()),
+                        Value::String("Car.Engine".to_string()),
+                    ]),
+                )]),
             },
         ],
     )
@@ -102,17 +117,23 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         vec![
             ActionType::Custom {
                 action_type: "performDiagnostics".to_string(),
-                params: std::collections::HashMap::from([("args", vec![
-                    Value::String("Car.Engine".to_string()),
-                    Value::String("Car.Speed".to_string()),
-                ],
+                params: std::collections::HashMap::from([(
+                    "args".to_string(),
+                    Value::Array(vec![
+                        Value::String("Car.Engine".to_string()),
+                        Value::String("Car.Speed".to_string()),
+                    ]),
+                )]),
             },
             ActionType::Custom {
                 action_type: "optimizePerformance".to_string(),
-                params: std::collections::HashMap::from([("args", vec![
-                    Value::String("Car.Speed".to_string()),
-                    Value::String("Car.MaxSpeed".to_string()),
-                ],
+                params: std::collections::HashMap::from([(
+                    "args".to_string(),
+                    Value::Array(vec![
+                        Value::String("Car.Speed".to_string()),
+                        Value::String("Car.MaxSpeed".to_string()),
+                    ]),
+                )]),
             },
         ],
     )
@@ -238,6 +259,41 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("   🔧 performDiagnostics - Run engine diagnostics");
     println!("   ⚡ optimizePerformance - Optimize engine performance");
     println!();
+
+    // Also register action handlers for the same names because parser may
+    // emit ActionType::Custom for 'then' function calls in some rule styles.
+    engine.register_action_handler("checkSpeedLimit", |params, facts| {
+        let speed = params.get("0").cloned().unwrap_or(Value::Number(0.0));
+        let limit = params.get("1").cloned().unwrap_or(Value::Number(0.0));
+        println!("🚦 Action Handler: Speed check: {:?} vs {:?}", speed, limit);
+        Ok(())
+    });
+
+    engine.register_action_handler("sendAlert", |params, _facts| {
+        let message = params.get("0").map(|v| v.to_string()).unwrap_or_default();
+        println!("🚨 Action Handler Alert: {}", message);
+        Ok(())
+    });
+
+    engine.register_action_handler("validateDriver", |params, _facts| {
+        println!("✅ Action Handler: validateDriver called with {:?}", params);
+        Ok(())
+    });
+
+    engine.register_action_handler("calculateInsurance", |params, _facts| {
+        println!("💰 Action Handler: calculateInsurance called with {:?}", params);
+        Ok(())
+    });
+
+    engine.register_action_handler("performDiagnostics", |params, _facts| {
+        println!("🔧 Action Handler: performDiagnostics called with {:?}", params);
+        Ok(())
+    });
+
+    engine.register_action_handler("optimizePerformance", |params, _facts| {
+        println!("⚡ Action Handler: optimizePerformance called with {:?}", params);
+        Ok(())
+    });
 
     // Execute rules
     println!("🚀 Executing rules with custom functions...");

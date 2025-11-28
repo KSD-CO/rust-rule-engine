@@ -64,13 +64,12 @@ impl RulePlugin for StringUtilsPlugin {
                 }
             };
 
-            // Get the actual value from facts
-            let input_value =
-                facts
-                    .get(&input_path_str)
-                    .ok_or_else(|| RuleEngineError::FieldNotFound {
-                        field: input_path_str.clone(),
-                    })?;
+            // Resolve the input value: if `input_path_str` refers to a nested fact (e.g. "User.name")
+            // prefer reading from facts; otherwise treat it as a literal string value.
+            let input_value = match facts.get_nested(&input_path_str) {
+                Some(v) => v,
+                None => Value::String(input_path_str.clone()),
+            };
 
             let input_str = match input_value {
                 Value::String(s) => s.clone(),
@@ -85,16 +84,21 @@ impl RulePlugin for StringUtilsPlugin {
 
             let output_path_str = match output_path {
                 Value::String(s) => s.clone(),
-                _ => {
-                    return Err(RuleEngineError::ActionError {
-                        message: "Output path must be string".to_string(),
-                    })
-                }
+                other => other.to_string(),
             };
 
             let result = input_str.to_uppercase();
-            facts.set_nested(&output_path_str, Value::String(result))?;
-            Ok(())
+            match facts.set_nested(&output_path_str, Value::String(result.clone())) {
+                Ok(()) => Ok(()),
+                Err(e) => match e {
+                    RuleEngineError::FieldNotFound { .. } => {
+                        // fallback to adding as top-level fact
+                        facts.add_value(&output_path_str, Value::String(result))?;
+                        Ok(())
+                    }
+                    other => Err(other),
+                },
+            }
         });
 
         // ToLowerCase action
@@ -122,12 +126,11 @@ impl RulePlugin for StringUtilsPlugin {
                 }
             };
 
-            let input_value =
-                facts
-                    .get(&input_path_str)
-                    .ok_or_else(|| RuleEngineError::FieldNotFound {
-                        field: input_path_str.clone(),
-                    })?;
+            // Resolve input similar to ToUpperCase: prefer nested fact lookup, else literal
+            let input_value = match facts.get_nested(&input_path_str) {
+                Some(v) => v,
+                None => Value::String(input_path_str.clone()),
+            };
 
             let input_str = match input_value {
                 Value::String(s) => s.clone(),
@@ -142,16 +145,20 @@ impl RulePlugin for StringUtilsPlugin {
 
             let output_path_str = match output_path {
                 Value::String(s) => s.clone(),
-                _ => {
-                    return Err(RuleEngineError::ActionError {
-                        message: "Output path must be string".to_string(),
-                    })
-                }
+                other => other.to_string(),
             };
 
             let result = input_str.to_lowercase();
-            facts.set_nested(&output_path_str, Value::String(result))?;
-            Ok(())
+            match facts.set_nested(&output_path_str, Value::String(result.clone())) {
+                Ok(()) => Ok(()),
+                Err(e) => match e {
+                    RuleEngineError::FieldNotFound { .. } => {
+                        facts.add_value(&output_path_str, Value::String(result))?;
+                        Ok(())
+                    }
+                    other => Err(other),
+                },
+            }
         });
 
         // StringLength action
@@ -179,12 +186,11 @@ impl RulePlugin for StringUtilsPlugin {
                 }
             };
 
-            let input_value =
-                facts
-                    .get(&input_path_str)
-                    .ok_or_else(|| RuleEngineError::FieldNotFound {
-                        field: input_path_str.clone(),
-                    })?;
+            // Resolve input similar to other actions: prefer nested fact lookup, else literal
+            let input_value = match facts.get_nested(&input_path_str) {
+                Some(v) => v,
+                None => Value::String(input_path_str.clone()),
+            };
 
             let input_str = match input_value {
                 Value::String(s) => s.clone(),
@@ -197,16 +203,20 @@ impl RulePlugin for StringUtilsPlugin {
 
             let output_path_str = match output_path {
                 Value::String(s) => s.clone(),
-                _ => {
-                    return Err(RuleEngineError::ActionError {
-                        message: "Output path must be string".to_string(),
-                    })
-                }
+                other => other.to_string(),
             };
 
             let length = input_str.len() as i64;
-            facts.set_nested(&output_path_str, Value::Integer(length))?;
-            Ok(())
+            match facts.set_nested(&output_path_str, Value::Integer(length)) {
+                Ok(()) => Ok(()),
+                Err(e) => match e {
+                    RuleEngineError::FieldNotFound { .. } => {
+                        facts.add_value(&output_path_str, Value::Integer(length))?;
+                        Ok(())
+                    }
+                    other => Err(other),
+                },
+            }
         });
 
         // StringContains action
@@ -241,12 +251,11 @@ impl RulePlugin for StringUtilsPlugin {
                 }
             };
 
-            let input_value =
-                facts
-                    .get(&input_path_str)
-                    .ok_or_else(|| RuleEngineError::FieldNotFound {
-                        field: input_path_str.clone(),
-                    })?;
+            // Resolve input similar to other actions: prefer nested fact lookup, else literal
+            let input_value = match facts.get_nested(&input_path_str) {
+                Some(v) => v,
+                None => Value::String(input_path_str.clone()),
+            };
 
             let input_str = match input_value {
                 Value::String(s) => s.clone(),
@@ -268,16 +277,20 @@ impl RulePlugin for StringUtilsPlugin {
 
             let output_path_str = match output_path {
                 Value::String(s) => s.clone(),
-                _ => {
-                    return Err(RuleEngineError::ActionError {
-                        message: "Output path must be string".to_string(),
-                    })
-                }
+                other => other.to_string(),
             };
 
             let contains = input_str.contains(&search_str);
-            facts.set_nested(&output_path_str, Value::Boolean(contains))?;
-            Ok(())
+            match facts.set_nested(&output_path_str, Value::Boolean(contains)) {
+                Ok(()) => Ok(()),
+                Err(e) => match e {
+                    RuleEngineError::FieldNotFound { .. } => {
+                        facts.add_value(&output_path_str, Value::Boolean(contains))?;
+                        Ok(())
+                    }
+                    other => Err(other),
+                },
+            }
         });
 
         Ok(())

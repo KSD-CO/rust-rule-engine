@@ -257,31 +257,27 @@ fn create_conflict_kb() -> Result<KnowledgeBase, Box<dyn std::error::Error>> {
 }
 
 fn register_sequential_functions(engine: &mut RustRuleEngine) {
-    engine.register_function(
-        "calculateScore",
-        Box::new(|args: &[Value], facts: &Facts| {
-            println!("     🧮 Calculating score...");
-            // In real implementation, would update facts
-            Ok(Value::Number(85.0))
-        }),
-    );
+    // Register action handlers for custom actions used in rules
+    engine.register_action_handler("calculateScore", |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
+        println!("     🧮 Calculating score...");
+        // Simple stub: write a calculated Score into facts
+        facts.set_nested("User.Score", Value::Number(85.0));
+        Ok(())
+    });
 
-    engine.register_function(
-        "setVIPStatus",
-        Box::new(|args: &[Value], facts: &Facts| {
-            println!("     ⭐ Setting VIP status...");
-            // In real implementation, would update facts
-            Ok(Value::Boolean(true))
-        }),
-    );
+    engine.register_action_handler("setVIPStatus", |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
+        println!("     ⭐ Setting VIP status...");
+        // Simple stub: set IsVIP to true
+        facts.set_nested("User.IsVIP", Value::Boolean(true)).ok();
+        Ok(())
+    });
 
-    engine.register_function(
-        "applyDiscount",
-        Box::new(|args: &[Value], facts: &Facts| {
-            println!("     💰 Applying discount...");
-            Ok(Value::Null)
-        }),
-    );
+    engine.register_action_handler("applyDiscount", |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
+        println!("     💰 Applying discount...");
+        // Simple stub: set a DiscountRate on Order
+        facts.set_nested("Order.DiscountRate", Value::Number(0.1));
+        Ok(())
+    });
 }
 
 fn register_parallel_functions(engine: &mut ParallelRuleEngine) {

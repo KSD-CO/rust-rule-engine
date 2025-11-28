@@ -13,7 +13,7 @@ rule "CollectOrderItems" salience 100 {
 }
 
 // Rule 2: Check if product has specific tag
-rule "CheckElectronicsTag" salience 90 {
+rule "CheckElectronicsTag" salience 90 no-loop {
     when
         Product.tags contains "electronics"
     then
@@ -22,7 +22,7 @@ rule "CheckElectronicsTag" salience 90 {
 }
 
 // Rule 3: Validate order has items
-rule "ValidateOrderNotEmpty" salience 80 {
+rule "ValidateOrderNotEmpty" salience 80 no-loop {
     when
         Order.items count > 0
     then
@@ -31,7 +31,7 @@ rule "ValidateOrderNotEmpty" salience 80 {
 }
 
 // Rule 4: Process first item in queue
-rule "ProcessFirstTask" salience 70 {
+rule "ProcessFirstTask" salience 70 no-loop {
     when
         Queue.tasks not_empty &&
         Queue.tasks first $first_task
@@ -41,7 +41,7 @@ rule "ProcessFirstTask" salience 70 {
 }
 
 // Rule 5: Check minimum item count
-rule "BulkOrder" salience 60 {
+rule "BulkOrder" salience 60 no-loop {
     when
         Order.items count >= 5
     then
@@ -50,7 +50,7 @@ rule "BulkOrder" salience 60 {
 }
 
 // Rule 6: Tag-based routing
-rule "RouteByTag" salience 50 {
+rule "RouteByTag" salience 50 no-loop {
     when
         Product.tags contains "sale"
     then
@@ -58,7 +58,7 @@ rule "RouteByTag" salience 50 {
 }
 
 // Rule 7: Access last item
-rule "ProcessLastItem" salience 40 {
+rule "ProcessLastItem" salience 40 no-loop {
     when
         Order.items last $last_item
     then
@@ -67,7 +67,7 @@ rule "ProcessLastItem" salience 40 {
 }
 
 // Rule 8: Check empty array
-rule "EmptyCart" salience 30 {
+rule "EmptyCart" salience 30 no-loop {
     when
         ShoppingCart.items empty
     then
@@ -88,7 +88,7 @@ rule "PremiumElectronicsOrder" salience 20 {
 }
 
 // Rule 10: Collect and count pattern
-rule "InventoryCheck" salience 10 {
+rule "InventoryCheck" salience 10 no-loop {
     when
         Inventory.items $?all_items &&
         Inventory.items count < 10

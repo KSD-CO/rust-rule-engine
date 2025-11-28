@@ -232,6 +232,96 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("   ✅ Transaction.setRiskProcessed");
     println!();
 
+    // Also register action handlers for the same names because the parser
+    // may map some 'then' calls to ActionType::Custom rather than function
+    // calls. Registering both ensures both styles work in the demo.
+    engine.register_action_handler("Customer.setTier", |params, facts| {
+        let new_tier = params
+            .get("0")
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let _ = facts.set_nested("Customer.Tier", Value::String(new_tier.clone()));
+        println!("  📌 Action Handler: Customer.tier set to {}", new_tier);
+        Ok(())
+    });
+
+    engine.register_action_handler("Customer.setLoyaltyBonusApplied", |params, facts| {
+        let applied = params.get("0").cloned().unwrap_or(Value::Boolean(false));
+        let _ = facts.set_nested("Customer.LoyaltyBonusApplied", applied.clone());
+        println!("  🎯 Action Handler: Loyalty bonus applied = {:?}", applied);
+        Ok(())
+    });
+
+    engine.register_action_handler("sendWelcomeEmail", |params, _facts| {
+        let email = params.get("0").map(|v| v.to_string()).unwrap_or_default();
+        let tier = params.get("1").map(|v| v.to_string()).unwrap_or_default();
+        println!("  📧 Action Handler: Welcome email sent to {} for {} tier", email, tier);
+        Ok(())
+    });
+
+    engine.register_action_handler("applyLoyaltyBonus", |params, _facts| {
+        let customer_id = params.get("0").map(|v| v.to_string()).unwrap_or_default();
+        let bonus_amount = params.get("1").cloned().unwrap_or(Value::Number(0.0));
+        println!("  💰 Action Handler: Loyalty bonus of {:?} applied to {}", bonus_amount, customer_id);
+        Ok(())
+    });
+
+    engine.register_action_handler("flagForReview", |params, _facts| {
+        let txn_id = params.get("0").map(|v| v.to_string()).unwrap_or_default();
+        println!("  🚨 Action Handler: Transaction {} flagged for review", txn_id);
+        Ok(())
+    });
+
+    engine.register_action_handler("notifySecurityTeam", |params, _facts| {
+        let customer_id = params.get("0").map(|v| v.to_string()).unwrap_or_default();
+        let amount = params.get("1").cloned().unwrap_or(Value::Number(0.0));
+        println!("  🔒 Action Handler: notify security for {} - {:?}", customer_id, amount);
+        Ok(())
+    });
+
+    engine.register_action_handler("Customer.setWelcomeEmailSent", |params, facts| {
+        let sent = params.get("0").cloned().unwrap_or(Value::Boolean(false));
+        let _ = facts.set_nested("Customer.WelcomeEmailSent", sent.clone());
+        println!("  ✅ Action Handler: WelcomeEmailSent = {:?}", sent);
+        Ok(())
+    });
+
+    engine.register_action_handler("Transaction.setRiskProcessed", |params, facts| {
+        let processed = params.get("0").cloned().unwrap_or(Value::Boolean(false));
+        let _ = facts.set_nested("Transaction.RiskProcessed", processed.clone());
+        println!("  ✅ Action Handler: Transaction.RiskProcessed = {:?}", processed);
+        Ok(())
+    });
+
+    // Also register handlers for short action names (parser may emit these)
+    engine.register_action_handler("setTier", |params, facts| {
+        let new_tier = params.get("0").map(|v| v.to_string()).unwrap_or_default();
+        let _ = facts.set_nested("Customer.Tier", Value::String(new_tier.clone()));
+        println!("  📌 Action Handler (short): Customer.tier set to {}", new_tier);
+        Ok(())
+    });
+
+    engine.register_action_handler("setLoyaltyBonusApplied", |params, facts| {
+        let applied = params.get("0").cloned().unwrap_or(Value::Boolean(false));
+        let _ = facts.set_nested("Customer.LoyaltyBonusApplied", applied.clone());
+        println!("  🎯 Action Handler (short): Loyalty bonus applied = {:?}", applied);
+        Ok(())
+    });
+
+    engine.register_action_handler("setWelcomeEmailSent", |params, facts| {
+        let sent = params.get("0").cloned().unwrap_or(Value::Boolean(false));
+        let _ = facts.set_nested("Customer.WelcomeEmailSent", sent.clone());
+        println!("  ✅ Action Handler (short): WelcomeEmailSent = {:?}", sent);
+        Ok(())
+    });
+
+    engine.register_action_handler("setRiskProcessed", |params, facts| {
+        let processed = params.get("0").cloned().unwrap_or(Value::Boolean(false));
+        let _ = facts.set_nested("Transaction.RiskProcessed", processed.clone());
+        println!("  ✅ Action Handler (short): Transaction.RiskProcessed = {:?}", processed);
+        Ok(())
+    });
+
     // Execute the inline rules
     println!("🚀 Executing inline GRL rules...");
     let result = engine.execute(&facts)?;

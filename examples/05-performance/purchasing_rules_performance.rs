@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=====================================\n");
 
     // Read the purchasing rules file
-    let rules_path = "examples/rules/purchasing_rules.grl";
+    let rules_path = "examples/rules/05-performance/purchasing_rules.grl";
     println!("📄 Reading rules from: {}", rules_path);
     let rules_content = fs::read_to_string(rules_path)?;
     println!("   File size: {} bytes\n", rules_content.len());

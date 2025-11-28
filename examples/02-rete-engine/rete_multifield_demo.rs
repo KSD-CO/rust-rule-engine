@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load multifield rules from GRL file
     println!("📂 Loading multifield rules from GRL file...");
-    let rules_path = "examples/rules/multifield_patterns.grl";
+    let rules_path = "examples/rules/02-rete/multifield_patterns.grl";
     let count = GrlReteLoader::load_from_file(rules_path, &mut engine)?;
     println!("✅ Loaded {} rules into RETE engine\n", count);
 

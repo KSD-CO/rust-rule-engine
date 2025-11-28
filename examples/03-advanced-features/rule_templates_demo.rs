@@ -131,6 +131,21 @@ fn demo_vip_template() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     println!("\n🧪 Testing US user with $1200 spending:");
+    // Also register an action handler for setIsVIP to support ActionType::Custom
+    engine.register_action_handler("setIsVIP", |params, facts| {
+        // params may be keyed by "0" etc., but templates here pass a value directly.
+        if let Some(val) = params.get("0") {
+            // Update User.VIPLevel if provided — safely handle Option<Value> and cloning
+            if let Some(existing) = facts.get("User").or_else(|| facts.get("user")) {
+                if let Value::Object(obj) = existing {
+                    let mut updated = obj.clone();
+                    updated.insert("VIPLevel".to_string(), val.clone());
+                    facts.add_value("User", Value::Object(updated)).map_err(|e| rust_rule_engine::errors::RuleEngineError::EvaluationError { message: format!("setIsVIP failed: {}", e) })?;
+                }
+            }
+        }
+        Ok(())
+    });
     let result = engine.execute(&facts)?;
     println!("   Rules fired: {}", result.rules_fired);
     println!("   Execution time: {:?}", result.execution_time);
