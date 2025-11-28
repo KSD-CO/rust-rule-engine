@@ -432,4 +432,5 @@ path = "examples/08-misc/rule_file_functions_demo.rs"
 [[example]]
 name = "access_control_demo"
 path = "examples/09-backward-chaining/access_control_demo.rs"
+required-features = ["backward-chaining"]
 
