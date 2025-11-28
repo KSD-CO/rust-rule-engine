@@ -31,7 +31,7 @@
 //! manager.set_focus("CONTROL").unwrap();
 //! ```
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use crate::errors::{Result, RuleEngineError};
 
 /// Type of item that can be exported/imported
@@ -215,6 +215,19 @@ impl Module {
     }
 }
 
+/// Error type for cyclic import detection
+#[derive(Debug, Clone)]
+pub struct CycleError {
+    /// The cycle that was detected (list of module names forming the cycle)
+    pub cycle_path: Vec<String>,
+}
+
+impl std::fmt::Display for CycleError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Cyclic import detected: {}", self.cycle_path.join(" -> "))
+    }
+}
+
 /// Module manager for organizing knowledge bases
 #[derive(Debug, Clone)]
 pub struct ModuleManager {
@@ -224,6 +237,8 @@ pub struct ModuleManager {
     current_focus: String,
     /// Default module name
     default_module: String,
+    /// Track import graph for cycle detection
+    import_graph: HashMap<String, HashSet<String>>,
 }
 
 impl ModuleManager {
@@ -236,6 +251,7 @@ impl ModuleManager {
             modules,
             current_focus: "MAIN".to_string(),
             default_module: "MAIN".to_string(),
+            import_graph: HashMap::new(),
         }
     }
 
@@ -283,6 +299,12 @@ impl ModuleManager {
             message: format!("Module '{}' not found", name),
         })?;
 
+        // Clean up import graph
+        self.import_graph.remove(name);
+        for (_, imports) in self.import_graph.iter_mut() {
+            imports.remove(name);
+        }
+
         Ok(())
     }
 
@@ -317,6 +339,86 @@ impl ModuleManager {
         Ok(())
     }
 
+    /// Detect if adding an import would create a cycle
+    /// 
+    /// Uses BFS (Breadth-First Search) to traverse the import graph from `from_module`
+    /// and check if we can reach `to_module`. If we can, adding `to_module -> from_module`
+    /// would create a cycle.
+    ///
+    /// Returns `Ok(())` if no cycle would be created.
+    /// Returns `Err(RuleEngineError)` with detailed cycle path if cycle would be created.
+    fn detect_cycle(&self, to_module: &str, from_module: &str) -> Result<()> {
+        // Cycle with self
+        if to_module == from_module {
+            return Err(RuleEngineError::ModuleError {
+                message: format!(
+                    "Cyclic import detected: {} cannot import from itself",
+                    to_module
+                ),
+            });
+        }
+
+        // BFS from from_module to see if we can reach to_module
+        // If we can, then adding to_module -> from_module creates a cycle
+        let mut queue = VecDeque::new();
+        let mut visited = HashSet::new();
+        let mut parent_map: HashMap<String, String> = HashMap::new();
+
+        queue.push_back(from_module.to_string());
+        visited.insert(from_module.to_string());
+
+        while let Some(current) = queue.pop_front() {
+            // Get all modules that current imports from
+            if let Some(imports) = self.import_graph.get(&current) {
+                for imported in imports {
+                    if imported == to_module {
+                        // Found a cycle! Reconstruct the path
+                        let mut cycle_path = vec![to_module.to_string()];
+                        let mut node = current.clone();
+
+                        while let Some(parent) = parent_map.get(&node) {
+                            cycle_path.push(node.clone());
+                            node = parent.clone();
+                        }
+
+                        cycle_path.push(node);
+                        cycle_path.reverse();
+
+                        return Err(RuleEngineError::ModuleError {
+                            message: format!(
+                                "Cyclic import detected: {}",
+                                cycle_path.join(" -> ")
+                            ),
+                        });
+                    }
+
+                    if !visited.contains(imported) {
+                        visited.insert(imported.clone());
+                        parent_map.insert(imported.clone(), current.clone());
+                        queue.push_back(imported.clone());
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get the import graph for inspection/debugging
+    pub fn get_import_graph(&self) -> &HashMap<String, HashSet<String>> {
+        &self.import_graph
+    }
+
+    /// Export the import graph for visualization or analysis
+    pub fn get_import_graph_debug(&self) -> Vec<(String, Vec<String>)> {
+        self.import_graph
+            .iter()
+            .map(|(module, imports)| {
+                (module.clone(), imports.iter().cloned().collect())
+            })
+            .collect()
+    }
+
     /// Add an import to a module
     pub fn import_from(
         &mut self,
@@ -332,12 +434,21 @@ impl ModuleManager {
             });
         }
 
+        // Check for cycles BEFORE adding the import
+        self.detect_cycle(to_module, from_module)?;
+
         let module = self.get_module_mut(to_module)?;
         module.add_import(ImportDecl {
             from_module: from_module.to_string(),
             import_type,
             pattern: pattern.into(),
         });
+
+        // Update import graph
+        self.import_graph
+            .entry(to_module.to_string())
+            .or_insert_with(HashSet::new)
+            .insert(from_module.to_string());
 
         Ok(())
     }

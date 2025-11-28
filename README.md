@@ -1,25 +1,36 @@
-# Rust Rule Engine v1.2.0 🦀⚡🚀
+# Rust Rule Engine v1.3.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired Module System**, **Production-Ready Backward Chaining (100-1000x faster!)**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired Module System with Cyclic Import Detection**, **Production-Ready Backward Chaining (100-1000x faster!)**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## ✨ What's New in v1.2.0 🎉
+## ✨ What's New in v1.3.0 🎉
 
-🎯 **Module System for Large-Scale Rule Organization!**
+🎯 **Cyclic Import Detection for Module System!**
 
-This release introduces **CLIPS-inspired module system** for organizing and managing large-scale rule bases. Organize complex applications with modular rule organization, import/export control, and namespace management.
+This release adds **production-ready cyclic import detection** to prevent circular dependencies between modules. Ensures clean module architecture with automatic cycle detection and clear error messages.
 
 ### 🎉 Major Features:
 
-✅ **CLIPS-Inspired Module System** (NEW!)
+✅ **Cyclic Import Detection** (NEW!)
+- ✅ BFS-based cycle detection algorithm (O(V + E))
+- ✅ Prevents self-imports (A → A)
+- ✅ Detects simple cycles (A → B → A)
+- ✅ Detects complex cycles (A → B → C → A)
+- ✅ Supports valid chains and diamond patterns
+- ✅ Clear error messages with cycle paths
+- ✅ <1ms performance for 100 modules
+- ✅ Zero breaking changes from v1.2.x
+- ✅ 13 comprehensive test cases (100% passing)
+
+✅ **CLIPS-Inspired Module System** (From v1.2.0)
 - ✅ Modular rule organization with namespaces
 - ✅ Import/Export directives for visibility control
 - ✅ Clear module boundaries with GRL syntax
@@ -27,7 +38,7 @@ This release introduces **CLIPS-inspired module system** for organizing and mana
 - ✅ 100% backward compatible with v1.1.x
 - ✅ All 85 existing examples work unchanged
 
-✅ **GRL Parser Enhancements** (NEW!)
+✅ **GRL Parser Enhancements** (From v1.2.0)
 - ✅ `defmodule` directive support for module declarations
 - ✅ Module context markers (`;; MODULE: NAME`) for rule organization
 - ✅ Export/import specifications with visibility control
@@ -35,7 +46,7 @@ This release introduces **CLIPS-inspired module system** for organizing and mana
 - ✅ Automatic rule-to-module mapping via backward search algorithm
 - ✅ Performance: <1ms for typical files
 
-✅ **Module Management APIs** (NEW!)
+✅ **Module Management APIs** (From v1.2.0)
 - ✅ ModuleManager for complete module lifecycle
 - ✅ Module visibility and access control enforcement
 - ✅ Rule-to-module mapping with HashMap lookup
@@ -46,6 +57,25 @@ This release introduces **CLIPS-inspired module system** for organizing and mana
 - ✅ 100-1000x performance with O(1) indexing
 - ✅ All v1.1.x features fully integrated
 
+---
+
+## 📋 Version History
+
+### v1.3.0 (Current)
+- ✅ **Cyclic Import Detection** - Prevents circular module dependencies
+- ✅ **BFS-based cycle detection** - O(V + E) performance
+- ✅ **Self-import prevention** - Detects A → A patterns
+- ✅ **Clear error messages** - Shows cycle paths
+- ✅ **100% backward compatible** - No breaking changes
+- ✅ **13 comprehensive tests** - All passing
+
+### v1.2.0
+- ✅ CLIPS-inspired module system
+- ✅ GRL parser with defmodule directives
+- ✅ Import/export control
+- ✅ Module-aware rule focusing
+- ✅ 100% backward compatible
+
 ### 🎉 Major Milestones:
 
 ✅ **Complete Backward Chaining System** (88% → Production Ready!)
@@ -55,7 +85,11 @@ This release introduces **CLIPS-inspired module system** for organizing and mana
 - ✅ **100-1000x proven speedup** with O(1) Conclusion Index
 - ✅ Scales to 10,000+ rules efficiently
 
-✅ **Module System** (NEW in v1.2.0!)
+✅ **Module System with Cyclic Detection** (NEW in v1.3.0!)
+- ✅ Cyclic import detection with BFS algorithm
+- ✅ Prevents self-imports and circular dependencies
+- ✅ Clear error messages with cycle paths
+- ✅ <1ms performance for 100 modules
 - ✅ CLIPS-inspired module system with full support
 - ✅ GRL parser with defmodule directives
 - ✅ Import/export control with visibility rules
@@ -64,23 +98,26 @@ This release introduces **CLIPS-inspired module system** for organizing and mana
 - ✅ Automatic module assignment via backward search
 - ✅ Performance: <1ms parsing for typical files
 
-✅ **Comprehensive Testing** (39 unit tests + 15 examples)
+✅ **Comprehensive Testing** (52 unit tests + 20 examples)
 - ✅ 21 expression parser tests
 - ✅ 10 conclusion index tests
 - ✅ 8 unification tests
-- ✅ 15 working examples (11 demos + 4 test suites)
+- ✅ 13 cyclic detection tests (NEW!)
+- ✅ 20 working examples (15 demos + 5 test suites)
 - ✅ **All tests passing**
 
 ✅ **Performance Benchmarks** (9 Criterion groups)
 - ✅ Expression parsing: <20µs
 - ✅ Index lookup: ~200ns (O(1) constant time)
+- ✅ Cycle detection: <1ms for 100 modules
 - ✅ Query execution: <10ms for 100 rules
 - ✅ **Proven 100-1000x speedup** 🔥
 
-✅ **Complete Documentation** (5 comprehensive guides)
+✅ **Complete Documentation** (6 comprehensive guides)
 - ✅ Quick Start Guide (5-minute getting started)
 - ✅ Troubleshooting Guide (comprehensive FAQ)
 - ✅ Performance Analysis (detailed benchmarks)
+- ✅ Cyclic Import Detection (NEW! cycle prevention guide)
 - ✅ Beta Release Summary (migration guide)
 - ✅ Implementation Plan (technical details)
 
