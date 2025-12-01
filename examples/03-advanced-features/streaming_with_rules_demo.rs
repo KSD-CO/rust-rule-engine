@@ -34,9 +34,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n📝 Key Takeaways:");
     println!("   ✅ Stream operators (.map, .filter, .for_each) process events");
     println!("   ✅ Rule Engine (KnowledgeBase + Facts) evaluates business rules");
+    println!("   ✅ Rules loaded from GRL files (not hardcoded!)");
     println!("   ✅ Facts updated based on rule conditions and actions");
     println!("   ✅ Fully integrated real-time decision system");
     println!("\n🎯 This is the CORRECT way to use Rule Engine with Streaming!");
+    println!("\n📚 Advanced features like state management & watermarks");
+    println!("   are available in the streaming module (state.rs, watermark.rs)");
     
     Ok(())
 }

@@ -170,6 +170,16 @@ path = "examples/03-advanced-features/streaming_with_rules_demo.rs"
 required-features = ["streaming"]
 
 [[example]]
+name = "streaming_state_management_demo"
+path = "examples/03-advanced-features/streaming_state_management_demo.rs"
+required-features = ["streaming"]
+
+[[example]]
+name = "streaming_watermark_demo"
+path = "examples/03-advanced-features/streaming_watermark_demo.rs"
+required-features = ["streaming"]
+
+[[example]]
 name = "product_recommendation_demo"
 path = "examples/09-backward-chaining/product_recommendation_demo.rs"
 required-features = ["backward-chaining"]

@@ -4,6 +4,24 @@ Advanced features of the Rust Rule Engine.
 
 ## Example List
 
+### Streaming + Rule Engine (NEW!)
+- **streaming_with_rules_demo.rs** - Streaming operators + Rule Engine integration
+  - Fraud detection with rules from GRL files
+  - Dynamic pricing with rule evaluation
+  - Compliance checking with streaming events
+  
+- **streaming_state_management_demo.rs** - Stateful stream processing
+  - Session tracking with StateStore
+  - Aggregation with threshold alerts
+  - Stateful fraud detection
+  
+- **streaming_watermark_demo.rs** - Watermark-based processing
+  - Late data detection and handling
+  - Out-of-order event processing
+  - Time window aggregation with alerts
+
+Run with: `cargo run --example streaming_with_rules_demo --features streaming`
+
 ### Accumulate Functions
 - **accumulate_demo.rs** - Manual accumulate functions
 - **accumulate_grl_demo.rs** - Accumulate with GRL syntax
@@ -33,6 +51,12 @@ Advanced features of the Rust Rule Engine.
 ## How to run
 
 ```bash
+# Streaming examples (require --features streaming)
+cargo run --example streaming_with_rules_demo --features streaming
+cargo run --example streaming_state_management_demo --features streaming
+cargo run --example streaming_watermark_demo --features streaming
+
+# Other advanced examples
 cargo run --example accumulate_demo
 cargo run --example conflict_resolution_demo
 # ... other examples
