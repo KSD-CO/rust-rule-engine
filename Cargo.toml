@@ -1,9 +1,9 @@
 [package]
 name = "rust-rule-engine"
-version = "1.3.0"
+version = "1.4.0"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
-description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features: forward/backward chaining, pattern matching, unification, O(1) rule indexing, TMS, expression evaluation, method calls, and custom functions. Production-ready for business rules, expert systems, and decision automation."
+description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features: forward/backward chaining, pattern matching, unification, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend, watermarking, and custom functions. Production-ready for business rules, expert systems, real-time stream processing, and decision automation."
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/KSD-CO/rust-rule-engine"
@@ -32,10 +32,12 @@ futures = { version = "0.3", optional = true }
 petgraph = { version = "0.6", optional = true }
 fastrand = "2.0"
 once_cell = "1.0"
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"], optional = true }
 
 [features]
 default = []
 streaming = ["tokio", "futures"]
+streaming-redis = ["streaming", "redis"]
 backward-chaining = ["petgraph"]
 
 [dev-dependencies]
@@ -161,6 +163,31 @@ required-features = ["backward-chaining"]
 name = "family_relations_demo"
 path = "examples/09-backward-chaining/family_relations_demo.rs"
 required-features = ["backward-chaining"]
+
+[[example]]
+name = "stream_operators_demo"
+path = "examples/03-advanced-features/stream_operators_demo.rs"
+required-features = ["streaming"]
+
+[[example]]
+name = "state_management_demo"
+path = "examples/03-advanced-features/state_management_demo.rs"
+required-features = ["streaming"]
+
+[[example]]
+name = "watermark_demo"
+path = "examples/03-advanced-features/watermark_demo.rs"
+required-features = ["streaming"]
+
+[[example]]
+name = "redis_state_demo"
+path = "examples/03-advanced-features/redis_state_demo.rs"
+required-features = ["streaming-redis"]
+
+[[example]]
+name = "iot_monitoring_demo"
+path = "examples/06-use-cases/iot_monitoring_demo.rs"
+required-features = ["streaming"]
 
 
 

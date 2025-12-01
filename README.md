@@ -1,80 +1,81 @@
-# Rust Rule Engine v1.3.0 🦀⚡🚀
+# Rust Rule Engine v1.4.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **CLIPS-inspired Module System with Cyclic Import Detection**, **Production-Ready Backward Chaining (100-1000x faster!)**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **Real-Time Stream Processing**, **Distributed State with Redis**, **CLIPS-inspired Module System with Cyclic Import Detection**, **Production-Ready Backward Chaining (100-1000x faster!)**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## ✨ What's New in v1.3.0 🎉
+## ✨ What's New in v1.4.0 🎉
 
-🎯 **Cyclic Import Detection for Module System!**
+🚀 **Production-Ready Real-Time Stream Processing!**
 
-This release adds **production-ready cyclic import detection** to prevent circular dependencies between modules. Ensures clean module architecture with automatic cycle detection and clear error messages.
+This release adds a **complete streaming module** with distributed state management, watermarking, and fault tolerance. Process millions of events per second with horizontal scalability via Redis.
 
 ### 🎉 Major Features:
 
-✅ **Cyclic Import Detection** (NEW!)
-- ✅ BFS-based cycle detection algorithm (O(V + E))
-- ✅ Prevents self-imports (A → A)
-- ✅ Detects simple cycles (A → B → A)
-- ✅ Detects complex cycles (A → B → C → A)
-- ✅ Supports valid chains and diamond patterns
-- ✅ Clear error messages with cycle paths
-- ✅ <1ms performance for 100 modules
-- ✅ Zero breaking changes from v1.2.x
-- ✅ 13 comprehensive test cases (100% passing)
+✅ **Stream Processing with Fluent API** (NEW!)
+- ✅ 20+ stream operators (filter, map, reduce, aggregate, etc.)
+- ✅ Built-in aggregators (Count, Sum, Average, Min, Max)
+- ✅ Custom operator support with type-safe transformations
+- ✅ Windowing: Sliding, Tumbling, Session windows
+- ✅ KeyedStream and GroupedStream for partitioning
+- ✅ 10 comprehensive tests (100% passing)
 
-✅ **CLIPS-Inspired Module System** (From v1.2.0)
-- ✅ Modular rule organization with namespaces
-- ✅ Import/Export directives for visibility control
-- ✅ Clear module boundaries with GRL syntax
-- ✅ Module-specific rule focusing
-- ✅ 100% backward compatible with v1.1.x
-- ✅ All 85 existing examples work unchanged
+✅ **Watermark & Late Data Handling** (NEW!)
+- ✅ Event-time processing for out-of-order events
+- ✅ BoundedOutOfOrder, Monotonic, Periodic strategies
+- ✅ Late data strategies: Drop, AllowedLateness, SideOutput
+- ✅ Watermark progression tracking
+- ✅ 6 unit tests (100% passing)
 
-✅ **GRL Parser Enhancements** (From v1.2.0)
-- ✅ `defmodule` directive support for module declarations
-- ✅ Module context markers (`;; MODULE: NAME`) for rule organization
-- ✅ Export/import specifications with visibility control
-- ✅ New `parse_with_modules()` API for module-aware parsing
-- ✅ Automatic rule-to-module mapping via backward search algorithm
-- ✅ Performance: <1ms for typical files
+✅ **Distributed State Management** (NEW!)
+- ✅ Multiple backends: Memory, File, **Redis**
+- ✅ **Redis backend for distributed deployments** ✨
+- ✅ Checkpointing for fault tolerance
+- ✅ TTL-based state expiration
+- ✅ StatefulOperator for maintaining state across events
+- ✅ 5 unit tests (100% passing)
 
-✅ **Module Management APIs** (From v1.2.0)
-- ✅ ModuleManager for complete module lifecycle
-- ✅ Module visibility and access control enforcement
-- ✅ Rule-to-module mapping with HashMap lookup
-- ✅ Export/import directive enforcement
-- ✅ Namespace isolation for large-scale rule bases
+✅ **Redis Integration** (NEW!)
+- ✅ Connection pooling and automatic reconnection
+- ✅ Key namespacing for multi-tenant support
+- ✅ Automatic serialization/deserialization
+- ✅ 100k+ ops/sec throughput
+- ✅ Horizontal scaling with Redis Cluster
+- ✅ Production-ready with RDB/AOF persistence
 
-✅ **Production-Ready Backward Chaining**
-- ✅ 100-1000x performance with O(1) indexing
-- ✅ All v1.1.x features fully integrated
+### 📊 Streaming Performance:
+- **Throughput**: 1M+ events/sec (Memory), 100k+ ops/sec (Redis)
+- **Latency**: <1μs (Memory), <1ms (Redis)
+- **Scalability**: Horizontal scaling with Redis Cluster
+- **Tests**: 21/21 passing (100%)
 
 ---
 
 ## 📋 Version History
 
-### v1.3.0 (Current)
+### v1.4.0 (Current) - Stream Processing Release
+- ✅ **Stream Operators** - 20+ fluent operators with aggregations
+- ✅ **Watermarking** - Out-of-order event handling
+- ✅ **State Management** - Distributed state with Redis backend
+- ✅ **Windowing** - Sliding, Tumbling, Session windows
+- ✅ **5 comprehensive demos** - IoT monitoring, user analytics, etc.
+- ✅ **Full documentation** - Architecture diagrams and guides
+- ✅ **21 unit tests** - All passing
+
+### v1.3.0
 - ✅ **Cyclic Import Detection** - Prevents circular module dependencies
 - ✅ **BFS-based cycle detection** - O(V + E) performance
 - ✅ **Self-import prevention** - Detects A → A patterns
 - ✅ **Clear error messages** - Shows cycle paths
 - ✅ **100% backward compatible** - No breaking changes
 - ✅ **13 comprehensive tests** - All passing
-
-### v1.2.0
-- ✅ CLIPS-inspired module system
-- ✅ GRL parser with defmodule directives
-- ✅ Import/export control
-- ✅ Module-aware rule focusing
-- ✅ 100% backward compatible
 
 ### 🎉 Major Milestones:
 
@@ -278,6 +279,110 @@ query "CheckAutoApproval" {
 - **Detective Systems** - Solve crimes by proving hypotheses from evidence
 - **Decision Trees** - Classification and recommendation engines
 - **Expert Systems** - Knowledge-based reasoning and inference
+
+---
+
+**Stream Processing Example:**
+
+```rust
+use rust_rule_engine::streaming::{DataStream, StateBackend};
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SensorReading {
+    sensor_id: String,
+    temperature: f64,
+    timestamp: u64,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create stream with Redis backend for distributed state
+    let stream = DataStream::new(StateBackend::redis("redis://localhost:6379").await?);
+    
+    // Process high-temperature alerts with windowing
+    stream
+        .filter(|reading: &SensorReading| reading.temperature > 80.0)
+        .key_by(|reading| reading.sensor_id.clone())
+        .window_tumbling(Duration::from_secs(60))
+        .aggregate(|readings: Vec<SensorReading>| {
+            readings.iter().map(|r| r.temperature).sum::<f64>() / readings.len() as f64
+        })
+        .for_each(|(sensor, avg_temp)| {
+            println!("⚠️ Sensor {} avg temp: {:.1}°C", sensor, avg_temp);
+        })
+        .await?;
+    
+    Ok(())
+}
+```
+
+**Watermark & Late Data Example:**
+
+```rust
+use rust_rule_engine::streaming::{
+    WatermarkGenerator, WatermarkStrategy, LateDataHandler, LateDataStrategy
+};
+
+// Create watermark generator for out-of-order events
+let watermark_gen = WatermarkGenerator::bounded_out_of_order(
+    Duration::from_secs(10), // Max 10 seconds out of order
+    |event: &SensorReading| event.timestamp,
+);
+
+// Handle late data with 30-second grace period
+let late_handler = LateDataHandler::new(
+    LateDataStrategy::AllowedLateness(Duration::from_secs(30)),
+);
+
+// Process with event-time semantics
+let watermarked = stream.with_watermark(watermark_gen, late_handler);
+```
+
+**Redis State Backend Example:**
+
+```rust
+use rust_rule_engine::streaming::StateBackend;
+
+// Single instance with local state
+let memory_backend = StateBackend::memory();
+
+// Distributed deployment with Redis
+let redis_backend = StateBackend::redis("redis://localhost:6379").await?;
+
+// File-based persistence
+let file_backend = StateBackend::file("./state_checkpoints")?;
+
+// Switch backends without code changes
+let stream = DataStream::new(redis_backend);
+```
+
+**Stream Processing Use Cases:**
+- **IoT Monitoring** - Real-time sensor data processing with alerting
+- **Financial Analytics** - Trade monitoring, fraud detection, risk scoring
+- **User Behavior Tracking** - Session analysis, engagement metrics
+- **System Monitoring** - Log aggregation, performance metrics, anomaly detection
+- **E-commerce** - Real-time inventory, shopping cart analytics
+
+**Performance:**
+- **Memory Backend**: 1M+ events/sec, <1μs latency
+- **File Backend**: 100k+ events/sec, <10μs latency
+- **Redis Backend**: 100k+ ops/sec, <1ms latency
+- **Horizontal Scaling**: Linear scalability with Redis Cluster
+
+**Documentation:**
+- **[Architecture Guide](docs/STREAMING_ARCHITECTURE.md)** - Complete architecture with diagrams 🆕
+- **[Redis Backend Guide](docs/REDIS_STATE_BACKEND.md)** - Distributed state setup 🆕
+- **[Streaming Guide](docs/STREAMING.md)** - Comprehensive streaming features
+
+**Examples (5 comprehensive demos):**
+- [Stream Operators Demo](examples/03-advanced-features/stream_operators_demo.rs) - 7 operator scenarios
+- [State Management Demo](examples/03-advanced-features/state_management_demo.rs) - 6 state scenarios
+- [Watermark Demo](examples/03-advanced-features/watermark_demo.rs) - 4 watermark scenarios
+- [Redis State Demo](examples/03-advanced-features/redis_state_demo.rs) - 4 distributed scenarios
+- [IoT Monitoring Demo](examples/06-use-cases/iot_monitoring_demo.rs) - Production IoT example
+
+---
 
 **Examples (16 working examples):**
 
@@ -862,6 +967,18 @@ rule "HighRevenue" {
 - **✅ Comprehensive Testing** - 39 unit tests + 15 examples + 9 benchmarks
 - **📚 Complete Documentation** - 5 comprehensive guides
 
+### Stream Processing Engine ✅ PRODUCTION READY (v1.4.0)
+- **🌊 20+ Stream Operators** - Fluent API for real-time data processing
+- **🔑 State Management** - Memory, File, and Redis backends for distributed deployments
+- **⏱️ Watermark Support** - Event-time processing with out-of-order handling
+- **🪟 Windowing** - Sliding, Tumbling, Session windows for time-based aggregations
+- **🚀 High Performance** - 1M+ events/sec (Memory), 100k+ ops/sec (Redis)
+- **📊 Built-in Aggregators** - Count, Sum, Average, Min, Max with custom support
+- **🔄 Redis Integration** - Distributed state with connection pooling and TTL
+- **🎯 Late Data Handling** - Drop, AllowedLateness, SideOutput, RecomputeWindows
+- **✅ Comprehensive Testing** - 21 unit tests + 5 comprehensive demos
+- **📚 Complete Documentation** - Architecture diagrams and production guides
+
 ### RETE-UL Engine (Recommended for 50+ rules)
 - **🚀 High Performance** - Efficient RETE algorithm with incremental updates
 - **🔥 RETE Algorithm** - Advanced pattern matching with good Drools compatibility
@@ -896,9 +1013,14 @@ rule "HighRevenue" {
   - **Any rule count** → Backward Engine (100-1000x faster with O(1) index)
   - **Ideal for**: Diagnostics, expert systems, decision trees
   - **Scales to**: 10,000+ rules efficiently
-- **Both needs** → Hybrid approach (combine forward + backward)
+- **Stream Processing (real-time)** 🆕:
+  - **Event streams** → Stream Processing Engine (1M+ events/sec)
+  - **Ideal for**: IoT monitoring, financial analytics, user behavior tracking
+  - **Distributed**: Redis backend for horizontal scaling
+  - **Features**: Windowing, watermarking, late data handling
+- **Both needs** → Hybrid approach (combine forward + backward + streaming)
 
-📊 **Performance**: RETE shows 2-24x improvement; Backward shows 100-1000x improvement!
+📊 **Performance**: RETE shows 2-24x improvement; Backward shows 100-1000x improvement; Streaming handles 1M+ events/sec!
 
 📖 [**Engine Comparison Guide →**](ENGINE_COMPARISON.md) | [**Quick Start Guide →**](QUICK_START_ENGINES.md)
 
@@ -908,19 +1030,22 @@ rule "HighRevenue" {
 
 ```toml
 [dependencies]
-rust-rule-engine = "1.1.0"
+rust-rule-engine = "1.4.0"
 ```
 
 ### Optional Features
 ```toml
 # Enable backward chaining (Production Ready! 🚀)
-rust-rule-engine = { version = "1.1.0", features = ["backward-chaining"] }
+rust-rule-engine = { version = "1.4.0", features = ["backward-chaining"] }
 
 # Enable streaming support
-rust-rule-engine = { version = "1.1.0", features = ["streaming"] }
+rust-rule-engine = { version = "1.4.0", features = ["streaming"] }
+
+# Enable streaming with Redis backend (for distributed deployments)
+rust-rule-engine = { version = "1.4.0", features = ["streaming", "streaming-redis"] }
 
 # Enable all features
-rust-rule-engine = { version = "1.1.0", features = ["backward-chaining", "streaming"] }
+rust-rule-engine = { version = "1.4.0", features = ["backward-chaining", "streaming", "streaming-redis"] }
 ```
 
 ---

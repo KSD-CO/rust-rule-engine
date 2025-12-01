@@ -42,6 +42,12 @@ pub mod engine;
 pub mod event;
 #[cfg(feature = "streaming")]
 pub mod window;
+#[cfg(feature = "streaming")]
+pub mod operators;
+#[cfg(feature = "streaming")]
+pub mod state;
+#[cfg(feature = "streaming")]
+pub mod watermark;
 
 #[cfg(feature = "streaming")]
 pub use aggregator::{AggregationType, Aggregator};
@@ -51,6 +57,23 @@ pub use engine::StreamRuleEngine;
 pub use event::{EventMetadata, StreamEvent};
 #[cfg(feature = "streaming")]
 pub use window::{TimeWindow, WindowManager, WindowType};
+#[cfg(feature = "streaming")]
+pub use operators::{
+    DataStream, KeyedStream, WindowedStream, WindowConfig, GroupedStream,
+    Aggregation, AggregateResult,
+    Count, Sum, Average, Min, Max, CustomAggregator,
+};
+#[cfg(feature = "streaming")]
+pub use state::{
+    StateStore, StateBackend, StateConfig, StatefulOperator,
+    CheckpointMetadata, StateStatistics,
+};
+#[cfg(feature = "streaming")]
+pub use watermark::{
+    Watermark, WatermarkStrategy, WatermarkGenerator,
+    LateDataStrategy, LateDataHandler, WatermarkedStream,
+    LateEventDecision, LateDataStats,
+};
 
 /// Re-export for non-streaming builds
 #[cfg(not(feature = "streaming"))]
