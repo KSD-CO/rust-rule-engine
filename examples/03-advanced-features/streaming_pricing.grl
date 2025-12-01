@@ -1,0 +1,19 @@
+// Dynamic Pricing Rules for Streaming
+// Load these rules to adjust pricing based on demand and inventory
+
+rule SurgePricing "Apply surge pricing when demand is high" salience 100 {
+    when
+        Product.Demand > 100 &&
+        Product.Inventory < 50
+    then
+        Pricing.Multiplier = 1.5;
+        Pricing.Reason = "SURGE";
+}
+
+rule LowInventoryPremium "Add premium for low inventory" salience 90 {
+    when
+        Product.Inventory < 20
+    then
+        Pricing.Multiplier = 1.2;
+        Pricing.Reason = "LOW_INVENTORY";
+}

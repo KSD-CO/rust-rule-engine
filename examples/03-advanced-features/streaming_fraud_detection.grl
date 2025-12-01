@@ -1,0 +1,26 @@
+// Fraud Detection Rules for Streaming
+// These rules will be loaded dynamically by the streaming example
+
+rule LargeTransactionAlert "Alert on large transactions" salience 100 {
+    when
+        Transaction.Amount > 10000 &&
+        Transaction.Type == "credit_card"
+    then
+        Alert.Type = "LARGE_TRANSACTION";
+        Alert.RequiresReview = true;
+}
+
+rule HighRiskMerchant "Flag high-risk merchant categories" salience 90 {
+    when
+        Transaction.MerchantCategory == "gambling" ||
+        Transaction.MerchantCategory == "crypto"
+    then
+        Risk.Score = 30;
+}
+
+rule BlockHighRisk "Block transactions with high risk score" salience 80 {
+    when
+        Risk.Score >= 30
+    then
+        Transaction.Status = "BLOCKED";
+}

@@ -165,31 +165,9 @@ path = "examples/09-backward-chaining/family_relations_demo.rs"
 required-features = ["backward-chaining"]
 
 [[example]]
-name = "stream_operators_demo"
-path = "examples/03-advanced-features/stream_operators_demo.rs"
+name = "streaming_with_rules_demo"
+path = "examples/03-advanced-features/streaming_with_rules_demo.rs"
 required-features = ["streaming"]
-
-[[example]]
-name = "state_management_demo"
-path = "examples/03-advanced-features/state_management_demo.rs"
-required-features = ["streaming"]
-
-[[example]]
-name = "watermark_demo"
-path = "examples/03-advanced-features/watermark_demo.rs"
-required-features = ["streaming"]
-
-[[example]]
-name = "redis_state_demo"
-path = "examples/03-advanced-features/redis_state_demo.rs"
-required-features = ["streaming-redis"]
-
-[[example]]
-name = "iot_monitoring_demo"
-path = "examples/06-use-cases/iot_monitoring_demo.rs"
-required-features = ["streaming"]
-
-
 
 [[example]]
 name = "product_recommendation_demo"

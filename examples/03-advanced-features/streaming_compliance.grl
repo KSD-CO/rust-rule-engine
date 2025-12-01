@@ -1,0 +1,18 @@
+// Compliance Rules for Streaming
+// Regulatory compliance checks for financial transactions
+
+rule SanctionsCheck "Block transactions with sanctioned entities" salience 100 {
+    when
+        Transaction.Counterparty == "sanctioned-entity"
+    then
+        Compliance.Status = "BLOCKED";
+        Compliance.Flag = "SANCTIONS";
+}
+
+rule AMLReview "Flag transactions requiring AML review" salience 90 {
+    when
+        Transaction.Amount > 10000 &&
+        Transaction.Country == "high_risk"
+    then
+        Compliance.Flag = "AML_REVIEW";
+}
