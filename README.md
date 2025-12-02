@@ -28,37 +28,6 @@ This release adds **robust null checking support** and demonstrates production-r
 - ✅ 3 files enhanced: engine.rs, types.rs, rule.rs
 - ✅ 100% backward compatible with existing rules
 
-✅ **Business Logic Examples** (NEW!)
-- ✅ Invoice creation with 5 GRL rule sets (24 rules total)
-- ✅ Complex discount strategy selection via rules
-- ✅ 17 comprehensive tests (100% passing)
-- ✅ Real-world patterns: eligibility, FPT push, discount calculation
-- ✅ Inline GRL strings for maintainable business logic
-- ✅ Demonstrates production-ready integration patterns
-
-✅ **Streaming Examples Enhanced** (NEW!)
-- ✅ State management with rule engine integration
-- ✅ Watermark processing with business rules
-- ✅ Basic streaming with GRL rule evaluation
-- ✅ Clear demonstration of rule engine usage in streams
-- ✅ Production-ready patterns for real-time processing
-
-### 📊 Quality & Testing:
-- **Test Coverage**: 155+ tests passing (100% success rate)
-- **Library Tests**: 133/133 ✅ (core engine, GRL parser, RETE)
-- **Integration Tests**: 5/5 ✅ (end-to-end scenarios)
-- **Business Logic Tests**: 17/17 ✅ (invoice rules, discount strategy)
-- **Examples**: 52+ ✅ (all categories validated)
-- **Regressions**: 0 (comprehensive validation completed)
-- **Deployment Status**: 🟢 Production Ready
-
-### 🔧 Key Improvements:
-- **Null Checking**: Robust handling of undefined/null fields in conditions
-- **Default Fallbacks**: Reliable fallback rule patterns when primary conditions don't match
-- **Business Integration**: Production-ready patterns for complex business logic
-- **Test Infrastructure**: Comprehensive test suite with 17 business logic tests
-- **Examples**: Clear demonstrations of rule engine integration in real scenarios
-
 ---
 
 ## 📋 Version History
