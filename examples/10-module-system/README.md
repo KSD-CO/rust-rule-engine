@@ -100,20 +100,28 @@ Created comprehensive test suite and analysis document to evaluate the feature.
 
 ## 🚀 Recommended Next Steps
 
-### Phase 1 - CRITICAL (integrate with engine)
-1. Add GRL parser support for `defmodule`, `defimport`, `defexport`
-2. Implement cyclic import detection
-3. Integrate ModuleManager with RuleEngine
+### ✅ Phase 1 - CRITICAL (integrate with engine) - COMPLETED
+1. ✅ Add GRL parser support for `defmodule`, `defimport`, `defexport`
+2. ✅ Implement cyclic import detection
+3. ✅ Integrate ModuleManager with RuleEngine
 
-### Phase 2 - HIGH (feature completeness)  
-1. Complete fact visibility implementation
-2. Add rule/template de-registration on module deletion
-3. Add module dependency query APIs
+### ✅ Phase 2 - HIGH (feature completeness) - COMPLETED
+1. ✅ Complete fact visibility implementation
+2. ✅ Add rule/template de-registration on module deletion
+3. ✅ Add module dependency query APIs
 
-### Phase 3 - MEDIUM (advanced features)
-1. Transitive import support (re-export)
-2. Module-level salience configuration
-3. Module validation tools
+### ✅ Phase 3 - MEDIUM (advanced features) - **COMPLETED** 🎉
+1. ✅ **Transitive import support (re-export)**
+2. ✅ **Module-level salience configuration**
+3. ✅ **Module validation tools**
+
+**Phase 3 Features:**
+- **Transitive Re-exports**: Modules can re-export items from imported modules with pattern matching
+- **Module-level Salience**: Set base priority for all rules in a module
+- **Validation Tools**: Comprehensive module validation with error and warning detection
+- **Dependency Analysis**: BFS-based transitive dependency queries
+
+**Example**: `cargo run --example phase3_demo`
 
 ### Phase 4 - LOW (polish)
 1. Enhanced error messages with context
@@ -135,6 +143,8 @@ Created comprehensive test suite and analysis document to evaluate the feature.
 ---
 
 ## 💡 Example Usage
+
+### Basic Module System
 
 ```rust
 use rust_rule_engine::engine::module::{ModuleManager, ExportList, ImportType};
@@ -164,6 +174,73 @@ println!("CONTROL can see: {:?}", rules);
 
 // Module focus for execution
 manager.set_focus("CONTROL")?;
+```
+
+### Phase 3: Advanced Features
+
+#### 1. Transitive Re-exports
+
+```rust
+use rust_rule_engine::engine::module::{ReExport, ImportType};
+
+// MIDDLEWARE imports from BASE and re-exports sensor-* rules
+manager.import_from_with_reexport(
+    "MIDDLEWARE",
+    "BASE",
+    ImportType::AllRules,
+    "*",
+    Some(ReExport {
+        patterns: vec!["sensor-*".to_string()],
+        transitive: true,
+    }),
+)?;
+
+// Now APPLICATION can see sensor-* rules through MIDDLEWARE
+manager.import_from("APPLICATION", "MIDDLEWARE", ImportType::AllRules, "*")?;
+assert!(manager.is_rule_visible("sensor-temp", "APPLICATION")?);
+```
+
+#### 2. Module-Level Salience
+
+```rust
+// Set priority levels for modules
+manager.set_module_salience("CRITICAL_ALERTS", 1000)?;
+manager.set_module_salience("STANDARD_PROCESSING", 0)?;
+manager.set_module_salience("BACKGROUND_TASKS", -500)?;
+
+// Rules in CRITICAL_ALERTS module will have higher priority
+let salience = manager.get_module_salience("CRITICAL_ALERTS")?;
+println!("CRITICAL_ALERTS base priority: {}", salience);
+```
+
+#### 3. Module Validation
+
+```rust
+// Validate a single module
+let validation = manager.validate_module("MY_MODULE")?;
+if !validation.is_valid {
+    for error in &validation.errors {
+        eprintln!("Error: {}", error);
+    }
+}
+for warning in &validation.warnings {
+    println!("Warning: {}", warning);
+}
+
+// Validate all modules
+let all_validations = manager.validate_all_modules();
+for (name, validation) in all_validations {
+    println!("{}: {} errors, {} warnings",
+             name, validation.errors.len(), validation.warnings.len());
+}
+```
+
+#### 4. Transitive Dependencies
+
+```rust
+// Get all modules that a module depends on (BFS traversal)
+let deps = manager.get_transitive_dependencies("APPLICATION")?;
+println!("APPLICATION depends on: {:?}", deps);
 ```
 
 ---

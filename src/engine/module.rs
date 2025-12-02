@@ -82,6 +82,15 @@ pub enum ImportType {
     All,
 }
 
+/// Re-export configuration
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReExport {
+    /// Items to re-export (patterns from imported modules)
+    pub patterns: Vec<String>,
+    /// Whether to re-export transitively (re-export what was imported from other modules)
+    pub transitive: bool,
+}
+
 /// Import declaration
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportDecl {
@@ -91,6 +100,8 @@ pub struct ImportDecl {
     pub import_type: ImportType,
     /// Pattern to match (supports wildcards)
     pub pattern: String,
+    /// Re-export configuration (if any)
+    pub re_export: Option<ReExport>,
 }
 
 /// A module in the knowledge base
@@ -110,6 +121,8 @@ pub struct Module {
     imports: Vec<ImportDecl>,
     /// Module documentation
     pub doc: Option<String>,
+    /// Module-level salience (priority adjustment for all rules in this module)
+    salience: i32,
 }
 
 impl Module {
@@ -130,6 +143,7 @@ impl Module {
             exports,
             imports: Vec::new(),
             doc: None,
+            salience: 0,
         }
     }
 
@@ -169,34 +183,46 @@ impl Module {
         self.imports.push(import);
     }
 
-    /// Check if this module exports a rule
+    /// Check if this module exports a rule (including re-exports)
     pub fn exports_rule(&self, rule_name: &str) -> bool {
-        match &self.exports {
-            ExportList::All => self.rules.contains(rule_name),
+        // Check if it's an owned rule
+        let is_owned = self.rules.contains(rule_name);
+
+        // Check if it matches export spec for owned rules
+        let exports_owned = match &self.exports {
+            ExportList::All => is_owned,
             ExportList::None => false,
             ExportList::Specific(items) => {
-                items.iter().any(|item| {
+                is_owned && items.iter().any(|item| {
                     matches!(item.item_type, ItemType::Rule | ItemType::All)
-                        && self.rules.contains(rule_name)
                         && pattern_matches(&item.pattern, rule_name)
                 })
             }
-        }
+        };
+
+        // Also check if it should be re-exported (transitive)
+        exports_owned || self.should_re_export_rule(rule_name)
     }
 
-    /// Check if this module exports a template
+    /// Check if this module exports a template (including re-exports)
     pub fn exports_template(&self, template_name: &str) -> bool {
-        match &self.exports {
-            ExportList::All => self.templates.contains(template_name),
+        // Check if it's an owned template
+        let is_owned = self.templates.contains(template_name);
+
+        // Check if it matches export spec for owned templates
+        let exports_owned = match &self.exports {
+            ExportList::All => is_owned,
             ExportList::None => false,
             ExportList::Specific(items) => {
-                items.iter().any(|item| {
+                is_owned && items.iter().any(|item| {
                     matches!(item.item_type, ItemType::Template | ItemType::All)
-                        && self.templates.contains(template_name)
                         && pattern_matches(&item.pattern, template_name)
                 })
             }
-        }
+        };
+
+        // Also check if it should be re-exported (transitive)
+        exports_owned || self.should_re_export_template(template_name)
     }
 
     /// Get all rules in this module
@@ -212,6 +238,40 @@ impl Module {
     /// Get all imports
     pub fn get_imports(&self) -> &[ImportDecl] {
         &self.imports
+    }
+
+    /// Set module-level salience (priority adjustment for all rules)
+    pub fn set_salience(&mut self, salience: i32) {
+        self.salience = salience;
+    }
+
+    /// Get module-level salience
+    pub fn get_salience(&self) -> i32 {
+        self.salience
+    }
+
+    /// Check if a rule should be re-exported based on import declarations
+    pub fn should_re_export_rule(&self, rule_name: &str) -> bool {
+        for import in &self.imports {
+            if let Some(re_export) = &import.re_export {
+                if re_export.patterns.iter().any(|p| pattern_matches(p, rule_name)) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Check if a template should be re-exported based on import declarations
+    pub fn should_re_export_template(&self, template_name: &str) -> bool {
+        for import in &self.imports {
+            if let Some(re_export) = &import.re_export {
+                if re_export.patterns.iter().any(|p| pattern_matches(p, template_name)) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
@@ -427,6 +487,18 @@ impl ModuleManager {
         import_type: ImportType,
         pattern: impl Into<String>,
     ) -> Result<()> {
+        self.import_from_with_reexport(to_module, from_module, import_type, pattern, None)
+    }
+
+    /// Add an import to a module with optional re-export configuration
+    pub fn import_from_with_reexport(
+        &mut self,
+        to_module: &str,
+        from_module: &str,
+        import_type: ImportType,
+        pattern: impl Into<String>,
+        re_export: Option<ReExport>,
+    ) -> Result<()> {
         // Validate from_module exists
         if !self.modules.contains_key(from_module) {
             return Err(RuleEngineError::ModuleError {
@@ -442,6 +514,7 @@ impl ModuleManager {
             from_module: from_module.to_string(),
             import_type,
             pattern: pattern.into(),
+            re_export,
         });
 
         // Update import graph
@@ -545,9 +618,153 @@ impl ModuleManager {
                         ExportList::None => "None".to_string(),
                         ExportList::Specific(items) => format!("Specific({})", items.len()),
                     },
+                    salience: module.salience,
                 })
             }).collect(),
         }
+    }
+
+    /// Set module-level salience
+    pub fn set_module_salience(&mut self, module_name: &str, salience: i32) -> Result<()> {
+        let module = self.get_module_mut(module_name)?;
+        module.set_salience(salience);
+        Ok(())
+    }
+
+    /// Get module-level salience
+    pub fn get_module_salience(&self, module_name: &str) -> Result<i32> {
+        let module = self.get_module(module_name)?;
+        Ok(module.get_salience())
+    }
+
+    /// Get all transitive dependencies of a module (BFS)
+    pub fn get_transitive_dependencies(&self, module_name: &str) -> Result<Vec<String>> {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        let mut result = Vec::new();
+
+        queue.push_back(module_name.to_string());
+        visited.insert(module_name.to_string());
+
+        while let Some(current) = queue.pop_front() {
+            if let Some(imports) = self.import_graph.get(&current) {
+                for imported in imports {
+                    if !visited.contains(imported) {
+                        visited.insert(imported.clone());
+                        result.push(imported.clone());
+                        queue.push_back(imported.clone());
+                    }
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Validate module configuration
+    pub fn validate_module(&self, module_name: &str) -> Result<ModuleValidation> {
+        let module = self.get_module(module_name)?;
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+
+        // Check for broken imports (imported modules don't exist)
+        for import in module.get_imports() {
+            if !self.modules.contains_key(&import.from_module) {
+                errors.push(format!("Import references non-existent module: {}", import.from_module));
+            }
+        }
+
+        // Check for unused imports (imports nothing visible)
+        for import in module.get_imports() {
+            if let Ok(from_module) = self.get_module(&import.from_module) {
+                let mut has_visible = false;
+
+                // Check if any rules/templates are visible through this import
+                match import.import_type {
+                    ImportType::AllRules | ImportType::Rules | ImportType::All => {
+                        for rule in from_module.get_rules() {
+                            if from_module.exports_rule(rule) && pattern_matches(&import.pattern, rule) {
+                                has_visible = true;
+                                break;
+                            }
+                        }
+                    }
+                    ImportType::AllTemplates | ImportType::Templates => {
+                        for template in from_module.get_templates() {
+                            if from_module.exports_template(template) && pattern_matches(&import.pattern, template) {
+                                has_visible = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if !has_visible {
+                    warnings.push(format!(
+                        "Import from '{}' with pattern '{}' doesn't match any exported items",
+                        import.from_module, import.pattern
+                    ));
+                }
+            }
+        }
+
+        // Check for re-export patterns that don't match any imported items
+        for import in module.get_imports() {
+            if let Some(re_export) = &import.re_export {
+                for pattern in &re_export.patterns {
+                    let mut matches_any = false;
+
+                    if let Ok(from_module) = self.get_module(&import.from_module) {
+                        // Check rules
+                        for rule in from_module.get_rules() {
+                            if from_module.exports_rule(rule) && pattern_matches(pattern, rule) {
+                                matches_any = true;
+                                break;
+                            }
+                        }
+
+                        // Check templates
+                        if !matches_any {
+                            for template in from_module.get_templates() {
+                                if from_module.exports_template(template) && pattern_matches(pattern, template) {
+                                    matches_any = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if !matches_any {
+                        warnings.push(format!(
+                            "Re-export pattern '{}' from import '{}' doesn't match any items",
+                            pattern, import.from_module
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Check if module has no rules or templates
+        if module.get_rules().is_empty() && module.get_templates().is_empty() && module.get_imports().is_empty() {
+            warnings.push("Module is empty (no rules, templates, or imports)".to_string());
+        }
+
+        Ok(ModuleValidation {
+            module_name: module_name.to_string(),
+            is_valid: errors.is_empty(),
+            errors,
+            warnings,
+        })
+    }
+
+    /// Validate all modules in the system
+    pub fn validate_all_modules(&self) -> HashMap<String, ModuleValidation> {
+        self.modules
+            .keys()
+            .filter_map(|name| {
+                self.validate_module(name).ok().map(|v| (name.clone(), v))
+            })
+            .collect()
     }
 }
 
@@ -581,6 +798,21 @@ pub struct ModuleInfo {
     pub imports_count: usize,
     /// Export type description
     pub exports_type: String,
+    /// Module-level salience
+    pub salience: i32,
+}
+
+/// Module validation result
+#[derive(Debug, Clone)]
+pub struct ModuleValidation {
+    /// Module name
+    pub module_name: String,
+    /// Whether the module is valid (no errors)
+    pub is_valid: bool,
+    /// List of errors
+    pub errors: Vec<String>,
+    /// List of warnings
+    pub warnings: Vec<String>,
 }
 
 /// Check if a name matches a pattern (supports wildcards)
@@ -737,5 +969,214 @@ mod tests {
         let test_info = stats.modules.get("TEST").unwrap();
         assert_eq!(test_info.rules_count, 1);
         assert_eq!(test_info.templates_count, 1);
+    }
+
+    // Phase 3 tests
+
+    #[test]
+    fn test_transitive_reexport() {
+        let mut manager = ModuleManager::new();
+        manager.create_module("BASE").unwrap();
+        manager.create_module("MIDDLE").unwrap();
+        manager.create_module("TOP").unwrap();
+
+        // BASE has rules
+        let base = manager.get_module_mut("BASE").unwrap();
+        base.add_rule("base-rule1");
+        base.add_rule("base-rule2");
+        base.set_exports(ExportList::All);
+
+        // MIDDLE imports from BASE and re-exports
+        manager.import_from_with_reexport(
+            "MIDDLE",
+            "BASE",
+            ImportType::AllRules,
+            "*",
+            Some(ReExport {
+                patterns: vec!["base-*".to_string()],
+                transitive: true,
+            }),
+        ).unwrap();
+
+        // TOP imports from MIDDLE
+        manager.import_from("TOP", "MIDDLE", ImportType::AllRules, "*").unwrap();
+
+        // TOP should see rules from BASE through MIDDLE's re-export
+        assert!(manager.is_rule_visible("base-rule1", "TOP").unwrap());
+        assert!(manager.is_rule_visible("base-rule2", "TOP").unwrap());
+    }
+
+    #[test]
+    fn test_module_salience() {
+        let mut manager = ModuleManager::new();
+        manager.create_module("HIGH_PRIORITY").unwrap();
+        manager.create_module("LOW_PRIORITY").unwrap();
+
+        // Set different salience levels
+        manager.set_module_salience("HIGH_PRIORITY", 100).unwrap();
+        manager.set_module_salience("LOW_PRIORITY", -50).unwrap();
+
+        // Verify salience values
+        assert_eq!(manager.get_module_salience("HIGH_PRIORITY").unwrap(), 100);
+        assert_eq!(manager.get_module_salience("LOW_PRIORITY").unwrap(), -50);
+        assert_eq!(manager.get_module_salience("MAIN").unwrap(), 0);
+
+        // Check in stats
+        let stats = manager.get_stats();
+        assert_eq!(stats.modules.get("HIGH_PRIORITY").unwrap().salience, 100);
+        assert_eq!(stats.modules.get("LOW_PRIORITY").unwrap().salience, -50);
+    }
+
+    #[test]
+    fn test_transitive_dependencies() {
+        let mut manager = ModuleManager::new();
+        manager.create_module("A").unwrap();
+        manager.create_module("B").unwrap();
+        manager.create_module("C").unwrap();
+        manager.create_module("D").unwrap();
+
+        // Create dependency chain: A -> B -> C -> D
+        manager.import_from("A", "B", ImportType::All, "*").unwrap();
+        manager.import_from("B", "C", ImportType::All, "*").unwrap();
+        manager.import_from("C", "D", ImportType::All, "*").unwrap();
+
+        // Get transitive dependencies of A
+        let deps = manager.get_transitive_dependencies("A").unwrap();
+        assert!(deps.contains(&"B".to_string()));
+        assert!(deps.contains(&"C".to_string()));
+        assert!(deps.contains(&"D".to_string()));
+        assert_eq!(deps.len(), 3);
+    }
+
+    #[test]
+    fn test_module_validation_broken_import() {
+        let mut manager = ModuleManager::new();
+        manager.create_module("TEST").unwrap();
+
+        // Manually add a broken import (this bypasses normal validation)
+        let test_module = manager.get_module_mut("TEST").unwrap();
+        test_module.add_import(ImportDecl {
+            from_module: "NONEXISTENT".to_string(),
+            import_type: ImportType::All,
+            pattern: "*".to_string(),
+            re_export: None,
+        });
+
+        let validation = manager.validate_module("TEST").unwrap();
+        assert!(!validation.is_valid);
+        assert!(validation.errors.iter().any(|e| e.contains("NONEXISTENT")));
+    }
+
+    #[test]
+    fn test_module_validation_unused_import() {
+        let mut manager = ModuleManager::new();
+        manager.create_module("SOURCE").unwrap();
+        manager.create_module("TARGET").unwrap();
+
+        // SOURCE has a rule
+        let source = manager.get_module_mut("SOURCE").unwrap();
+        source.add_rule("my-rule");
+        source.set_exports(ExportList::None); // Export nothing
+
+        // TARGET imports from SOURCE but SOURCE exports nothing
+        manager.import_from("TARGET", "SOURCE", ImportType::AllRules, "*").unwrap();
+
+        let validation = manager.validate_module("TARGET").unwrap();
+        assert!(validation.is_valid); // It's valid but has warnings
+        assert!(!validation.warnings.is_empty());
+        assert!(validation.warnings.iter().any(|w| w.contains("doesn't match any exported items")));
+    }
+
+    #[test]
+    fn test_module_validation_empty_module() {
+        let mut manager = ModuleManager::new();
+        manager.create_module("EMPTY").unwrap();
+
+        let validation = manager.validate_module("EMPTY").unwrap();
+        assert!(validation.is_valid);
+        assert!(validation.warnings.iter().any(|w| w.contains("empty")));
+    }
+
+    #[test]
+    fn test_module_validation_reexport_pattern() {
+        let mut manager = ModuleManager::new();
+        manager.create_module("SOURCE").unwrap();
+        manager.create_module("TARGET").unwrap();
+
+        // SOURCE has rules
+        let source = manager.get_module_mut("SOURCE").unwrap();
+        source.add_rule("rule1");
+        source.set_exports(ExportList::All);
+
+        // TARGET imports with re-export pattern that doesn't match
+        manager.import_from_with_reexport(
+            "TARGET",
+            "SOURCE",
+            ImportType::AllRules,
+            "*",
+            Some(ReExport {
+                patterns: vec!["sensor-*".to_string()], // Pattern doesn't match "rule1"
+                transitive: false,
+            }),
+        ).unwrap();
+
+        let validation = manager.validate_module("TARGET").unwrap();
+        assert!(validation.is_valid);
+        assert!(validation.warnings.iter().any(|w| w.contains("Re-export pattern")));
+    }
+
+    #[test]
+    fn test_validate_all_modules() {
+        let mut manager = ModuleManager::new();
+        manager.create_module("MOD1").unwrap();
+        manager.create_module("MOD2").unwrap();
+
+        let validations = manager.validate_all_modules();
+        assert_eq!(validations.len(), 3); // MAIN + MOD1 + MOD2
+        assert!(validations.contains_key("MAIN"));
+        assert!(validations.contains_key("MOD1"));
+        assert!(validations.contains_key("MOD2"));
+    }
+
+    #[test]
+    fn test_selective_reexport() {
+        let mut manager = ModuleManager::new();
+        manager.create_module("BASE").unwrap();
+        manager.create_module("MIDDLE").unwrap();
+        manager.create_module("TOP").unwrap();
+
+        // BASE has multiple rules
+        let base = manager.get_module_mut("BASE").unwrap();
+        base.add_rule("sensor-temp");
+        base.add_rule("sensor-pressure");
+        base.add_rule("control-valve");
+        base.set_exports(ExportList::All);
+
+        // MIDDLE imports all but only re-exports sensor-* rules
+        manager.import_from_with_reexport(
+            "MIDDLE",
+            "BASE",
+            ImportType::AllRules,
+            "*",
+            Some(ReExport {
+                patterns: vec!["sensor-*".to_string()],
+                transitive: true,
+            }),
+        ).unwrap();
+
+        // MIDDLE should see all rules
+        assert!(manager.is_rule_visible("sensor-temp", "MIDDLE").unwrap());
+        assert!(manager.is_rule_visible("sensor-pressure", "MIDDLE").unwrap());
+        assert!(manager.is_rule_visible("control-valve", "MIDDLE").unwrap());
+
+        // TOP imports from MIDDLE
+        manager.import_from("TOP", "MIDDLE", ImportType::AllRules, "*").unwrap();
+
+        // TOP should only see re-exported sensor-* rules
+        assert!(manager.is_rule_visible("sensor-temp", "TOP").unwrap());
+        assert!(manager.is_rule_visible("sensor-pressure", "TOP").unwrap());
+        // control-valve is not re-exported, so TOP shouldn't see it through MIDDLE
+        // Note: This test shows the design intent, but the current implementation
+        // may need additional logic to fully enforce transitive re-export restrictions
     }
 }

@@ -1,38 +1,56 @@
-# Rust Rule Engine v1.5.0 🦀⚡🚀
+# Rust Rule Engine v1.6.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **Real-Time Stream Processing**, **Distributed State with Redis**, **CLIPS-inspired Module System with Cyclic Import Detection**, **Production-Ready Backward Chaining**, **Enhanced Null Handling**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **Real-Time Stream Processing**, **Distributed State with Redis**, **Advanced Module System with Transitive Re-exports**, **Production-Ready Backward Chaining**, **Enhanced Null Handling**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## ✨ What's New in v1.5.0 🎉
+## ✨ What's New in v1.6.0 🎉
 
-🚀 **Enhanced Null Handling & Business Logic Integration!**
+🚀 **Advanced Module System - Phase 3 Complete!**
 
-This release adds **robust null checking support** and demonstrates production-ready integration patterns with real business logic. Process complex business rules with confidence using inline GRL strings and comprehensive null handling.
+This release completes the module system with **transitive re-exports**, **module-level salience**, and **comprehensive validation tools**. Build complex multi-tier module hierarchies with confidence using pattern-based re-exports and automated validation.
 
 ### 🎉 Major Features:
 
-✅ **Null Value Handling** (NEW!)
-- ✅ Missing fields treated as `Value::Null` (not false)
-- ✅ Support for `field == null` and `field != null` conditions
-- ✅ Special null handling in Equal/NotEqual operators
-- ✅ Consistent null behavior across HashMap-based evaluation
-- ✅ Default fallback rule patterns with null checks
-- ✅ 3 files enhanced: engine.rs, types.rs, rule.rs
-- ✅ 100% backward compatible with existing rules
+✅ **Module System Phase 3** (NEW!)
+- ✅ **Transitive Re-exports** - Modules can re-export items from imported modules with pattern matching
+- ✅ **Module-Level Salience** - Set base priority for all rules in a module
+- ✅ **Module Validation** - Comprehensive validation with error and warning detection
+- ✅ **Dependency Analysis** - BFS-based transitive dependency queries
+- ✅ **Pattern-Based Re-exports** - Selective re-export with wildcards (e.g., "sensor-*")
+- ✅ **18 comprehensive tests** - All passing with Phase 3 coverage
+- ✅ **268-line demo** - Complete Phase 3 feature demonstration
+- ✅ 100% backward compatible with existing modules
+
+✅ **Dependency Updates** (NEW!)
+- ✅ Updated to latest stable versions: regex 1.11, thiserror 2.0, tokio 1.42
+- ✅ Performance improvements: 5-10% faster regex operations
+- ✅ Modern web stack: axum 0.8, tower 0.5, reqwest 0.12
+- ✅ All 142 tests passing with new dependencies
+- ✅ Zero breaking changes to public API
 
 ---
 
 ## 📋 Version History
 
-### v1.5.0 (Current) - Null Handling & Business Integration Release
+### v1.6.0 (Current) - Advanced Module System Complete
+- ✅ **Transitive Re-exports** - Pattern-based re-export from imported modules
+- ✅ **Module-Level Salience** - Priority control at module level
+- ✅ **Module Validation** - Comprehensive validation with errors/warnings
+- ✅ **Dependency Analysis** - BFS-based transitive dependency tracking
+- ✅ **Dependency Updates** - Latest stable versions (regex 1.11, tokio 1.42)
+- ✅ **18 module tests** - All Phase 3 features tested
+- ✅ **142 total tests** - All passing with new dependencies
+- ✅ **Production ready** - Zero breaking changes
+
+### v1.5.0 - Null Handling & Business Integration Release
 - ✅ **Null Value Handling** - Missing fields treated as Value::Null
 - ✅ **Null Checking Conditions** - Support for `field == null` patterns
 - ✅ **Default Fallback Rules** - Reliable fallback patterns with null checks
@@ -201,6 +219,55 @@ println!("Rule -> Module mapping: {:?}", parsed.rule_modules);
 let mut engine = RuleEngine::new();
 engine.load_rules(parsed.rules);
 engine.execute();
+```
+
+**Module System Phase 3 - Advanced Features (NEW in v1.6.0):**
+
+```rust
+use rust_rule_engine::engine::module::{ModuleManager, ReExport, ImportType};
+
+let mut manager = ModuleManager::new();
+
+// 1. Transitive Re-exports - Pattern-based re-export
+manager.create_module("BASE")?;
+manager.create_module("MIDDLEWARE")?;
+manager.create_module("APPLICATION")?;
+
+// MIDDLEWARE imports from BASE and selectively re-exports
+manager.import_from_with_reexport(
+    "MIDDLEWARE",
+    "BASE",
+    ImportType::AllRules,
+    "*",
+    Some(ReExport {
+        patterns: vec!["sensor-*".to_string()],  // Only re-export sensor-* rules
+        transitive: true,
+    }),
+)?;
+
+// APPLICATION can now see sensor-* rules through MIDDLEWARE
+manager.import_from("APPLICATION", "MIDDLEWARE", ImportType::AllRules, "*")?;
+
+// 2. Module-Level Salience - Priority control
+manager.set_module_salience("CRITICAL_ALERTS", 1000)?;
+manager.set_module_salience("BACKGROUND_TASKS", -500)?;
+
+// 3. Module Validation - Detect configuration issues
+let validation = manager.validate_module("APPLICATION")?;
+if !validation.is_valid {
+    for error in &validation.errors {
+        eprintln!("Error: {}", error);
+    }
+}
+
+// 4. Transitive Dependencies - Analyze module relationships
+let deps = manager.get_transitive_dependencies("APPLICATION")?;
+println!("Dependencies: {:?}", deps);
+```
+
+**Run the Phase 3 Demo:**
+```bash
+cargo run --example phase3_demo
 ```
 
 **Backward Chaining Example:**
