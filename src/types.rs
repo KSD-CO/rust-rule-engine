@@ -260,8 +260,34 @@ impl Operator {
     /// Evaluate the operator against two values
     pub fn evaluate(&self, left: &Value, right: &Value) -> bool {
         match self {
-            Operator::Equal => left == right,
-            Operator::NotEqual => left != right,
+            Operator::Equal => {
+                // Special handling for null comparison
+                // "null" string should be treated as Value::Null
+                if matches!(left, Value::Null) || matches!(right, Value::Null) {
+                    // Convert "null" string to Value::Null for comparison
+                    let left_is_null = matches!(left, Value::Null) 
+                        || (matches!(left, Value::String(s) if s == "null"));
+                    let right_is_null = matches!(right, Value::Null)
+                        || (matches!(right, Value::String(s) if s == "null"));
+                    
+                    left_is_null == right_is_null
+                } else {
+                    left == right
+                }
+            }
+            Operator::NotEqual => {
+                // Special handling for null comparison
+                if matches!(left, Value::Null) || matches!(right, Value::Null) {
+                    let left_is_null = matches!(left, Value::Null)
+                        || (matches!(left, Value::String(s) if s == "null"));
+                    let right_is_null = matches!(right, Value::Null)
+                        || (matches!(right, Value::String(s) if s == "null"));
+                    
+                    left_is_null != right_is_null
+                } else {
+                    left != right
+                }
+            }
             Operator::GreaterThan => {
                 if let (Some(l), Some(r)) = (left.to_number(), right.to_number()) {
                     l > r

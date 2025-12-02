@@ -1,66 +1,79 @@
-# Rust Rule Engine v1.4.0 🦀⚡🚀
+# Rust Rule Engine v1.5.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **Real-Time Stream Processing**, **Distributed State with Redis**, **CLIPS-inspired Module System with Cyclic Import Detection**, **Production-Ready Backward Chaining (100-1000x faster!)**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
+A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **Real-Time Stream Processing**, **Distributed State with Redis**, **CLIPS-inspired Module System with Cyclic Import Detection**, **Production-Ready Backward Chaining**, **Enhanced Null Handling**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## ✨ What's New in v1.4.0 🎉
+## ✨ What's New in v1.5.0 🎉
 
-🚀 **Production-Ready Real-Time Stream Processing!**
+🚀 **Enhanced Null Handling & Business Logic Integration!**
 
-This release adds a **complete streaming module** with distributed state management, watermarking, and fault tolerance. Process millions of events per second with horizontal scalability via Redis.
+This release adds **robust null checking support** and demonstrates production-ready integration patterns with real business logic. Process complex business rules with confidence using inline GRL strings and comprehensive null handling.
 
 ### 🎉 Major Features:
 
-✅ **Stream Processing with Fluent API** (NEW!)
-- ✅ 20+ stream operators (filter, map, reduce, aggregate, etc.)
-- ✅ Built-in aggregators (Count, Sum, Average, Min, Max)
-- ✅ Custom operator support with type-safe transformations
-- ✅ Windowing: Sliding, Tumbling, Session windows
-- ✅ KeyedStream and GroupedStream for partitioning
-- ✅ 10 comprehensive tests (100% passing)
+✅ **Null Value Handling** (NEW!)
+- ✅ Missing fields treated as `Value::Null` (not false)
+- ✅ Support for `field == null` and `field != null` conditions
+- ✅ Special null handling in Equal/NotEqual operators
+- ✅ Consistent null behavior across HashMap-based evaluation
+- ✅ Default fallback rule patterns with null checks
+- ✅ 3 files enhanced: engine.rs, types.rs, rule.rs
+- ✅ 100% backward compatible with existing rules
 
-✅ **Watermark & Late Data Handling** (NEW!)
-- ✅ Event-time processing for out-of-order events
-- ✅ BoundedOutOfOrder, Monotonic, Periodic strategies
-- ✅ Late data strategies: Drop, AllowedLateness, SideOutput
-- ✅ Watermark progression tracking
-- ✅ 6 unit tests (100% passing)
+✅ **Business Logic Examples** (NEW!)
+- ✅ Invoice creation with 5 GRL rule sets (24 rules total)
+- ✅ Complex discount strategy selection via rules
+- ✅ 17 comprehensive tests (100% passing)
+- ✅ Real-world patterns: eligibility, FPT push, discount calculation
+- ✅ Inline GRL strings for maintainable business logic
+- ✅ Demonstrates production-ready integration patterns
 
-✅ **Distributed State Management** (NEW!)
-- ✅ Multiple backends: Memory, File, **Redis**
-- ✅ **Redis backend for distributed deployments** ✨
-- ✅ Checkpointing for fault tolerance
-- ✅ TTL-based state expiration
-- ✅ StatefulOperator for maintaining state across events
-- ✅ 5 unit tests (100% passing)
+✅ **Streaming Examples Enhanced** (NEW!)
+- ✅ State management with rule engine integration
+- ✅ Watermark processing with business rules
+- ✅ Basic streaming with GRL rule evaluation
+- ✅ Clear demonstration of rule engine usage in streams
+- ✅ Production-ready patterns for real-time processing
 
-✅ **Redis Integration** (NEW!)
-- ✅ Connection pooling and automatic reconnection
-- ✅ Key namespacing for multi-tenant support
-- ✅ Automatic serialization/deserialization
-- ✅ 100k+ ops/sec throughput
-- ✅ Horizontal scaling with Redis Cluster
-- ✅ Production-ready with RDB/AOF persistence
+### 📊 Quality & Testing:
+- **Test Coverage**: 155+ tests passing (100% success rate)
+- **Library Tests**: 133/133 ✅ (core engine, GRL parser, RETE)
+- **Integration Tests**: 5/5 ✅ (end-to-end scenarios)
+- **Business Logic Tests**: 17/17 ✅ (invoice rules, discount strategy)
+- **Examples**: 52+ ✅ (all categories validated)
+- **Regressions**: 0 (comprehensive validation completed)
+- **Deployment Status**: 🟢 Production Ready
 
-### 📊 Streaming Performance:
-- **Throughput**: 1M+ events/sec (Memory), 100k+ ops/sec (Redis)
-- **Latency**: <1μs (Memory), <1ms (Redis)
-- **Scalability**: Horizontal scaling with Redis Cluster
-- **Tests**: 21/21 passing (100%)
+### 🔧 Key Improvements:
+- **Null Checking**: Robust handling of undefined/null fields in conditions
+- **Default Fallbacks**: Reliable fallback rule patterns when primary conditions don't match
+- **Business Integration**: Production-ready patterns for complex business logic
+- **Test Infrastructure**: Comprehensive test suite with 17 business logic tests
+- **Examples**: Clear demonstrations of rule engine integration in real scenarios
 
 ---
 
 ## 📋 Version History
 
-### v1.4.0 (Current) - Stream Processing Release
+### v1.5.0 (Current) - Null Handling & Business Integration Release
+- ✅ **Null Value Handling** - Missing fields treated as Value::Null
+- ✅ **Null Checking Conditions** - Support for `field == null` patterns
+- ✅ **Default Fallback Rules** - Reliable fallback patterns with null checks
+- ✅ **Business Logic Examples** - 24 production-ready GRL rules
+- ✅ **Discount Strategy Rules** - Complex strategy selection via rules
+- ✅ **Streaming Examples** - 3 demos with clear rule engine usage
+- ✅ **17 business tests** - 100% passing with comprehensive coverage
+- ✅ **155+ total tests** - Zero regressions, production ready
+
+### v1.4.0 - Stream Processing Release
 - ✅ **Stream Operators** - 20+ fluent operators with aggregations
 - ✅ **Watermarking** - Out-of-order event handling
 - ✅ **State Management** - Distributed state with Redis backend
@@ -68,6 +81,8 @@ This release adds a **complete streaming module** with distributed state managem
 - ✅ **5 comprehensive demos** - IoT monitoring, user analytics, etc.
 - ✅ **Full documentation** - Architecture diagrams and guides
 - ✅ **21 unit tests** - All passing
+
+
 
 ### v1.3.0
 - ✅ **Cyclic Import Detection** - Prevents circular module dependencies

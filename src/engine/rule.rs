@@ -193,11 +193,12 @@ impl Condition {
     pub fn evaluate(&self, facts: &HashMap<String, Value>) -> bool {
         match &self.expression {
             ConditionExpression::Field(field_name) => {
-                if let Some(field_value) = get_nested_value(facts, field_name) {
-                    self.operator.evaluate(field_value, &self.value)
-                } else {
-                    false
-                }
+                // Get field value, or treat as Null if not found
+                let field_value = get_nested_value(facts, field_name)
+                    .cloned()
+                    .unwrap_or(Value::Null);
+                
+                self.operator.evaluate(&field_value, &self.value)
             }
             ConditionExpression::FunctionCall { .. }
             | ConditionExpression::Test { .. }
@@ -221,11 +222,12 @@ impl Condition {
     ) -> bool {
         match &self.expression {
             ConditionExpression::Field(field_name) => {
-                if let Some(field_value) = get_nested_value(facts, field_name) {
-                    self.operator.evaluate(field_value, &self.value)
-                } else {
-                    false
-                }
+                // Get field value, or treat as Null if not found
+                let field_value = get_nested_value(facts, field_name)
+                    .cloned()
+                    .unwrap_or(Value::Null);
+                
+                self.operator.evaluate(&field_value, &self.value)
             }
             ConditionExpression::FunctionCall { name, args } => {
                 // Call the function with arguments

@@ -947,9 +947,11 @@ impl RustRuleEngine {
                 }
 
                 // Field condition - try nested first, then flat lookup
+                // If field not found, treat as Null for proper null checking
                 let field_value = facts
                     .get_nested(field_name)
-                    .or_else(|| facts.get(field_name));
+                    .or_else(|| facts.get(field_name))
+                    .unwrap_or(Value::Null);
 
                 if self.config.debug_mode {
                     println!(
@@ -961,44 +963,40 @@ impl RustRuleEngine {
                     println!("      Field value: {:?}", field_value);
                 }
 
-                if let Some(value) = field_value {
-                    // condition.operator.evaluate(&value, &condition.value)
-                    // If the condition's right-hand value is a string that names another fact,
-                    // try to resolve that fact and use its value for comparison. This allows
-                    // rules like `L1 > L1Min` where the parser may have stored "L1Min"
-                    // as a string literal.
-                    let rhs = match &condition.value {
-                        crate::types::Value::String(s) => {
-                            // Try nested lookup first, then flat lookup
-                            facts
-                                .get_nested(s)
-                                .or_else(|| facts.get(s))
-                                .unwrap_or(crate::types::Value::String(s.clone()))
-                        }
-                        crate::types::Value::Expression(expr) => {
-                            // Try to evaluate expression - could be a variable reference or arithmetic
-                            match crate::expression::evaluate_expression(expr, facts) {
-                                Ok(evaluated) => evaluated,
-                                Err(_) => {
-                                    // If evaluation fails, try as simple variable lookup
-                                    facts
-                                        .get_nested(expr)
-                                        .or_else(|| facts.get(expr))
-                                        .unwrap_or(crate::types::Value::Expression(expr.clone()))
-                                }
+                // condition.operator.evaluate(&value, &condition.value)
+                // If the condition's right-hand value is a string that names another fact,
+                // try to resolve that fact and use its value for comparison. This allows
+                // rules like `L1 > L1Min` where the parser may have stored "L1Min"
+                // as a string literal.
+                let rhs = match &condition.value {
+                    crate::types::Value::String(s) => {
+                        // Try nested lookup first, then flat lookup
+                        facts
+                            .get_nested(s)
+                            .or_else(|| facts.get(s))
+                            .unwrap_or(crate::types::Value::String(s.clone()))
+                    }
+                    crate::types::Value::Expression(expr) => {
+                        // Try to evaluate expression - could be a variable reference or arithmetic
+                        match crate::expression::evaluate_expression(expr, facts) {
+                            Ok(evaluated) => evaluated,
+                            Err(_) => {
+                                // If evaluation fails, try as simple variable lookup
+                                facts
+                                    .get_nested(expr)
+                                    .or_else(|| facts.get(expr))
+                                    .unwrap_or(crate::types::Value::Expression(expr.clone()))
                             }
                         }
-                        _ => condition.value.clone(),
-                    };
-
-                    if self.config.debug_mode {
-                        println!("      Resolved RHS for comparison: {:?}", rhs);
                     }
+                    _ => condition.value.clone(),
+                };
 
-                    condition.operator.evaluate(&value, &rhs)
-                } else {
-                    false
+                if self.config.debug_mode {
+                    println!("      Resolved RHS for comparison: {:?}", rhs);
                 }
+
+                condition.operator.evaluate(&field_value, &rhs)
             }
             ConditionExpression::FunctionCall { name, args } => {
                 // Function call condition
