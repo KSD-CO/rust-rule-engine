@@ -31,6 +31,7 @@ pub mod expression;
 pub mod rule_executor;
 pub mod unification;
 pub mod conclusion_index;
+pub mod aggregation;
 
 // Re-export main types
 pub use goal::{Goal, GoalStatus, GoalManager};
@@ -42,3 +43,4 @@ pub use expression::{Expression, ExpressionParser};
 pub use rule_executor::RuleExecutor;
 pub use unification::{Bindings, Unifier};
 pub use conclusion_index::{ConclusionIndex, IndexStats};
+pub use aggregation::{AggregateFunction, AggregateQuery, parse_aggregate_query, apply_aggregate};

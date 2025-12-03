@@ -134,6 +134,8 @@ backward-chaining:
 	cargo run --features backward-chaining --example backward_edge_cases_test
 	cargo run --features backward-chaining --example backward_critical_missing_tests
 	cargo run --features backward-chaining --example access_control_demo
+	cargo run --features backward-chaining --example aggregation_demo
+	cargo run --features backward-chaining --example grl_aggregation_demo
 
 # Module System Examples (10-module-system)
 module-system:
@@ -372,3 +374,9 @@ rule_file_functions_demo:
 
 access_control_demo:
 	cargo run --features backward-chaining --example access_control_demo
+
+aggregation_demo:
+	cargo run --features backward-chaining --example aggregation_demo
+
+grl_aggregation_demo:
+	cargo run --features backward-chaining --example grl_aggregation_demo

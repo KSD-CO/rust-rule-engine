@@ -279,6 +279,57 @@ impl BackwardEngine {
         let rules = self.knowledge_base.get_rules();
         self.conclusion_index = ConclusionIndex::from_rules(&rules);
     }
+
+    /// Query with aggregation functions
+    ///
+    /// Supports: count, sum, avg, min, max, first, last
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Count all employees
+    /// let count = engine.query_aggregate(
+    ///     "count(?x) WHERE employee(?x)",
+    ///     &mut facts
+    /// )?;
+    ///
+    /// // Sum of salaries over 50000
+    /// let total = engine.query_aggregate(
+    ///     "sum(?salary) WHERE salary(?name, ?salary) AND ?salary > 50000",
+    ///     &mut facts
+    /// )?;
+    ///
+    /// // Average price
+    /// let avg_price = engine.query_aggregate(
+    ///     "avg(?price) WHERE product(?name, ?price)",
+    ///     &mut facts
+    /// )?;
+    /// ```
+    pub fn query_aggregate(
+        &mut self,
+        query: &str,
+        facts: &mut Facts,
+    ) -> Result<crate::types::Value> {
+        use super::aggregation::{parse_aggregate_query, apply_aggregate};
+
+        // Parse the aggregate query
+        let agg_query = parse_aggregate_query(query)?;
+
+        // Set max_solutions to unlimited for aggregation
+        let original_max = self.config.max_solutions;
+        self.config.max_solutions = usize::MAX;
+
+        // Execute the underlying pattern query to get all solutions
+        let result = self.query(&agg_query.pattern, facts)?;
+
+        // Restore original max_solutions
+        self.config.max_solutions = original_max;
+
+        // Apply aggregation to solutions
+        let value = apply_aggregate(&agg_query.function, &result.solutions)?;
+
+        Ok(value)
+    }
 }
 
 #[cfg(test)]

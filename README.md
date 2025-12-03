@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.6.0 🦀⚡🚀
+# Rust Rule Engine v1.7.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,36 +11,89 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel E
 
 ---
 
-## ✨ What's New in v1.6.0 🎉
+## ✨ What's New in v1.7.0 🎉
 
-🚀 **Advanced Module System - Phase 3 Complete!**
+🚀 **Aggregation Functions in Backward Chaining!**
 
-This release completes the module system with **transitive re-exports**, **module-level salience**, and **comprehensive validation tools**. Build complex multi-tier module hierarchies with confidence using pattern-based re-exports and automated validation.
+This release adds **native aggregation support** to backward chaining queries! Use COUNT, SUM, AVG, MIN, MAX, and more aggregate functions directly in your queries for powerful data analysis capabilities.
 
-### 🎉 Major Features:
+### 🔥 Unique Features:
 
-✅ **Module System Phase 3** (NEW!)
-- ✅ **Transitive Re-exports** - Modules can re-export items from imported modules with pattern matching
-- ✅ **Module-Level Salience** - Set base priority for all rules in a module
-- ✅ **Module Validation** - Comprehensive validation with error and warning detection
-- ✅ **Dependency Analysis** - BFS-based transitive dependency queries
-- ✅ **Pattern-Based Re-exports** - Selective re-export with wildcards (e.g., "sensor-*")
-- ✅ **18 comprehensive tests** - All passing with Phase 3 coverage
-- ✅ **268-line demo** - Complete Phase 3 feature demonstration
-- ✅ 100% backward compatible with existing modules
+✅ **Backward Chaining Aggregation** (NEW! 🆕)
+- ✅ **7 Aggregate Functions** - COUNT, SUM, AVG, MIN, MAX, FIRST, LAST
+- ✅ **Query Syntax** - `sum(?amount) WHERE purchase(?item, ?amount) AND ?amount > 100`
+- ✅ **Filter Support** - AND conditions for selective aggregation
+- ✅ **GRL Integration** - Use aggregation in GRL query syntax
+- ✅ **Type-Safe** - Automatic numeric conversions (Integer → Float)
+- ✅ **13+ unit tests** - All passing with comprehensive coverage
+- ✅ **3 demo examples** - Real-world scenarios (salary, inventory, sales analysis)
+- ✅ **~800 lines new code** - Production-ready implementation
 
-✅ **Dependency Updates** (NEW!)
-- ✅ Updated to latest stable versions: regex 1.11, thiserror 2.0, tokio 1.42
-- ✅ Performance improvements: 5-10% faster regex operations
-- ✅ Modern web stack: axum 0.8, tower 0.5, reqwest 0.12
-- ✅ All 142 tests passing with new dependencies
-- ✅ Zero breaking changes to public API
+### 📊 Aggregation Examples:
+
+```rust
+use rust_rule_engine::backward::BackwardEngine;
+
+let mut engine = BackwardEngine::new(kb);
+
+// Count all employees
+let count = engine.query_aggregate(
+    "count(?x) WHERE employee(?x)",
+    &mut facts
+)?;
+
+// Sum of high salaries
+let total = engine.query_aggregate(
+    "sum(?salary) WHERE salary(?name, ?salary) AND ?salary > 80000",
+    &mut facts
+)?;
+
+// Average product price
+let avg = engine.query_aggregate(
+    "avg(?price) WHERE product(?name, ?price)",
+    &mut facts
+)?;
+
+// Min/Max values
+let min_score = engine.query_aggregate("min(?score) WHERE student(?name, ?score)", &mut facts)?;
+let max_score = engine.query_aggregate("max(?score) WHERE student(?name, ?score)", &mut facts)?;
+```
+
+### 📝 GRL Query Syntax:
+
+```grl
+query "TotalPayroll" {
+    goal: sum(?salary) WHERE salary(?name, ?salary)
+    on-success: {
+        Payroll.Total = result;
+        LogMessage("Payroll calculated");
+    }
+}
+
+query "HighEarners" {
+    goal: sum(?salary) WHERE salary(?name, ?salary) AND ?salary > 80000
+    on-success: {
+        HighEarnerPayroll = result;
+    }
+}
+```
 
 ---
 
 ## 📋 Version History
 
-### v1.6.0 (Current) - Advanced Module System Complete
+### v1.7.0 (Current) - Backward Chaining Aggregation 🆕
+- ✅ **Aggregation Functions** - COUNT, SUM, AVG, MIN, MAX, FIRST, LAST
+- ✅ **Query Syntax** - `sum(?field) WHERE pattern AND filter`
+- ✅ **Filter Support** - AND conditions for selective aggregation
+- ✅ **GRL Integration** - Use in GRL query definitions
+- ✅ **Type Safety** - Automatic numeric conversions
+- ✅ **13+ unit tests** - All passing with comprehensive coverage
+- ✅ **3 demo examples** - Salary, inventory, sales analysis
+- ✅ **~800 lines code** - Production-ready implementation
+- ✅ **Unique Feature** - Not available in CLIPS!
+
+### v1.6.0 - Advanced Module System Complete
 - ✅ **Transitive Re-exports** - Pattern-based re-export from imported modules
 - ✅ **Module-Level Salience** - Priority control at module level
 - ✅ **Module Validation** - Comprehensive validation with errors/warnings

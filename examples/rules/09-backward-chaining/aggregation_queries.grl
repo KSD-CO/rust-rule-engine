@@ -1,0 +1,70 @@
+// Aggregation Queries in GRL
+// Demonstrates COUNT, SUM, AVG, MIN, MAX aggregate functions
+
+// Query 1: Count all employees
+query "CountEmployees" {
+    goal: count(?x) WHERE employee(?x)
+    on-success: {
+        TotalEmployees = result;
+        LogMessage("Total employees counted");
+    }
+}
+
+// Query 2: Sum of all salaries
+query "TotalPayroll" {
+    goal: sum(?salary) WHERE salary(?name, ?salary)
+    on-success: {
+        Payroll.Total = result;
+        LogMessage("Payroll calculated");
+    }
+}
+
+// Query 3: Average salary
+query "AverageSalary" {
+    goal: avg(?salary) WHERE salary(?name, ?salary)
+    on-success: {
+        Payroll.Average = result;
+    }
+}
+
+// Query 4: Sum with filter
+query "HighEarners" {
+    goal: sum(?salary) WHERE salary(?name, ?salary) AND ?salary > 80000
+    on-success: {
+        HighEarnerPayroll = result;
+        LogMessage("High earner payroll calculated");
+    }
+}
+
+// Query 5: Minimum price
+query "CheapestProduct" {
+    goal: min(?price) WHERE product(?name, ?price)
+    on-success: {
+        MinPrice = result;
+    }
+}
+
+// Query 6: Maximum score
+query "TopScore" {
+    goal: max(?score) WHERE student(?name, ?score)
+    on-success: {
+        TopScore = result;
+        LogMessage("Top score found");
+    }
+}
+
+// Query 7: Count with condition
+query "PassingStudents" {
+    goal: count(?student) WHERE student(?student) AND score(?student, ?s) AND ?s >= 60
+    on-success: {
+        PassingCount = result;
+    }
+}
+
+// Query 8: Average with filter
+query "AverageHighIncome" {
+    goal: avg(?income) WHERE employee(?name) AND income(?name, ?income) AND ?income > 50000
+    on-success: {
+        AvgHighIncome = result;
+    }
+}
