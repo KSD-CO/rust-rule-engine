@@ -1,0 +1,74 @@
+// Negation Queries in GRL
+// Demonstrates NOT keyword for negated goals with closed-world assumption
+
+// Query 1: Find users who are NOT banned
+query "NotBannedUsers" {
+    goal: NOT User.IsBanned == true
+    on-success: {
+        User.Allowed = true;
+        LogMessage("User is not banned");
+    }
+}
+
+// Query 2: Find items that are NOT sold (closed-world assumption)
+query "AvailableItems" {
+    goal: NOT Item.Sold == true
+    on-success: {
+        Item.Available = true;
+        LogMessage("Item is available");
+    }
+}
+
+// Query 3: Find employees NOT in management
+query "NonManagementEmployees" {
+    goal: NOT Employee.IsManager == true
+    on-success: {
+        Employee.Level = "staff";
+    }
+}
+
+// Query 4: Find orders that do NOT require approval
+query "AutoApprovedOrders" {
+    goal: NOT Order.RequiresApproval == true
+    on-success: {
+        Order.Status = "auto_approved";
+        ProcessOrder();
+    }
+}
+
+// Query 5: Find customers who are NOT VIP (closed-world)
+query "RegularCustomers" {
+    goal: NOT Customer.IsVIP == true
+    on-success: {
+        Customer.Tier = "regular";
+        ApplyStandardPricing();
+    }
+}
+
+// Query 6: Find products that are NOT discounted
+query "FullPriceProducts" {
+    goal: NOT Product.HasDiscount == true
+    on-success: {
+        Product.PriceType = "full";
+    }
+}
+
+// Query 7: Complex - Active AND NOT banned
+query "EligibleUsers" {
+    goal: User.IsActive == true
+    // Note: To express "AND NOT banned", would need to combine with another query
+    // or use complex expression support in future
+    on-success: {
+        // Check banned status separately
+        CheckBannedStatus();
+    }
+}
+
+// Query 8: Find accounts that are NOT expired
+query "ActiveAccounts" {
+    goal: NOT Account.Expired == true
+    on-success: {
+        Account.Status = "active";
+        LogMessage("Account is active");
+    }
+}

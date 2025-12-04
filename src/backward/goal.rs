@@ -28,6 +28,10 @@ pub struct Goal {
 
     /// Depth of this goal in the search tree
     pub depth: usize,
+
+    /// Whether this is a negated goal (NOT keyword)
+    /// When true, the goal succeeds if it CANNOT be proven (closed-world assumption)
+    pub is_negated: bool,
 }
 
 /// Status of a goal in the proof process
@@ -57,6 +61,7 @@ impl Goal {
             candidate_rules: Vec::new(),
             bindings: Bindings::new(),
             depth: 0,
+            is_negated: false,
         }
     }
 
@@ -70,6 +75,35 @@ impl Goal {
             candidate_rules: Vec::new(),
             bindings: Bindings::new(),
             depth: 0,
+            is_negated: false,
+        }
+    }
+
+    /// Create a negated goal (NOT goal)
+    pub fn negated(pattern: String) -> Self {
+        Self {
+            pattern,
+            expression: None,
+            status: GoalStatus::Pending,
+            sub_goals: Vec::new(),
+            candidate_rules: Vec::new(),
+            bindings: Bindings::new(),
+            depth: 0,
+            is_negated: true,
+        }
+    }
+
+    /// Create a negated goal with expression
+    pub fn negated_with_expression(pattern: String, expression: Expression) -> Self {
+        Self {
+            pattern,
+            expression: Some(expression),
+            status: GoalStatus::Pending,
+            sub_goals: Vec::new(),
+            candidate_rules: Vec::new(),
+            bindings: Bindings::new(),
+            depth: 0,
+            is_negated: true,
         }
     }
     
@@ -342,5 +376,40 @@ mod tests {
         let manager = GoalManager::default();
         assert_eq!(manager.max_depth, 10);
         assert_eq!(manager.goals().len(), 0);
+    }
+
+    #[test]
+    fn test_negated_goal() {
+        let goal = Goal::negated("User.IsBanned == true".to_string());
+        assert_eq!(goal.pattern, "User.IsBanned == true");
+        assert!(goal.is_negated);
+        assert_eq!(goal.status, GoalStatus::Pending);
+    }
+
+    #[test]
+    fn test_negated_goal_with_expression() {
+        use super::super::expression::Expression;
+        use crate::types::{Operator, Value};
+
+        let expr = Expression::Comparison {
+            left: Box::new(Expression::Field("User.IsBanned".to_string())),
+            operator: Operator::Equal,
+            right: Box::new(Expression::Literal(Value::Boolean(true))),
+        };
+
+        let goal = Goal::negated_with_expression("User.IsBanned == true".to_string(), expr);
+        assert!(goal.expression.is_some());
+        assert!(goal.is_negated);
+        assert_eq!(goal.pattern, "User.IsBanned == true");
+    }
+
+    #[test]
+    fn test_normal_goal_not_negated() {
+        let goal = Goal::new("test".to_string());
+        assert!(!goal.is_negated);
+
+        let expr = Expression::Field("test".to_string());
+        let goal_with_expr = Goal::with_expression("test".to_string(), expr);
+        assert!(!goal_with_expr.is_negated);
     }
 }

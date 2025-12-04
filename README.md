@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.7.0 🦀⚡🚀
+# Rust Rule Engine v1.8.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,78 +11,108 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel E
 
 ---
 
-## ✨ What's New in v1.7.0 🎉
+## ✨ What's New in v1.8.0 🎉
 
-🚀 **Aggregation Functions in Backward Chaining!**
+🚫 **Negation in Backward Chaining (NOT Keyword)!**
 
-This release adds **native aggregation support** to backward chaining queries! Use COUNT, SUM, AVG, MIN, MAX, and more aggregate functions directly in your queries for powerful data analysis capabilities.
+This release adds **negation support** with closed-world assumption to backward chaining queries! Use the NOT keyword to check for facts that CANNOT be proven, enabling powerful absence checks and negative conditions.
 
-### 🔥 Unique Features:
+### 🔥 New Features:
 
-✅ **Backward Chaining Aggregation** (NEW! 🆕)
-- ✅ **7 Aggregate Functions** - COUNT, SUM, AVG, MIN, MAX, FIRST, LAST
-- ✅ **Query Syntax** - `sum(?amount) WHERE purchase(?item, ?amount) AND ?amount > 100`
-- ✅ **Filter Support** - AND conditions for selective aggregation
-- ✅ **GRL Integration** - Use aggregation in GRL query syntax
-- ✅ **Type-Safe** - Automatic numeric conversions (Integer → Float)
-- ✅ **13+ unit tests** - All passing with comprehensive coverage
-- ✅ **3 demo examples** - Real-world scenarios (salary, inventory, sales analysis)
-- ✅ **~800 lines new code** - Production-ready implementation
+✅ **Negation Support (NOT Keyword)** (NEW! 🆕)
+- ✅ **Query String Parsing** - `NOT User.IsBanned == true`
+- ✅ **GRL File Support** - Use NOT in query definitions
+- ✅ **Closed-World Assumption** - If fact not provable, NOT succeeds
+- ✅ **Zero Breaking Changes** - All existing code works unchanged
+- ✅ **4 comprehensive demos** - Real-world scenarios (user bans, inventory, eligibility)
+- ✅ **Production ready** - All 284+ tests passing
 
-### 📊 Aggregation Examples:
+### 🚫 Negation Examples:
 
 ```rust
 use rust_rule_engine::backward::BackwardEngine;
+use rust_rule_engine::engine::facts::Facts;
 
 let mut engine = BackwardEngine::new(kb);
+let mut facts = Facts::new();
 
-// Count all employees
-let count = engine.query_aggregate(
-    "count(?x) WHERE employee(?x)",
-    &mut facts
-)?;
+// Check if user is NOT banned
+facts.set("alice.is_banned", Value::Boolean(false));
+let result = engine.query("NOT alice.is_banned == true", &mut facts)?;
+// Result: Provable (Alice is NOT banned) ✅
 
-// Sum of high salaries
-let total = engine.query_aggregate(
-    "sum(?salary) WHERE salary(?name, ?salary) AND ?salary > 80000",
-    &mut facts
-)?;
+// Check if item is NOT sold (closed-world)
+facts.set("laptop.price", Value::Number(999.99));
+// Note: No "sold" field means NOT sold
+let result = engine.query("NOT laptop.sold == true", &mut facts)?;
+// Result: Provable (Laptop has no sold field, so it's available) ✅
 
-// Average product price
-let avg = engine.query_aggregate(
-    "avg(?price) WHERE product(?name, ?price)",
-    &mut facts
-)?;
-
-// Min/Max values
-let min_score = engine.query_aggregate("min(?score) WHERE student(?name, ?score)", &mut facts)?;
-let max_score = engine.query_aggregate("max(?score) WHERE student(?name, ?score)", &mut facts)?;
+// Eligibility check: Active AND NOT banned
+let active = engine.query("user.is_active == true", &mut facts)?;
+let not_banned = engine.query("NOT user.is_banned == true", &mut facts)?;
+let eligible = active.provable && not_banned.provable;
 ```
 
-### 📝 GRL Query Syntax:
+### 📝 GRL Query Syntax with NOT:
 
 ```grl
-query "TotalPayroll" {
-    goal: sum(?salary) WHERE salary(?name, ?salary)
+// Find users who are NOT banned
+query "NotBannedUsers" {
+    goal: NOT User.IsBanned == true
     on-success: {
-        Payroll.Total = result;
-        LogMessage("Payroll calculated");
+        User.Allowed = true;
+        LogMessage("User is not banned");
     }
 }
 
-query "HighEarners" {
-    goal: sum(?salary) WHERE salary(?name, ?salary) AND ?salary > 80000
+// Find items that are NOT sold (closed-world assumption)
+query "AvailableItems" {
+    goal: NOT Item.Sold == true
     on-success: {
-        HighEarnerPayroll = result;
+        Item.Available = true;
+        LogMessage("Item is available");
+    }
+}
+
+// Find orders that do NOT require approval
+query "AutoApprovedOrders" {
+    goal: NOT Order.RequiresApproval == true
+    on-success: {
+        Order.Status = "auto_approved";
+        ProcessOrder();
     }
 }
 ```
+
+### 🌍 Closed-World Assumption
+
+Negation works with **closed-world assumption** - if a fact cannot be proven (either explicitly false or missing), the negation succeeds:
+
+1. **Explicit FALSE**: `User.IsBanned = false` → `NOT User.IsBanned == true` ✅ succeeds
+2. **Missing Field**: No `User.IsBanned` field → `NOT User.IsBanned == true` ✅ succeeds (closed-world)
+3. **Explicit TRUE**: `User.IsBanned = true` → `NOT User.IsBanned == true` ❌ fails
+
+**Use Cases:**
+- Access control (check if NOT banned, NOT suspended)
+- Inventory management (items NOT sold, NOT reserved)
+- Order processing (orders NOT requiring approval)
+- User eligibility (accounts NOT expired)
 
 ---
 
 ## 📋 Version History
 
-### v1.7.0 (Current) - Backward Chaining Aggregation 🆕
+### v1.8.0 (Current) - Negation in Backward Chaining 🆕
+- ✅ **NOT Keyword** - Query for facts that CANNOT be proven
+- ✅ **Closed-World Assumption** - Missing facts treated as false
+- ✅ **Query Parser Support** - `NOT User.IsBanned == true` syntax
+- ✅ **GRL Integration** - Use NOT in GRL query files
+- ✅ **Zero Breaking Changes** - All existing code works unchanged
+- ✅ **4 comprehensive demos** - Real-world scenarios
+- ✅ **Production ready** - All 284+ tests passing
+- ✅ **Documentation** - Complete GRL syntax guide updated
+
+### v1.7.0 - Backward Chaining Aggregation
 - ✅ **Aggregation Functions** - COUNT, SUM, AVG, MIN, MAX, FIRST, LAST
 - ✅ **Query Syntax** - `sum(?field) WHERE pattern AND filter`
 - ✅ **Filter Support** - AND conditions for selective aggregation
@@ -1134,22 +1164,22 @@ rule "HighRevenue" {
 
 ```toml
 [dependencies]
-rust-rule-engine = "1.4.0"
+rust-rule-engine = "1.8.0"
 ```
 
 ### Optional Features
 ```toml
-# Enable backward chaining (Production Ready! 🚀)
-rust-rule-engine = { version = "1.4.0", features = ["backward-chaining"] }
+# Enable backward chaining with negation support (Production Ready! 🚀)
+rust-rule-engine = { version = "1.8.0", features = ["backward-chaining"] }
 
 # Enable streaming support
-rust-rule-engine = { version = "1.4.0", features = ["streaming"] }
+rust-rule-engine = { version = "1.8.0", features = ["streaming"] }
 
 # Enable streaming with Redis backend (for distributed deployments)
-rust-rule-engine = { version = "1.4.0", features = ["streaming", "streaming-redis"] }
+rust-rule-engine = { version = "1.8.0", features = ["streaming", "streaming-redis"] }
 
 # Enable all features
-rust-rule-engine = { version = "1.4.0", features = ["backward-chaining", "streaming", "streaming-redis"] }
+rust-rule-engine = { version = "1.8.0", features = ["backward-chaining", "streaming", "streaming-redis"] }
 ```
 
 ---

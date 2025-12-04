@@ -196,9 +196,23 @@ impl DepthFirstSearch {
         }
 
         // Check if goal already satisfied by existing facts
-        if self.check_goal_in_facts(goal, facts) {
-            goal.status = GoalStatus::Proven;
-            return true;
+        let fact_proven = self.check_goal_in_facts(goal, facts);
+
+        // Handle negated goals (closed-world assumption)
+        if goal.is_negated {
+            // For negated goals: success if CANNOT be proven
+            if fact_proven {
+                goal.status = GoalStatus::Unprovable;
+                return false; // Goal IS provable, so NOT goal fails
+            }
+            // Continue to check if it can be derived via rules
+            // If no rules can prove it, then negation succeeds
+        } else {
+            // Normal goal: success if proven
+            if fact_proven {
+                goal.status = GoalStatus::Proven;
+                return true;
+            }
         }
 
         // Check for cycles
@@ -316,18 +330,39 @@ impl DepthFirstSearch {
         // If we found at least one solution (even if less than max_solutions), consider it proven
         if !self.solutions.is_empty() {
             goal.status = GoalStatus::Proven;
-            return true;
+            // For negated goals, finding a proof means negation fails
+            return !goal.is_negated;
         }
 
         // If we have no candidate rules and no sub-goals, or nothing worked
-        goal.status = GoalStatus::Unprovable;
-        false
+        if goal.is_negated {
+            // For negated goals: if we couldn't prove it, then NOT succeeds (closed-world assumption)
+            goal.status = GoalStatus::Proven;
+            return true;
+        } else {
+            // For normal goals: if we couldn't prove it, it's unprovable
+            goal.status = GoalStatus::Unprovable;
+            return false;
+        }
     }
     
     /// Check if goal is already satisfied by facts
     ///
     /// This method now reuses ConditionEvaluator for proper evaluation
     fn check_goal_in_facts(&self, goal: &Goal, facts: &Facts) -> bool {
+        // For negated goals, use the expression directly (parser strips NOT)
+        if goal.is_negated {
+            if let Some(ref expr) = goal.expression {
+                // Expression.evaluate() returns Value, need to convert to bool
+                match expr.evaluate(facts) {
+                    Ok(Value::Boolean(b)) => return b,
+                    Ok(_) => return false, // Non-boolean values are false
+                    Err(_) => return false,
+                }
+            }
+            return false;
+        }
+
         // Parse goal pattern into a Condition and use ConditionEvaluator
         if let Some(condition) = self.parse_goal_pattern(&goal.pattern) {
             // Use RuleExecutor's evaluator (which delegates to ConditionEvaluator)
@@ -814,6 +849,19 @@ impl BreadthFirstSearch {
     ///
     /// This method now reuses ConditionEvaluator for proper evaluation
     fn check_goal_in_facts(&self, goal: &Goal, facts: &Facts) -> bool {
+        // For negated goals, use the expression directly (parser strips NOT)
+        if goal.is_negated {
+            if let Some(ref expr) = goal.expression {
+                // Expression.evaluate() returns Value, need to convert to bool
+                match expr.evaluate(facts) {
+                    Ok(Value::Boolean(b)) => return b,
+                    Ok(_) => return false, // Non-boolean values are false
+                    Err(_) => return false,
+                }
+            }
+            return false;
+        }
+
         // Parse goal pattern into a Condition and use ConditionEvaluator
         if let Some(condition) = self.parse_goal_pattern(&goal.pattern) {
             // Use RuleExecutor's evaluator (which delegates to ConditionEvaluator)

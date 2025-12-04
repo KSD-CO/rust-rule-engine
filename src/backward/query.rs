@@ -197,6 +197,7 @@ impl QueryParser {
     /// - "User.IsVIP == true"
     /// - "Order.Total > 1000"
     /// - "User.IsVIP == true && Order.Amount > 1000"
+    /// - "NOT User.IsBanned == true"  (negated goal)
     pub fn parse(query: &str) -> Result<Goal, String> {
         use super::expression::ExpressionParser;
 
@@ -205,10 +206,22 @@ impl QueryParser {
             return Err("Empty query".to_string());
         }
 
+        // Check for NOT keyword at the beginning
+        let trimmed = query.trim();
+        let (is_negated, actual_query) = if trimmed.starts_with("NOT ") {
+            (true, &trimmed[4..]) // Skip "NOT "
+        } else {
+            (false, trimmed)
+        };
+
         // Parse expression using ExpressionParser
-        match ExpressionParser::parse(query) {
+        match ExpressionParser::parse(actual_query) {
             Ok(expr) => {
-                Ok(Goal::with_expression(query.to_string(), expr))
+                if is_negated {
+                    Ok(Goal::negated_with_expression(query.to_string(), expr))
+                } else {
+                    Ok(Goal::with_expression(query.to_string(), expr))
+                }
             }
             Err(e) => {
                 Err(format!("Failed to parse query: {}", e))
@@ -421,5 +434,41 @@ mod tests {
         let trace = ProofTrace::empty();
         assert!(trace.goal.is_empty());
         assert!(trace.steps.is_empty());
+    }
+
+    #[test]
+    fn test_query_parser_not_keyword() {
+        // Test NOT keyword parsing
+        let result = QueryParser::parse("NOT User.IsBanned == true");
+        assert!(result.is_ok());
+        let goal = result.unwrap();
+        assert!(goal.is_negated);
+        assert_eq!(goal.pattern, "NOT User.IsBanned == true");
+    }
+
+    #[test]
+    fn test_query_parser_not_keyword_with_spaces() {
+        // Test NOT with extra spaces
+        let result = QueryParser::parse("  NOT   User.IsBanned == true  ");
+        assert!(result.is_ok());
+        let goal = result.unwrap();
+        assert!(goal.is_negated);
+    }
+
+    #[test]
+    fn test_query_parser_normal_query_not_negated() {
+        let result = QueryParser::parse("User.IsVIP == true");
+        assert!(result.is_ok());
+        let goal = result.unwrap();
+        assert!(!goal.is_negated);
+    }
+
+    #[test]
+    fn test_query_parser_not_complex_expression() {
+        // Test NOT with complex expressions
+        let result = QueryParser::parse("NOT User.Points > 100 && User.Level < 5");
+        assert!(result.is_ok());
+        let goal = result.unwrap();
+        assert!(goal.is_negated);
     }
 }
