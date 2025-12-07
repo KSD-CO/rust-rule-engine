@@ -32,6 +32,8 @@ pub mod rule_executor;
 pub mod unification;
 pub mod conclusion_index;
 pub mod aggregation;
+pub mod proof_tree;
+pub mod explanation;
 
 // Re-export main types
 pub use goal::{Goal, GoalStatus, GoalManager};
@@ -40,7 +42,9 @@ pub use backward_engine::{BackwardEngine, BackwardConfig};
 pub use query::{QueryResult, ProofTrace};
 pub use grl_query::{GRLQuery, GRLQueryParser, GRLQueryExecutor, GRLSearchStrategy, QueryAction};
 pub use expression::{Expression, ExpressionParser};
-pub use rule_executor::RuleExecutor;
+pub use rule_executor::{RuleExecutor};
 pub use unification::{Bindings, Unifier};
 pub use conclusion_index::{ConclusionIndex, IndexStats};
 pub use aggregation::{AggregateFunction, AggregateQuery, parse_aggregate_query, apply_aggregate};
+pub use proof_tree::{ProofNode, ProofTree, ProofNodeType, ProofStats};
+pub use explanation::{ExplanationBuilder, Explanation, ExplanationStep, StepResult};

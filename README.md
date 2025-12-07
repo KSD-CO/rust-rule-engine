@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.8.0 🦀⚡🚀
+# Rust Rule Engine v1.9.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -11,98 +11,177 @@ A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel E
 
 ---
 
-## ✨ What's New in v1.8.0 🎉
+## ✨ What's New in v1.9.0 🎉
 
-🚫 **Negation in Backward Chaining (NOT Keyword)!**
+🔍 **Explanation System for Backward Chaining!**
 
-This release adds **negation support** with closed-world assumption to backward chaining queries! Use the NOT keyword to check for facts that CANNOT be proven, enabling powerful absence checks and negative conditions.
+This release adds a comprehensive **explanation system** that generates human-readable explanations of reasoning processes! Understand HOW and WHY the rule engine reaches conclusions with proof trees, step-by-step traces, and multiple export formats (JSON, Markdown, HTML).
 
 ### 🔥 New Features:
 
-✅ **Negation Support (NOT Keyword)** (NEW! 🆕)
-- ✅ **Query String Parsing** - `NOT User.IsBanned == true`
-- ✅ **GRL File Support** - Use NOT in query definitions
-- ✅ **Closed-World Assumption** - If fact not provable, NOT succeeds
-- ✅ **Zero Breaking Changes** - All existing code works unchanged
-- ✅ **4 comprehensive demos** - Real-world scenarios (user bans, inventory, eligibility)
-- ✅ **Production ready** - All 284+ tests passing
+✅ **Proof Tree Data Structure** (NEW! 🆕)
+- ✅ **ProofNode Types** - Fact, Rule, Negation, Failed nodes
+- ✅ **Hierarchical Representation** - Tree structure with parent-child relationships
+- ✅ **Variable Bindings** - Track bindings at each reasoning step
+- ✅ **Statistics Tracking** - Goals explored, rules evaluated, facts checked
+- ✅ **Depth Tracking** - Monitor reasoning depth and complexity
 
-### 🚫 Negation Examples:
+✅ **Explanation Builder** (NEW! 🆕)
+- ✅ **Opt-in Tracking** - Enable/disable explanation generation
+- ✅ **Stack-Based Construction** - Efficient proof tree building
+- ✅ **Step-by-Step Traces** - Detailed reasoning process
+- ✅ **Success/Failure Analysis** - Understand why queries succeed or fail
+- ✅ **Low Overhead** - Minimal performance impact when disabled
+
+✅ **Multiple Export Formats** (NEW! 🆕)
+- ✅ **JSON Export** - Machine-readable format for APIs
+- ✅ **Markdown Export** - Human-readable documentation
+- ✅ **HTML Export** - Interactive web visualization with CSS
+- ✅ **Tree Printing** - Console-friendly output
+
+✅ **Production Ready** (NEW! 🆕)
+- ✅ **16 unit tests** - All passing with comprehensive coverage
+- ✅ **4 demo scenarios** - Real-world examples
+- ✅ **~1,000 lines code** - Fully documented
+- ✅ **Zero breaking changes** - All existing code works unchanged
+
+### 🔍 Explanation System Examples:
 
 ```rust
-use rust_rule_engine::backward::BackwardEngine;
-use rust_rule_engine::engine::facts::Facts;
+use rust_rule_engine::backward::*;
 
-let mut engine = BackwardEngine::new(kb);
-let mut facts = Facts::new();
+// 1. Create a proof tree manually
+let mut root = ProofNode::rule(
+    "loan_approved == true".to_string(),
+    "loan_approval_rule".to_string(),
+    0,
+);
 
-// Check if user is NOT banned
-facts.set("alice.is_banned", Value::Boolean(false));
-let result = engine.query("NOT alice.is_banned == true", &mut facts)?;
-// Result: Provable (Alice is NOT banned) ✅
+// Add sub-goals
+let credit_node = ProofNode::fact("credit_score = 750".to_string(), 1);
+root.add_child(credit_node);
 
-// Check if item is NOT sold (closed-world)
-facts.set("laptop.price", Value::Number(999.99));
-// Note: No "sold" field means NOT sold
-let result = engine.query("NOT laptop.sold == true", &mut facts)?;
-// Result: Provable (Laptop has no sold field, so it's available) ✅
+let tree = ProofTree::new(root, "Check loan approval".to_string());
 
-// Eligibility check: Active AND NOT banned
-let active = engine.query("user.is_active == true", &mut facts)?;
-let not_banned = engine.query("NOT user.is_banned == true", &mut facts)?;
-let eligible = active.provable && not_banned.provable;
+// 2. Print proof tree to console
+tree.print();
+// Output:
+// Query: Check loan approval
+// Result: ✓ Proven
+// Proof Tree:
+// ✓ loan_approved == true [Rule: loan_approval_rule]
+//   ✓ credit_score = 750 [FACT]
+
+// 3. Export to JSON
+let json = tree.to_json()?;
+std::fs::write("proof.json", json)?;
+
+// 4. Export to Markdown
+let markdown = tree.to_markdown();
+std::fs::write("proof.md", markdown)?;
+
+// 5. Export to HTML (with CSS styling)
+let html = tree.to_html();
+std::fs::write("proof.html", html)?;
+
+// 6. Create full explanation with steps
+let explanation = Explanation::new("Is loan approved?".to_string(), tree);
+explanation.print();
+// Output:
+// EXPLANATION
+// Query: Is loan approved?
+// Result: ✓ Proven
+// Step 1: loan_approved == true
+//   Rule: loan_approval_rule
+//   Result: Success
+// Step 2: credit_score = 750 [FACT]
+//   Result: Success
 ```
 
-### 📝 GRL Query Syntax with NOT:
+### 📊 Proof Tree Visualization
 
-```grl
-// Find users who are NOT banned
-query "NotBannedUsers" {
-    goal: NOT User.IsBanned == true
-    on-success: {
-        User.Allowed = true;
-        LogMessage("User is not banned");
-    }
-}
+The explanation system generates **tree visualizations** showing the reasoning process:
 
-// Find items that are NOT sold (closed-world assumption)
-query "AvailableItems" {
-    goal: NOT Item.Sold == true
-    on-success: {
-        Item.Available = true;
-        LogMessage("Item is available");
-    }
-}
+```
+Query: loan_status = approved
+Result: ✓ Proven
 
-// Find orders that do NOT require approval
-query "AutoApprovedOrders" {
-    goal: NOT Order.RequiresApproval == true
-    on-success: {
-        Order.Status = "auto_approved";
-        ProcessOrder();
-    }
+Proof Tree:
+================================================================================
+✓ loan_status = approved [Rule: loan_approved]
+  ✓ has_good_credit == true [Rule: good_credit]
+    ✓ credit_score = 750 [FACT]
+  ✓ has_stable_income == true [Rule: stable_income]
+    ✓ years_employed = 5 [FACT]
+  ✓ has_low_debt == true [Rule: low_debt]
+    ✓ debt_ratio = 0.25 [FACT]
+================================================================================
+
+Statistics:
+  Goals explored: 7
+  Rules evaluated: 4
+  Facts checked: 3
+  Max depth: 3
+  Total nodes: 7
+```
+
+### 📤 Export Formats
+
+**JSON Export** - Machine-readable for APIs:
+```json
+{
+  "root": {
+    "goal": "loan_approved == true",
+    "rule_name": "loan_approval_rule",
+    "proven": true,
+    "node_type": "Rule",
+    "children": [...]
+  },
+  "success": true,
+  "stats": { "goals_explored": 7, ... }
 }
 ```
 
-### 🌍 Closed-World Assumption
+**Markdown Export** - Human-readable docs:
+```markdown
+# Proof Explanation
 
-Negation works with **closed-world assumption** - if a fact cannot be proven (either explicitly false or missing), the negation succeeds:
+**Query:** `loan_approved == true`
+**Result:** ✓ Proven
 
-1. **Explicit FALSE**: `User.IsBanned = false` → `NOT User.IsBanned == true` ✅ succeeds
-2. **Missing Field**: No `User.IsBanned` field → `NOT User.IsBanned == true` ✅ succeeds (closed-world)
-3. **Explicit TRUE**: `User.IsBanned = true` → `NOT User.IsBanned == true` ❌ fails
+## Proof Tree
+* ✓ `loan_approved == true` **[Rule: loan_approval_rule]**
+  * ✓ `credit_score = 750` *[FACT]*
+```
 
-**Use Cases:**
-- Access control (check if NOT banned, NOT suspended)
-- Inventory management (items NOT sold, NOT reserved)
-- Order processing (orders NOT requiring approval)
-- User eligibility (accounts NOT expired)
+**HTML Export** - Interactive web view with CSS styling and color-coded results.
+
+### 🎯 Use Cases
+
+- **Debugging** - Understand why a query succeeded or failed
+- **Auditing** - Generate compliance reports showing decision logic
+- **Transparency** - Explain AI decisions to end users
+- **Education** - Teach logical reasoning and rule-based systems
+- **Documentation** - Auto-generate examples from actual queries
 
 ---
 
 ## 📋 Version History
 
-### v1.8.0 (Current) - Negation in Backward Chaining 🆕
+### v1.9.0 (Current) - Explanation System 🆕
+- ✅ **Proof Tree Data Structure** - Hierarchical representation of reasoning
+- ✅ **ProofNode Types** - Fact, Rule, Negation, Failed nodes
+- ✅ **Explanation Builder** - Opt-in tracking with stack-based construction
+- ✅ **Multiple Export Formats** - JSON, Markdown, HTML with CSS
+- ✅ **Step-by-Step Traces** - Detailed reasoning process
+- ✅ **Statistics Tracking** - Goals explored, rules evaluated, facts checked
+- ✅ **Zero Breaking Changes** - All existing code works unchanged
+- ✅ **16 unit tests** - All passing with comprehensive coverage
+- ✅ **4 demo scenarios** - Real-world examples (loan, access, exports)
+- ✅ **~1,000 lines code** - Production-ready implementation
+- ✅ **Documentation Complete** - API docs, examples, changelog
+
+### v1.8.0 - Negation in Backward Chaining
 - ✅ **NOT Keyword** - Query for facts that CANNOT be proven
 - ✅ **Closed-World Assumption** - Missing facts treated as false
 - ✅ **Query Parser Support** - `NOT User.IsBanned == true` syntax

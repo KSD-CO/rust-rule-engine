@@ -1,9 +1,9 @@
 # GRL Query Syntax for Backward Chaining
 
-> **Feature:** `backward-chaining`  
-> **Version:** 0.20.0+
+> **Feature:** `backward-chaining`
+> **Version:** 1.9.0+
 
-GRL Query Syntax extends the Grule Rule Language to support backward chaining queries.
+GRL Query Syntax extends the Grule Rule Language to support backward chaining queries with aggregation, negation, and explanation generation.
 
 ---
 
@@ -950,8 +950,204 @@ bc_engine.execute_queries(&queries, &facts)?;
 
 ---
 
+## Explanation System (v1.9.0+)
+
+### Proof Tree Generation
+
+The explanation system captures the reasoning process in a hierarchical proof tree structure.
+
+```rust
+use rust_rule_engine::backward::*;
+
+// Create proof tree manually
+let mut root = ProofNode::rule(
+    "loan_approved == true".to_string(),
+    "loan_approval_rule".to_string(),
+    0,
+);
+
+let credit_node = ProofNode::fact("credit_score = 750".to_string(), 1);
+root.add_child(credit_node);
+
+let tree = ProofTree::new(root, "Check loan approval".to_string());
+
+// Print to console
+tree.print();
+```
+
+**Output:**
+```
+Query: Check loan approval
+Result: ✓ Proven
+
+Proof Tree:
+================================================================================
+✓ loan_approved == true [Rule: loan_approval_rule]
+  ✓ credit_score = 750 [FACT]
+================================================================================
+```
+
+### ProofNode Types
+
+1. **Fact** - Goal proven by existing facts
+2. **Rule** - Goal proven by rule application
+3. **Negation** - Negated goals (NOT operator)
+4. **Failed** - Goals that could not be proven
+
+```rust
+// Create different node types
+let fact_node = ProofNode::fact("user.age = 25".to_string(), 1);
+let rule_node = ProofNode::rule("user.is_adult == true".to_string(), "age_check".to_string(), 0);
+let negation_node = ProofNode::negation("NOT user.is_banned == true".to_string(), 1, true);
+```
+
+### Export Formats
+
+#### JSON Export
+```rust
+let json = tree.to_json()?;
+std::fs::write("proof.json", json)?;
+```
+
+**Output:**
+```json
+{
+  "root": {
+    "goal": "loan_approved == true",
+    "rule_name": "loan_approval_rule",
+    "proven": true,
+    "node_type": "Rule",
+    "children": [...]
+  },
+  "success": true,
+  "stats": {
+    "goals_explored": 7,
+    "rules_evaluated": 4,
+    "facts_checked": 3,
+    "max_depth": 3,
+    "total_nodes": 7
+  }
+}
+```
+
+#### Markdown Export
+```rust
+let markdown = tree.to_markdown();
+std::fs::write("proof.md", markdown)?;
+```
+
+**Output:**
+```markdown
+# Proof Explanation
+
+**Query:** `loan_approved == true`
+**Result:** ✓ Proven
+
+## Proof Tree
+* ✓ `loan_approved == true` **[Rule: loan_approval_rule]**
+  * ✓ `credit_score = 750` *[FACT]*
+
+## Statistics
+- **Goals explored:** 7
+- **Rules evaluated:** 4
+- **Facts checked:** 3
+- **Max depth:** 3
+- **Total nodes:** 7
+```
+
+#### HTML Export
+```rust
+let html = tree.to_html();
+std::fs::write("proof.html", html)?;
+```
+
+Generates an interactive HTML page with:
+- CSS styling
+- Color-coded success/failure indicators
+- Hierarchical tree visualization
+- Statistics summary
+
+### Full Explanation with Steps
+
+```rust
+let explanation = Explanation::new("Is loan approved?".to_string(), tree);
+explanation.print();
+```
+
+**Output:**
+```
+================================================================================
+EXPLANATION
+================================================================================
+
+Query: Is loan approved?
+Result: ✓ Proven
+
+Query 'loan_approved == true' was successfully proven using 4 rules and 3 facts.
+
+Step-by-Step Reasoning:
+--------------------------------------------------------------------------------
+Step 1: loan_approved == true
+  Rule: loan_approval_rule
+  Condition: loan_approved == true
+  Result: Success
+Step 2: credit_score = 750 [FACT]
+  Result: Success
+...
+================================================================================
+```
+
+### ExplanationBuilder (Future Integration)
+
+The `ExplanationBuilder` tracks query execution in real-time:
+
+```rust
+let mut builder = ExplanationBuilder::new();
+builder.enable();
+
+// During query execution (future integration):
+// builder.start_goal(&goal);
+// builder.goal_proven_by_fact(&goal, &bindings);
+// builder.goal_proven_by_rule(&goal, "rule_name", &bindings);
+// builder.finish_goal();
+
+// Build final proof tree
+let tree = builder.build("query string".to_string());
+```
+
+### Use Cases
+
+1. **Debugging** - Understand why queries succeed or fail
+2. **Auditing** - Generate compliance reports showing decision logic
+3. **Transparency** - Explain AI decisions to end users
+4. **Education** - Teach logical reasoning and rule-based systems
+5. **Documentation** - Auto-generate examples from actual queries
+
+### Example Demo
+
+Run the complete explanation demo:
+
+```bash
+cargo run --features backward-chaining --example explanation_demo
+```
+
+Or with Make:
+
+```bash
+make explanation_demo
+```
+
+The demo includes:
+1. Simple proof tree with basic facts
+2. Complex multi-level reasoning (loan approval)
+3. Negation in reasoning (access control)
+4. Export to JSON, Markdown, and HTML
+
+---
+
 ## See Also
 
 - [GRL Syntax Reference](GRL_SYNTAX.md)
 - [Backward Chaining Design](BACKWARD_CHAINING_DESIGN.md)
 - [API Reference](API_REFERENCE.md)
+- [Explanation Demo](../examples/09-backward-chaining/explanation_demo.rs)

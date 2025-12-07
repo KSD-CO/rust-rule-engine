@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.8.0"
+version = "1.9.0"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features: forward/backward chaining, pattern matching, unification, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend, watermarking, and custom functions. Production-ready for business rules, expert systems, real-time stream processing, and decision automation."
@@ -476,4 +476,9 @@ required-features = ["backward-chaining"]
 [[example]]
 name = "grl_negation_demo"
 path = "examples/09-backward-chaining/grl_negation_demo.rs"
+required-features = ["backward-chaining"]
+
+[[example]]
+name = "explanation_demo"
+path = "examples/09-backward-chaining/explanation_demo.rs"
 required-features = ["backward-chaining"]
