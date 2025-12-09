@@ -1,387 +1,167 @@
-# Rust Rule Engine v1.9.0 🦀⚡🚀
+# Rust Rule Engine v1.10.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A high-performance rule engine for Rust with **RETE-UL algorithm**, **Parallel Execution**, **Real-Time Stream Processing**, **Distributed State with Redis**, **Advanced Module System with Transitive Re-exports**, **Production-Ready Backward Chaining**, **Enhanced Null Handling**, **Plugin System**, and **GRL (Grule Rule Language) support**. Designed for production use with excellent performance and Drools compatibility.
+A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## ✨ What's New in v1.9.0 🎉
+## 🎯 Reasoning Modes
 
-🔍 **Explanation System for Backward Chaining!**
+### 🔄 Forward Chaining (Data-Driven)
+**"When facts change, fire matching rules"**
 
-This release adds a comprehensive **explanation system** that generates human-readable explanations of reasoning processes! Understand HOW and WHY the rule engine reaches conclusions with proof trees, step-by-step traces, and multiple export formats (JSON, Markdown, HTML).
+- **Native Engine** - Simple pattern matching for small rule sets
+- **RETE-UL** - Optimized network for 100-10,000 rules with O(1) indexing
+- **Parallel Execution** - Multi-threaded rule evaluation
+- **Stream Processing** - Real-time event processing with Redis state
 
-### 🔥 New Features:
+**Use Cases:** Real-time monitoring, event processing, reactive systems, CEP
 
-✅ **Proof Tree Data Structure** (NEW! 🆕)
-- ✅ **ProofNode Types** - Fact, Rule, Negation, Failed nodes
-- ✅ **Hierarchical Representation** - Tree structure with parent-child relationships
-- ✅ **Variable Bindings** - Track bindings at each reasoning step
-- ✅ **Statistics Tracking** - Goals explored, rules evaluated, facts checked
-- ✅ **Depth Tracking** - Monitor reasoning depth and complexity
+### 🎯 Backward Chaining (Goal-Driven)
+**"Given a goal, find facts/rules to prove it"**
 
-✅ **Explanation Builder** (NEW! 🆕)
-- ✅ **Opt-in Tracking** - Enable/disable explanation generation
-- ✅ **Stack-Based Construction** - Efficient proof tree building
-- ✅ **Step-by-Step Traces** - Detailed reasoning process
-- ✅ **Success/Failure Analysis** - Understand why queries succeed or fail
-- ✅ **Low Overhead** - Minimal performance impact when disabled
+- **Unification** - Pattern matching with variable bindings
+- **Search Strategies** - DFS, BFS, Iterative Deepening
+- **Aggregation** - COUNT, SUM, AVG, MIN, MAX
+- **Negation** - NOT queries with closed-world assumption
+- **Explanation** - Proof trees with JSON/MD/HTML export
+- **Disjunction (NEW!)** - OR patterns for alternative paths
 
-✅ **Multiple Export Formats** (NEW! 🆕)
-- ✅ **JSON Export** - Machine-readable format for APIs
-- ✅ **Markdown Export** - Human-readable documentation
-- ✅ **HTML Export** - Interactive web visualization with CSS
-- ✅ **Tree Printing** - Console-friendly output
+**Use Cases:** Expert systems, diagnostics, planning, decision support, AI reasoning
 
-✅ **Production Ready** (NEW! 🆕)
-- ✅ **16 unit tests** - All passing with comprehensive coverage
-- ✅ **4 demo scenarios** - Real-world examples
-- ✅ **~1,000 lines code** - Fully documented
-- ✅ **Zero breaking changes** - All existing code works unchanged
+---
 
-### 🔍 Explanation System Examples:
+## 🚀 Quick Start
+
+### Forward Chaining Example
+```rust
+use rust_rule_engine::{RuleEngine, Facts, Value};
+
+let mut engine = RuleEngine::new();
+
+// Define rule in GRL
+engine.add_rule_from_grl(r#"
+    rule "VIP Discount" {
+        when
+            Customer.TotalSpent > 10000
+        then
+            Customer.Discount = 0.15;
+    }
+"#)?;
+
+// Add facts and execute
+let mut facts = Facts::new();
+facts.set("Customer.TotalSpent", Value::Number(15000.0));
+engine.execute(&mut facts)?;
+
+// Result: Customer.Discount = 0.15 ✓
+```
+
+### Backward Chaining Example
+```rust
+use rust_rule_engine::backward::BackwardEngine;
+
+let mut engine = BackwardEngine::new(kb);
+
+// Query: "Can this order be auto-approved?"
+let result = engine.query(
+    "Order.AutoApproved == true",
+    &mut facts
+)?;
+
+if result.provable {
+    println!("Order can be auto-approved!");
+    println!("Proof: {:?}", result.proof_trace);
+}
+```
+
+---
+
+## ✨ What's New in v1.10.0 🎉
+
+🔀 **Disjunction (OR) Support Foundation!**
+
+Introduces **OR pattern support** for backward chaining queries! Multiple rules can now lead to the same conclusion (implicit OR), with comprehensive data structures, parsing, and result merging capabilities.
+
+### Quick Example:
 
 ```rust
 use rust_rule_engine::backward::*;
 
-// 1. Create a proof tree manually
-let mut root = ProofNode::rule(
-    "loan_approved == true".to_string(),
-    "loan_approval_rule".to_string(),
-    0,
-);
+// Parse OR patterns
+let disj = DisjunctionParser::parse("(manager(?x) OR senior(?x))")?;
+// Result: Disjunction with 2 branches
 
-// Add sub-goals
-let credit_node = ProofNode::fact("credit_score = 750".to_string(), 1);
-root.add_child(credit_node);
+// Implicit OR through multiple rules
+// Rule 1: eligible if manager
+// Rule 2: eligible if senior
+// Rule 3: eligible if director
+// → 3 ways to prove the same goal (implicit OR)
 
-let tree = ProofTree::new(root, "Check loan approval".to_string());
+// Load from GRL
+let mut kb = KnowledgeBase::new("demo");
+kb.add_rules_from_grl(include_str!("disjunction_rules.grl"))?;
 
-// 2. Print proof tree to console
-tree.print();
-// Output:
-// Query: Check loan approval
-// Result: ✓ Proven
-// Proof Tree:
-// ✓ loan_approved == true [Rule: loan_approval_rule]
-//   ✓ credit_score = 750 [FACT]
-
-// 3. Export to JSON
-let json = tree.to_json()?;
-std::fs::write("proof.json", json)?;
-
-// 4. Export to Markdown
-let markdown = tree.to_markdown();
-std::fs::write("proof.md", markdown)?;
-
-// 5. Export to HTML (with CSS styling)
-let html = tree.to_html();
-std::fs::write("proof.html", html)?;
-
-// 6. Create full explanation with steps
-let explanation = Explanation::new("Is loan approved?".to_string(), tree);
-explanation.print();
-// Output:
-// EXPLANATION
-// Query: Is loan approved?
-// Result: ✓ Proven
-// Step 1: loan_approved == true
-//   Rule: loan_approval_rule
-//   Result: Success
-// Step 2: credit_score = 750 [FACT]
-//   Result: Success
+// Query will try all rules
+let mut engine = BackwardEngine::new(kb);
+let result = engine.query("Employee.IsEligible == true", &mut facts)?;
+// ✅ Provable if ANY rule succeeds (Manager OR Senior OR Director)
 ```
 
-### 📊 Proof Tree Visualization
+**Features:** OR pattern parsing • Disjunction data structures • Result merging & deduplication • Implicit OR via multiple rules • 9 unit tests • Zero breaking changes
 
-The explanation system generates **tree visualizations** showing the reasoning process:
-
-```
-Query: loan_status = approved
-Result: ✓ Proven
-
-Proof Tree:
-================================================================================
-✓ loan_status = approved [Rule: loan_approved]
-  ✓ has_good_credit == true [Rule: good_credit]
-    ✓ credit_score = 750 [FACT]
-  ✓ has_stable_income == true [Rule: stable_income]
-    ✓ years_employed = 5 [FACT]
-  ✓ has_low_debt == true [Rule: low_debt]
-    ✓ debt_ratio = 0.25 [FACT]
-================================================================================
-
-Statistics:
-  Goals explored: 7
-  Rules evaluated: 4
-  Facts checked: 3
-  Max depth: 3
-  Total nodes: 7
-```
-
-### 📤 Export Formats
-
-**JSON Export** - Machine-readable for APIs:
-```json
-{
-  "root": {
-    "goal": "loan_approved == true",
-    "rule_name": "loan_approval_rule",
-    "proven": true,
-    "node_type": "Rule",
-    "children": [...]
-  },
-  "success": true,
-  "stats": { "goals_explored": 7, ... }
-}
-```
-
-**Markdown Export** - Human-readable docs:
-```markdown
-# Proof Explanation
-
-**Query:** `loan_approved == true`
-**Result:** ✓ Proven
-
-## Proof Tree
-* ✓ `loan_approved == true` **[Rule: loan_approval_rule]**
-  * ✓ `credit_score = 750` *[FACT]*
-```
-
-**HTML Export** - Interactive web view with CSS styling and color-coded results.
-
-### 🎯 Use Cases
-
-- **Debugging** - Understand why a query succeeded or failed
-- **Auditing** - Generate compliance reports showing decision logic
-- **Transparency** - Explain AI decisions to end users
-- **Education** - Teach logical reasoning and rule-based systems
-- **Documentation** - Auto-generate examples from actual queries
+📖 **[Demo](examples/09-backward-chaining/disjunction_demo.rs)** • **[GRL File](examples/09-backward-chaining/disjunction_rules.grl)**
 
 ---
 
 ## 📋 Version History
 
-### v1.9.0 (Current) - Explanation System 🆕
-- ✅ **Proof Tree Data Structure** - Hierarchical representation of reasoning
-- ✅ **ProofNode Types** - Fact, Rule, Negation, Failed nodes
-- ✅ **Explanation Builder** - Opt-in tracking with stack-based construction
-- ✅ **Multiple Export Formats** - JSON, Markdown, HTML with CSS
-- ✅ **Step-by-Step Traces** - Detailed reasoning process
-- ✅ **Statistics Tracking** - Goals explored, rules evaluated, facts checked
-- ✅ **Zero Breaking Changes** - All existing code works unchanged
-- ✅ **16 unit tests** - All passing with comprehensive coverage
-- ✅ **4 demo scenarios** - Real-world examples (loan, access, exports)
-- ✅ **~1,000 lines code** - Production-ready implementation
-- ✅ **Documentation Complete** - API docs, examples, changelog
+### v1.10.0 (Current) - Disjunction (OR) Foundation 🆕
+OR pattern parsing `(A OR B OR C)` • Disjunction data structures • Result merging & deduplication • Implicit OR via multiple rules • 9 unit tests • 4 demos with GRL file • Zero breaking changes
 
-### v1.8.0 - Negation in Backward Chaining
-- ✅ **NOT Keyword** - Query for facts that CANNOT be proven
-- ✅ **Closed-World Assumption** - Missing facts treated as false
-- ✅ **Query Parser Support** - `NOT User.IsBanned == true` syntax
-- ✅ **GRL Integration** - Use NOT in GRL query files
-- ✅ **Zero Breaking Changes** - All existing code works unchanged
-- ✅ **4 comprehensive demos** - Real-world scenarios
-- ✅ **Production ready** - All 284+ tests passing
-- ✅ **Documentation** - Complete GRL syntax guide updated
+### v1.9.0 - Explanation System
+Proof trees • JSON/MD/HTML export • Step-by-step traces • Statistics • 16 tests, 4 demos, ~1,000 LOC
 
-### v1.7.0 - Backward Chaining Aggregation
-- ✅ **Aggregation Functions** - COUNT, SUM, AVG, MIN, MAX, FIRST, LAST
-- ✅ **Query Syntax** - `sum(?field) WHERE pattern AND filter`
-- ✅ **Filter Support** - AND conditions for selective aggregation
-- ✅ **GRL Integration** - Use in GRL query definitions
-- ✅ **Type Safety** - Automatic numeric conversions
-- ✅ **13+ unit tests** - All passing with comprehensive coverage
-- ✅ **3 demo examples** - Salary, inventory, sales analysis
-- ✅ **~800 lines code** - Production-ready implementation
-- ✅ **Unique Feature** - Not available in CLIPS!
+### v1.8.0 - Negation (NOT Keyword)
+Closed-world assumption • NOT queries • GRL integration • 4 demos, 284+ tests
 
-### v1.6.0 - Advanced Module System Complete
-- ✅ **Transitive Re-exports** - Pattern-based re-export from imported modules
-- ✅ **Module-Level Salience** - Priority control at module level
-- ✅ **Module Validation** - Comprehensive validation with errors/warnings
-- ✅ **Dependency Analysis** - BFS-based transitive dependency tracking
-- ✅ **Dependency Updates** - Latest stable versions (regex 1.11, tokio 1.42)
-- ✅ **18 module tests** - All Phase 3 features tested
-- ✅ **142 total tests** - All passing with new dependencies
-- ✅ **Production ready** - Zero breaking changes
+### v1.7.0 - Aggregation Functions
+COUNT, SUM, AVG, MIN, MAX, FIRST, LAST • Filter support • 13 tests, 3 demos, ~800 LOC
 
-### v1.5.0 - Null Handling & Business Integration Release
-- ✅ **Null Value Handling** - Missing fields treated as Value::Null
-- ✅ **Null Checking Conditions** - Support for `field == null` patterns
-- ✅ **Default Fallback Rules** - Reliable fallback patterns with null checks
-- ✅ **Business Logic Examples** - 24 production-ready GRL rules
-- ✅ **Discount Strategy Rules** - Complex strategy selection via rules
-- ✅ **Streaming Examples** - 3 demos with clear rule engine usage
-- ✅ **17 business tests** - 100% passing with comprehensive coverage
-- ✅ **155+ total tests** - Zero regressions, production ready
+**Older Versions:**
+- **v1.6.0** - Advanced Module System (transitive re-exports, salience, validation)
+- **v1.5.0** - Null Handling & Business Integration (null checks, 24 GRL rules, 17 tests)
+- **v1.4.0** - Stream Processing (Redis state, watermarking, windowing, 5 demos)
 
-### v1.4.0 - Stream Processing Release
-- ✅ **Stream Operators** - 20+ fluent operators with aggregations
-- ✅ **Watermarking** - Out-of-order event handling
-- ✅ **State Management** - Distributed state with Redis backend
-- ✅ **Windowing** - Sliding, Tumbling, Session windows
-- ✅ **5 comprehensive demos** - IoT monitoring, user analytics, etc.
-- ✅ **Full documentation** - Architecture diagrams and guides
-- ✅ **21 unit tests** - All passing
-
-
-
-### v1.3.0
-- ✅ **Cyclic Import Detection** - Prevents circular module dependencies
-- ✅ **BFS-based cycle detection** - O(V + E) performance
-- ✅ **Self-import prevention** - Detects A → A patterns
-- ✅ **Clear error messages** - Shows cycle paths
-- ✅ **100% backward compatible** - No breaking changes
-- ✅ **13 comprehensive tests** - All passing
+- **v1.3.0** - Cyclic Import Detection (BFS algorithm, cycle prevention)
 
 ### 🎉 Major Milestones:
 
-✅ **Complete Backward Chaining System** (88% → Production Ready!)
-- ✅ All Phase 1 tasks 100% complete
-- ✅ Phase 2 testing & docs 92% complete
-- ✅ Phase 3 optimization 65% complete
-- ✅ **100-1000x proven speedup** with O(1) Conclusion Index
-- ✅ Scales to 10,000+ rules efficiently
+**Complete Backward Chaining System** (Production Ready!)
+- All Phase 1 tasks 100% complete
+- 100-1000x speedup with O(1) Conclusion Index
+- Scales to 10,000+ rules efficiently
 
-✅ **Module System with Cyclic Detection** (NEW in v1.3.0!)
-- ✅ Cyclic import detection with BFS algorithm
-- ✅ Prevents self-imports and circular dependencies
-- ✅ Clear error messages with cycle paths
-- ✅ <1ms performance for 100 modules
-- ✅ CLIPS-inspired module system with full support
-- ✅ GRL parser with defmodule directives
-- ✅ Import/export control with visibility rules
-- ✅ Module-aware rule focusing
-- ✅ 100% backward compatible (all 85 examples work unchanged)
-- ✅ Automatic module assignment via backward search
-- ✅ Performance: <1ms parsing for typical files
+**Advanced Module System**
+- CLIPS-inspired module system
+- Import/export control with visibility
+- Cyclic detection with BFS algorithm
+- Performance: <1ms parsing for typical files
 
-✅ **Comprehensive Testing** (52 unit tests + 20 examples)
-- ✅ 21 expression parser tests
-- ✅ 10 conclusion index tests
-- ✅ 8 unification tests
-- ✅ 13 cyclic detection tests (NEW!)
-- ✅ 20 working examples (15 demos + 5 test suites)
-- ✅ **All tests passing**
+**Comprehensive Testing**
+- 52 unit tests + 20 examples • All passing
 
-✅ **Performance Benchmarks** (9 Criterion groups)
-- ✅ Expression parsing: <20µs
-- ✅ Index lookup: ~200ns (O(1) constant time)
-- ✅ Cycle detection: <1ms for 100 modules
-- ✅ Query execution: <10ms for 100 rules
-- ✅ **Proven 100-1000x speedup** 🔥
+**Performance Benchmarks**
+- Expression parsing: <20µs • Index lookup: ~200ns (O(1)) • Query execution: <10ms • Proven 100-1000x speedup
 
-✅ **Complete Documentation** (6 comprehensive guides)
-- ✅ Quick Start Guide (5-minute getting started)
-- ✅ Troubleshooting Guide (comprehensive FAQ)
-- ✅ Performance Analysis (detailed benchmarks)
-- ✅ Cyclic Import Detection (NEW! cycle prevention guide)
-- ✅ Beta Release Summary (migration guide)
-- ✅ Implementation Plan (technical details)
+---
 
-### 🔧 What's Ready for Production:
-
-✅ **Module System** - Organize large rule bases (NEW!)
-✅ **RETE-style conclusion index** - O(1) rule lookup
-✅ **Unification system** - Variable bindings & pattern matching
-✅ **Core backward chaining engine** - Goal-driven reasoning
-✅ **All 3 search strategies** - DFS, BFS, Iterative Deepening
-✅ **Complex condition evaluation** - AND, OR, NOT, EXISTS, FORALL
-✅ **Safety mechanisms** - Cycle detection, depth limits
-✅ **GRL query syntax** - Declarative queries with actions
-✅ **TMS integration** - Logical facts with cascade retraction
-✅ **Rollback system** - Speculative changes with undo
-✅ **Missing facts analysis** - What's needed to prove goals
-✅ **Proof traces** - Explanation of reasoning chains
-✅ **Performance benchmarks** - Comprehensive benchmark suite
-
-
-### 📋 Production Recommendations:
-
-**Safe configurations:**
-```rust
-let config = BackwardConfig {
-    max_depth: 20,                         // Set reasonable limit
-    generate_proof_trace: true,            // Enable explanations
-    search_strategy: SearchStrategy::DepthFirst,
-    ..Default::default()
-};
-```
-
-**Supported use cases:**
-- ✅ Diagnostic systems (medical, technical troubleshooting)
-- ✅ Access control & approval flows
-- ✅ Compliance checking & validation
-- ✅ Question answering (yes/no queries)
-- ✅ Missing facts detection
-- ✅ Expert systems with goal-driven reasoning
-- ✅ Financial decision making (loan approvals, credit checks)
-- ✅ Product recommendations & AI systems
-
-**Documentation:**
-- **[Module System Guide](docs/GRL_SYNTAX.md#module-system)** - Module organization & best practices 🆕
-- **[Module Parsing Guide](docs/MODULE_PARSING_GUIDE.md)** - Parser internals & algorithms 🆕
-- **[Parser Examples](docs/MODULE_PARSING_EXAMPLES.md)** - Real-world module examples 🆕
-- **[Quick Start Guide](docs/BACKWARD_CHAINING_QUICK_START.md)** - 5-minute getting started
-- **[Troubleshooting Guide](docs/BACKWARD_CHAINING_TROUBLESHOOTING.md)** - Common issues & FAQ
-- **[Performance Analysis](.planning/BACKWARD_CHAINING_PERFORMANCE.md)** - Benchmark results
-- **[Architecture Overview](BACKWARD_CHAINING_ARCHITECTURE.md)** - Technical details
-- **[Full Changelog](.planning/CHANGELOG_v1.1.0.md)** - Complete v1.1.0 changes
-
-**Module System Example:**
-
-```grl
-; Define modules with export/import control
-defmodule SENSORS {
-  export: all
-}
-
-defmodule CONTROL {
-  import: SENSORS (rules * (templates *))
-  export: all
-}
-
-; Module context for SENSORS rules
-;; MODULE: SENSORS
-rule "CheckHighTemperature" {
-    when: Temperature > 30
-    then: ActivateCooling();
-}
-
-; Module context for CONTROL rules  
-;; MODULE: CONTROL
-rule "ActivateCooling" {
-    when: CoolingNeeded == true
-    then: System.Cooling = "ON";
-}
-```
-
-**Module System Usage:**
-
-```rust
-use rust_rule_engine::parser::grl::GRLParser;
-use rust_rule_engine::engine::module::ModuleManager;
-
-// Parse GRL with module support
-let grl_content = std::fs::read_to_string("smart_home.grl")?;
-let parsed = GRLParser::parse_with_modules(&grl_content)?;
-
-// Access parsed rules and module information
-println!("Modules: {:?}", parsed.module_manager.list_modules());
-println!("Rule -> Module mapping: {:?}", parsed.rule_modules);
-
-// Load rules into engine with module context
-let mut engine = RuleEngine::new();
-engine.load_rules(parsed.rules);
-engine.execute();
-```
 
 **Module System Phase 3 - Advanced Features (NEW in v1.6.0):**
 
@@ -630,26 +410,6 @@ let stream = DataStream::new(redis_backend);
 - **Query Statistics** - Goals explored, rules evaluated, execution time ✅
 - **Rule Executor** - Shared condition/action evaluation ✅
 - **Rollback System** - Undo frames for speculative changes ✅
-
-**Production Ready Status (88% Complete):**
-- ✅ **Phase 1 (100%)**: Core features complete
-  - Expression parser (21 tests)
-  - Conclusion index (10 tests)
-  - Unification (8 tests)
-  - Rule execution
-- ✅ **Phase 2 (92%)**: Quality & testing
-  - 44 unit tests + 15 examples
-  - 9 Criterion benchmark groups
-  - 5 comprehensive documentation guides
-- ✅ **Phase 3 (65%)**: Optimization
-  - O(1) indexing proven (100-1000x speedup)
-  - Performance profiling complete
-
-**Production Recommendations:**
-- ✅ **PRODUCTION READY**: Single-threaded use with all core features
-- ✅ **PRODUCTION READY**: Diagnostic systems, decision making, expert systems
-- ✅ **PRODUCTION READY**: Up to 10,000+ rules with excellent performance
-- ✅ **STABLE API**: All core APIs finalized and documented
 
 [**🚀 Quick Start Guide →**](docs/BACKWARD_CHAINING_QUICK_START.md) | [**📊 Performance Analysis →**](.planning/BACKWARD_CHAINING_PERFORMANCE.md) | [**📝 Examples →**](examples/09-backward-chaining/)
 

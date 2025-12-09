@@ -34,6 +34,7 @@ pub mod conclusion_index;
 pub mod aggregation;
 pub mod proof_tree;
 pub mod explanation;
+pub mod disjunction;
 
 // Re-export main types
 pub use goal::{Goal, GoalStatus, GoalManager};
@@ -48,3 +49,4 @@ pub use conclusion_index::{ConclusionIndex, IndexStats};
 pub use aggregation::{AggregateFunction, AggregateQuery, parse_aggregate_query, apply_aggregate};
 pub use proof_tree::{ProofNode, ProofTree, ProofNodeType, ProofStats};
 pub use explanation::{ExplanationBuilder, Explanation, ExplanationStep, StepResult};
+pub use disjunction::{Disjunction, DisjunctionResult, DisjunctionParser};

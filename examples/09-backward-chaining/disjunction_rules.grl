@@ -1,0 +1,98 @@
+// Disjunction (OR) Rules for Backward Chaining Demo
+// This file demonstrates OR patterns in rules and queries
+
+// Rule: Employee is eligible if they are EITHER a manager OR a senior
+rule "EligibleEmployee" {
+    when
+        Employee.IsManager == true
+    then
+        Employee.IsEligible = true;
+}
+
+rule "EligibleEmployee_Senior" {
+    when
+        Employee.IsSenior == true
+    then
+        Employee.IsEligible = true;
+}
+
+rule "EligibleEmployee_Director" {
+    when
+        Employee.IsDirector == true
+    then
+        Employee.IsEligible = true;
+}
+
+// Rule: Customer gets discount if VIP OR high spender
+rule "DiscountEligible_VIP" {
+    when
+        Customer.IsVIP == true
+    then
+        Customer.GetsDiscount = true;
+}
+
+rule "DiscountEligible_HighSpender" {
+    when
+        Customer.TotalSpent > 10000
+    then
+        Customer.GetsDiscount = true;
+}
+
+// Rule: Access granted if employee OR contractor with active badge
+rule "AccessGranted_Employee" {
+    when
+        Person.IsEmployee == true &&
+        Person.HasActiveBadge == true
+    then
+        Person.HasAccess = true;
+}
+
+rule "AccessGranted_Contractor" {
+    when
+        Person.IsContractor == true &&
+        Person.HasActiveBadge == true
+    then
+        Person.HasAccess = true;
+}
+
+// Rule: Premium service if gold member OR platinum member
+rule "PremiumService_Gold" {
+    when
+        Member.Tier == "Gold"
+    then
+        Member.HasPremiumService = true;
+}
+
+rule "PremiumService_Platinum" {
+    when
+        Member.Tier == "Platinum"
+    then
+        Member.HasPremiumService = true;
+}
+
+// Query: Find eligible employees (managers, seniors, or directors)
+query "FindEligibleEmployees" {
+    goal: Employee.IsEligible == true
+    on-success: {
+        LogMessage("Found eligible employee");
+    }
+}
+
+// Query: Find discount-eligible customers
+query "FindDiscountCustomers" {
+    goal: Customer.GetsDiscount == true
+    on-success: {
+        LogMessage("Customer qualifies for discount");
+    }
+}
+
+// Query: Check access permissions
+query "CheckAccess" {
+    goal: Person.HasAccess == true
+    on-success: {
+        LogMessage("Access granted");
+    }
+    on-failure: {
+        LogMessage("Access denied");
+    }
+}
