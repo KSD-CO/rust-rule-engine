@@ -1,0 +1,71 @@
+// Nested Query Examples for Backward Chaining
+// Demonstrates subqueries with shared variables
+
+// Example 1: Grandparent relationship using nested queries
+query "FindGrandparents" {
+    goal: grandparent(?gp, ?gc) WHERE parent(?gp, ?p) AND parent(?p, ?gc)
+    strategy: depth-first
+    max-depth: 15
+    enable-optimization: true
+
+    on-success: {
+        Print("Found grandparent relationship");
+    }
+}
+
+// Example 2: Eligible customers with nested OR
+query "EligibleCustomers" {
+    goal: eligible(?customer) WHERE (vip(?customer) OR premium(?customer)) AND active(?customer)
+    strategy: breadth-first
+    max-depth: 20
+    max-solutions: 10
+    enable-optimization: true
+    enable-memoization: true
+
+    on-success: {
+        Customer.Eligible = true;
+        Print("Customer is eligible");
+    }
+
+    on-failure: {
+        Customer.Eligible = false;
+        Print("Customer not eligible");
+    }
+}
+
+// Example 3: Complex nested query with multiple levels
+query "HighValueActive" {
+    goal: qualified(?c) WHERE (high_value(?c) WHERE total_spent(?c, ?amt) AND ?amt > 10000) AND active(?c)
+    strategy: depth-first
+    max-solutions: 5
+    enable-optimization: true
+
+    on-success: {
+        Print("Found qualified high-value active customer");
+    }
+}
+
+// Example 4: Optimized query with selectivity hints
+query "OptimizedSearch" {
+    goal: result(?item) WHERE in_stock(?item) AND expensive(?item) AND category(?item, ?cat)
+    strategy: iterative
+    max-depth: 25
+    enable-optimization: true
+    enable-memoization: true
+
+    on-success: {
+        Item.Selected = true;
+        Print("Item matches all criteria");
+    }
+}
+
+// Example 5: Nested query with negation
+query "AvailableNotSold" {
+    goal: available(?item) WHERE item(?item) AND NOT sold(?item) AND in_stock(?item)
+    strategy: depth-first
+    enable-optimization: true
+
+    on-success: {
+        Print("Item is available for purchase");
+    }
+}

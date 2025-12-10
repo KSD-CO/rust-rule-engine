@@ -35,6 +35,8 @@ pub mod aggregation;
 pub mod proof_tree;
 pub mod explanation;
 pub mod disjunction;
+pub mod nested;
+pub mod optimizer;
 
 // Re-export main types
 pub use goal::{Goal, GoalStatus, GoalManager};
@@ -50,3 +52,5 @@ pub use aggregation::{AggregateFunction, AggregateQuery, parse_aggregate_query, 
 pub use proof_tree::{ProofNode, ProofTree, ProofNodeType, ProofStats};
 pub use explanation::{ExplanationBuilder, Explanation, ExplanationStep, StepResult};
 pub use disjunction::{Disjunction, DisjunctionResult, DisjunctionParser};
+pub use nested::{NestedQuery, Query, NestedQueryResult, NestedQueryParser, NestedQueryEvaluator, NestedQueryStats};
+pub use optimizer::{QueryOptimizer, OptimizerConfig, OptimizationStats, JoinOptimizer};

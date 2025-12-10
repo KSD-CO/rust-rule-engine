@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.10.1"
+version = "1.11.0"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features: forward/backward chaining, pattern matching, unification, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend, watermarking, and custom functions. Production-ready for business rules, expert systems, real-time stream processing, and decision automation."
@@ -491,4 +491,24 @@ required-features = ["backward-chaining"]
 [[example]]
 name = "grl_or_syntax_demo"
 path = "examples/09-backward-chaining/grl_or_syntax_demo.rs"
+required-features = ["backward-chaining"]
+
+[[example]]
+name = "nested_query_demo"
+path = "examples/09-backward-chaining/nested_query_demo.rs"
+required-features = ["backward-chaining"]
+
+[[example]]
+name = "nested_grl_file_demo"
+path = "examples/09-backward-chaining/nested_grl_file_demo.rs"
+required-features = ["backward-chaining"]
+
+[[example]]
+name = "optimizer_demo"
+path = "examples/09-backward-chaining/optimizer_demo.rs"
+required-features = ["backward-chaining"]
+
+[[example]]
+name = "grl_optimizer_demo"
+path = "examples/09-backward-chaining/grl_optimizer_demo.rs"
 required-features = ["backward-chaining"]

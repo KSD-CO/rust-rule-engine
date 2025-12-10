@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.10.1 🦀⚡🚀
+# Rust Rule Engine v1.11.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -31,7 +31,9 @@ A blazing-fast production-ready rule engine for Rust supporting **both Forward a
 - **Aggregation** - COUNT, SUM, AVG, MIN, MAX
 - **Negation** - NOT queries with closed-world assumption
 - **Explanation** - Proof trees with JSON/MD/HTML export
-- **Disjunction (NEW!)** - OR patterns for alternative paths
+- **Disjunction** - OR patterns for alternative paths
+- **Nested Queries (NEW!)** - Subqueries with shared variables
+- **Query Optimization (NEW!)** - Automatic goal reordering for 10-100x speedup
 
 **Use Cases:** Expert systems, diagnostics, planning, decision support, AI reasoning
 
@@ -83,54 +85,115 @@ if result.provable {
 
 ---
 
-## ✨ What's New in v1.10.1 🎉
+## ✨ What's New in v1.11.0 🎉
 
-🔀 **Complete OR Syntax Support with Parentheses!**
+🎯 **Nested Queries & Query Optimization!**
 
-Full **GRL OR syntax** (`||`) for backward chaining queries! Now supports explicit OR operators in query goals with proper parentheses handling for complex expressions.
+Complete **Phase 1.1** with nested queries (subqueries) and intelligent query optimization for 10-100x performance improvements!
 
-### Quick Examples:
+### 🆕 Nested Queries
 
 ```rust
 use rust_rule_engine::backward::*;
 
-// 1. Simple OR in GRL queries
+// Find grandparents using nested queries
+let results = engine.query(
+    "grandparent(?x, ?z) WHERE
+        parent(?x, ?y) AND
+        (parent(?y, ?z) WHERE child(?z, ?y))",
+    &mut facts
+)?;
+
+// Complex eligibility with nested OR
 query "CheckEligibility" {
-    goal: Employee.IsManager == true || Employee.IsSenior == true
+    goal: (eligible(?x) WHERE (vip(?x) OR premium(?x))) AND active(?x)
     on-success: { LogMessage("Eligible!"); }
-}
-
-// 2. Multiple OR branches
-query "CheckDiscount" {
-    goal: Customer.IsVIP == true ||
-          Customer.TotalSpent > 10000 ||
-          Customer.LoyaltyYears > 5
-}
-
-// 3. Complex with parentheses
-query "CheckBonus" {
-    goal: (Employee.IsManager == true && Employee.Active == true) ||
-          (Employee.IsSenior == true && Employee.YearsExperience > 5)
 }
 ```
 
+### ⚡ Query Optimization
+
+```rust
+// Enable optimization in GRL
+query "OptimizedSearch" {
+    goal: item(?x) AND expensive(?x) AND in_stock(?x)
+    enable-optimization: true  // Automatically reorders goals!
+}
+
+// Manual optimization
+let mut optimizer = QueryOptimizer::new();
+optimizer.set_selectivity("in_stock(?x)".to_string(), 0.1);   // 10% in stock
+optimizer.set_selectivity("expensive(?x)".to_string(), 0.3);  // 30% expensive
+optimizer.set_selectivity("item(?x)".to_string(), 0.9);       // 90% items
+
+let optimized = optimizer.optimize_goals(goals);
+// Result: in_stock → expensive → item (10-100x faster!)
+```
+
+**Performance Benefits:**
+- **Before**: 1000 items → 900 expensive → 270 in_stock = 2170 evaluations
+- **After**: 10 in_stock → 8 expensive → 8 items = 26 evaluations
+- **Speedup**: ~83x faster! 🚀
+
 **New Features:**
-- `||` operator in GRL query goals
-- Parentheses support: `(A && B) || (C && D)`
-- Nested parentheses: `((A && B) || C) && D`
-- Balanced parenthesis validation
-- `strip_outer_parens()` for recursive evaluation
-- Operator precedence: AND before OR
+- Nested queries with WHERE clauses
+- Query optimizer with goal reordering
+- Selectivity estimation (heuristic & custom)
+- Join order optimization
+- `enable-optimization` flag in GRL
+- 19 new tests + 9 integration tests
 
-**Testing:** 315/315 unit tests pass • 11/11 examples pass • Zero regressions
+**Testing:** 485/485 tests pass (368 unit + 117 integration) • Zero regressions
 
-📖 **[OR Syntax Demo](examples/09-backward-chaining/grl_or_syntax_demo.rs)** • **[Implicit OR Demo](examples/09-backward-chaining/disjunction_demo.rs)**
+📖 **[Nested Query Demo](examples/09-backward-chaining/nested_query_demo.rs)** • **[Optimizer Demo](examples/09-backward-chaining/optimizer_demo.rs)** • **[GRL Integration](examples/09-backward-chaining/grl_optimizer_demo.rs)**
+
+---
+
+## 📚 Documentation
+
+Comprehensive documentation organized by topic:
+
+### 🚀 [Getting Started](docs/getting-started/)
+- **[Quick Start](docs/getting-started/QUICK_START.md)** - Get up and running in 5 minutes
+- **[Installation](docs/getting-started/INSTALLATION.md)** - Installation and setup guide
+- **[Basic Concepts](docs/getting-started/CONCEPTS.md)** - Core concepts explained
+- **[First Rules](docs/getting-started/FIRST_RULES.md)** - Write your first rules
+
+### 🎯 [Core Features](docs/core-features/)
+- **[GRL Syntax](docs/core-features/GRL_SYNTAX.md)** - Grule Rule Language reference
+- **[Features Overview](docs/core-features/FEATURES.md)** - All engine capabilities
+
+### ⚡ [Advanced Features](docs/advanced-features/)
+- **[Streaming & CEP](docs/advanced-features/STREAMING.md)** - Complex Event Processing
+- **[Streaming Architecture](docs/advanced-features/STREAMING_ARCHITECTURE.md)** - Deep dive into streaming
+- **[Plugins](docs/advanced-features/PLUGINS.md)** - Custom plugins and extensions
+- **[Performance](docs/advanced-features/PERFORMANCE.md)** - Optimization techniques
+- **[Redis State](docs/advanced-features/REDIS_STATE_BACKEND.md)** - Distributed state management
+
+### 📖 [API Reference](docs/api-reference/)
+- **[API Reference](docs/api-reference/API_REFERENCE.md)** - Complete public API
+- **[GRL Query Syntax](docs/api-reference/GRL_QUERY_SYNTAX.md)** - Backward chaining queries (v1.11.0+)
+- **[Parser Cheat Sheet](docs/api-reference/PARSER_CHEAT_SHEET.md)** - Quick syntax reference
+
+### 📝 [Guides](docs/guides/)
+- **[Backward Chaining Quick Start](docs/BACKWARD_CHAINING_QUICK_START.md)** - Goal-driven reasoning
+- **[RETE Integration](docs/guides/BACKWARD_CHAINING_RETE_INTEGRATION.md)** - Combine forward + backward
+- **[Module Management](docs/guides/MODULE_PARSING_GUIDE.md)** - Organize rules into modules
+- **[Troubleshooting](docs/guides/TROUBLESHOOTING.md)** - Common issues and solutions
+
+### 💡 [Examples](docs/examples/)
+- **[AI Integration](docs/examples/AI_INTEGRATION.md)** - Combine with ML models
+
+**[📚 Full Documentation Index →](docs/README.md)**
 
 ---
 
 ## 📋 Version History
 
-### v1.10.1 (Current) - Complete OR Syntax & Parentheses 🆕
+### v1.11.0 (Current) - Nested Queries & Query Optimization 🆕⚡
+Nested queries (subqueries) with WHERE • Query optimizer with goal reordering • Selectivity estimation • Join optimization • `enable-optimization` in GRL • 19 new tests + 9 integration • 10-100x speedup • 485 total tests pass
+
+### v1.10.1 - Complete OR Syntax & Parentheses
 GRL `||` operator support • Parentheses in query goals • `execute_compound_or_goal()` • `strip_outer_parens()` • Goal parser with paren tracking • Nested `((A && B) || C)` • 6 new tests • Zero regressions
 
 ### v1.10.0 - Disjunction (OR) Foundation

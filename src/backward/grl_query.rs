@@ -88,6 +88,7 @@ use crate::{Facts, Value};
 use super::backward_engine::{BackwardEngine, BackwardConfig};
 use super::search::SearchStrategy;
 use super::query::{QueryResult, QueryStats, ProofTrace};
+use super::optimizer::QueryOptimizer;
 
 use std::collections::HashMap;
 
@@ -208,34 +209,37 @@ impl QueryAction {
 pub struct GRLQuery {
     /// Query name
     pub name: String,
-    
+
     /// Goal pattern to prove (as string expression)
     pub goal: String,
-    
+
     /// Search strategy
     pub strategy: GRLSearchStrategy,
-    
+
     /// Maximum search depth
     pub max_depth: usize,
-    
+
     /// Maximum number of solutions
     pub max_solutions: usize,
-    
+
     /// Enable memoization
     pub enable_memoization: bool,
-    
+
+    /// Enable query optimization (goal reordering, etc.)
+    pub enable_optimization: bool,
+
     /// Action on success
     pub on_success: Option<QueryAction>,
-    
+
     /// Action on failure
     pub on_failure: Option<QueryAction>,
-    
+
     /// Action on missing facts
     pub on_missing: Option<QueryAction>,
-    
+
     /// Parameters for parameterized queries
     pub params: HashMap<String, String>, // param_name -> type
-    
+
     /// Conditional execution (as string condition)
     pub when_condition: Option<String>,
 }
@@ -250,6 +254,7 @@ impl GRLQuery {
             max_depth: 10,
             max_solutions: 1,
             enable_memoization: true,
+            enable_optimization: true,
             on_success: None,
             on_failure: None,
             on_missing: None,
@@ -279,6 +284,12 @@ impl GRLQuery {
     /// Set memoization
     pub fn with_memoization(mut self, enable: bool) -> Self {
         self.enable_memoization = enable;
+        self
+    }
+
+    /// Set query optimization
+    pub fn with_optimization(mut self, enable: bool) -> Self {
+        self.enable_optimization = enable;
         self
     }
 
@@ -418,6 +429,10 @@ impl GRLQueryParser {
             query.enable_memoization = enable_memo;
         }
 
+        if let Some(enable_opt) = Self::extract_optimization(input) {
+            query.enable_optimization = enable_opt;
+        }
+
         // Parse actions
         if let Some(action) = Self::extract_on_success(input)? {
             query.on_success = Some(action);
@@ -544,6 +559,17 @@ impl GRLQueryParser {
 
     fn extract_memoization(input: &str) -> Option<bool> {
         let re = regex::Regex::new(r"enable-memoization:\s*(true|false)").unwrap();
+        re.captures(input).and_then(|caps| {
+            match caps[1].trim() {
+                "true" => Some(true),
+                "false" => Some(false),
+                _ => None,
+            }
+        })
+    }
+
+    fn extract_optimization(input: &str) -> Option<bool> {
+        let re = regex::Regex::new(r"enable-optimization:\s*(true|false)").unwrap();
         re.captures(input).and_then(|caps| {
             match caps[1].trim() {
                 "true" => Some(true),

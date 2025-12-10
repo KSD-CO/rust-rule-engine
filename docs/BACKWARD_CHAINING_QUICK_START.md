@@ -1,7 +1,36 @@
 # Backward Chaining Quick Start Guide
 
-> **Version**: 1.1.0-beta
-> **5-Minute Getting Started Guide**
+> **Category:** Guides
+> **Version:** 1.11.0+
+> **Last Updated:** December 10, 2024
+> **Estimated Time:** 10 minutes
+
+Goal-driven inference with backward chaining - from zero to queries in 10 minutes!
+
+---
+
+## 🎯 What is Backward Chaining?
+
+**Backward chaining** is goal-driven reasoning: Start with a question, work backwards to find if it's provable.
+
+```
+Question: "Is this customer VIP?"
+    ↓
+Search for rules that conclude VIP status
+    ↓
+Check conditions needed for those rules
+    ↓
+Use facts or recursively prove sub-goals
+    ↓
+Answer: "Yes, provable!" or "No, not provable"
+```
+
+**Use Cases:**
+- Expert systems & diagnostics
+- Decision support systems
+- Query answering
+- AI reasoning
+- Complex eligibility checks
 
 ---
 
@@ -10,487 +39,506 @@
 ### Step 1: Add Dependency
 
 ```toml
-[dependencies]
-rust-rule-engine = { version = "1.1.0-beta", features = ["backward-chaining"] }
+[dependencies.rust-rule-engine]
+version = "1.11"
+features = ["backward-chaining"]
 ```
 
-### Step 2: Create Engine
+### Step 2: Create Engine & Add Rules
 
 ```rust
 use rust_rule_engine::backward::BackwardEngine;
-use rust_rule_engine::KnowledgeBase;
-use rust_rule_engine::Facts;
-use rust_rule_engine::types::Value;
+use rust_rule_engine::{KnowledgeBase, Facts, Value};
 
-// Create knowledge base with rules
-let mut kb = KnowledgeBase::new("my_kb");
-// ... add rules (see below) ...
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create knowledge base
+    let mut kb = KnowledgeBase::new("demo");
 
-// Create backward chaining engine
-let mut bc_engine = BackwardEngine::new(kb);
+    // Add rules using GRL syntax
+    kb.add_rule_from_string(r#"
+        rule "VIP Status" {
+            when
+                Customer.TotalSpent > 5000 &&
+                Customer.YearsMember > 2
+            then
+                Customer.IsVIP = true;
+        }
+    "#)?;
+
+    kb.add_rule_from_string(r#"
+        rule "Adult Check" {
+            when
+                User.Age >= 18
+            then
+                User.IsAdult = true;
+        }
+    "#)?;
+
+    // Create backward chaining engine
+    let mut bc_engine = BackwardEngine::new(kb);
+
+    Ok(())
+}
 ```
 
-### Step 3: Query
+### Step 3: Query & Get Results
 
 ```rust
-// Set initial facts
+// Set up facts
 let mut facts = Facts::new();
-facts.set("User.Age", Value::Number(25.0));
+facts.set("Customer.TotalSpent", Value::Number(6000.0));
+facts.set("Customer.YearsMember", Value::Integer(3));
 
-// Query for a goal
-let result = bc_engine.query("User.IsAdult == true", &mut facts)?;
+// Ask a question
+let result = bc_engine.query("Customer.IsVIP == true", &mut facts)?;
 
 // Check result
-if result.is_provable() {
-    println!("✅ Goal proven!");
+if result.provable {
+    println!("✅ Customer IS VIP!");
+    println!("Solutions found: {}", result.solutions.len());
 } else {
-    println!("❌ Goal not provable");
+    println!("❌ Customer is NOT VIP");
 }
+```
+
+**Output:**
+```
+✅ Customer IS VIP!
+Solutions found: 1
 ```
 
 ---
 
-## 📝 Complete Example
+## ✨ New in v1.11.0
+
+### 1. Nested Queries (Subqueries)
+
+Ask complex questions with WHERE clauses:
 
 ```rust
-use rust_rule_engine::backward::BackwardEngine;
-use rust_rule_engine::{KnowledgeBase, Facts, Rule, Condition, ConditionGroup};
-use rust_rule_engine::types::{Value, ActionType, Operator};
+use rust_rule_engine::backward::{GRLQueryParser, GRLQueryExecutor};
+
+let query_str = r#"
+query "Find High-Value Active Customers" {
+    goal: qualified(?customer) WHERE
+        (high_value(?customer) WHERE total_spent(?customer, ?amt) AND ?amt > 10000)
+        AND active(?customer)
+    enable-optimization: true
+    max-depth: 20
+
+    on-success: {
+        Customer.Tier = "platinum";
+        Print("Found qualified customer");
+    }
+}
+"#;
+
+let query = GRLQueryParser::parse(query_str)?;
+let result = GRLQueryExecutor::execute(&query, &mut bc_engine, &mut facts)?;
+```
+
+**Features:**
+- Multi-level nesting
+- Shared variables between queries
+- OR/AND combinations
+- NOT negation support
+
+### 2. Query Optimization (10-100x Speedup!)
+
+Enable automatic goal reordering for massive performance gains:
+
+```rust
+let query_str = r#"
+query "Optimized Search" {
+    goal: item(?x) AND expensive(?x) AND in_stock(?x) AND category(?x, "Premium")
+    enable-optimization: true
+
+    on-success: {
+        Results.Add = x;
+    }
+}
+"#;
+```
+
+**Without Optimization:**
+```
+item(?x)        → 10,000 items checked
+expensive(?x)   → 3,000 remaining
+in_stock(?x)    → 300 remaining
+category(?x)    → 50 final results
+Total: 13,350 evaluations
+```
+
+**With Optimization:**
+```
+category(?x)    → 500 items (most selective)
+in_stock(?x)    → 50 remaining
+expensive(?x)   → 30 remaining
+item(?x)        → 30 final
+Total: 610 evaluations (~22x faster!)
+```
+
+---
+
+## 📚 Complete Example: Medical Diagnosis
+
+```rust
+use rust_rule_engine::backward::{BackwardEngine, GRLQueryParser, GRLQueryExecutor};
+use rust_rule_engine::{KnowledgeBase, Facts, Value};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Create knowledge base
-    let mut kb = KnowledgeBase::new("vip_checker");
+    // Create knowledge base with medical rules
+    let mut kb = KnowledgeBase::new("medical");
 
-    // 2. Add rule: "If User.Age >= 18 then User.IsAdult = true"
-    kb.add_rule(Rule::new(
-        "CheckAdult".to_string(),
-        ConditionGroup::single(Condition::new(
-            "User.Age".to_string(),
-            Operator::GreaterOrEqual,
-            Value::Number(18.0),
-        )),
-        vec![ActionType::Set {
-            field: "User.IsAdult".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
+    kb.add_rule_from_string(r#"
+        rule "Flu Diagnosis" {
+            when
+                Patient.HasFever == true &&
+                Patient.HasCough == true &&
+                Patient.HasFatigue == true
+            then
+                Diagnosis.Disease = "Influenza";
+                Diagnosis.Confidence = "high";
+        }
+    "#)?;
 
-    // 3. Add another rule: "If User.IsAdult and User.Points > 1000 then User.IsVIP = true"
-    kb.add_rule(Rule::new(
-        "CheckVIP".to_string(),
-        ConditionGroup::and(
-            ConditionGroup::single(Condition::new(
-                "User.IsAdult".to_string(),
-                Operator::Equal,
-                Value::Boolean(true),
-            )),
-            ConditionGroup::single(Condition::new(
-                "User.Points".to_string(),
-                Operator::Greater,
-                Value::Number(1000.0),
-            )),
-        ),
-        vec![ActionType::Set {
-            field: "User.IsVIP".to_string(),
-            value: Value::Boolean(true),
-        }],
-    ))?;
+    kb.add_rule_from_string(r#"
+        rule "Fever from High WBC" {
+            when
+                Patient.WhiteBloodCellCount > 11000
+            then
+                Patient.HasFever = true;
+        }
+    "#)?;
 
-    // 4. Create backward engine
+    kb.add_rule_from_string(r#"
+        rule "Fatigue from Fever" {
+            when
+                Patient.HasFever == true &&
+                Patient.DaysSick > 2
+            then
+                Patient.HasFatigue = true;
+        }
+    "#)?;
+
+    // Create engine
     let mut bc_engine = BackwardEngine::new(kb);
 
-    // 5. Set initial facts
+    // Set patient facts
     let mut facts = Facts::new();
-    facts.set("User.Age", Value::Number(25.0));
-    facts.set("User.Points", Value::Number(1500.0));
+    facts.set("Patient.WhiteBloodCellCount", Value::Number(12000.0));
+    facts.set("Patient.HasCough", Value::Boolean(true));
+    facts.set("Patient.DaysSick", Value::Integer(3));
 
-    // 6. Query: Can we prove User.IsVIP?
-    let result = bc_engine.query("User.IsVIP == true", &mut facts)?;
+    // Query: Does patient have flu?
+    let result = bc_engine.query(
+        "Diagnosis.Disease == \"Influenza\"",
+        &mut facts
+    )?;
 
-    // 7. Check result
-    if result.is_provable() {
-        println!("✅ User is VIP!");
-
-        // Show how it was proven
-        if let Some(trace) = result.proof_trace() {
-            println!("\n📋 Proof:");
-            for step in trace.steps() {
-                println!("  - Used rule: {}", step.rule_name());
-            }
-        }
+    if result.provable {
+        println!("✅ Diagnosis: Flu confirmed!");
+        println!("Reasoning chain:");
+        println!("  1. High WBC (12000) → HasFever = true");
+        println!("  2. HasFever + DaysSick > 2 → HasFatigue = true");
+        println!("  3. HasFever + HasCough + HasFatigue → Influenza");
     } else {
-        println!("❌ User is not VIP");
+        println!("❌ Cannot confirm flu diagnosis");
     }
 
     Ok(())
 }
 ```
 
-**Output**:
+**Output:**
 ```
-✅ User is VIP!
-
-📋 Proof:
-  - Used rule: CheckVIP
-  - Used rule: CheckAdult
-```
-
----
-
-## 🎯 Common Patterns
-
-### Pattern 1: Simple Fact Checking
-
-```rust
-// Query if a fact is true
-facts.set("Order.Status", Value::String("Completed".to_string()));
-let result = bc_engine.query("Order.Status == \"Completed\"", &mut facts)?;
-```
-
-### Pattern 2: Numeric Comparisons
-
-```rust
-// Check if number meets threshold
-facts.set("Order.Total", Value::Number(150.0));
-let result = bc_engine.query("Order.Total > 100", &mut facts)?;
-```
-
-### Pattern 3: Logical AND
-
-```rust
-// Check multiple conditions
-let result = bc_engine.query(
-    "User.IsVIP == true && Order.Total > 1000",
-    &mut facts
-)?;
-```
-
-### Pattern 4: Logical OR
-
-```rust
-// Check any condition is true
-let result = bc_engine.query(
-    "User.IsVIP == true || User.IsPremium == true",
-    &mut facts
-)?;
-```
-
-### Pattern 5: Negation
-
-```rust
-// Check condition is false
-let result = bc_engine.query("!User.IsBanned", &mut facts)?;
-```
-
-### Pattern 6: Complex Expression
-
-```rust
-// Nested logic
-let result = bc_engine.query(
-    "(User.IsVIP == true && Order.Total > 1000) || User.IsPremium == true",
-    &mut facts
-)?;
+✅ Diagnosis: Flu confirmed!
+Reasoning chain:
+  1. High WBC (12000) → HasFever = true
+  2. HasFever + DaysSick > 2 → HasFatigue = true
+  3. HasFever + HasCough + HasFatigue → Influenza
 ```
 
 ---
 
-## 🔧 Configuration
+## 🎯 Key Features
 
-### Basic Configuration
-
-```rust
-use rust_rule_engine::backward::BackwardConfig;
-
-let config = BackwardConfig {
-    max_depth: 20,                    // Max rule chaining depth
-    generate_proof_trace: true,       // Enable proof traces
-    search_strategy: SearchStrategy::DepthFirst,
-    ..Default::default()
-};
-
-let mut bc_engine = BackwardEngine::with_config(kb, config);
-```
-
-### Performance Tuning
+### Aggregation Functions (v1.7.0+)
 
 ```rust
-// For production - disable proof traces to save memory
-let config = BackwardConfig {
-    generate_proof_trace: false,  // Faster, less memory
-    max_depth: 50,
-    ..Default::default()
-};
-```
-
----
-
-## 📊 Working with Results
-
-### Check if Goal is Provable
-
-```rust
-let result = bc_engine.query(goal, &mut facts)?;
-
-if result.is_provable() {
-    println!("✅ Goal proven");
+let query = r#"
+query "Total Sales" {
+    goal: sum(?amount) WHERE sale(?id, ?amount) AND ?amount > 100
+    on-success: {
+        Report.TotalSales = result;
+    }
 }
+"#;
 ```
 
-### Get Proof Trace
+**Supported:** COUNT, SUM, AVG, MIN, MAX, FIRST, LAST
+
+### Negation (v1.8.0+)
 
 ```rust
-if let Some(trace) = result.proof_trace() {
-    println!("Rules used:");
-    for step in trace.steps() {
-        println!("  - {}", step.rule_name());
+let result = bc_engine.query(
+    "NOT Customer.IsBanned == true",
+    &mut facts
+)?;
+// Succeeds if customer is NOT banned
+```
+
+### Disjunction - OR (v1.10.0+)
+
+```rust
+let query = r#"
+query "Priority Customer" {
+    goal: (Customer.IsVIP == true OR Customer.TotalSpent > 10000)
+          AND Customer.IsActive == true
+}
+"#;
+```
+
+### Explanation System (v1.9.0+)
+
+Get proof trees showing reasoning:
+
+```rust
+use rust_rule_engine::backward::explanation::ProofTree;
+
+let result = bc_engine.query("goal", &mut facts)?;
+
+// Generate explanation
+let tree = result.explanation;
+tree.print();  // Console output
+
+// Export formats
+let json = tree.to_json()?;
+let markdown = tree.to_markdown();
+let html = tree.to_html();
+```
+
+---
+
+## 🔧 Search Strategies
+
+Choose the right strategy for your use case:
+
+### Depth-First (Default)
+```rust
+let mut bc_engine = BackwardEngine::new(kb);
+bc_engine.set_strategy(SearchStrategy::DepthFirst);
+```
+
+**Best for:** Most queries, memory-efficient
+
+### Breadth-First
+```rust
+bc_engine.set_strategy(SearchStrategy::BreadthFirst);
+```
+
+**Best for:** Finding shortest proof path
+
+### Iterative Deepening
+```rust
+bc_engine.set_strategy(SearchStrategy::IterativeDeepening);
+```
+
+**Best for:** Unknown depth queries, optimal solutions
+
+---
+
+## 📝 GRL Query Syntax
+
+Write queries in GRL files for better organization:
+
+**queries/eligibility.grl:**
+```grl
+query "VIP Eligibility" {
+    goal: eligible(?customer) WHERE
+        (vip(?customer) OR (premium(?customer) AND loyalty(?customer, ?years) AND ?years > 3))
+        AND active(?customer)
+        AND NOT suspended(?customer)
+
+    strategy: depth-first
+    max-depth: 20
+    max-solutions: 10
+    enable-optimization: true
+    enable-memoization: true
+
+    on-success: {
+        Customer.Eligible = true;
+        Customer.Benefits = "full_access";
+        Print("Customer is eligible");
+    }
+
+    on-failure: {
+        Customer.Eligible = false;
+        Print("Customer not eligible");
+    }
+
+    on-missing: {
+        Print("Missing required customer data");
+        Request.AdditionalInfo = true;
     }
 }
 ```
 
-### Get Statistics
-
+**Load and execute:**
 ```rust
-println!("Goals explored: {}", result.goals_explored());
-println!("Rules evaluated: {}", result.rules_evaluated());
-println!("Query time: {:?}", result.query_time());
-```
+use std::fs;
 
-### Get Derived Facts
-
-```rust
-// Facts are modified in-place
-println!("All facts after query: {:?}", facts.all());
+let grl_content = fs::read_to_string("queries/eligibility.grl")?;
+let query = GRLQueryParser::parse(&grl_content)?;
+let result = GRLQueryExecutor::execute(&query, &mut bc_engine, &mut facts)?;
 ```
 
 ---
 
-## 🎨 Rule Creation Patterns
+## 🚀 Performance Tips
 
-### Simple Rule
-
-```rust
-Rule::new(
-    "rule_name".to_string(),
-    ConditionGroup::single(Condition::new(
-        "Field".to_string(),
-        Operator::Equal,
-        Value::Boolean(true),
-    )),
-    vec![ActionType::Set {
-        field: "Output".to_string(),
-        value: Value::Boolean(true),
-    }],
-)
+### 1. Enable Optimization for Multi-Goal Queries
+```grl
+enable-optimization: true  // 10-100x speedup!
 ```
 
-### Rule with AND Conditions
-
-```rust
-Rule::new(
-    "rule_name".to_string(),
-    ConditionGroup::and(
-        ConditionGroup::single(Condition::new("A".to_string(), ...)),
-        ConditionGroup::single(Condition::new("B".to_string(), ...)),
-    ),
-    vec![ActionType::Set { ... }],
-)
+### 2. Use Memoization
+```grl
+enable-memoization: true  // Cache proven goals
 ```
 
-### Rule with OR Conditions
-
-```rust
-Rule::new(
-    "rule_name".to_string(),
-    ConditionGroup::or(
-        ConditionGroup::single(Condition::new("A".to_string(), ...)),
-        ConditionGroup::single(Condition::new("B".to_string(), ...)),
-    ),
-    vec![ActionType::Set { ... }],
-)
+### 3. Set Appropriate Depth Limits
+```grl
+max-depth: 20  // Prevent infinite loops
 ```
 
-### Rule with NOT Condition
-
-```rust
-Rule::new(
-    "rule_name".to_string(),
-    ConditionGroup::not(
-        ConditionGroup::single(Condition::new("A".to_string(), ...))
-    ),
-    vec![ActionType::Set { ... }],
-)
+### 4. Limit Solutions When Appropriate
+```grl
+max-solutions: 10  // Stop after finding 10
 ```
+
+### 5. Choose Right Strategy
+- **Depth-first**: Most queries (default)
+- **Breadth-first**: Shortest path needed
+- **Iterative**: Unknown complexity
 
 ---
 
-## 🚨 Common Mistakes
+## 🔄 Combine with Forward Chaining
 
-### ❌ Mistake 1: Field Name Mismatch
-
-```rust
-// Wrong
-facts.set("UserAge", Value::Number(25.0));
-bc_engine.query("User.Age == 25", &mut facts)?;  // Won't match!
-
-// Correct
-facts.set("User.Age", Value::Number(25.0));
-bc_engine.query("User.Age == 25", &mut facts)?;  // ✅
-```
-
-### ❌ Mistake 2: Immutable Facts
+Use both for hybrid reasoning:
 
 ```rust
-// Wrong
-let facts = Facts::new();  // Immutable!
-bc_engine.query(goal, &facts)?;  // Error!
+use rust_rule_engine::Engine;
 
-// Correct
-let mut facts = Facts::new();  // Mutable!
-bc_engine.query(goal, &mut facts)?;  // ✅
+// Forward chaining for reactive rules
+let mut fc_engine = Engine::new();
+fc_engine.add_rule_from_string(r#"
+    rule "Update Status" {
+        when Order.Total > 1000
+        then Order.Status = "high_value";
+    }
+"#)?;
+
+// Backward chaining for queries
+let mut bc_engine = BackwardEngine::new(kb);
+
+// Run forward chaining first
+fc_engine.run(&mut facts)?;
+
+// Then query with backward chaining
+let result = bc_engine.query("Order.Status == \"high_value\"", &mut facts)?;
 ```
 
-### ❌ Mistake 3: Wrong Operator
-
-```rust
-// Wrong - single '='
-"User.IsVIP = true"  // Parse error!
-
-// Correct - double '=='
-"User.IsVIP == true"  // ✅
-```
-
-### ❌ Mistake 4: Creating New Engine Each Query
-
-```rust
-// Slow - loses memoization
-for query in queries {
-    let bc_engine = BackwardEngine::new(kb.clone());  // ❌
-    bc_engine.query(query, &mut facts)?;
-}
-
-// Fast - reuses engine
-let mut bc_engine = BackwardEngine::new(kb);  // ✅
-for query in queries {
-    bc_engine.query(query, &mut facts)?;
-}
-```
+See [Integration Guide](guides/BACKWARD_CHAINING_RETE_INTEGRATION.md) for details.
 
 ---
 
 ## 📖 Next Steps
 
 ### Learn More
+- **[GRL Query Syntax](api-reference/GRL_QUERY_SYNTAX.md)** - Complete query language reference
+- **[API Reference](api-reference/API_REFERENCE.md)** - Full API documentation
+- **[Troubleshooting](guides/TROUBLESHOOTING.md)** - Common issues and solutions
 
-1. **Examples**: Check `examples/09-backward-chaining/` for real-world demos
-2. **Troubleshooting**: See [BACKWARD_CHAINING_TROUBLESHOOTING.md](./BACKWARD_CHAINING_TROUBLESHOOTING.md)
-3. **Performance**: Read [BACKWARD_CHAINING_PERFORMANCE.md](../.planning/BACKWARD_CHAINING_PERFORMANCE.md)
-4. **API Docs**: https://docs.rs/rust-rule-engine
+### Examples
+- **[Nested Queries Demo](../examples/09-backward-chaining/nested_query_demo.rs)**
+- **[Query Optimization Demo](../examples/09-backward-chaining/optimizer_demo.rs)**
+- **[GRL File Demo](../examples/09-backward-chaining/nested_grl_file_demo.rs)**
 
-### Performance Tips
-
-1. ✅ Reuse `BackwardEngine` instances
-2. ✅ Disable proof traces in production
-3. ✅ Put cheap conditions first in queries
-4. ✅ Set facts directly when possible instead of deriving
-5. ✅ Use appropriate max_depth setting
-
-### Best Practices
-
-1. ✅ Use consistent field naming (e.g., `Object.Field`)
-2. ✅ Add error handling for queries
-3. ✅ Validate rules before adding to KB
-4. ✅ Test with minimal examples first
-5. ✅ Monitor performance with statistics
-
----
-
-## 🏃 Run Examples
-
+### Run Examples
 ```bash
-# Simple query demo
-cargo run --example simple_query_demo --features backward-chaining
+# Nested queries
+cargo run --example nested_query_demo --features backward-chaining
 
-# Medical diagnosis
-cargo run --example medical_diagnosis_demo --features backward-chaining
+# Query optimization
+cargo run --example optimizer_demo --features backward-chaining
 
-# E-commerce approval
-cargo run --example ecommerce_approval_demo --features backward-chaining
-
-# Performance showcase
-cargo run --example rete_index_demo --features backward-chaining
-
-# See all examples
-ls examples/09-backward-chaining/
+# GRL integration
+cargo run --example grl_optimizer_demo --features backward-chaining
 ```
 
 ---
 
-## 🧪 Run Tests
+## 💡 Common Patterns
 
-```bash
-# All tests
-cargo test --features backward-chaining
-
-# Specific test file
-cargo test --features backward-chaining --test backward_comprehensive_tests
-
-# With output
-cargo test --features backward-chaining -- --nocapture
-```
-
----
-
-## 📊 Run Benchmarks
-
-```bash
-# All benchmarks
-cargo bench --features backward-chaining --bench backward_chaining_benchmarks
-
-# Specific group
-cargo bench --features backward-chaining --bench backward_chaining_benchmarks expression_parsing
-
-# Generate HTML report
-cargo bench --features backward-chaining --bench backward_chaining_benchmarks -- --save-baseline main
-```
-
----
-
-## 💡 Quick Tips
-
-### Tip 1: Debug Queries
-
+### Pattern 1: Eligibility Check
 ```rust
-let result = bc_engine.query(goal, &mut facts)?;
-println!("Provable: {}", result.is_provable());
-println!("Goals explored: {}", result.goals_explored());
-if let Some(trace) = result.proof_trace() {
-    println!("Proof: {:#?}", trace);
+query "Check Eligibility" {
+    goal: eligible(?person) WHERE
+        age_requirement(?person) AND
+        income_requirement(?person) AND
+        NOT disqualified(?person)
 }
 ```
 
-### Tip 2: Test Index Performance
-
+### Pattern 2: Hierarchical Relationships
 ```rust
-use std::time::Instant;
-
-let start = Instant::now();
-let result = bc_engine.query(goal, &mut facts)?;
-println!("Query time: {:?}", start.elapsed());
-// Should be <10ms for most queries
+query "Find Ancestors" {
+    goal: ancestor(?a, ?d) WHERE
+        parent(?a, ?p) AND
+        (parent(?p, ?d) OR ancestor(?p, ?d))
+}
 ```
 
-### Tip 3: Validate Rules
-
+### Pattern 3: Complex Business Rules
 ```rust
-for rule in kb.get_rules() {
-    if rule.actions.is_empty() {
-        eprintln!("Warning: Rule '{}' has no actions", rule.name);
-    }
+query "Approve Transaction" {
+    goal: approved(?txn) WHERE
+        (low_risk(?txn) OR (medium_risk(?txn) AND manual_review(?txn)))
+        AND NOT fraud_detected(?txn)
+        AND within_limits(?txn)
 }
 ```
 
 ---
 
-**Happy Backward Chaining!** 🚀
+## 🐛 Troubleshooting
 
-For issues or questions: https://github.com/KSD-CO/rust-rule-engine/issues
+### Query Not Provable?
+1. Check facts are set correctly
+2. Verify rule conditions match fact names
+3. Check for typos in field names
+4. Ensure rules are added to knowledge base
+
+### Performance Issues?
+1. Enable optimization: `enable-optimization: true`
+2. Reduce max-depth if too high
+3. Use memoization: `enable-memoization: true`
+4. Profile with statistics
+
+### Need Help?
+- 📖 [Troubleshooting Guide](guides/TROUBLESHOOTING.md)
+- 💬 [GitHub Discussions](https://github.com/KSD-CO/rust-rule-engine/discussions)
+- 🐛 [Report Issue](https://github.com/KSD-CO/rust-rule-engine/issues)
+
+---
+
+## Navigation
+
+📚 **[Documentation Home](README.md)** | 📖 **[Getting Started](getting-started/QUICK_START.md)** | 🔍 **[GRL Query Syntax](api-reference/GRL_QUERY_SYNTAX.md)**
+
+**Related:**
+- [Forward Chaining](core-features/FORWARD_CHAINING.md)
+- [RETE Integration](guides/BACKWARD_CHAINING_RETE_INTEGRATION.md)
+- [API Reference](api-reference/API_REFERENCE.md)
