@@ -140,6 +140,7 @@ backward-chaining:
 	cargo run --features backward-chaining --example grl_negation_demo
 	cargo run --features backward-chaining --example explanation_demo
 	cargo run --features backward-chaining --example disjunction_demo
+	cargo run --features backward-chaining --example grl_or_syntax_demo
 
 # Module System Examples (10-module-system)
 module-system:
@@ -396,3 +397,6 @@ explanation_demo:
 
 disjunction_demo:
 	cargo run --features backward-chaining --example disjunction_demo
+
+grl_or_syntax_demo:
+	cargo run --features backward-chaining --example grl_or_syntax_demo

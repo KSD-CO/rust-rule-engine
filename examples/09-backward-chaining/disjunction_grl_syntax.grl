@@ -1,0 +1,90 @@
+// Disjunction (OR) GRL Syntax Demo
+// Demonstrates explicit OR syntax in query goals
+
+// Rules for employee eligibility
+rule "ManagerEligible" {
+    when
+        Employee.IsManager == true
+    then
+        Employee.IsEligible = true;
+}
+
+rule "SeniorEligible" {
+    when
+        Employee.IsSenior == true
+    then
+        Employee.IsEligible = true;
+}
+
+rule "DirectorEligible" {
+    when
+        Employee.IsDirector == true
+    then
+        Employee.IsEligible = true;
+}
+
+// Query with explicit OR syntax in goal
+query "CheckEligibilityWithOR" {
+    goal: Employee.IsManager == true || Employee.IsSenior == true || Employee.IsDirector == true
+    strategy: breadth-first
+    max-depth: 10
+
+    on-success: {
+        LogMessage("Employee is eligible");
+        Employee.Status = "Approved";
+    }
+
+    on-failure: {
+        LogMessage("Employee is not eligible");
+        Employee.Status = "Denied";
+    }
+}
+
+// Rules for discount eligibility
+rule "VIPDiscount" {
+    when
+        Customer.IsVIP == true
+    then
+        Customer.GetsDiscount = true;
+}
+
+rule "HighSpenderDiscount" {
+    when
+        Customer.TotalSpent > 10000
+    then
+        Customer.GetsDiscount = true;
+}
+
+rule "LoyaltyDiscount" {
+    when
+        Customer.LoyaltyYears > 5
+    then
+        Customer.GetsDiscount = true;
+}
+
+// Query with OR syntax
+query "CheckDiscountEligibility" {
+    goal: Customer.IsVIP == true || Customer.TotalSpent > 10000 || Customer.LoyaltyYears > 5
+    strategy: depth-first
+    max-solutions: 3
+
+    on-success: {
+        Customer.DiscountRate = 0.15;
+        LogMessage("Discount approved");
+    }
+}
+
+// Complex query with AND and OR
+query "ComplexEligibility" {
+    goal: (Employee.IsManager == true && Employee.Active == true) || (Employee.IsSenior == true && Employee.YearsExperience > 5)
+    strategy: breadth-first
+
+    on-success: {
+        Employee.BonusEligible = true;
+        LogMessage("Bonus eligible");
+    }
+
+    on-failure: {
+        LogMessage("Not bonus eligible");
+    }
+}

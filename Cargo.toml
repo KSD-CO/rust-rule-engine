@@ -487,3 +487,8 @@ required-features = ["backward-chaining"]
 name = "disjunction_demo"
 path = "examples/09-backward-chaining/disjunction_demo.rs"
 required-features = ["backward-chaining"]
+
+[[example]]
+name = "grl_or_syntax_demo"
+path = "examples/09-backward-chaining/grl_or_syntax_demo.rs"
+required-features = ["backward-chaining"]

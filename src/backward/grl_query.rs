@@ -624,9 +624,16 @@ impl GRLQueryExecutor {
         // Apply config
         bc_engine.set_config(query.to_config());
 
-        // Parse compound goals (support && and !=)
-        let result = if query.goal.contains("&&") {
-            // Split on && and check all goals
+        // Parse compound goals (support &&, ||, and !=)
+        let result = if query.goal.contains("&&") && query.goal.contains("||") {
+            // Complex expression with both AND and OR - need proper parsing
+            // For now, evaluate left-to-right with precedence: AND before OR
+            Self::execute_complex_goal(&query.goal, bc_engine, facts)?
+        } else if query.goal.contains("||") {
+            // Split on || and check any goal (OR logic)
+            Self::execute_compound_or_goal(&query.goal, bc_engine, facts)?
+        } else if query.goal.contains("&&") {
+            // Split on && and check all goals (AND logic)
             Self::execute_compound_and_goal(&query.goal, bc_engine, facts)?
         } else {
             // Single goal
@@ -652,12 +659,12 @@ impl GRLQueryExecutor {
         facts: &mut Facts,
     ) -> Result<QueryResult, RuleEngineError> {
         let sub_goals: Vec<&str> = goal_expr.split("&&").map(|s| s.trim()).collect();
-        
+
         let mut all_provable = true;
         let mut combined_bindings = HashMap::new();
         let mut all_missing = Vec::new();
         let mut combined_stats = QueryStats::default();
-        
+
         for (i, sub_goal) in sub_goals.iter().enumerate() {
             // Handle != by using expression parser directly
             let goal_satisfied = if sub_goal.contains("!=") {
@@ -681,7 +688,7 @@ impl GRLQueryExecutor {
             // Note: For compound goals with !=, we don't track missing facts well yet
             // This is a simplification for now
         }
-        
+
         Ok(QueryResult {
             provable: all_provable,
             bindings: combined_bindings,
@@ -692,6 +699,118 @@ impl GRLQueryExecutor {
             missing_facts: all_missing,
             stats: combined_stats,
             solutions: Vec::new(),
+        })
+    }
+
+    /// Execute compound OR goal (any must be true)
+    fn execute_compound_or_goal(
+        goal_expr: &str,
+        bc_engine: &mut BackwardEngine,
+        facts: &mut Facts,
+    ) -> Result<QueryResult, RuleEngineError> {
+        let sub_goals: Vec<&str> = goal_expr.split("||").map(|s| s.trim()).collect();
+
+        let mut any_provable = false;
+        let mut combined_bindings = HashMap::new();
+        let mut all_missing = Vec::new();
+        let mut combined_stats = QueryStats::default();
+        let mut all_solutions = Vec::new();
+
+        for sub_goal in sub_goals.iter() {
+            // Handle != by using expression parser directly
+            let (goal_satisfied, result_opt) = if sub_goal.contains("!=") {
+                // Parse and evaluate the expression directly
+                use crate::backward::expression::ExpressionParser;
+
+                match ExpressionParser::parse(sub_goal) {
+                    Ok(expr) => (expr.is_satisfied(facts), None),
+                    Err(_) => (false, None),
+                }
+            } else {
+                // Normal == comparison, use backward chaining
+                let result = bc_engine.query(sub_goal, facts)?;
+                let provable = result.provable;
+                (provable, Some(result))
+            };
+
+            if goal_satisfied {
+                any_provable = true;
+
+                // Merge results from successful branch
+                if let Some(result) = result_opt {
+                    combined_bindings.extend(result.bindings);
+                    all_missing.extend(result.missing_facts);
+                    combined_stats.goals_explored += result.stats.goals_explored;
+                    combined_stats.rules_evaluated += result.stats.rules_evaluated;
+                    if let Some(dur) = result.stats.duration_ms {
+                        combined_stats.duration_ms = Some(combined_stats.duration_ms.unwrap_or(0) + dur);
+                    }
+                    all_solutions.extend(result.solutions);
+                }
+            }
+        }
+
+        Ok(QueryResult {
+            provable: any_provable,
+            bindings: combined_bindings,
+            proof_trace: ProofTrace {
+                goal: goal_expr.to_string(),
+                steps: Vec::new()
+            },
+            missing_facts: all_missing,
+            stats: combined_stats,
+            solutions: all_solutions,
+        })
+    }
+
+    /// Execute complex goal with both AND and OR operators
+    /// Precedence: AND is evaluated before OR (like multiplication before addition)
+    /// Example: "A || B && C" is evaluated as "A || (B && C)"
+    fn execute_complex_goal(
+        goal_expr: &str,
+        bc_engine: &mut BackwardEngine,
+        facts: &mut Facts,
+    ) -> Result<QueryResult, RuleEngineError> {
+        // Split by || first (lowest precedence)
+        let or_parts: Vec<&str> = goal_expr.split("||").map(|s| s.trim()).collect();
+
+        let mut any_provable = false;
+        let mut combined_bindings = HashMap::new();
+        let mut all_missing = Vec::new();
+        let mut combined_stats = QueryStats::default();
+        let mut all_solutions = Vec::new();
+
+        for or_part in or_parts.iter() {
+            // Each OR part might contain AND clauses
+            let result = if or_part.contains("&&") {
+                Self::execute_compound_and_goal(or_part, bc_engine, facts)?
+            } else {
+                bc_engine.query(or_part, facts)?
+            };
+
+            if result.provable {
+                any_provable = true;
+                combined_bindings.extend(result.bindings);
+                all_missing.extend(result.missing_facts);
+                combined_stats.goals_explored += result.stats.goals_explored;
+                combined_stats.rules_evaluated += result.stats.rules_evaluated;
+                if let Some(dur) = result.stats.duration_ms {
+                    combined_stats.duration_ms = Some(combined_stats.duration_ms.unwrap_or(0) + dur);
+                }
+                all_solutions.extend(result.solutions);
+            }
+        }
+
+        Ok(QueryResult {
+            provable: any_provable,
+            bindings: combined_bindings,
+            proof_trace: ProofTrace {
+                goal: goal_expr.to_string(),
+                steps: Vec::new()
+            },
+            missing_facts: all_missing,
+            stats: combined_stats,
+            solutions: all_solutions,
         })
     }
 
@@ -871,5 +990,44 @@ mod tests {
 
         let res = query.should_execute(&facts);
         assert!(res.is_err(), "expected parse error to propagate");
+    }
+
+    #[test]
+    fn test_parse_query_with_or_goal() {
+        let input = r#"
+        query "TestOR" {
+            goal: User.IsVIP == true || User.TotalSpent > 10000
+        }
+        "#;
+
+        let query = GRLQueryParser::parse(input).unwrap();
+        assert_eq!(query.name, "TestOR");
+        assert!(query.goal.contains("||"));
+    }
+
+    #[test]
+    fn test_parse_query_with_complex_goal() {
+        let input = r#"
+        query "ComplexQuery" {
+            goal: (User.IsVIP == true && User.Active == true) || User.TotalSpent > 10000
+        }
+        "#;
+
+        let query = GRLQueryParser::parse(input).unwrap();
+        assert!(query.goal.contains("||"));
+        assert!(query.goal.contains("&&"));
+    }
+
+    #[test]
+    fn test_parse_query_with_multiple_or_branches() {
+        let input = r#"
+        query "MultiOR" {
+            goal: Employee.IsManager == true || Employee.IsSenior == true || Employee.IsDirector == true
+        }
+        "#;
+
+        let query = GRLQueryParser::parse(input).unwrap();
+        let branches: Vec<&str> = query.goal.split("||").collect();
+        assert_eq!(branches.len(), 3);
     }
 }
