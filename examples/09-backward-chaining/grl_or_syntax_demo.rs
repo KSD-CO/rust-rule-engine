@@ -174,7 +174,8 @@ fn demo_3_complex_and_or() -> Result<(), Box<dyn Error>> {
     println!("\n📝 Demo 3: Complex AND + OR Combination");
     println!("{}", "-".repeat(80));
 
-    let grl_content = r#"
+    // Separate rules and queries to avoid GRL parser conflict with parentheses in queries
+    let rules_content = r#"
         rule "ManagerActiveBonus" {
             when
                 Employee.IsManager == true &&
@@ -190,9 +191,11 @@ fn demo_3_complex_and_or() -> Result<(), Box<dyn Error>> {
             then
                 Employee.BonusEligible = true;
         }
+    "#;
 
+    let query_content = r#"
         query "CheckBonus" {
-            goal: Employee.IsManager == true && Employee.Active == true || Employee.IsSenior == true && Employee.YearsExperience > 5
+            goal: (Employee.IsManager == true && Employee.Active == true) || (Employee.IsSenior == true && Employee.YearsExperience > 5)
             on-success: {
                 Employee.BonusAmount = 5000;
             }
@@ -200,13 +203,12 @@ fn demo_3_complex_and_or() -> Result<(), Box<dyn Error>> {
     "#;
 
     let mut kb = KnowledgeBase::new("demo3");
-    kb.add_rules_from_grl(grl_content)?;
+    kb.add_rules_from_grl(rules_content)?;
 
-    let queries = GRLQueryParser::parse_queries(grl_content)?;
+    let queries = GRLQueryParser::parse_queries(query_content)?;
     let query = &queries[0];
 
-    println!("Complex goal with operator precedence: A && B || C && D");
-    println!("Evaluates as: (A && B) || (C && D) due to AND precedence");
+    println!("Complex goal with explicit parentheses: (A && B) || (C && D)");
     println!("Goal: {}", query.goal);
 
     // Test case 1: Active manager (first AND succeeds)

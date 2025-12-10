@@ -451,15 +451,71 @@ impl GRLQueryParser {
     }
 
     fn extract_goal(input: &str) -> Result<String, RuleEngineError> {
-        let re = regex::Regex::new(r"goal:\s*([^\n}]+)").unwrap();
-        if let Some(caps) = re.captures(input) {
-            let goal_str = caps[1].trim().to_string();
+        // Find goal: line
+        if let Some(goal_start) = input.find("goal:") {
+            let after_goal = &input[goal_start + 5..]; // Skip "goal:"
+
+            // Find the end of the goal line (newline or end of attributes section)
+            // Goal ends at newline, but we need to handle parentheses carefully
+            let goal_end = Self::find_goal_end(after_goal)?;
+            let goal_str = after_goal[..goal_end].trim().to_string();
+
+            if goal_str.is_empty() {
+                return Err(RuleEngineError::ParseError {
+                    message: "Invalid query syntax: empty goal".to_string(),
+                });
+            }
+
             Ok(goal_str)
         } else {
             Err(RuleEngineError::ParseError {
                 message: "Invalid query syntax: missing goal".to_string(),
             })
         }
+    }
+
+    fn find_goal_end(input: &str) -> Result<usize, RuleEngineError> {
+        let mut paren_depth = 0;
+        let mut in_string = false;
+        let mut escape_next = false;
+
+        for (i, ch) in input.chars().enumerate() {
+            if escape_next {
+                escape_next = false;
+                continue;
+            }
+
+            match ch {
+                '\\' if in_string => escape_next = true,
+                '"' => in_string = !in_string,
+                '(' if !in_string => paren_depth += 1,
+                ')' if !in_string => {
+                    if paren_depth == 0 {
+                        return Err(RuleEngineError::ParseError {
+                            message: format!("Parse error: Unexpected closing parenthesis at position {}", i),
+                        });
+                    }
+                    paren_depth -= 1;
+                }
+                '\n' if !in_string && paren_depth == 0 => return Ok(i),
+                _ => {}
+            }
+        }
+
+        if in_string {
+            return Err(RuleEngineError::ParseError {
+                message: "Parse error: Unclosed string in goal".to_string(),
+            });
+        }
+
+        if paren_depth > 0 {
+            return Err(RuleEngineError::ParseError {
+                message: format!("Parse error: {} unclosed parentheses in goal", paren_depth),
+            });
+        }
+
+        // If we reach here, goal extends to end of input
+        Ok(input.len())
     }
 
     fn extract_strategy(input: &str) -> Option<GRLSearchStrategy> {
@@ -763,6 +819,34 @@ impl GRLQueryExecutor {
         })
     }
 
+    /// Strip outer parentheses from expression
+    fn strip_outer_parens(expr: &str) -> &str {
+        let trimmed = expr.trim();
+        if trimmed.starts_with('(') && trimmed.ends_with(')') {
+            // Check if these are matching outer parens
+            let inner = &trimmed[1..trimmed.len()-1];
+            let mut depth = 0;
+            for ch in inner.chars() {
+                match ch {
+                    '(' => depth += 1,
+                    ')' => {
+                        depth -= 1;
+                        if depth < 0 {
+                            // Closing paren in middle, so outer parens don't match
+                            return trimmed;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if depth == 0 {
+                // Outer parens match, return inner
+                return inner.trim();
+            }
+        }
+        trimmed
+    }
+
     /// Execute complex goal with both AND and OR operators
     /// Precedence: AND is evaluated before OR (like multiplication before addition)
     /// Example: "A || B && C" is evaluated as "A || (B && C)"
@@ -771,8 +855,11 @@ impl GRLQueryExecutor {
         bc_engine: &mut BackwardEngine,
         facts: &mut Facts,
     ) -> Result<QueryResult, RuleEngineError> {
+        // Strip outer parentheses first
+        let cleaned_expr = Self::strip_outer_parens(goal_expr);
+
         // Split by || first (lowest precedence)
-        let or_parts: Vec<&str> = goal_expr.split("||").map(|s| s.trim()).collect();
+        let or_parts: Vec<&str> = cleaned_expr.split("||").map(|s| s.trim()).collect();
 
         let mut any_provable = false;
         let mut combined_bindings = HashMap::new();
@@ -781,11 +868,14 @@ impl GRLQueryExecutor {
         let mut all_solutions = Vec::new();
 
         for or_part in or_parts.iter() {
+            // Strip parentheses from each part
+            let cleaned_part = Self::strip_outer_parens(or_part);
+
             // Each OR part might contain AND clauses
-            let result = if or_part.contains("&&") {
-                Self::execute_compound_and_goal(or_part, bc_engine, facts)?
+            let result = if cleaned_part.contains("&&") {
+                Self::execute_compound_and_goal(cleaned_part, bc_engine, facts)?
             } else {
-                bc_engine.query(or_part, facts)?
+                bc_engine.query(cleaned_part, facts)?
             };
 
             if result.provable {
@@ -1029,5 +1119,50 @@ mod tests {
         let query = GRLQueryParser::parse(input).unwrap();
         let branches: Vec<&str> = query.goal.split("||").collect();
         assert_eq!(branches.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_query_with_parentheses() {
+        let input = r#"
+        query "ParenQuery" {
+            goal: (User.IsVIP == true && User.Active == true) || User.TotalSpent > 10000
+        }
+        "#;
+
+        let query = GRLQueryParser::parse(input).unwrap();
+        assert!(query.goal.contains("("));
+        assert!(query.goal.contains(")"));
+        assert!(query.goal.contains("||"));
+        assert!(query.goal.contains("&&"));
+    }
+
+    #[test]
+    fn test_parse_query_with_nested_parentheses() {
+        let input = r#"
+        query "NestedParen" {
+            goal: ((A == true && B == true) || C == true) && D == true
+        }
+        "#;
+
+        let query = GRLQueryParser::parse(input).unwrap();
+        assert_eq!(query.name, "NestedParen");
+        // Check that parentheses are preserved
+        assert!(query.goal.starts_with("(("));
+    }
+
+    #[test]
+    fn test_parse_query_unclosed_parenthesis() {
+        let input = r#"
+        query "BadParen" {
+            goal: (User.IsVIP == true && User.Active == true
+        }
+        "#;
+
+        let result = GRLQueryParser::parse(input);
+        assert!(result.is_err());
+        if let Err(e) = result {
+            let msg = format!("{:?}", e);
+            assert!(msg.contains("unclosed parentheses") || msg.contains("parenthesis"));
+        }
     }
 }

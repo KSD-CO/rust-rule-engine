@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.10.0 🦀⚡🚀
+# Rust Rule Engine v1.10.1 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -83,47 +83,58 @@ if result.provable {
 
 ---
 
-## ✨ What's New in v1.10.0 🎉
+## ✨ What's New in v1.10.1 🎉
 
-🔀 **Disjunction (OR) Support Foundation!**
+🔀 **Complete OR Syntax Support with Parentheses!**
 
-Introduces **OR pattern support** for backward chaining queries! Multiple rules can now lead to the same conclusion (implicit OR), with comprehensive data structures, parsing, and result merging capabilities.
+Full **GRL OR syntax** (`||`) for backward chaining queries! Now supports explicit OR operators in query goals with proper parentheses handling for complex expressions.
 
-### Quick Example:
+### Quick Examples:
 
 ```rust
 use rust_rule_engine::backward::*;
 
-// Parse OR patterns
-let disj = DisjunctionParser::parse("(manager(?x) OR senior(?x))")?;
-// Result: Disjunction with 2 branches
+// 1. Simple OR in GRL queries
+query "CheckEligibility" {
+    goal: Employee.IsManager == true || Employee.IsSenior == true
+    on-success: { LogMessage("Eligible!"); }
+}
 
-// Implicit OR through multiple rules
-// Rule 1: eligible if manager
-// Rule 2: eligible if senior
-// Rule 3: eligible if director
-// → 3 ways to prove the same goal (implicit OR)
+// 2. Multiple OR branches
+query "CheckDiscount" {
+    goal: Customer.IsVIP == true ||
+          Customer.TotalSpent > 10000 ||
+          Customer.LoyaltyYears > 5
+}
 
-// Load from GRL
-let mut kb = KnowledgeBase::new("demo");
-kb.add_rules_from_grl(include_str!("disjunction_rules.grl"))?;
-
-// Query will try all rules
-let mut engine = BackwardEngine::new(kb);
-let result = engine.query("Employee.IsEligible == true", &mut facts)?;
-// ✅ Provable if ANY rule succeeds (Manager OR Senior OR Director)
+// 3. Complex with parentheses
+query "CheckBonus" {
+    goal: (Employee.IsManager == true && Employee.Active == true) ||
+          (Employee.IsSenior == true && Employee.YearsExperience > 5)
+}
 ```
 
-**Features:** OR pattern parsing • Disjunction data structures • Result merging & deduplication • Implicit OR via multiple rules • 9 unit tests • Zero breaking changes
+**New Features:**
+- `||` operator in GRL query goals
+- Parentheses support: `(A && B) || (C && D)`
+- Nested parentheses: `((A && B) || C) && D`
+- Balanced parenthesis validation
+- `strip_outer_parens()` for recursive evaluation
+- Operator precedence: AND before OR
 
-📖 **[Demo](examples/09-backward-chaining/disjunction_demo.rs)** • **[GRL File](examples/09-backward-chaining/disjunction_rules.grl)**
+**Testing:** 315/315 unit tests pass • 11/11 examples pass • Zero regressions
+
+📖 **[OR Syntax Demo](examples/09-backward-chaining/grl_or_syntax_demo.rs)** • **[Implicit OR Demo](examples/09-backward-chaining/disjunction_demo.rs)**
 
 ---
 
 ## 📋 Version History
 
-### v1.10.0 (Current) - Disjunction (OR) Foundation 🆕
-OR pattern parsing `(A OR B OR C)` • Disjunction data structures • Result merging & deduplication • Implicit OR via multiple rules • 9 unit tests • 4 demos with GRL file • Zero breaking changes
+### v1.10.1 (Current) - Complete OR Syntax & Parentheses 🆕
+GRL `||` operator support • Parentheses in query goals • `execute_compound_or_goal()` • `strip_outer_parens()` • Goal parser with paren tracking • Nested `((A && B) || C)` • 6 new tests • Zero regressions
+
+### v1.10.0 - Disjunction (OR) Foundation
+OR pattern parsing `(A OR B OR C)` • Disjunction data structures • Result merging & deduplication • Implicit OR via multiple rules • 9 unit tests • 4 demos with GRL file
 
 ### v1.9.0 - Explanation System
 Proof trees • JSON/MD/HTML export • Step-by-step traces • Statistics • 16 tests, 4 demos, ~1,000 LOC
