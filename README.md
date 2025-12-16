@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.11.0 🦀⚡🚀
+# Rust Rule Engine v1.12.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -19,9 +19,8 @@ A blazing-fast production-ready rule engine for Rust supporting **both Forward a
 - **Native Engine** - Simple pattern matching for small rule sets
 - **RETE-UL** - Optimized network for 100-10,000 rules with O(1) indexing
 - **Parallel Execution** - Multi-threaded rule evaluation
-- **Stream Processing** - Real-time event processing with Redis state
 
-**Use Cases:** Real-time monitoring, event processing, reactive systems, CEP
+**Use Cases:** Business rules, validation, reactive systems, decision automation
 
 ### 🎯 Backward Chaining (Goal-Driven)
 **"Given a goal, find facts/rules to prove it"**
@@ -32,10 +31,34 @@ A blazing-fast production-ready rule engine for Rust supporting **both Forward a
 - **Negation** - NOT queries with closed-world assumption
 - **Explanation** - Proof trees with JSON/MD/HTML export
 - **Disjunction** - OR patterns for alternative paths
-- **Nested Queries (NEW!)** - Subqueries with shared variables
-- **Query Optimization (NEW!)** - Automatic goal reordering for 10-100x speedup
+- **Nested Queries** - Subqueries with shared variables
+- **Query Optimization** - Automatic goal reordering for 10-100x speedup
 
 **Use Cases:** Expert systems, diagnostics, planning, decision support, AI reasoning
+
+### 🌊 Stream Processing (Event-Driven) 🆕
+**"Process real-time event streams with time-based windows"**
+
+- **GRL Stream Syntax** - Declarative stream pattern definitions
+- **StreamAlphaNode** - RETE-integrated event filtering & windowing
+- **Time Windows** - Sliding (continuous) and tumbling (non-overlapping)
+- **Multi-Stream Correlation** - Join events from different streams
+- **WorkingMemory Integration** - Stream events become facts for rule evaluation
+
+**Use Cases:** Real-time fraud detection, IoT monitoring, financial analytics, security alerts, CEP
+
+**Example:**
+```grl
+rule "Fraud Alert" {
+    when
+        login: LoginEvent from stream("logins") over window(10 min, sliding) &&
+        purchase: PurchaseEvent from stream("purchases") over window(10 min, sliding) &&
+        login.user_id == purchase.user_id &&
+        login.ip_address != purchase.ip_address
+    then
+        Alert.trigger("IP mismatch detected");
+}
+```
 
 ---
 
@@ -83,9 +106,118 @@ if result.provable {
 }
 ```
 
+### Stream Processing Example 🆕
+```rust
+use rust_rule_engine::parser::grl::stream_syntax::parse_stream_pattern;
+use rust_rule_engine::rete::stream_alpha_node::{StreamAlphaNode, WindowSpec};
+use rust_rule_engine::rete::working_memory::WorkingMemory;
+
+// Parse GRL stream pattern
+let grl = r#"login: LoginEvent from stream("logins") over window(5 min, sliding)"#;
+let (_, pattern) = parse_stream_pattern(grl)?;
+
+// Create stream processor
+let mut node = StreamAlphaNode::new(
+    &pattern.source.stream_name,
+    pattern.event_type,
+    pattern.source.window.as_ref().map(|w| WindowSpec {
+        duration: w.duration,
+        window_type: w.window_type.clone(),
+    }),
+);
+
+// Process events in real-time
+let mut wm = WorkingMemory::new();
+for event in event_stream {
+    if node.process_event(&event) {
+        // Event passed filters and is in window
+        wm.insert_from_stream("logins".to_string(), event);
+        // Now available for rule evaluation!
+    }
+}
+
+// Run: cargo run --example streaming_fraud_detection --features streaming
+```
+
 ---
 
-## ✨ What's New in v1.11.0 🎉
+## ✨ What's New in v1.12.0 🎉
+
+🌊 **Stream Processing Foundation!**
+
+**GRL Stream Syntax** - Parse and process real-time event streams with time-based windows!
+
+### 🆕 Stream Processing Features
+
+**GRL Stream Pattern Syntax:**
+```rust
+// Stream with sliding window
+login: LoginEvent from stream("logins") over window(10 min, sliding)
+
+// Stream with tumbling window
+metric: MetricEvent from stream("metrics") over window(5 sec, tumbling)
+
+// Simple stream without window
+event: Event from stream("events")
+```
+
+**StreamAlphaNode - RETE Integration:**
+```rust
+use rust_rule_engine::parser::grl::stream_syntax::parse_stream_pattern;
+use rust_rule_engine::rete::stream_alpha_node::{StreamAlphaNode, WindowSpec};
+
+// Parse GRL pattern
+let grl = r#"login: LoginEvent from stream("logins") over window(5 min, sliding)"#;
+let (_, pattern) = parse_stream_pattern(grl)?;
+
+// Create stream processor
+let mut node = StreamAlphaNode::new(
+    &pattern.source.stream_name,
+    pattern.event_type,
+    pattern.source.window.as_ref().map(|w| WindowSpec {
+        duration: w.duration,
+        window_type: w.window_type.clone(),
+    }),
+);
+
+// Process events
+if node.process_event(&event) {
+    let handle = working_memory.insert_from_stream("logins".to_string(), event);
+    // Event now in RETE network for rule evaluation!
+}
+```
+
+**Real-World Example - Fraud Detection:**
+```rust
+// 4 fraud detection rules implemented:
+// 1. Suspicious IP changes (multiple IPs in 15 min)
+// 2. High velocity purchases (>3 purchases in 15 min)
+// 3. Impossible travel (location change too fast)
+// 4. IP mismatch (login IP != purchase IP)
+
+// Result: 7 alerts triggered from 16 events
+cargo run --example streaming_fraud_detection --features streaming
+```
+
+**Features Implemented:**
+- ✅ GRL stream syntax parser (nom-based, 15 tests)
+- ✅ StreamAlphaNode for event filtering & windowing (10 tests)
+- ✅ Sliding windows (continuous rolling)
+- ✅ Tumbling windows (non-overlapping)
+- ✅ WorkingMemory integration (stream → facts)
+- ✅ Duration units: ms, sec, min, hour
+- ✅ Optional event type filtering
+- ✅ Multi-stream correlation
+
+**Test Coverage:**
+- 58 streaming tests (100% pass)
+- 8 integration tests (fraud, IoT, trading, security)
+- 3 end-to-end tests (GRL → RETE → WorkingMemory)
+- 2 comprehensive examples
+
+---
+
+## ✨ Previous Update - v1.11.0
 
 🎯 **Nested Queries & Query Optimization!**
 
@@ -185,307 +317,6 @@ Comprehensive documentation organized by topic:
 - **[AI Integration](docs/examples/AI_INTEGRATION.md)** - Combine with ML models
 
 **[📚 Full Documentation Index →](docs/README.md)**
-
----
-
-## 📋 Version History
-
-### v1.11.0 (Current) - Nested Queries & Query Optimization 🆕⚡
-Nested queries (subqueries) with WHERE • Query optimizer with goal reordering • Selectivity estimation • Join optimization • `enable-optimization` in GRL • 19 new tests + 9 integration • 10-100x speedup • 485 total tests pass
-
-### v1.10.1 - Complete OR Syntax & Parentheses
-GRL `||` operator support • Parentheses in query goals • `execute_compound_or_goal()` • `strip_outer_parens()` • Goal parser with paren tracking • Nested `((A && B) || C)` • 6 new tests • Zero regressions
-
-### v1.10.0 - Disjunction (OR) Foundation
-OR pattern parsing `(A OR B OR C)` • Disjunction data structures • Result merging & deduplication • Implicit OR via multiple rules • 9 unit tests • 4 demos with GRL file
-
-### v1.9.0 - Explanation System
-Proof trees • JSON/MD/HTML export • Step-by-step traces • Statistics • 16 tests, 4 demos, ~1,000 LOC
-
-### v1.8.0 - Negation (NOT Keyword)
-Closed-world assumption • NOT queries • GRL integration • 4 demos, 284+ tests
-
-### v1.7.0 - Aggregation Functions
-COUNT, SUM, AVG, MIN, MAX, FIRST, LAST • Filter support • 13 tests, 3 demos, ~800 LOC
-
-**Older Versions:**
-- **v1.6.0** - Advanced Module System (transitive re-exports, salience, validation)
-- **v1.5.0** - Null Handling & Business Integration (null checks, 24 GRL rules, 17 tests)
-- **v1.4.0** - Stream Processing (Redis state, watermarking, windowing, 5 demos)
-
-- **v1.3.0** - Cyclic Import Detection (BFS algorithm, cycle prevention)
-
-### 🎉 Major Milestones:
-
-**Complete Backward Chaining System** (Production Ready!)
-- All Phase 1 tasks 100% complete
-- 100-1000x speedup with O(1) Conclusion Index
-- Scales to 10,000+ rules efficiently
-
-**Advanced Module System**
-- CLIPS-inspired module system
-- Import/export control with visibility
-- Cyclic detection with BFS algorithm
-- Performance: <1ms parsing for typical files
-
-**Comprehensive Testing**
-- 52 unit tests + 20 examples • All passing
-
-**Performance Benchmarks**
-- Expression parsing: <20µs • Index lookup: ~200ns (O(1)) • Query execution: <10ms • Proven 100-1000x speedup
-
----
-
-
-**Module System Phase 3 - Advanced Features (NEW in v1.6.0):**
-
-```rust
-use rust_rule_engine::engine::module::{ModuleManager, ReExport, ImportType};
-
-let mut manager = ModuleManager::new();
-
-// 1. Transitive Re-exports - Pattern-based re-export
-manager.create_module("BASE")?;
-manager.create_module("MIDDLEWARE")?;
-manager.create_module("APPLICATION")?;
-
-// MIDDLEWARE imports from BASE and selectively re-exports
-manager.import_from_with_reexport(
-    "MIDDLEWARE",
-    "BASE",
-    ImportType::AllRules,
-    "*",
-    Some(ReExport {
-        patterns: vec!["sensor-*".to_string()],  // Only re-export sensor-* rules
-        transitive: true,
-    }),
-)?;
-
-// APPLICATION can now see sensor-* rules through MIDDLEWARE
-manager.import_from("APPLICATION", "MIDDLEWARE", ImportType::AllRules, "*")?;
-
-// 2. Module-Level Salience - Priority control
-manager.set_module_salience("CRITICAL_ALERTS", 1000)?;
-manager.set_module_salience("BACKGROUND_TASKS", -500)?;
-
-// 3. Module Validation - Detect configuration issues
-let validation = manager.validate_module("APPLICATION")?;
-if !validation.is_valid {
-    for error in &validation.errors {
-        eprintln!("Error: {}", error);
-    }
-}
-
-// 4. Transitive Dependencies - Analyze module relationships
-let deps = manager.get_transitive_dependencies("APPLICATION")?;
-println!("Dependencies: {:?}", deps);
-```
-
-**Run the Phase 3 Demo:**
-```bash
-cargo run --example phase3_demo
-```
-
-**Backward Chaining Example:**
-
-```rust
-use rust_rule_engine::backward::{BackwardEngine, GRLQueryParser, GRLQueryExecutor};
-
-// Load rules from GRL file
-let rules = load_rules_from_file("approval_rules.grl");
-let mut kb = KnowledgeBase::new("Approval");
-for rule in GRLParser::parse_rules(&rules)? {
-    kb.add_rule(rule)?;
-}
-
-// Load query definition
-let query_str = load_query_from_file("queries.grl", "CheckAutoApproval");
-
-// Set up facts
-let mut facts = Facts::new();
-facts.set("Customer.LoyaltyPoints", Value::Number(150.0));
-facts.set("Order.Amount", Value::Number(5000.0));
-
-// Execute backward chaining query
-let query = GRLQueryParser::parse(&query_str)?;
-let mut bc_engine = BackwardEngine::new(kb);
-let result = GRLQueryExecutor::execute(&query, &mut bc_engine, &mut facts)?;
-
-if result.provable {
-    println!("✅ Goal proven! Order can be auto-approved");
-} else {
-    println!("⏳ Manual review required");
-}
-```
-
-**GRL Query Syntax:**
-
-```grl
-query "CheckAutoApproval" {
-    goal: Order.AutoApproved == true && Order.RequiresManualReview != true
-    strategy: depth-first
-    max-depth: 10
-    
-    on-success: {
-        Order.Status = "APPROVED";
-        Order.ProcessingTime = "Instant";
-        LogMessage("✅ Order auto-approved");
-    }
-    
-    on-failure: {
-        Order.Status = "PENDING_REVIEW";
-        Order.ProcessingTime = "1-2 business days";
-        LogMessage("⏳ Manual review needed");
-    }
-}
-```
-
-**Use Cases:**
-- **Medical Diagnosis** - Work backwards from symptoms to identify diseases
-- **E-commerce Approval** - Determine if orders should be auto-approved
-- **Detective Systems** - Solve crimes by proving hypotheses from evidence
-- **Decision Trees** - Classification and recommendation engines
-- **Expert Systems** - Knowledge-based reasoning and inference
-
----
-
-**Stream Processing Example:**
-
-```rust
-use rust_rule_engine::streaming::{DataStream, StateBackend};
-use serde::{Serialize, Deserialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct SensorReading {
-    sensor_id: String,
-    temperature: f64,
-    timestamp: u64,
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create stream with Redis backend for distributed state
-    let stream = DataStream::new(StateBackend::redis("redis://localhost:6379").await?);
-    
-    // Process high-temperature alerts with windowing
-    stream
-        .filter(|reading: &SensorReading| reading.temperature > 80.0)
-        .key_by(|reading| reading.sensor_id.clone())
-        .window_tumbling(Duration::from_secs(60))
-        .aggregate(|readings: Vec<SensorReading>| {
-            readings.iter().map(|r| r.temperature).sum::<f64>() / readings.len() as f64
-        })
-        .for_each(|(sensor, avg_temp)| {
-            println!("⚠️ Sensor {} avg temp: {:.1}°C", sensor, avg_temp);
-        })
-        .await?;
-    
-    Ok(())
-}
-```
-
-**Watermark & Late Data Example:**
-
-```rust
-use rust_rule_engine::streaming::{
-    WatermarkGenerator, WatermarkStrategy, LateDataHandler, LateDataStrategy
-};
-
-// Create watermark generator for out-of-order events
-let watermark_gen = WatermarkGenerator::bounded_out_of_order(
-    Duration::from_secs(10), // Max 10 seconds out of order
-    |event: &SensorReading| event.timestamp,
-);
-
-// Handle late data with 30-second grace period
-let late_handler = LateDataHandler::new(
-    LateDataStrategy::AllowedLateness(Duration::from_secs(30)),
-);
-
-// Process with event-time semantics
-let watermarked = stream.with_watermark(watermark_gen, late_handler);
-```
-
-**Redis State Backend Example:**
-
-```rust
-use rust_rule_engine::streaming::StateBackend;
-
-// Single instance with local state
-let memory_backend = StateBackend::memory();
-
-// Distributed deployment with Redis
-let redis_backend = StateBackend::redis("redis://localhost:6379").await?;
-
-// File-based persistence
-let file_backend = StateBackend::file("./state_checkpoints")?;
-
-// Switch backends without code changes
-let stream = DataStream::new(redis_backend);
-```
-
-**Stream Processing Use Cases:**
-- **IoT Monitoring** - Real-time sensor data processing with alerting
-- **Financial Analytics** - Trade monitoring, fraud detection, risk scoring
-- **User Behavior Tracking** - Session analysis, engagement metrics
-- **System Monitoring** - Log aggregation, performance metrics, anomaly detection
-- **E-commerce** - Real-time inventory, shopping cart analytics
-
-**Performance:**
-- **Memory Backend**: 1M+ events/sec, <1μs latency
-- **File Backend**: 100k+ events/sec, <10μs latency
-- **Redis Backend**: 100k+ ops/sec, <1ms latency
-- **Horizontal Scaling**: Linear scalability with Redis Cluster
-
-**Documentation:**
-- **[Architecture Guide](docs/STREAMING_ARCHITECTURE.md)** - Complete architecture with diagrams 🆕
-- **[Redis Backend Guide](docs/REDIS_STATE_BACKEND.md)** - Distributed state setup 🆕
-- **[Streaming Guide](docs/STREAMING.md)** - Comprehensive streaming features
-
-**Examples (5 comprehensive demos):**
-- [Stream Operators Demo](examples/03-advanced-features/stream_operators_demo.rs) - 7 operator scenarios
-- [State Management Demo](examples/03-advanced-features/state_management_demo.rs) - 6 state scenarios
-- [Watermark Demo](examples/03-advanced-features/watermark_demo.rs) - 4 watermark scenarios
-- [Redis State Demo](examples/03-advanced-features/redis_state_demo.rs) - 4 distributed scenarios
-- [IoT Monitoring Demo](examples/06-use-cases/iot_monitoring_demo.rs) - Production IoT example
-
----
-
-**Examples (16 working examples):**
-
-*Demo Applications (12):*
-- [Simple Query Demo](examples/09-backward-chaining/simple_query_demo.rs) - Basic backward chaining
-- [RETE Index Demo](examples/09-backward-chaining/rete_index_demo.rs) - O(1) performance showcase 🔥
-- [Multiple Solutions Demo](examples/09-backward-chaining/multiple_solutions_demo.rs) - Find all proof paths (GRL-based) 🆕
-- [Medical Diagnosis](examples/09-backward-chaining/medical_diagnosis_demo.rs) - Disease diagnosis system
-- [E-commerce Approval](examples/09-backward-chaining/ecommerce_approval_demo.rs) - Order approval workflow
-- [Detective System](examples/09-backward-chaining/detective_system_demo.rs) - Crime-solving inference
-- [Loan Approval](examples/09-backward-chaining/loan_approval_demo.rs) - Financial decisions (29 rules)
-- [Family Relations](examples/09-backward-chaining/family_relations_demo.rs) - Relationship inference (21 rules)
-- [Access Control](examples/09-backward-chaining/access_control_demo.rs) - RBAC permissions (26 rules)
-- [Product Recommendations](examples/09-backward-chaining/product_recommendation_demo.rs) - AI recommendations (30 rules)
-- [GRL Query Demo](examples/09-backward-chaining/grl_query_demo.rs) - Query language features
-- [Unification Demo](examples/09-backward-chaining/unification_demo.rs) - Variable bindings & pattern matching
-
-*Test Suites (4):*
-- [Comprehensive Test](examples/09-backward-chaining/comprehensive_backward_test.rs) - 12 feature tests
-- [Edge Cases Test](examples/09-backward-chaining/backward_edge_cases_test.rs) - 8 correctness tests
-- [Critical Tests](examples/09-backward-chaining/backward_critical_missing_tests.rs) - 10 safety tests
-- [Unit Tests](tests/backward_comprehensive_tests.rs) - 44 unit tests (21 parser + 10 index + 8 unification + 5 multiple solutions) 🆕
-
-**Technical Features:**
-- **O(1) Conclusion Index** - HashMap-based rule lookup (100-1000x speedup) ✅ 🆕
-- **Expression AST** - Full boolean logic parsing (&&, ||, !, ==, !=, <, >, <=, >=) ✅
-- **Unification System** - Variable bindings & pattern matching ✅ 🆕
-- **Search Strategies** - DFS, BFS, Iterative Deepening ✅
-- **Memoization** - Automatic caching of proven goals ✅
-- **Cycle Detection** - Prevent infinite loops in recursive proofs ✅
-- **Proof Traces** - Full explanation of reasoning chains ✅
-- **Query Statistics** - Goals explored, rules evaluated, execution time ✅
-- **Rule Executor** - Shared condition/action evaluation ✅
-- **Rollback System** - Undo frames for speculative changes ✅
-
-[**🚀 Quick Start Guide →**](docs/BACKWARD_CHAINING_QUICK_START.md) | [**📊 Performance Analysis →**](.planning/BACKWARD_CHAINING_PERFORMANCE.md) | [**📝 Examples →**](examples/09-backward-chaining/)
 
 ---
 
@@ -1077,22 +908,22 @@ rule "HighRevenue" {
 
 ```toml
 [dependencies]
-rust-rule-engine = "1.8.0"
+rust-rule-engine = "1.12.0"
 ```
 
 ### Optional Features
 ```toml
 # Enable backward chaining with negation support (Production Ready! 🚀)
-rust-rule-engine = { version = "1.8.0", features = ["backward-chaining"] }
+rust-rule-engine = { version = "1.12.0", features = ["backward-chaining"] }
 
-# Enable streaming support
-rust-rule-engine = { version = "1.8.0", features = ["streaming"] }
+# Enable streaming support (NEW in v1.12.0! 🌊)
+rust-rule-engine = { version = "1.12.0", features = ["streaming"] }
 
 # Enable streaming with Redis backend (for distributed deployments)
-rust-rule-engine = { version = "1.8.0", features = ["streaming", "streaming-redis"] }
+rust-rule-engine = { version = "1.12.0", features = ["streaming", "streaming-redis"] }
 
 # Enable all features
-rust-rule-engine = { version = "1.8.0", features = ["backward-chaining", "streaming", "streaming-redis"] }
+rust-rule-engine = { version = "1.12.0", features = ["backward-chaining", "streaming", "streaming-redis"] }
 ```
 
 ---
@@ -1905,28 +1736,6 @@ Questions or contributions: If you'd like, I can (a) strengthen per-case asserti
 
 ---
 
-## 🤝 Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Development Setup
-```bash
-# Clone repository
-git clone https://github.com/KSD-CO/rust-rule-engine.git
-cd rust-rule-engine
-
-# Run tests
-cargo test
-
-# Run examples
-cargo run --example rete_template_globals_demo
-
-# Build documentation
-cargo doc --open
-```
-
----
-
 ## 📄 License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
@@ -1935,15 +1744,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 
 ## 🙏 Acknowledgments
 
-**Inspired by:**
-- [Drools](https://www.drools.org/) - JBoss Rule Engine
-- [CLIPS](https://www.clipsrules.net/) - NASA C Language Integrated Production System
-- [Grule](https://github.com/hyperjumptech/grule-rule-engine) - Go Rule Engine
 
-**Special Thanks:**
-- Rust community for amazing tools and libraries
-- Contributors who helped improve the engine
-- Users providing valuable feedback
 
 ---
 

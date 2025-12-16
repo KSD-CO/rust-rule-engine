@@ -20,6 +20,9 @@ pub mod multifield;
 pub mod tms;
 pub mod action_result;
 
+#[cfg(feature = "streaming")]
+pub mod stream_alpha_node;
+
 pub use alpha::*;
 pub use beta::*;
 pub use memory::*;
@@ -38,3 +41,6 @@ pub use accumulate::*;
 pub use multifield::*;
 pub use tms::*;
 pub use action_result::*;
+
+#[cfg(feature = "streaming")]
+pub use stream_alpha_node::*;

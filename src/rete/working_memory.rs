@@ -43,6 +43,12 @@ pub struct WorkingMemoryFact {
     pub data: TypedFacts,
     /// Metadata
     pub metadata: FactMetadata,
+    /// Stream source (if this fact came from a stream)
+    #[cfg(feature = "streaming")]
+    pub stream_source: Option<String>,
+    /// Stream event (if this fact came from a stream)
+    #[cfg(feature = "streaming")]
+    pub stream_event: Option<crate::streaming::event::StreamEvent>,
 }
 
 /// Metadata for a fact
@@ -106,11 +112,51 @@ impl WorkingMemory {
             fact_type: fact_type.clone(),
             data,
             metadata: FactMetadata::default(),
+            #[cfg(feature = "streaming")]
+            stream_source: None,
+            #[cfg(feature = "streaming")]
+            stream_event: None,
         };
 
         self.facts.insert(handle, fact);
         self.type_index
             .entry(fact_type)
+            .or_insert_with(HashSet::new)
+            .insert(handle);
+        self.modified_handles.insert(handle);
+
+        handle
+    }
+
+    /// Insert a fact from a stream event
+    #[cfg(feature = "streaming")]
+    pub fn insert_from_stream(
+        &mut self,
+        stream_name: String,
+        event: crate::streaming::event::StreamEvent,
+    ) -> FactHandle {
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        let handle = FactHandle::new(id);
+
+        // Convert event data to TypedFacts
+        let mut typed_facts = super::facts::TypedFacts::new();
+        for (key, value) in &event.data {
+            let fact_value: super::facts::FactValue = value.clone().into();
+            typed_facts.set(key.clone(), fact_value);
+        }
+
+        let fact = WorkingMemoryFact {
+            handle,
+            fact_type: event.event_type.clone(),
+            data: typed_facts,
+            metadata: FactMetadata::default(),
+            stream_source: Some(stream_name.clone()),
+            stream_event: Some(event),
+        };
+
+        self.facts.insert(handle, fact);
+        self.type_index
+            .entry(stream_name)
             .or_insert_with(HashSet::new)
             .insert(handle);
         self.modified_handles.insert(handle);

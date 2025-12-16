@@ -7,6 +7,10 @@ use regex::Regex;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
+// Stream syntax parser module
+#[cfg(feature = "streaming")]
+pub mod stream_syntax;
+
 // Cached main regexes - compiled once at startup
 static RULE_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"rule\s+(?:"([^"]+)"|([a-zA-Z_]\w*))\s*([^{]*)\{(.+)\}"#)

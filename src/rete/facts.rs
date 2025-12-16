@@ -224,6 +224,27 @@ impl From<Vec<FactValue>> for FactValue {
     }
 }
 
+/// Convert from types::Value to FactValue
+impl From<crate::types::Value> for FactValue {
+    fn from(value: crate::types::Value) -> Self {
+        match value {
+            crate::types::Value::String(s) => FactValue::String(s),
+            crate::types::Value::Number(n) => FactValue::Float(n),
+            crate::types::Value::Integer(i) => FactValue::Integer(i),
+            crate::types::Value::Boolean(b) => FactValue::Boolean(b),
+            crate::types::Value::Array(arr) => {
+                FactValue::Array(arr.into_iter().map(|v| v.into()).collect())
+            }
+            crate::types::Value::Object(obj) => {
+                // Convert object to string representation
+                FactValue::String(format!("{:?}", obj))
+            }
+            crate::types::Value::Null => FactValue::Null,
+            crate::types::Value::Expression(expr) => FactValue::String(expr),
+        }
+    }
+}
+
 /// Typed facts collection
 #[derive(Debug, Clone)]
 pub struct TypedFacts {
