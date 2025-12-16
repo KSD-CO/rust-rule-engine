@@ -10,7 +10,7 @@ mod stream_integration_tests {
     use rust_rule_engine::streaming::event::StreamEvent;
     use rust_rule_engine::types::Value;
     use std::collections::HashMap;
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn current_time_ms() -> u64 {
         SystemTime::now()
@@ -46,26 +46,11 @@ mod stream_integration_tests {
         // Scenario: User logs in from different IPs within 10 minutes
         let events = vec![
             // Login 1: New York (9 minutes ago)
-            create_login_event(
-                "user123",
-                "192.168.1.1",
-                "New York",
-                current_time - 540_000,
-            ),
+            create_login_event("user123", "192.168.1.1", "New York", current_time - 540_000),
             // Login 2: London (1 minute ago) - SUSPICIOUS!
-            create_login_event(
-                "user123",
-                "10.0.0.1",
-                "London",
-                current_time - 60_000,
-            ),
+            create_login_event("user123", "10.0.0.1", "London", current_time - 60_000),
             // Login 3: Different user, same IP (30 seconds ago) - OK
-            create_login_event(
-                "user456",
-                "192.168.1.1",
-                "New York",
-                current_time - 30_000,
-            ),
+            create_login_event("user456", "192.168.1.1", "New York", current_time - 30_000),
         ];
 
         let mut accepted_events = Vec::new();
@@ -132,7 +117,10 @@ mod stream_integration_tests {
         let is_suspicious = purchases_in_window > 3;
         assert!(is_suspicious, "Should detect high velocity");
 
-        println!("✓ Detected {} purchases in 5-minute window", purchases_in_window);
+        println!(
+            "✓ Detected {} purchases in 5-minute window",
+            purchases_in_window
+        );
         println!("✓ Velocity check: FLAGGED");
     }
 
@@ -159,7 +147,7 @@ mod stream_integration_tests {
         let current_time = current_time_ms();
 
         // Scenario: Temperature rises from 20°C to 85°C in 30 seconds
-        let temperatures = vec![20.0, 25.0, 35.0, 50.0, 70.0, 85.0];
+        let temperatures = [20.0, 25.0, 35.0, 50.0, 70.0, 85.0];
 
         for (i, temp) in temperatures.iter().enumerate() {
             let event = create_temp_reading(
@@ -222,11 +210,7 @@ mod stream_integration_tests {
         }
 
         // Event from previous window should be rejected
-        let old_event = create_metric_event(
-            "cpu_usage",
-            99.0,
-            current_window_start - 5_000,
-        );
+        let old_event = create_metric_event("cpu_usage", 99.0, current_window_start - 5_000);
         assert!(!node.process_event(&old_event));
 
         // Only current window events
@@ -259,7 +243,7 @@ mod stream_integration_tests {
         let current_time = current_time_ms();
 
         // Stock price rises from $100 to $110 in 1 minute
-        let prices = vec![100.0, 102.0, 104.5, 106.0, 108.0, 110.0];
+        let prices = [100.0, 102.0, 104.5, 106.0, 108.0, 110.0];
 
         for (i, price) in prices.iter().enumerate() {
             let event = create_price_tick(
@@ -285,7 +269,10 @@ mod stream_integration_tests {
         let strong_momentum = price_change_percent.abs() > 5.0;
         assert!(strong_momentum, "Should detect strong momentum");
 
-        println!("✓ Price movement: ${:.2} -> ${:.2}", first_price, last_price);
+        println!(
+            "✓ Price movement: ${:.2} -> ${:.2}",
+            first_price, last_price
+        );
         println!("✓ Change: {:.2}% (Strong momentum!)", price_change_percent);
     }
 
@@ -313,12 +300,8 @@ mod stream_integration_tests {
 
         // 10 failed login attempts in 2 minutes
         for i in 0..10 {
-            let event = create_login_attempt(
-                "admin",
-                "192.168.1.100",
-                false,
-                current_time - (i * 10_000),
-            );
+            let event =
+                create_login_attempt("admin", "192.168.1.100", false, current_time - (i * 10_000));
             node.process_event(&event);
         }
 
@@ -356,13 +339,10 @@ mod stream_integration_tests {
         let current_time = current_time_ms();
 
         // Same IP scanning multiple ports
-        let ports = vec![22, 23, 80, 443, 3306, 5432, 8080, 8443];
+        let ports = [22, 23, 80, 443, 3306, 5432, 8080, 8443];
         for (i, port) in ports.iter().enumerate() {
-            let event = create_connection_event(
-                "192.168.1.200",
-                *port,
-                current_time - (i as u64 * 3_000),
-            );
+            let event =
+                create_connection_event("192.168.1.200", *port, current_time - (i as u64 * 3_000));
             node.process_event(&event);
         }
 
@@ -395,7 +375,8 @@ mod stream_integration_tests {
 
         // Two separate streams
         let login_grl = r#"login: LoginEvent from stream("logins") over window(5 min, sliding)"#;
-        let purchase_grl = r#"purchase: PurchaseEvent from stream("purchases") over window(5 min, sliding)"#;
+        let purchase_grl =
+            r#"purchase: PurchaseEvent from stream("purchases") over window(5 min, sliding)"#;
 
         let (_, login_pattern) = parse_stream_pattern(login_grl).unwrap();
         let (_, purchase_pattern) = parse_stream_pattern(purchase_grl).unwrap();
@@ -448,7 +429,10 @@ mod stream_integration_tests {
         println!("User in logins: {}", user_in_logins);
         println!("User in purchases: {}", user_in_purchases);
 
-        assert!(user_in_logins && user_in_purchases, "Should find user in both streams");
+        assert!(
+            user_in_logins && user_in_purchases,
+            "Should find user in both streams"
+        );
 
         println!("✓ User found in login stream: {}", user_in_logins);
         println!("✓ User found in purchase stream: {}", user_in_purchases);
@@ -478,7 +462,10 @@ mod stream_integration_tests {
 
     fn create_temp_reading(sensor_id: &str, temperature: f64, timestamp: u64) -> StreamEvent {
         let mut data = HashMap::new();
-        data.insert("sensor_id".to_string(), Value::String(sensor_id.to_string()));
+        data.insert(
+            "sensor_id".to_string(),
+            Value::String(sensor_id.to_string()),
+        );
         data.insert("temperature".to_string(), Value::Number(temperature));
 
         StreamEvent::with_timestamp("TempReading", data, "sensors", timestamp)
@@ -486,7 +473,10 @@ mod stream_integration_tests {
 
     fn create_metric_event(metric_name: &str, value: f64, timestamp: u64) -> StreamEvent {
         let mut data = HashMap::new();
-        data.insert("metric_name".to_string(), Value::String(metric_name.to_string()));
+        data.insert(
+            "metric_name".to_string(),
+            Value::String(metric_name.to_string()),
+        );
         data.insert("value".to_string(), Value::Number(value));
 
         StreamEvent::with_timestamp("MetricEvent", data, "metrics", timestamp)
@@ -516,7 +506,10 @@ mod stream_integration_tests {
 
     fn create_connection_event(source_ip: &str, port: i64, timestamp: u64) -> StreamEvent {
         let mut data = HashMap::new();
-        data.insert("source_ip".to_string(), Value::String(source_ip.to_string()));
+        data.insert(
+            "source_ip".to_string(),
+            Value::String(source_ip.to_string()),
+        );
         data.insert("port".to_string(), Value::Integer(port));
 
         StreamEvent::with_timestamp("Connection", data, "network-events", timestamp)

@@ -1,5 +1,5 @@
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
-use rust_rule_engine::engine::plugin::{PluginConfig, PluginHealth, PluginManager};
+use rust_rule_engine::engine::plugin::{PluginConfig, PluginHealth};
 use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::parser::grl::GRLParser;
 use rust_rule_engine::types::Value;
@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Create rules that use plugin actions
-    let plugin_rules = vec![
+    let plugin_rules = [
         r#"
         rule "ProcessUserInput" salience 20 {
             when

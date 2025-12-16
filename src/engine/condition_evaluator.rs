@@ -4,6 +4,8 @@
 //! that can be used by both RustRuleEngine (forward chaining) and
 //! BackwardEngine (backward chaining).
 
+#![allow(deprecated)]
+
 use crate::engine::rule::{Condition, ConditionExpression, ConditionGroup};
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{Operator, Value};
@@ -40,17 +42,15 @@ impl ConditionEvaluator {
     }
 
     /// Evaluate condition group
-    pub fn evaluate_conditions(
-        &self,
-        group: &ConditionGroup,
-        facts: &Facts,
-    ) -> Result<bool> {
+    pub fn evaluate_conditions(&self, group: &ConditionGroup, facts: &Facts) -> Result<bool> {
         match group {
-            ConditionGroup::Single(condition) => {
-                self.evaluate_condition(condition, facts)
-            }
+            ConditionGroup::Single(condition) => self.evaluate_condition(condition, facts),
 
-            ConditionGroup::Compound { left, operator, right } => {
+            ConditionGroup::Compound {
+                left,
+                operator,
+                right,
+            } => {
                 let left_result = self.evaluate_conditions(left, facts)?;
 
                 // Short-circuit evaluation
@@ -67,11 +67,9 @@ impl ConditionEvaluator {
                         }
                         self.evaluate_conditions(right, facts)
                     }
-                    crate::types::LogicalOperator::Not => {
-                        Err(RuleEngineError::ExecutionError(
-                            "NOT operator should not appear in compound conditions".to_string()
-                        ))
-                    }
+                    crate::types::LogicalOperator::Not => Err(RuleEngineError::ExecutionError(
+                        "NOT operator should not appear in compound conditions".to_string(),
+                    )),
                 }
             }
 
@@ -102,7 +100,10 @@ impl ConditionEvaluator {
         match &condition.expression {
             ConditionExpression::Field(field_name) => {
                 // Get field value
-                if let Some(value) = facts.get_nested(field_name).or_else(|| facts.get(field_name)) {
+                if let Some(value) = facts
+                    .get_nested(field_name)
+                    .or_else(|| facts.get(field_name))
+                {
                     Ok(condition.operator.evaluate(&value, &condition.value))
                 } else {
                     // Field not found
@@ -125,9 +126,11 @@ impl ConditionEvaluator {
                 self.evaluate_test_expression(name, args, facts)
             }
 
-            ConditionExpression::MultiField { field, operation, variable } => {
-                self.evaluate_multifield(field, operation, variable, condition, facts)
-            }
+            ConditionExpression::MultiField {
+                field,
+                operation,
+                variable,
+            } => self.evaluate_multifield(field, operation, variable, condition, facts),
         }
     }
 
@@ -149,7 +152,10 @@ impl ConditionEvaluator {
                         facts
                             .get_nested(arg)
                             .or_else(|| facts.get(arg))
-                            .unwrap_or_else(|| self.parse_literal_value(arg).unwrap_or(Value::String(arg.clone())))
+                            .unwrap_or_else(|| {
+                                self.parse_literal_value(arg)
+                                    .unwrap_or(Value::String(arg.clone()))
+                            })
                     })
                     .collect();
 
@@ -205,7 +211,9 @@ impl ConditionEvaluator {
                         _ => return Ok(false),
                     };
 
-                    Ok(condition.operator.evaluate(&Value::Number(len), &condition.value))
+                    Ok(condition
+                        .operator
+                        .evaluate(&Value::Number(len), &condition.value))
                 } else {
                     Ok(false)
                 }
@@ -220,7 +228,9 @@ impl ConditionEvaluator {
                         _ => false,
                     };
 
-                    Ok(condition.operator.evaluate(&Value::Boolean(is_empty), &condition.value))
+                    Ok(condition
+                        .operator
+                        .evaluate(&Value::Boolean(is_empty), &condition.value))
                 } else {
                     Ok(false)
                 }
@@ -234,7 +244,9 @@ impl ConditionEvaluator {
                         _ => false,
                     };
 
-                    Ok(condition.operator.evaluate(&Value::Boolean(contains), &condition.value))
+                    Ok(condition
+                        .operator
+                        .evaluate(&Value::Boolean(contains), &condition.value))
                 } else {
                     Ok(false)
                 }
@@ -344,7 +356,9 @@ impl ConditionEvaluator {
                     0.0
                 };
 
-                Ok(condition.operator.evaluate(&Value::Number(count), &condition.value))
+                Ok(condition
+                    .operator
+                    .evaluate(&Value::Number(count), &condition.value))
             }
 
             "first" => {
@@ -448,7 +462,7 @@ mod tests {
     #[test]
     fn test_builtin_function_len() {
         let evaluator = ConditionEvaluator::with_builtin_functions();
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Name", Value::String("John".to_string()));
 
         let condition = Condition::with_function(
@@ -465,25 +479,32 @@ mod tests {
     #[test]
     fn test_builtin_test_exists() {
         let evaluator = ConditionEvaluator::with_builtin_functions();
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Email", Value::String("test@example.com".to_string()));
 
-        let result = evaluator.evaluate_builtin_test("exists", &["User.Email".to_string()], &facts).unwrap();
+        let result = evaluator
+            .evaluate_builtin_test("exists", &["User.Email".to_string()], &facts)
+            .unwrap();
         assert!(result);
 
-        let result2 = evaluator.evaluate_builtin_test("exists", &["User.Missing".to_string()], &facts).unwrap();
+        let result2 = evaluator
+            .evaluate_builtin_test("exists", &["User.Missing".to_string()], &facts)
+            .unwrap();
         assert!(!result2);
     }
 
     #[test]
     fn test_multifield_count() {
         let evaluator = ConditionEvaluator::with_builtin_functions();
-        let mut facts = Facts::new();
-        facts.set("User.Orders", Value::Array(vec![
-            Value::Number(1.0),
-            Value::Number(2.0),
-            Value::Number(3.0),
-        ]));
+        let facts = Facts::new();
+        facts.set(
+            "User.Orders",
+            Value::Array(vec![
+                Value::Number(1.0),
+                Value::Number(2.0),
+                Value::Number(3.0),
+            ]),
+        );
 
         let condition = Condition {
             field: "User.Orders".to_string(),

@@ -4,11 +4,11 @@
 //! node with the same facts multiple times, significantly improving performance
 //! for complex rule networks.
 
+use super::facts::TypedFacts;
+use super::network::ReteUlNode;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
-use super::network::ReteUlNode;
-use super::facts::TypedFacts;
 
 /// Compute hash for facts (for memoization key)
 fn compute_facts_hash(facts: &TypedFacts) -> u64 {
@@ -130,8 +130,8 @@ impl std::fmt::Display for MemoStats {
 mod tests {
     use super::*;
     use crate::rete::alpha::AlphaNode;
+    use crate::rete::facts::TypedFacts;
     use crate::rete::network::ReteUlNode;
-    use crate::rete::facts::{TypedFacts, FactValue};
 
     #[test]
     fn test_memoization() {

@@ -8,6 +8,12 @@ pub struct MathUtilsPlugin {
     metadata: PluginMetadata,
 }
 
+impl Default for MathUtilsPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MathUtilsPlugin {
     pub fn new() -> Self {
         Self {
@@ -267,7 +273,7 @@ fn get_number_param(
         }
     }
 
-    value_to_number(&value)
+    value_to_number(value)
 }
 
 fn value_to_number(value: &Value) -> Result<f64> {

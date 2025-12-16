@@ -1,8 +1,7 @@
 use rust_rule_engine::rete::{
+    auto_network::{Condition, ConditionGroup, Rule},
     ReteUlEngine,
-    auto_network::{Rule, ConditionGroup, Condition},
 };
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 #[test]
@@ -32,7 +31,11 @@ fn test_rete_basic_execution() {
     println!("Fired rules: {:?}", result);
 
     // Should complete in reasonable time (< 1 second for 1 rule)
-    assert!(elapsed < Duration::from_secs(1), "RETE took too long: {:?}", elapsed);
+    assert!(
+        elapsed < Duration::from_secs(1),
+        "RETE took too long: {:?}",
+        elapsed
+    );
     assert!(!result.is_empty(), "No rules fired");
 }
 
@@ -51,7 +54,7 @@ fn test_rete_multiple_rules() {
             }),
             action: format!("log('Rule{} fired')", i),
         };
-        engine.add_rule_from_definition(&rule, (100 - i) as i32, false);
+        engine.add_rule_from_definition(&rule, 100 - i, false);
     }
 
     engine.set_fact("count".to_string(), "50".to_string());
@@ -65,7 +68,11 @@ fn test_rete_multiple_rules() {
     println!("Fired rules: {:?}", result);
 
     // Should complete in reasonable time
-    assert!(elapsed < Duration::from_secs(2), "RETE took too long: {:?}", elapsed);
+    assert!(
+        elapsed < Duration::from_secs(2),
+        "RETE took too long: {:?}",
+        elapsed
+    );
     assert_eq!(result.len(), 3, "Expected 3 rules to fire");
 }
 
@@ -102,7 +109,11 @@ fn test_rete_and_condition() {
     println!("RETE AND condition took: {:?}", elapsed);
     println!("Fired rules: {:?}", result);
 
-    assert!(elapsed < Duration::from_secs(1), "RETE took too long: {:?}", elapsed);
+    assert!(
+        elapsed < Duration::from_secs(1),
+        "RETE took too long: {:?}",
+        elapsed
+    );
     assert_eq!(result.len(), 1, "Expected 1 rule to fire");
 }
 
@@ -132,7 +143,11 @@ fn test_rete_no_loop() {
     println!("Fired rules: {:?}", result);
 
     // With no_loop, should fire only once and not hang
-    assert!(elapsed < Duration::from_secs(1), "RETE took too long: {:?}", elapsed);
+    assert!(
+        elapsed < Duration::from_secs(1),
+        "RETE took too long: {:?}",
+        elapsed
+    );
     assert_eq!(result.len(), 1, "Expected 1 rule to fire exactly once");
 }
 
@@ -171,7 +186,9 @@ fn test_rete_performance_scaling() {
         assert!(
             elapsed < max_time,
             "RETE with {} rules took {:?}, expected < {:?}",
-            rule_count, elapsed, max_time
+            rule_count,
+            elapsed,
+            max_time
         );
     }
 }

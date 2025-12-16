@@ -3,8 +3,8 @@
 //! Provides persistent global variables that can be accessed across rule firings.
 //! Similar to CLIPS defglobal and Drools globals.
 
-use crate::rete::facts::FactValue;
 use crate::errors::{Result, RuleEngineError};
+use crate::rete::facts::FactValue;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -109,11 +109,11 @@ impl GlobalsRegistry {
             RuleEngineError::ExecutionError(format!("Failed to acquire write lock: {}", e))
         })?;
 
-        let var = globals.get_mut(name).ok_or_else(|| {
-            RuleEngineError::EvaluationError {
+        let var = globals
+            .get_mut(name)
+            .ok_or_else(|| RuleEngineError::EvaluationError {
                 message: format!("Global variable '{}' not found", name),
-            }
-        })?;
+            })?;
 
         var.set(value)
     }
@@ -133,11 +133,11 @@ impl GlobalsRegistry {
             RuleEngineError::ExecutionError(format!("Failed to acquire write lock: {}", e))
         })?;
 
-        globals.remove(name).ok_or_else(|| {
-            RuleEngineError::EvaluationError {
+        globals
+            .remove(name)
+            .ok_or_else(|| RuleEngineError::EvaluationError {
                 message: format!("Global variable '{}' not found", name),
-            }
-        })?;
+            })?;
 
         Ok(())
     }
@@ -176,11 +176,11 @@ impl GlobalsRegistry {
             RuleEngineError::ExecutionError(format!("Failed to acquire write lock: {}", e))
         })?;
 
-        let var = globals.get_mut(name).ok_or_else(|| {
-            RuleEngineError::EvaluationError {
+        let var = globals
+            .get_mut(name)
+            .ok_or_else(|| RuleEngineError::EvaluationError {
                 message: format!("Global variable '{}' not found", name),
-            }
-        })?;
+            })?;
 
         if var.read_only {
             return Err(RuleEngineError::EvaluationError {
@@ -262,9 +262,13 @@ mod tests {
     #[test]
     fn test_set_global() {
         let registry = GlobalsRegistry::new();
-        registry.define("status", FactValue::String("active".to_string())).unwrap();
+        registry
+            .define("status", FactValue::String("active".to_string()))
+            .unwrap();
 
-        registry.set("status", FactValue::String("inactive".to_string())).unwrap();
+        registry
+            .set("status", FactValue::String("inactive".to_string()))
+            .unwrap();
 
         let value = registry.get("status").unwrap();
         assert_eq!(value, FactValue::String("inactive".to_string()));
@@ -273,7 +277,9 @@ mod tests {
     #[test]
     fn test_readonly_global() {
         let registry = GlobalsRegistry::new();
-        registry.define_readonly("PI", FactValue::Float(3.14159)).unwrap();
+        registry
+            .define_readonly("PI", FactValue::Float(std::f64::consts::PI))
+            .unwrap();
 
         // Should fail to modify
         let result = registry.set("PI", FactValue::Float(3.0));
@@ -281,7 +287,7 @@ mod tests {
 
         // Value should remain unchanged
         let value = registry.get("PI").unwrap();
-        assert_eq!(value, FactValue::Float(3.14159));
+        assert_eq!(value, FactValue::Float(std::f64::consts::PI));
     }
 
     #[test]
@@ -329,7 +335,10 @@ mod tests {
 
         assert_eq!(registry.get("max_retries").unwrap(), FactValue::Integer(3));
         assert_eq!(registry.get("timeout").unwrap(), FactValue::Float(30.0));
-        assert_eq!(registry.get("VERSION").unwrap(), FactValue::String("1.0.0".to_string()));
+        assert_eq!(
+            registry.get("VERSION").unwrap(),
+            FactValue::String("1.0.0".to_string())
+        );
     }
 
     #[test]
@@ -349,7 +358,9 @@ mod tests {
         use std::thread;
 
         let registry = GlobalsRegistry::new();
-        registry.define("shared_counter", FactValue::Integer(0)).unwrap();
+        registry
+            .define("shared_counter", FactValue::Integer(0))
+            .unwrap();
 
         let registry_clone = registry.clone();
         let handle = thread::spawn(move || {

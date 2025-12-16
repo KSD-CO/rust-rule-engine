@@ -109,11 +109,7 @@ impl DataStream {
     where
         F: Fn(StreamEvent) -> Vec<StreamEvent>,
     {
-        let flat_mapped_events = self
-            .events
-            .into_iter()
-            .flat_map(mapper)
-            .collect();
+        let flat_mapped_events = self.events.into_iter().flat_map(mapper).collect();
         Self {
             events: flat_mapped_events,
         }
@@ -134,7 +130,7 @@ impl DataStream {
 
         for event in self.events {
             let key = key_selector(&event);
-            keyed_events.entry(key).or_insert_with(Vec::new).push(event);
+            keyed_events.entry(key).or_default().push(event);
         }
 
         KeyedStream { keyed_events }
@@ -262,7 +258,7 @@ impl DataStream {
 
         for event in self.events {
             let key = key_selector(&event);
-            grouped.entry(key).or_insert_with(Vec::new).push(event);
+            grouped.entry(key).or_default().push(event);
         }
 
         GroupedStream { groups: grouped }
@@ -305,7 +301,7 @@ where
             .filter_map(|(key, events)| {
                 events
                     .into_iter()
-                    .reduce(|acc, e| reducer(acc, e))
+                    .reduce(&reducer)
                     .map(|result| (key, result))
             })
             .collect()
@@ -421,10 +417,7 @@ impl WindowedStream {
 
                 for event in events {
                     let window_start = (event.metadata.timestamp / window_ms) * window_ms;
-                    window_map
-                        .entry(window_start)
-                        .or_insert_with(Vec::new)
-                        .push(event);
+                    window_map.entry(window_start).or_default().push(event);
                 }
 
                 // Create windows
@@ -507,7 +500,7 @@ impl WindowedStream {
             .into_iter()
             .filter_map(|window| {
                 let events: Vec<StreamEvent> = window.events().iter().cloned().collect();
-                events.into_iter().reduce(|acc, e| reducer(acc, e))
+                events.into_iter().reduce(&reducer)
             })
             .collect()
     }
@@ -836,7 +829,10 @@ mod tests {
             .map(|i| {
                 let mut data = HashMap::new();
                 data.insert("value".to_string(), Value::Number(i as f64));
-                data.insert("user_id".to_string(), Value::String(format!("user_{}", i % 3)));
+                data.insert(
+                    "user_id".to_string(),
+                    Value::String(format!("user_{}", i % 3)),
+                );
                 StreamEvent::new("TestEvent", data, "test")
             })
             .collect()
@@ -859,7 +855,8 @@ mod tests {
 
         let mapped = stream.map(|mut e| {
             if let Some(value) = e.get_numeric("value") {
-                e.data.insert("doubled".to_string(), Value::Number(value * 2.0));
+                e.data
+                    .insert("doubled".to_string(), Value::Number(value * 2.0));
             }
             e
         });
@@ -891,7 +888,8 @@ mod tests {
         let result = stream.reduce(|mut acc, e| {
             let acc_val = acc.get_numeric("value").unwrap_or(0.0);
             let e_val = e.get_numeric("value").unwrap_or(0.0);
-            acc.data.insert("value".to_string(), Value::Number(acc_val + e_val));
+            acc.data
+                .insert("value".to_string(), Value::Number(acc_val + e_val));
             acc
         });
 

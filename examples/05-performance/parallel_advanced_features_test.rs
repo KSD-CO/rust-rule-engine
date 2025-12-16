@@ -2,10 +2,13 @@
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::parallel::{ParallelConfig, ParallelRuleEngine};
-use rust_rule_engine::engine::rule::{Condition, ConditionGroup};
-use rust_rule_engine::types::{ActionType, Operator, Value};
+use rust_rule_engine::engine::rule::ConditionGroup;
 use rust_rule_engine::errors::Result;
+use rust_rule_engine::types::{ActionType, Operator, Value};
 
+#[allow(deprecated)]
+#[allow(dead_code)]
+#[allow(unused_must_use)]
 fn main() -> Result<()> {
     println!("🚀 Testing Parallel Executor - ADVANCED FEATURES");
     println!("=================================================\n");
@@ -29,18 +32,17 @@ fn main() -> Result<()> {
 
 fn test_function_calls() -> Result<()> {
     println!("📋 Test 1: Custom Function Calls in Conditions");
-    
-    let mut kb = KnowledgeBase::new("FunctionTest");
-    
+
+    let kb = KnowledgeBase::new("FunctionTest");
+
     // Create a condition with function call
-    let condition = ConditionGroup::Single(
-        rust_rule_engine::engine::rule::Condition::with_function(
+    let condition =
+        ConditionGroup::Single(rust_rule_engine::engine::rule::Condition::with_function(
             "isAdult".to_string(),
             vec!["User.age".to_string()],
             Operator::Equal,
             Value::Boolean(true),
-        )
-    );
+        ));
 
     let rule = rust_rule_engine::engine::rule::Rule::new(
         "AdultCheck".to_string(),
@@ -56,10 +58,10 @@ fn test_function_calls() -> Result<()> {
 
     let config = ParallelConfig::default();
     let mut engine = ParallelRuleEngine::new(config);
-    
+
     // Register custom function
     engine.register_function("isAdult", |args, _facts| {
-        if let Some(Value::Integer(age)) = args.get(0) {
+        if let Some(Value::Integer(age)) = args.first() {
             Ok(Value::Boolean(*age >= 18))
         } else {
             Ok(Value::Boolean(false))
@@ -85,9 +87,9 @@ fn test_pattern_matching_forall() -> Result<()> {
 
 fn test_accumulate() -> Result<()> {
     println!("📋 Test 2: Accumulate Operations");
-    
+
     let kb = KnowledgeBase::new("AccumulateTest");
-    
+
     // accumulate(Order($amount: amount), sum($amount))
     let condition = ConditionGroup::Accumulate {
         result_var: "totalAmount".to_string(),
@@ -117,7 +119,7 @@ fn test_accumulate() -> Result<()> {
     let result = engine.execute_parallel(&kb, &facts, false)?;
 
     assert_eq!(result.total_rules_fired, 1, "Accumulate should work");
-    
+
     // Check that totalAmount was calculated
     if let Some(total) = facts.get("totalAmount") {
         if let Value::Number(n) = total {
@@ -125,29 +127,27 @@ fn test_accumulate() -> Result<()> {
             println!("   ✅ Accumulate (sum) works: {} = 450.0", n);
         }
     }
-    
+
     println!("   ✅ Accumulate operations work in parallel!\n");
     Ok(())
 }
 
 fn test_multifield() -> Result<()> {
     println!("📋 Test 3: MultiField Operations");
-    
-    let mut kb = KnowledgeBase::new("MultiFieldTest");
-    
+
+    let kb = KnowledgeBase::new("MultiFieldTest");
+
     // Order.items count > 0 using MultiField expression
-    let condition = ConditionGroup::Single(
-        rust_rule_engine::engine::rule::Condition {
-            expression: rust_rule_engine::engine::rule::ConditionExpression::MultiField {
-                field: "Order.items".to_string(),
-                operation: "count".to_string(),
-                variable: None,
-            },
-            operator: Operator::GreaterThan,
-            value: Value::Integer(0),
+    let condition = ConditionGroup::Single(rust_rule_engine::engine::rule::Condition {
+        expression: rust_rule_engine::engine::rule::ConditionExpression::MultiField {
             field: "Order.items".to_string(),
-        }
-    );
+            operation: "count".to_string(),
+            variable: None,
+        },
+        operator: Operator::GreaterThan,
+        value: Value::Integer(0),
+        field: "Order.items".to_string(),
+    });
 
     let rule = rust_rule_engine::engine::rule::Rule::new(
         "HasItems".to_string(),
@@ -159,11 +159,14 @@ fn test_multifield() -> Result<()> {
     kb.add_rule(rule);
 
     let facts = Facts::new();
-    facts.set("Order.items", Value::Array(vec![
-        Value::String("item1".to_string()),
-        Value::String("item2".to_string()),
-        Value::String("item3".to_string()),
-    ]));
+    facts.set(
+        "Order.items",
+        Value::Array(vec![
+            Value::String("item1".to_string()),
+            Value::String("item2".to_string()),
+            Value::String("item3".to_string()),
+        ]),
+    );
 
     let config = ParallelConfig::default();
     let engine = ParallelRuleEngine::new(config);

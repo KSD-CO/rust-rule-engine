@@ -18,8 +18,8 @@
 //! }
 //! ```
 
-use std::collections::HashMap;
 use super::facts::FactValue;
+use std::collections::HashMap;
 
 /// Accumulate function trait - defines how to aggregate values
 pub trait AccumulateFunction: Send + Sync {
@@ -484,7 +484,11 @@ mod tests {
         let mut min_state = min.init();
         let mut max_state = max.init();
 
-        for value in &[FactValue::Integer(15), FactValue::Integer(5), FactValue::Integer(25)] {
+        for value in &[
+            FactValue::Integer(15),
+            FactValue::Integer(5),
+            FactValue::Integer(25),
+        ] {
             min_state.accumulate(value);
             max_state.accumulate(value);
         }

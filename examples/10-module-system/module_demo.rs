@@ -14,7 +14,9 @@
 //! cargo run --example module_demo
 //! ```
 
-use rust_rule_engine::engine::module::{ModuleManager, ExportList, ExportItem, ItemType, ImportType};
+use rust_rule_engine::engine::module::{
+    ExportItem, ExportList, ImportType, ItemType, ModuleManager,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Module System Demo ===\n");
@@ -64,12 +66,18 @@ fn demo_basic_modules() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check visibility
     println!("Visibility checks:");
-    println!("  CONTROL can see 'sensor-temperature': {}",
-        manager.is_rule_visible("sensor-temperature", "CONTROL")?);
-    println!("  CONTROL can see 'control-fan': {}",
-        manager.is_rule_visible("control-fan", "CONTROL")?);
-    println!("  ALERT can see 'sensor-temperature': {}",
-        manager.is_rule_visible("sensor-temperature", "ALERT")?);
+    println!(
+        "  CONTROL can see 'sensor-temperature': {}",
+        manager.is_rule_visible("sensor-temperature", "CONTROL")?
+    );
+    println!(
+        "  CONTROL can see 'control-fan': {}",
+        manager.is_rule_visible("control-fan", "CONTROL")?
+    );
+    println!(
+        "  ALERT can see 'sensor-temperature': {}",
+        manager.is_rule_visible("sensor-temperature", "ALERT")?
+    );
 
     // Get all visible rules
     let visible = manager.get_visible_rules("CONTROL")?;
@@ -97,7 +105,9 @@ fn demo_iot_system() -> Result<(), Box<dyn std::error::Error>> {
     manager.create_module("SENSORS")?;
 
     let sensors = manager.get_module_mut("SENSORS")?;
-    *sensors = sensors.clone().with_doc("Handles all sensor data collection and initial processing");
+    *sensors = sensors
+        .clone()
+        .with_doc("Handles all sensor data collection and initial processing");
 
     // Add sensor rules
     sensors.add_rule("read-temperature-sensor");
@@ -139,7 +149,9 @@ fn demo_iot_system() -> Result<(), Box<dyn std::error::Error>> {
     manager.import_from("CONTROL", "SENSORS", ImportType::Rules, "read-*")?;
 
     let control = manager.get_module_mut("CONTROL")?;
-    *control = control.clone().with_doc("Makes control decisions based on sensor data");
+    *control = control
+        .clone()
+        .with_doc("Makes control decisions based on sensor data");
 
     // Add control rules
     control.add_rule("control-temperature");
@@ -148,12 +160,10 @@ fn demo_iot_system() -> Result<(), Box<dyn std::error::Error>> {
     control.add_rule("control-heater-power");
 
     // Export control decisions
-    control.set_exports(ExportList::Specific(vec![
-        ExportItem {
-            item_type: ItemType::Rule,
-            pattern: "control-*".to_string(),
-        },
-    ]));
+    control.set_exports(ExportList::Specific(vec![ExportItem {
+        item_type: ItemType::Rule,
+        pattern: "control-*".to_string(),
+    }]));
 
     println!("✓ CONTROL module configured");
     println!("  Doc: {}", control.doc.as_ref().unwrap());
@@ -172,7 +182,9 @@ fn demo_iot_system() -> Result<(), Box<dyn std::error::Error>> {
     manager.import_from("ALERT", "CONTROL", ImportType::Rules, "control-*")?;
 
     let alert = manager.get_module_mut("ALERT")?;
-    *alert = alert.clone().with_doc("Generates alerts based on sensor data and control decisions");
+    *alert = alert
+        .clone()
+        .with_doc("Generates alerts based on sensor data and control decisions");
 
     // Add alert rules
     alert.add_rule("alert-high-temperature");
@@ -222,7 +234,10 @@ fn demo_iot_system() -> Result<(), Box<dyn std::error::Error>> {
     for rule in control_visible.iter().take(5) {
         println!("  ✓ {}", rule);
     }
-    println!("  ... and {} more rules", control_visible.len().saturating_sub(5));
+    println!(
+        "  ... and {} more rules",
+        control_visible.len().saturating_sub(5)
+    );
 
     // ALERT module visibility
     println!("\nALERT module can see:");
@@ -230,16 +245,25 @@ fn demo_iot_system() -> Result<(), Box<dyn std::error::Error>> {
     for rule in alert_visible.iter().take(5) {
         println!("  ✓ {}", rule);
     }
-    println!("  ... and {} more rules", alert_visible.len().saturating_sub(5));
+    println!(
+        "  ... and {} more rules",
+        alert_visible.len().saturating_sub(5)
+    );
 
     // Template visibility
     println!("\nTemplate visibility:");
-    println!("  CONTROL can see 'temperature-reading': {}",
-        manager.is_template_visible("temperature-reading", "CONTROL")?);
-    println!("  ALERT can see 'temperature-reading': {}",
-        manager.is_template_visible("temperature-reading", "ALERT")?);
-    println!("  MAIN can see 'temperature-reading': {}",
-        manager.is_template_visible("temperature-reading", "MAIN")?);
+    println!(
+        "  CONTROL can see 'temperature-reading': {}",
+        manager.is_template_visible("temperature-reading", "CONTROL")?
+    );
+    println!(
+        "  ALERT can see 'temperature-reading': {}",
+        manager.is_template_visible("temperature-reading", "ALERT")?
+    );
+    println!(
+        "  MAIN can see 'temperature-reading': {}",
+        manager.is_template_visible("temperature-reading", "MAIN")?
+    );
 
     // ========================================
     // Execution flow simulation
@@ -250,17 +274,26 @@ fn demo_iot_system() -> Result<(), Box<dyn std::error::Error>> {
     println!("Step 1: Focus on SENSORS - Process sensor data");
     manager.set_focus("SENSORS")?;
     println!("  Current focus: {}", manager.get_focus());
-    println!("  Rules active: {:?}", manager.get_visible_rules("SENSORS")?.len());
+    println!(
+        "  Rules active: {:?}",
+        manager.get_visible_rules("SENSORS")?.len()
+    );
 
     println!("\nStep 2: Focus on CONTROL - Make decisions");
     manager.set_focus("CONTROL")?;
     println!("  Current focus: {}", manager.get_focus());
-    println!("  Rules active: {:?}", manager.get_visible_rules("CONTROL")?.len());
+    println!(
+        "  Rules active: {:?}",
+        manager.get_visible_rules("CONTROL")?.len()
+    );
 
     println!("\nStep 3: Focus on ALERT - Generate alerts");
     manager.set_focus("ALERT")?;
     println!("  Current focus: {}", manager.get_focus());
-    println!("  Rules active: {:?}", manager.get_visible_rules("ALERT")?.len());
+    println!(
+        "  Rules active: {:?}",
+        manager.get_visible_rules("ALERT")?.len()
+    );
 
     // ========================================
     // Benefits summary

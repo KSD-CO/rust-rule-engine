@@ -5,8 +5,8 @@
 //!
 //! Run with: cargo run --example nested_grl_file_demo --features backward-chaining
 
-use rust_rule_engine::backward::{GRLQueryParser, GRLQueryExecutor, BackwardEngine};
-use rust_rule_engine::{KnowledgeBase, Facts, Value};
+use rust_rule_engine::backward::{BackwardEngine, GRLQueryExecutor, GRLQueryParser};
+use rust_rule_engine::{Facts, KnowledgeBase, Value};
 use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,7 +42,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (i, query) in queries.iter().enumerate() {
         println!("{}. Executing query: \"{}\"", i + 1, query.name);
         println!("   Goal: {}", query.goal);
-        println!("   Optimization: {}", if query.enable_optimization { "enabled" } else { "disabled" });
+        println!(
+            "   Optimization: {}",
+            if query.enable_optimization {
+                "enabled"
+            } else {
+                "disabled"
+            }
+        );
         println!("   Strategy: {:?}", query.strategy);
 
         // Check if query has nested syntax
@@ -57,13 +64,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Execute the query
-        match GRLQueryExecutor::execute(&query, &mut bc_engine, &mut facts) {
+        match GRLQueryExecutor::execute(query, &mut bc_engine, &mut facts) {
             Ok(result) => {
-                println!("   Result: {}", if result.provable { "✓ Provable" } else { "✗ Not provable" });
+                println!(
+                    "   Result: {}",
+                    if result.provable {
+                        "✓ Provable"
+                    } else {
+                        "✗ Not provable"
+                    }
+                );
                 println!("   Solutions: {}", result.solutions.len());
-                println!("   Stats: {} goals explored, {} rules evaluated",
-                    result.stats.goals_explored,
-                    result.stats.rules_evaluated
+                println!(
+                    "   Stats: {} goals explored, {} rules evaluated",
+                    result.stats.goals_explored, result.stats.rules_evaluated
                 );
             }
             Err(e) => {
@@ -92,7 +106,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Parse multiple queries from a GRL file
-fn parse_multiple_queries(content: &str) -> Result<Vec<rust_rule_engine::backward::GRLQuery>, Box<dyn std::error::Error>> {
+fn parse_multiple_queries(
+    content: &str,
+) -> Result<Vec<rust_rule_engine::backward::GRLQuery>, Box<dyn std::error::Error>> {
     let mut queries = Vec::new();
 
     // Split by query definitions
@@ -137,7 +153,7 @@ fn setup_test_rules(engine: &mut BackwardEngine) -> Result<(), Box<dyn std::erro
 
 /// Setup test facts
 fn setup_test_facts() -> Facts {
-    let mut facts = Facts::new();
+    let facts = Facts::new();
 
     // Customer data
     facts.set("Customer.ID", Value::String("C123".to_string()));

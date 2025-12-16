@@ -3,9 +3,9 @@
 //! This example shows how to use variable bindings and unification
 //! for pattern matching in backward chaining queries.
 
-use rust_rule_engine::{Facts, KnowledgeBase};
+use rust_rule_engine::backward::{BackwardEngine, Bindings, Expression, ExpressionParser, Unifier};
 use rust_rule_engine::types::Value;
-use rust_rule_engine::backward::{BackwardEngine, Bindings, Unifier, Expression, ExpressionParser};
+use rust_rule_engine::{Facts, KnowledgeBase};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╔══════════════════════════════════════════════════════════════╗");
@@ -32,7 +32,10 @@ fn demo_1_basic_variable_binding() -> Result<(), Box<dyn std::error::Error>> {
 
     // Bind variables to values
     println!("Binding variables:");
-    bindings.bind("Customer".to_string(), Value::String("John Doe".to_string()))?;
+    bindings.bind(
+        "Customer".to_string(),
+        Value::String("John Doe".to_string()),
+    )?;
     println!("  ?Customer = \"John Doe\"");
 
     bindings.bind("Age".to_string(), Value::Number(35.0))?;
@@ -63,7 +66,7 @@ fn demo_2_pattern_matching_with_variables() -> Result<(), Box<dyn std::error::Er
     println!("─────────────────────────────────────────────────────────────");
 
     // Setup facts
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     facts.set("User.Name", Value::String("Alice".to_string()));
     facts.set("User.Age", Value::Number(28.0));
     facts.set("User.IsVIP", Value::Boolean(true));
@@ -84,17 +87,26 @@ fn demo_2_pattern_matching_with_variables() -> Result<(), Box<dyn std::error::Er
     // Match 1: User.IsVIP == true
     let expr1 = ExpressionParser::parse("User.IsVIP == true")?;
     let match1 = Unifier::match_expression(&expr1, &facts, &mut bindings)?;
-    println!("  User.IsVIP == true -> {}", if match1 { "✓ Match" } else { "✗ No match" });
+    println!(
+        "  User.IsVIP == true -> {}",
+        if match1 { "✓ Match" } else { "✗ No match" }
+    );
 
     // Match 2: Order.Amount > 1000
     let expr2 = ExpressionParser::parse("Order.Amount > 1000")?;
     let match2 = Unifier::match_expression(&expr2, &facts, &mut bindings)?;
-    println!("  Order.Amount > 1000 -> {}", if match2 { "✓ Match" } else { "✗ No match" });
+    println!(
+        "  Order.Amount > 1000 -> {}",
+        if match2 { "✓ Match" } else { "✗ No match" }
+    );
 
     // Match 3: User.Age < 25 (should fail)
     let expr3 = ExpressionParser::parse("User.Age < 25")?;
     let match3 = Unifier::match_expression(&expr3, &facts, &mut bindings)?;
-    println!("  User.Age < 25 -> {}", if match3 { "✓ Match" } else { "✗ No match" });
+    println!(
+        "  User.Age < 25 -> {}",
+        if match3 { "✓ Match" } else { "✗ No match" }
+    );
 
     println!("\n✓ Demo 2 complete\n");
     Ok(())
@@ -115,7 +127,10 @@ fn demo_3_unification_algorithm() -> Result<(), Box<dyn std::error::Error>> {
     let lit_42 = Expression::Literal(Value::Number(42.0));
 
     let result1 = Unifier::unify(&var_x, &lit_42, &mut bindings)?;
-    println!("   Result: {}", if result1 { "Success ✓" } else { "Failed ✗" });
+    println!(
+        "   Result: {}",
+        if result1 { "Success ✓" } else { "Failed ✗" }
+    );
     if let Some(x_val) = bindings.get("X") {
         println!("   ?X is now bound to: {:?}", x_val);
     }
@@ -123,20 +138,29 @@ fn demo_3_unification_algorithm() -> Result<(), Box<dyn std::error::Error>> {
     // Unify 2: Already bound variable with same value
     println!("\n2. Unifying ?X (already 42) with 42 again:");
     let result2 = Unifier::unify(&var_x, &lit_42, &mut bindings)?;
-    println!("   Result: {}", if result2 { "Success ✓" } else { "Failed ✗" });
+    println!(
+        "   Result: {}",
+        if result2 { "Success ✓" } else { "Failed ✗" }
+    );
 
     // Unify 3: Two literals (same value)
     println!("\n3. Unifying literal 100 with literal 100:");
     let lit1 = Expression::Literal(Value::Number(100.0));
     let lit2 = Expression::Literal(Value::Number(100.0));
     let result3 = Unifier::unify(&lit1, &lit2, &mut bindings)?;
-    println!("   Result: {}", if result3 { "Success ✓" } else { "Failed ✗" });
+    println!(
+        "   Result: {}",
+        if result3 { "Success ✓" } else { "Failed ✗" }
+    );
 
     // Unify 4: Two literals (different values)
     println!("\n4. Unifying literal 100 with literal 200:");
     let lit3 = Expression::Literal(Value::Number(200.0));
     let result4 = Unifier::unify(&lit1, &lit3, &mut bindings)?;
-    println!("   Result: {}", if result4 { "Success ✓" } else { "Failed ✗" });
+    println!(
+        "   Result: {}",
+        if result4 { "Success ✓" } else { "Failed ✗" }
+    );
 
     println!("\n✓ Demo 3 complete\n");
     Ok(())
@@ -171,7 +195,7 @@ rule "ApproveOrder" {
 }
     "#;
 
-    let mut kb = KnowledgeBase::new("VariableDemo");
+    let kb = KnowledgeBase::new("VariableDemo");
     for rule in rust_rule_engine::parser::grl::GRLParser::parse_rules(rules)? {
         kb.add_rule(rule)?;
     }

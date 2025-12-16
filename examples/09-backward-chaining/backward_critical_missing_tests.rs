@@ -43,7 +43,7 @@ fn test_1_or_condition_edge_cases() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 1: OR Condition Edge Cases");
     println!("----------------------------------");
 
-    let mut kb = KnowledgeBase::new("or_test");
+    let kb = KnowledgeBase::new("or_test");
 
     // Rule with OR: A OR B OR C
     let or_chain = ConditionGroup::Compound {
@@ -118,7 +118,7 @@ fn test_2_cycle_detection() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 2: Cycle Detection");
     println!("-------------------------");
 
-    let mut kb = KnowledgeBase::new("cycle_test");
+    let kb = KnowledgeBase::new("cycle_test");
 
     // Create a cycle: A requires B, B requires A
     kb.add_rule(Rule::new(
@@ -154,7 +154,10 @@ fn test_2_cycle_detection() -> Result<(), Box<dyn std::error::Error>> {
     // Should detect cycle and return false (not hang forever)
     let result = engine.query("B == true", &mut facts)?;
 
-    assert!(!result.provable, "✗ Cycle should be detected and query should fail");
+    assert!(
+        !result.provable,
+        "✗ Cycle should be detected and query should fail"
+    );
     println!("✓ Cycle detected (A→B→A)");
     println!("✓ Query returned without infinite loop\n");
 
@@ -166,7 +169,7 @@ fn test_3_max_depth_limit() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 3: Max Depth Limit");
     println!("-------------------------");
 
-    let mut kb = KnowledgeBase::new("depth_test");
+    let kb = KnowledgeBase::new("depth_test");
 
     // Create chain: A → B → C → D → E
     for (i, (from, to)) in [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E")]
@@ -212,7 +215,7 @@ fn test_4_complex_nested_conditions() -> Result<(), Box<dyn std::error::Error>> 
     println!("📝 Test 4: Complex Nested Conditions");
     println!("------------------------------------");
 
-    let mut kb = KnowledgeBase::new("nested_test");
+    let kb = KnowledgeBase::new("nested_test");
 
     // Condition: (A OR B) AND NOT(C)
     let or_part = ConditionGroup::Compound {
@@ -262,7 +265,10 @@ fn test_4_complex_nested_conditions() -> Result<(), Box<dyn std::error::Error>> 
     facts1.set("B", Value::Boolean(false));
     facts1.set("C", Value::Boolean(false));
     let result1 = engine.query("Result == true", &mut facts1)?;
-    assert!(result1.provable, "✗ Should pass: (true OR false) AND NOT(false)");
+    assert!(
+        result1.provable,
+        "✗ Should pass: (true OR false) AND NOT(false)"
+    );
     println!("✓ (A OR B) AND NOT(C): A=true, C=false → PASS");
 
     // Test 2: A=true, C=true → FAIL (NOT(C) is false)
@@ -271,7 +277,10 @@ fn test_4_complex_nested_conditions() -> Result<(), Box<dyn std::error::Error>> 
     facts2.set("B", Value::Boolean(false));
     facts2.set("C", Value::Boolean(true));
     let result2 = engine.query("Result == true", &mut facts2)?;
-    assert!(!result2.provable, "✗ Should fail: (true OR false) AND NOT(true)");
+    assert!(
+        !result2.provable,
+        "✗ Should fail: (true OR false) AND NOT(true)"
+    );
     println!("✓ (A OR B) AND NOT(C): A=true, C=true → FAIL");
 
     // Test 3: A=false, B=false → FAIL ((A OR B) is false)
@@ -280,7 +289,10 @@ fn test_4_complex_nested_conditions() -> Result<(), Box<dyn std::error::Error>> 
     facts3.set("B", Value::Boolean(false));
     facts3.set("C", Value::Boolean(false));
     let result3 = engine.query("Result == true", &mut facts3)?;
-    assert!(!result3.provable, "✗ Should fail: (false OR false) AND NOT(false)");
+    assert!(
+        !result3.provable,
+        "✗ Should fail: (false OR false) AND NOT(false)"
+    );
     println!("✓ (A OR B) AND NOT(C): A=false, B=false → FAIL\n");
 
     Ok(())
@@ -291,7 +303,7 @@ fn test_5_string_operators() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 5: String Operators");
     println!("--------------------------");
 
-    let mut kb = KnowledgeBase::new("string_test");
+    let kb = KnowledgeBase::new("string_test");
 
     // Contains
     kb.add_rule(Rule::new(
@@ -345,7 +357,7 @@ fn test_6_function_edge_cases() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 6: Function Call Edge Cases");
     println!("-----------------------------------");
 
-    let mut kb = KnowledgeBase::new("func_test");
+    let kb = KnowledgeBase::new("func_test");
 
     // len() on empty string
     kb.add_rule(Rule::new(
@@ -379,7 +391,7 @@ fn test_7_action_types() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 7: Action Types (Set, Log)");
     println!("----------------------------------");
 
-    let mut kb = KnowledgeBase::new("action_test");
+    let kb = KnowledgeBase::new("action_test");
 
     // Multiple actions: Log + Set + Set
     kb.add_rule(Rule::new(
@@ -426,7 +438,7 @@ fn test_8_diamond_dependency() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 8: Diamond Dependency");
     println!("-----------------------------");
 
-    let mut kb = KnowledgeBase::new("diamond_test");
+    let kb = KnowledgeBase::new("diamond_test");
 
     // Diamond: Start → Path1 → End, Start → Path2 → End
     kb.add_rule(Rule::new(
@@ -508,7 +520,10 @@ fn test_9_empty_knowledge_base() -> Result<(), Box<dyn std::error::Error>> {
     let result = engine.query("Y == true", &mut facts)?;
 
     assert!(!result.provable, "✗ Should fail with empty KB");
-    assert!(!result.missing_facts.is_empty(), "✗ Should report missing facts");
+    assert!(
+        !result.missing_facts.is_empty(),
+        "✗ Should report missing facts"
+    );
     println!("✓ Empty KB returns unprovable");
     println!("✓ Missing facts reported: {:?}\n", result.missing_facts);
 
@@ -520,10 +535,10 @@ fn test_10_large_rule_chain() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 10: Large Rule Chain");
     println!("----------------------------");
 
-    let mut kb = KnowledgeBase::new("large_chain");
+    let kb = KnowledgeBase::new("large_chain");
 
     // Create chain of 8 rules: A → B → C → D → E → F → G → H
-    let chain = vec!["A", "B", "C", "D", "E", "F", "G", "H"];
+    let chain = ["A", "B", "C", "D", "E", "F", "G", "H"];
     for i in 0..chain.len() - 1 {
         kb.add_rule(Rule::new(
             format!("Rule{}", i),
@@ -551,7 +566,10 @@ fn test_10_large_rule_chain() -> Result<(), Box<dyn std::error::Error>> {
 
     let result = engine.query("H == true", &mut facts)?;
 
-    assert!(result.provable, "✗ Should handle large chain with sufficient depth");
+    assert!(
+        result.provable,
+        "✗ Should handle large chain with sufficient depth"
+    );
     println!("✓ Successfully proved 8-level chain (A→B→...→H)");
     println!("✓ Max depth = {}, chain length = 7", result.stats.max_depth);
     println!("✓ Rules evaluated: {}", result.stats.rules_evaluated);

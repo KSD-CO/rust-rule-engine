@@ -1,3 +1,4 @@
+use rust_rule_engine::rete::facts::{FactValue, TypedFacts};
 /// Demo: Variable Binding and Multi-Object Pattern Matching (P3 Feature)
 ///
 /// This example demonstrates advanced Drools-style features:
@@ -5,10 +6,8 @@
 /// - Multi-object pattern matching
 /// - Join conditions between facts
 /// - Complex cross-fact constraints
-
-use rust_rule_engine::rete::pattern::{PatternBuilder, MultiPattern};
+use rust_rule_engine::rete::pattern::{MultiPattern, PatternBuilder};
 use rust_rule_engine::rete::working_memory::WorkingMemory;
-use rust_rule_engine::rete::facts::{TypedFacts, FactValue};
 
 fn main() {
     println!("\n🔗 Variable Binding & Multi-Pattern Demo (Drools-style)");
@@ -154,9 +153,11 @@ fn main() {
 
     println!("Found {} high-value person-order pairs:", matches3.len());
     for (_, bindings) in &matches3 {
-        println!("  Customer: {}, Min: {}",
+        println!(
+            "  Customer: {}, Min: {}",
             bindings.get("$name").unwrap(),
-            bindings.get("$minOrder").unwrap());
+            bindings.get("$minOrder").unwrap()
+        );
     }
 
     // Example 4: Three-Way Join
@@ -204,12 +205,18 @@ fn main() {
 
     let matches4 = multi4.match_all(&wm4);
 
-    println!("Found {} complete customer-order-product chains:", matches4.len());
+    println!(
+        "Found {} complete customer-order-product chains:",
+        matches4.len()
+    );
     for (handles, bindings) in &matches4 {
         println!("  Chain: {} handles", handles.len());
         println!("    Customer: {}", bindings.get("$customerName").unwrap());
         println!("    Product ID: {}", bindings.get("$productId").unwrap());
-        println!("    Product Name: {}", bindings.get("$productName").unwrap());
+        println!(
+            "    Product Name: {}",
+            bindings.get("$productName").unwrap()
+        );
         println!("    Price: {}", bindings.get("$price").unwrap());
     }
 

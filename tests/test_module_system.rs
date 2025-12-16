@@ -6,7 +6,9 @@
 //! - Visibility rules
 //! - Module focus
 
-use rust_rule_engine::engine::module::{ModuleManager, ExportList, ExportItem, ItemType, ImportType};
+use rust_rule_engine::engine::module::{
+    ExportItem, ExportList, ImportType, ItemType, ModuleManager,
+};
 
 #[test]
 fn test_basic_module_operations() {
@@ -97,12 +99,15 @@ fn test_export_specific() {
     sensors.add_rule("control-fan");
 
     // Export only sensor-* rules
-    manager.export_all_from("SENSORS", ExportList::Specific(vec![
-        ExportItem {
-            item_type: ItemType::Rule,
-            pattern: "sensor-*".to_string(),
-        },
-    ])).unwrap();
+    manager
+        .export_all_from(
+            "SENSORS",
+            ExportList::Specific(vec![ExportItem {
+                item_type: ItemType::Rule,
+                pattern: "sensor-*".to_string(),
+            }]),
+        )
+        .unwrap();
 
     let sensors = manager.get_module("SENSORS").unwrap();
     assert!(sensors.exports_rule("sensor-temp"));
@@ -136,11 +141,15 @@ fn test_import_from_module() {
     sensors.set_exports(ExportList::All);
 
     // Import in CONTROL
-    manager.import_from("CONTROL", "SENSORS", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("CONTROL", "SENSORS", ImportType::AllRules, "*")
+        .unwrap();
 
     // Verify visibility
     assert!(manager.is_rule_visible("sensor-temp", "CONTROL").unwrap());
-    assert!(manager.is_rule_visible("sensor-pressure", "CONTROL").unwrap());
+    assert!(manager
+        .is_rule_visible("sensor-pressure", "CONTROL")
+        .unwrap());
 }
 
 #[test]
@@ -157,12 +166,18 @@ fn test_import_with_pattern() {
     sensors.set_exports(ExportList::All);
 
     // Import only sensor-* rules
-    manager.import_from("CONTROL", "SENSORS", ImportType::Rules, "sensor-*").unwrap();
+    manager
+        .import_from("CONTROL", "SENSORS", ImportType::Rules, "sensor-*")
+        .unwrap();
 
     // Check visibility
     assert!(manager.is_rule_visible("sensor-temp", "CONTROL").unwrap());
-    assert!(manager.is_rule_visible("sensor-pressure", "CONTROL").unwrap());
-    assert!(!manager.is_rule_visible("calibrate-sensor", "CONTROL").unwrap()); // Not matching pattern
+    assert!(manager
+        .is_rule_visible("sensor-pressure", "CONTROL")
+        .unwrap());
+    assert!(!manager
+        .is_rule_visible("calibrate-sensor", "CONTROL")
+        .unwrap()); // Not matching pattern
 }
 
 #[test]
@@ -191,7 +206,9 @@ fn test_visibility_imported_rules() {
     mod_a.set_exports(ExportList::All);
 
     // MOD_B imports from MOD_A
-    manager.import_from("MOD_B", "MOD_A", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD_B", "MOD_A", ImportType::AllRules, "*")
+        .unwrap();
 
     // MOD_B should see MOD_A's rules
     assert!(manager.is_rule_visible("rule-a1", "MOD_B").unwrap());
@@ -217,7 +234,9 @@ fn test_get_visible_rules() {
     let mod2 = manager.get_module_mut("MOD2").unwrap();
     mod2.add_rule("rule3");
 
-    manager.import_from("MOD2", "MOD1", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD2", "MOD1", ImportType::AllRules, "*")
+        .unwrap();
 
     // Get all visible rules in MOD2
     let visible = manager.get_visible_rules("MOD2").unwrap();
@@ -240,10 +259,14 @@ fn test_template_visibility() {
     sensors.set_exports(ExportList::All);
 
     // CONTROL imports templates
-    manager.import_from("CONTROL", "SENSORS", ImportType::AllTemplates, "*").unwrap();
+    manager
+        .import_from("CONTROL", "SENSORS", ImportType::AllTemplates, "*")
+        .unwrap();
 
     // Check visibility
-    assert!(manager.is_template_visible("temperature", "CONTROL").unwrap());
+    assert!(manager
+        .is_template_visible("temperature", "CONTROL")
+        .unwrap());
     assert!(manager.is_template_visible("pressure", "CONTROL").unwrap());
 }
 
@@ -305,7 +328,9 @@ fn test_complex_import_scenario() {
     mod_a.set_exports(ExportList::All);
 
     // MOD_B imports from MOD_A
-    manager.import_from("MOD_B", "MOD_A", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD_B", "MOD_A", ImportType::AllRules, "*")
+        .unwrap();
 
     // MOD_B has its own rules and exports them
     let mod_b = manager.get_module_mut("MOD_B").unwrap();
@@ -313,7 +338,9 @@ fn test_complex_import_scenario() {
     mod_b.set_exports(ExportList::All);
 
     // MOD_C imports from MOD_B
-    manager.import_from("MOD_C", "MOD_B", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD_C", "MOD_B", ImportType::AllRules, "*")
+        .unwrap();
 
     // MOD_C should see MOD_B's rules
     assert!(manager.is_rule_visible("b-rule", "MOD_C").unwrap());
@@ -356,7 +383,9 @@ fn test_cycle_detection_simple_cycle_a_b() {
     manager.create_module("MOD_B").unwrap();
 
     // A imports from B
-    manager.import_from("MOD_A", "MOD_B", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD_A", "MOD_B", ImportType::AllRules, "*")
+        .unwrap();
 
     // Try to import B from A - should fail
     let result = manager.import_from("MOD_B", "MOD_A", ImportType::AllRules, "*");
@@ -374,8 +403,12 @@ fn test_cycle_detection_three_module_cycle() {
     manager.create_module("MOD_C").unwrap();
 
     // Create chain: A -> B -> C
-    manager.import_from("MOD_A", "MOD_B", ImportType::AllRules, "*").unwrap();
-    manager.import_from("MOD_B", "MOD_C", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD_A", "MOD_B", ImportType::AllRules, "*")
+        .unwrap();
+    manager
+        .import_from("MOD_B", "MOD_C", ImportType::AllRules, "*")
+        .unwrap();
 
     // Try to create cycle by importing C from A
     // This would make C -> A, completing the cycle: A -> B -> C -> A
@@ -394,9 +427,15 @@ fn test_cycle_detection_longer_chain() {
     manager.create_module("MOD_D").unwrap();
 
     // Create chain: A -> B -> C -> D
-    manager.import_from("MOD_A", "MOD_B", ImportType::AllRules, "*").unwrap();
-    manager.import_from("MOD_B", "MOD_C", ImportType::AllRules, "*").unwrap();
-    manager.import_from("MOD_C", "MOD_D", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD_A", "MOD_B", ImportType::AllRules, "*")
+        .unwrap();
+    manager
+        .import_from("MOD_B", "MOD_C", ImportType::AllRules, "*")
+        .unwrap();
+    manager
+        .import_from("MOD_C", "MOD_D", ImportType::AllRules, "*")
+        .unwrap();
 
     // Try to create cycle by importing D from A
     let result = manager.import_from("MOD_D", "MOD_A", ImportType::AllRules, "*");
@@ -412,15 +451,23 @@ fn test_cycle_detection_allows_valid_chains() {
     manager.create_module("MOD_C").unwrap();
 
     // Create valid chain: A -> B -> C
-    assert!(manager.import_from("MOD_A", "MOD_B", ImportType::AllRules, "*").is_ok());
-    assert!(manager.import_from("MOD_B", "MOD_C", ImportType::AllRules, "*").is_ok());
+    assert!(manager
+        .import_from("MOD_A", "MOD_B", ImportType::AllRules, "*")
+        .is_ok());
+    assert!(manager
+        .import_from("MOD_B", "MOD_C", ImportType::AllRules, "*")
+        .is_ok());
 
     // Try to create another valid import that doesn't cycle
     manager.create_module("MOD_D").unwrap();
-    assert!(manager.import_from("MOD_D", "MOD_A", ImportType::AllRules, "*").is_ok());
+    assert!(manager
+        .import_from("MOD_D", "MOD_A", ImportType::AllRules, "*")
+        .is_ok());
 
     // Should be able to add independent chain
-    assert!(manager.import_from("MOD_A", "MOD_D", ImportType::AllRules, "*").is_err()); // But not reverse
+    assert!(manager
+        .import_from("MOD_A", "MOD_D", ImportType::AllRules, "*")
+        .is_err()); // But not reverse
 }
 
 #[test]
@@ -432,13 +479,19 @@ fn test_cycle_detection_multiple_independent_chains() {
     manager.create_module("CHAIN2_B").unwrap();
 
     // First chain: CHAIN1_A -> CHAIN1_B
-    assert!(manager.import_from("CHAIN1_A", "CHAIN1_B", ImportType::AllRules, "*").is_ok());
+    assert!(manager
+        .import_from("CHAIN1_A", "CHAIN1_B", ImportType::AllRules, "*")
+        .is_ok());
 
     // Second chain: CHAIN2_A -> CHAIN2_B
-    assert!(manager.import_from("CHAIN2_A", "CHAIN2_B", ImportType::AllRules, "*").is_ok());
+    assert!(manager
+        .import_from("CHAIN2_A", "CHAIN2_B", ImportType::AllRules, "*")
+        .is_ok());
 
     // Both should work independently
-    assert!(manager.import_from("CHAIN1_B", "CHAIN2_B", ImportType::AllRules, "*").is_ok());
+    assert!(manager
+        .import_from("CHAIN1_B", "CHAIN2_B", ImportType::AllRules, "*")
+        .is_ok());
 }
 
 #[test]
@@ -449,11 +502,17 @@ fn test_cycle_detection_diamond_dependency() {
     manager.create_module("MOD_C").unwrap();
 
     // Diamond pattern: B -> A <- C (no cycle)
-    assert!(manager.import_from("MOD_B", "MOD_A", ImportType::AllRules, "*").is_ok());
-    assert!(manager.import_from("MOD_C", "MOD_A", ImportType::AllRules, "*").is_ok());
+    assert!(manager
+        .import_from("MOD_B", "MOD_A", ImportType::AllRules, "*")
+        .is_ok());
+    assert!(manager
+        .import_from("MOD_C", "MOD_A", ImportType::AllRules, "*")
+        .is_ok());
 
     // Should not create cycle when importing between B and C if they don't complete a cycle to A
-    assert!(manager.import_from("MOD_B", "MOD_C", ImportType::AllRules, "*").is_ok());
+    assert!(manager
+        .import_from("MOD_B", "MOD_C", ImportType::AllRules, "*")
+        .is_ok());
     // But reverse would: C -> B -> A <- C (cycle)
     let result = manager.import_from("MOD_C", "MOD_B", ImportType::AllRules, "*");
     assert!(result.is_err());
@@ -467,17 +526,21 @@ fn test_import_graph_tracking() {
     manager.create_module("MOD_C").unwrap();
 
     // Add imports
-    manager.import_from("MOD_A", "MOD_B", ImportType::AllRules, "*").unwrap();
-    manager.import_from("MOD_B", "MOD_C", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD_A", "MOD_B", ImportType::AllRules, "*")
+        .unwrap();
+    manager
+        .import_from("MOD_B", "MOD_C", ImportType::AllRules, "*")
+        .unwrap();
 
     // Check import graph
     let graph = manager.get_import_graph();
     assert!(graph.contains_key("MOD_A"));
     assert!(graph.contains_key("MOD_B"));
-    
+
     let mod_a_imports = graph.get("MOD_A").unwrap();
     assert!(mod_a_imports.contains("MOD_B"));
-    
+
     let mod_b_imports = graph.get("MOD_B").unwrap();
     assert!(mod_b_imports.contains("MOD_C"));
 }
@@ -488,11 +551,13 @@ fn test_import_graph_debug_representation() {
     manager.create_module("MOD_A").unwrap();
     manager.create_module("MOD_B").unwrap();
 
-    manager.import_from("MOD_A", "MOD_B", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD_A", "MOD_B", ImportType::AllRules, "*")
+        .unwrap();
 
     let graph_debug = manager.get_import_graph_debug();
     assert!(!graph_debug.is_empty());
-    
+
     // Find MOD_A in the debug graph
     let mod_a_entry = graph_debug.iter().find(|(name, _)| name == "MOD_A");
     assert!(mod_a_entry.is_some());
@@ -508,11 +573,17 @@ fn test_cycle_detection_after_module_deletion() {
     manager.create_module("MOD_C").unwrap();
 
     // Create chain: A -> B -> C
-    manager.import_from("MOD_A", "MOD_B", ImportType::AllRules, "*").unwrap();
-    manager.import_from("MOD_B", "MOD_C", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("MOD_A", "MOD_B", ImportType::AllRules, "*")
+        .unwrap();
+    manager
+        .import_from("MOD_B", "MOD_C", ImportType::AllRules, "*")
+        .unwrap();
 
     // Try to create cycle (should fail)
-    assert!(manager.import_from("MOD_C", "MOD_A", ImportType::AllRules, "*").is_err());
+    assert!(manager
+        .import_from("MOD_C", "MOD_A", ImportType::AllRules, "*")
+        .is_err());
 
     // Delete MOD_B
     manager.delete_module("MOD_B").unwrap();
@@ -521,17 +592,21 @@ fn test_cycle_detection_after_module_deletion() {
     manager.create_module("MOD_B").unwrap();
 
     // Now MOD_A -> MOD_B should work (since old imports are gone)
-    assert!(manager.import_from("MOD_A", "MOD_B", ImportType::AllRules, "*").is_ok());
+    assert!(manager
+        .import_from("MOD_A", "MOD_B", ImportType::AllRules, "*")
+        .is_ok());
 
     // And MOD_B -> MOD_C should work too
-    assert!(manager.import_from("MOD_B", "MOD_C", ImportType::AllRules, "*").is_ok());
+    assert!(manager
+        .import_from("MOD_B", "MOD_C", ImportType::AllRules, "*")
+        .is_ok());
 }
 
 #[test]
 fn test_complex_cycle_detection_scenario() {
     // Real-world scenario: Smart home system with multiple subsystems
     let mut manager = ModuleManager::new();
-    
+
     // Create modules for different subsystems
     manager.create_module("SENSORS").unwrap();
     manager.create_module("CONTROL").unwrap();
@@ -539,14 +614,24 @@ fn test_complex_cycle_detection_scenario() {
     manager.create_module("FEEDBACK").unwrap();
 
     // Valid architecture: SENSORS -> CONTROL -> AUTOMATION -> FEEDBACK
-    manager.import_from("SENSORS", "CONTROL", ImportType::AllRules, "control-*").unwrap();
-    manager.import_from("CONTROL", "AUTOMATION", ImportType::AllRules, "auto-*").unwrap();
-    manager.import_from("AUTOMATION", "FEEDBACK", ImportType::AllRules, "feedback-*").unwrap();
+    manager
+        .import_from("SENSORS", "CONTROL", ImportType::AllRules, "control-*")
+        .unwrap();
+    manager
+        .import_from("CONTROL", "AUTOMATION", ImportType::AllRules, "auto-*")
+        .unwrap();
+    manager
+        .import_from("AUTOMATION", "FEEDBACK", ImportType::AllRules, "feedback-*")
+        .unwrap();
 
     // Add some legitimate cross-module references (not forming cycles)
     manager.create_module("UTILS").unwrap();
-    manager.import_from("UTILS", "FEEDBACK", ImportType::AllRules, "*").unwrap();
-    manager.import_from("CONTROL", "UTILS", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("UTILS", "FEEDBACK", ImportType::AllRules, "*")
+        .unwrap();
+    manager
+        .import_from("CONTROL", "UTILS", ImportType::AllRules, "*")
+        .unwrap();
 
     // Now try to create a cycle - FEEDBACK trying to import from SENSORS
     // This would create: SENSORS -> CONTROL -> AUTOMATION -> FEEDBACK -> SENSORS
@@ -562,12 +647,16 @@ fn test_cycle_error_message_clarity() {
     manager.create_module("B").unwrap();
     manager.create_module("C").unwrap();
 
-    manager.import_from("A", "B", ImportType::AllRules, "*").unwrap();
-    manager.import_from("B", "C", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("A", "B", ImportType::AllRules, "*")
+        .unwrap();
+    manager
+        .import_from("B", "C", ImportType::AllRules, "*")
+        .unwrap();
 
     let result = manager.import_from("C", "A", ImportType::AllRules, "*");
     assert!(result.is_err());
-    
+
     let err_msg = result.unwrap_err().to_string();
     // Should contain cycle detection message
     assert!(err_msg.contains("Cyclic"));

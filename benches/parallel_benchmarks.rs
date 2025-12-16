@@ -176,7 +176,7 @@ fn bench_medium_sequential_vs_parallel(c: &mut Criterion) {
     // Parallel with different thread counts
     for threads in [2, 4, 8].iter() {
         let (par_engine, kb, par_facts) = create_parallel_engine_and_kb(50, 100, *threads);
-        group.bench_function(&format!("parallel_{}threads_50rules", threads), |b| {
+        group.bench_function(format!("parallel_{}threads_50rules", threads), |b| {
             b.iter(|| {
                 black_box(par_engine.execute_parallel(&kb, &par_facts, false).unwrap());
             })
@@ -204,7 +204,7 @@ fn bench_large_sequential_vs_parallel(c: &mut Criterion) {
     // Parallel with different thread counts
     for threads in [2, 4, 8, 12].iter() {
         let (par_engine, kb, par_facts) = create_parallel_engine_and_kb(200, 500, *threads);
-        group.bench_function(&format!("parallel_{}threads_200rules", threads), |b| {
+        group.bench_function(format!("parallel_{}threads_200rules", threads), |b| {
             b.iter(|| {
                 black_box(par_engine.execute_parallel(&kb, &par_facts, false).unwrap());
             })

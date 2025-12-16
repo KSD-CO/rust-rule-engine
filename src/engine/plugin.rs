@@ -53,7 +53,7 @@ pub trait RulePlugin: Send + Sync {
     fn register_actions(&self, engine: &mut RustRuleEngine) -> Result<()>;
 
     /// Register custom functions with the engine
-    fn register_functions(&self, engine: &mut RustRuleEngine) -> Result<()> {
+    fn register_functions(&self, _engine: &mut RustRuleEngine) -> Result<()> {
         // Default: no functions to register
         Ok(())
     }
@@ -151,7 +151,7 @@ impl PluginManager {
 
     /// Unload a plugin
     pub fn unload_plugin(&mut self, name: &str) -> Result<()> {
-        let plugin = self.plugins.get_mut(name).ok_or_else(|| {
+        let _plugin = self.plugins.get_mut(name).ok_or_else(|| {
             crate::errors::RuleEngineError::PluginError {
                 message: format!("Plugin '{}' not found", name),
             }

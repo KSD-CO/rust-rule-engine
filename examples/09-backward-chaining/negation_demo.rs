@@ -6,8 +6,8 @@
 
 use rust_rule_engine::backward::BackwardEngine;
 use rust_rule_engine::engine::facts::Facts;
-use rust_rule_engine::KnowledgeBase;
 use rust_rule_engine::types::Value;
+use rust_rule_engine::KnowledgeBase;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚫 Negation in Backward Chaining Demo");
@@ -56,19 +56,40 @@ fn demo_not_banned() -> Result<(), Box<dyn std::error::Error>> {
     // Query 1: Normal positive query - Check if Bob is banned
     println!("Query 1: Is Bob banned?");
     let result = engine.query("bob.is_banned == true", &mut facts)?;
-    println!("  Result: {}", if result.provable { "✅ YES (proven)" } else { "❌ NO (not proven)" });
+    println!(
+        "  Result: {}",
+        if result.provable {
+            "✅ YES (proven)"
+        } else {
+            "❌ NO (not proven)"
+        }
+    );
     println!();
 
     // Query 2: Negated query - Alice is NOT banned
     println!("Query 2: Is Alice NOT banned? (NOT alice.is_banned == true)");
     let result = engine.query("NOT alice.is_banned == true", &mut facts)?;
-    println!("  Result: {}", if result.provable { "✅ YES (Alice is not banned)" } else { "❌ NO" });
+    println!(
+        "  Result: {}",
+        if result.provable {
+            "✅ YES (Alice is not banned)"
+        } else {
+            "❌ NO"
+        }
+    );
     println!();
 
     // Query 3: Negated query - Bob is NOT banned (should fail)
     println!("Query 3: Is Bob NOT banned? (NOT bob.is_banned == true)");
     let result = engine.query("NOT bob.is_banned == true", &mut facts)?;
-    println!("  Result: {}", if result.provable { "✅ YES" } else { "❌ NO (Bob IS banned, so NOT fails)" });
+    println!(
+        "  Result: {}",
+        if result.provable {
+            "✅ YES"
+        } else {
+            "❌ NO (Bob IS banned, so NOT fails)"
+        }
+    );
     println!();
 
     Ok(())
@@ -103,20 +124,38 @@ fn demo_available_items() -> Result<(), Box<dyn std::error::Error>> {
     // Query: Which items are available (NOT sold)?
     println!("Query: Is Laptop available? (NOT laptop.sold == true)");
     let result = engine.query("NOT laptop.sold == true", &mut facts)?;
-    println!("  Result: {} (Laptop has no 'sold' field, so it's available)",
-        if result.provable { "✅ AVAILABLE" } else { "❌ NOT AVAILABLE" });
+    println!(
+        "  Result: {} (Laptop has no 'sold' field, so it's available)",
+        if result.provable {
+            "✅ AVAILABLE"
+        } else {
+            "❌ NOT AVAILABLE"
+        }
+    );
     println!();
 
     println!("Query: Is Mouse available? (NOT mouse.sold == true)");
     let result = engine.query("NOT mouse.sold == true", &mut facts)?;
-    println!("  Result: {} (Mouse IS sold)",
-        if result.provable { "✅ AVAILABLE" } else { "❌ NOT AVAILABLE" });
+    println!(
+        "  Result: {} (Mouse IS sold)",
+        if result.provable {
+            "✅ AVAILABLE"
+        } else {
+            "❌ NOT AVAILABLE"
+        }
+    );
     println!();
 
     println!("Query: Is Keyboard available? (NOT keyboard.sold == true)");
     let result = engine.query("NOT keyboard.sold == true", &mut facts)?;
-    println!("  Result: {} (Keyboard has no 'sold' field, so it's available)",
-        if result.provable { "✅ AVAILABLE" } else { "❌ NOT AVAILABLE" });
+    println!(
+        "  Result: {} (Keyboard has no 'sold' field, so it's available)",
+        if result.provable {
+            "✅ AVAILABLE"
+        } else {
+            "❌ NOT AVAILABLE"
+        }
+    );
     println!();
 
     Ok(())
@@ -161,8 +200,14 @@ fn demo_eligible_users() -> Result<(), Box<dyn std::error::Error>> {
     let eligible = active.provable && not_banned.provable;
     println!("  is_active: {}", active.provable);
     println!("  NOT is_banned: {}", not_banned.provable);
-    println!("  Result: {} (Active AND NOT Banned)",
-        if eligible { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    println!(
+        "  Result: {} (Active AND NOT Banned)",
+        if eligible {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
     println!();
 
     println!("Is Bob eligible?");
@@ -171,8 +216,14 @@ fn demo_eligible_users() -> Result<(), Box<dyn std::error::Error>> {
     let eligible = active.provable && not_banned.provable;
     println!("  is_active: {}", active.provable);
     println!("  NOT is_banned: {}", not_banned.provable);
-    println!("  Result: {} (Active but IS banned)",
-        if eligible { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    println!(
+        "  Result: {} (Active but IS banned)",
+        if eligible {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
     println!();
 
     println!("Is Charlie eligible?");
@@ -181,8 +232,14 @@ fn demo_eligible_users() -> Result<(), Box<dyn std::error::Error>> {
     let eligible = active.provable && not_banned.provable;
     println!("  is_active: {}", active.provable);
     println!("  NOT is_banned: {}", not_banned.provable);
-    println!("  Result: {} (NOT active, even though not banned)",
-        if eligible { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    println!(
+        "  Result: {} (NOT active, even though not banned)",
+        if eligible {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
     println!();
 
     Ok(())
@@ -214,14 +271,26 @@ fn demo_closed_world() -> Result<(), Box<dyn std::error::Error>> {
     // Check who is NOT a member
     println!("Is Alice a NON-member? (NOT alice.is_member == true)");
     let result = engine.query("NOT alice.is_member == true", &mut facts)?;
-    println!("  Result: {} (Alice IS a member)",
-        if result.provable { "✅ YES, non-member" } else { "❌ NO, IS a member" });
+    println!(
+        "  Result: {} (Alice IS a member)",
+        if result.provable {
+            "✅ YES, non-member"
+        } else {
+            "❌ NO, IS a member"
+        }
+    );
     println!();
 
     println!("Is Charlie a NON-member? (NOT charlie.is_member == true)");
     let result = engine.query("NOT charlie.is_member == true", &mut facts)?;
-    println!("  Result: {} (No membership record = non-member under closed-world)",
-        if result.provable { "✅ YES, non-member" } else { "❌ NO, IS a member" });
+    println!(
+        "  Result: {} (No membership record = non-member under closed-world)",
+        if result.provable {
+            "✅ YES, non-member"
+        } else {
+            "❌ NO, IS a member"
+        }
+    );
     println!();
 
     println!("Explanation:");

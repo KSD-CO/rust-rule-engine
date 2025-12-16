@@ -2,7 +2,6 @@ use rust_rule_engine::engine::plugin::{PluginHealth, PluginMetadata, PluginState
 use rust_rule_engine::engine::RustRuleEngine;
 use rust_rule_engine::errors::{Result, RuleEngineError};
 use rust_rule_engine::types::Value;
-use std::collections::HashMap;
 
 pub struct StringUtilsPlugin {
     metadata: PluginMetadata,

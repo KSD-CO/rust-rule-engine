@@ -87,7 +87,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("   Parsed {} rules from GRL file", rules.len());
 
     // Create knowledge base and add rules
-    let mut kb = KnowledgeBase::new("ActionHandlerGRLDemo");
+    let kb = KnowledgeBase::new("ActionHandlerGRLDemo");
     for rule in rules {
         println!(
             "   📝 Added rule: {} (salience: {})",

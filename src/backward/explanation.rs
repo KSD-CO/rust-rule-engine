@@ -5,7 +5,7 @@
 //
 // Version: 1.9.0
 
-use super::goal::{Goal, GoalStatus};
+use super::goal::Goal;
 use super::proof_tree::{ProofNode, ProofNodeType, ProofStats, ProofTree};
 use super::unification::Bindings;
 use std::collections::HashMap;
@@ -68,7 +68,7 @@ impl ExplanationBuilder {
     }
 
     /// Mark goal as proven by a fact
-    pub fn goal_proven_by_fact(&mut self, goal: &Goal, bindings: &Bindings) {
+    pub fn goal_proven_by_fact(&mut self, _goal: &Goal, bindings: &Bindings) {
         if !self.enabled || self.node_stack.is_empty() {
             return;
         }
@@ -83,7 +83,7 @@ impl ExplanationBuilder {
     }
 
     /// Mark goal as proven by a rule
-    pub fn goal_proven_by_rule(&mut self, goal: &Goal, rule_name: &str, bindings: &Bindings) {
+    pub fn goal_proven_by_rule(&mut self, _goal: &Goal, rule_name: &str, bindings: &Bindings) {
         if !self.enabled || self.node_stack.is_empty() {
             return;
         }
@@ -99,7 +99,7 @@ impl ExplanationBuilder {
     }
 
     /// Mark goal as negation
-    pub fn goal_negation(&mut self, goal: &Goal, proven: bool) {
+    pub fn goal_negation(&mut self, _goal: &Goal, proven: bool) {
         if !self.enabled || self.node_stack.is_empty() {
             return;
         }
@@ -306,7 +306,11 @@ impl Explanation {
     }
 
     /// Recursively collect steps from tree
-    fn collect_steps(node: &ProofNode, steps: &mut Vec<ExplanationStep>, mut step_num: usize) -> usize {
+    fn collect_steps(
+        node: &ProofNode,
+        steps: &mut Vec<ExplanationStep>,
+        mut step_num: usize,
+    ) -> usize {
         let result = if node.proven {
             StepResult::Success
         } else {
@@ -346,9 +350,7 @@ impl Explanation {
         if tree.success {
             format!(
                 "Query '{}' was successfully proven using {} rules and {} facts.",
-                tree.query,
-                tree.stats.rules_evaluated,
-                tree.stats.facts_checked
+                tree.query, tree.stats.rules_evaluated, tree.stats.facts_checked
             )
         } else {
             format!(
@@ -363,11 +365,22 @@ impl Explanation {
 
     /// Print full explanation
     pub fn print(&self) {
-        println!("================================================================================");
+        println!(
+            "================================================================================"
+        );
         println!("EXPLANATION");
-        println!("================================================================================");
+        println!(
+            "================================================================================"
+        );
         println!("\nQuery: {}", self.query);
-        println!("Result: {}", if self.proof_tree.success { "✓ Proven" } else { "✗ Unprovable" });
+        println!(
+            "Result: {}",
+            if self.proof_tree.success {
+                "✓ Proven"
+            } else {
+                "✗ Unprovable"
+            }
+        );
         println!("\n{}\n", self.summary);
 
         println!("Step-by-Step Reasoning:");
@@ -411,7 +424,11 @@ impl Explanation {
         md.push_str(&format!("**Query:** `{}`\n\n", self.query));
         md.push_str(&format!(
             "**Result:** {}\n\n",
-            if self.proof_tree.success { "✓ Proven" } else { "✗ Unprovable" }
+            if self.proof_tree.success {
+                "✓ Proven"
+            } else {
+                "✗ Unprovable"
+            }
         ));
         md.push_str(&format!("**Summary:** {}\n\n", self.summary));
 

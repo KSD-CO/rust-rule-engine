@@ -1,15 +1,14 @@
+use rust_rule_engine::rete::action_result::ActionResults;
+use rust_rule_engine::rete::facts::TypedFacts;
+use rust_rule_engine::rete::network::{ReteUlNode, TypedReteUlRule};
 /// Demo: Incremental Propagation (P3 Feature)
 ///
 /// This example demonstrates incremental propagation:
 /// - Only re-evaluate affected rules when facts change
 /// - Track dependencies between rules and fact types
 /// - Efficient updates for large rule sets
-
 use rust_rule_engine::rete::propagation::IncrementalEngine;
-use rust_rule_engine::rete::network::{TypedReteUlRule, ReteUlNode};
 use rust_rule_engine::rete::AlphaNode; // Public re-export
-use rust_rule_engine::rete::facts::TypedFacts;
-use rust_rule_engine::rete::action_result::ActionResults;
 use std::time::Instant;
 
 fn main() {
@@ -122,7 +121,7 @@ fn main() {
                 operator: ">".to_string(),
                 value: "0".to_string(),
             }),
-            priority: i as i32,
+            priority: i,
             no_loop: true,
             action: std::sync::Arc::new(move |_, _: &mut ActionResults| {
                 // Do nothing
@@ -140,7 +139,7 @@ fn main() {
                 operator: ">".to_string(),
                 value: "0".to_string(),
             }),
-            priority: i as i32,
+            priority: i,
             no_loop: true,
             action: std::sync::Arc::new(move |_, _: &mut ActionResults| {}),
         };
@@ -159,7 +158,10 @@ fn main() {
     let handle2 = engine2.insert("Person".to_string(), person2);
 
     println!("\nInserted Person fact");
-    println!("  Only {} Person rules should be re-evaluated (incremental!)", rule_count);
+    println!(
+        "  Only {} Person rules should be re-evaluated (incremental!)",
+        rule_count
+    );
     println!("  {} Order rules are NOT affected\n", rule_count);
 
     // Measure update performance
@@ -179,9 +181,12 @@ fn main() {
     println!("Time: {:?}", duration);
     println!("Avg per update: {:?}", duration / iterations);
     println!("\n✨ Incremental propagation only evaluates affected rules!");
-    println!("   In this case: {} out of {} rules ({:.0}%)",
-        rule_count, rule_count * 2,
-        (rule_count as f64 / (rule_count * 2) as f64) * 100.0);
+    println!(
+        "   In this case: {} out of {} rules ({:.0}%)",
+        rule_count,
+        rule_count * 2,
+        (rule_count as f64 / (rule_count * 2) as f64) * 100.0
+    );
 
     // Example 3: Dependency Tracking
     println!("\n📋 Example 3: Dependency Tracking");
@@ -250,7 +255,10 @@ fn main() {
     println!("===================================");
     println!("✅ Dependency tracking: Know which rules depend on which fact types");
     println!("✅ Selective re-evaluation: Only evaluate affected rules");
-    println!("✅ Performance: ~{}x faster for targeted updates", rule_count * 2 / rule_count);
+    println!(
+        "✅ Performance: ~{}x faster for targeted updates",
+        rule_count * 2 / rule_count
+    );
     println!("✅ Scalability: Better performance with large rule sets");
     println!("✅ Transparency: Same API, automatic optimization");
     println!("\n🚀 Similar to Drools incremental fact updates!");

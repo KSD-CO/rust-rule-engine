@@ -1,32 +1,36 @@
+#![allow(clippy::type_complexity)]
+
 use crate::rete::alpha::AlphaNode;
 use std::sync::Arc;
 /// Chuyển ConditionGroup sang ReteUlNode
-pub fn build_rete_ul_from_condition_group(group: &crate::rete::auto_network::ConditionGroup) -> ReteUlNode {
+pub fn build_rete_ul_from_condition_group(
+    group: &crate::rete::auto_network::ConditionGroup,
+) -> ReteUlNode {
     use crate::rete::auto_network::ConditionGroup;
     match group {
-        ConditionGroup::Single(cond) => {
-            ReteUlNode::UlAlpha(AlphaNode {
-                field: cond.field.clone(),
-                operator: cond.operator.clone(),
-                value: cond.value.clone(),
-            })
-        }
-        ConditionGroup::Compound { left, operator, right } => {
-            match operator.as_str() {
-                "AND" => ReteUlNode::UlAnd(
-                    Box::new(build_rete_ul_from_condition_group(left)),
-                    Box::new(build_rete_ul_from_condition_group(right)),
-                ),
-                "OR" => ReteUlNode::UlOr(
-                    Box::new(build_rete_ul_from_condition_group(left)),
-                    Box::new(build_rete_ul_from_condition_group(right)),
-                ),
-                _ => ReteUlNode::UlAnd(
-                    Box::new(build_rete_ul_from_condition_group(left)),
-                    Box::new(build_rete_ul_from_condition_group(right)),
-                ),
-            }
-        }
+        ConditionGroup::Single(cond) => ReteUlNode::UlAlpha(AlphaNode {
+            field: cond.field.clone(),
+            operator: cond.operator.clone(),
+            value: cond.value.clone(),
+        }),
+        ConditionGroup::Compound {
+            left,
+            operator,
+            right,
+        } => match operator.as_str() {
+            "AND" => ReteUlNode::UlAnd(
+                Box::new(build_rete_ul_from_condition_group(left)),
+                Box::new(build_rete_ul_from_condition_group(right)),
+            ),
+            "OR" => ReteUlNode::UlOr(
+                Box::new(build_rete_ul_from_condition_group(left)),
+                Box::new(build_rete_ul_from_condition_group(right)),
+            ),
+            _ => ReteUlNode::UlAnd(
+                Box::new(build_rete_ul_from_condition_group(left)),
+                Box::new(build_rete_ul_from_condition_group(right)),
+            ),
+        },
         ConditionGroup::Not(inner) => {
             ReteUlNode::UlNot(Box::new(build_rete_ul_from_condition_group(inner)))
         }
@@ -95,7 +99,9 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
                 if parts.len() == 2 {
                     let prefix = parts[0];
                     let suffix = parts[1];
-                    facts.get(&format!("{}.{}", prefix, suffix)).or_else(|| facts.get(&format!("{}:{}", prefix, suffix)))
+                    facts
+                        .get(&format!("{}.{}", prefix, suffix))
+                        .or_else(|| facts.get(&format!("{}:{}", prefix, suffix)))
                 } else {
                     facts.get(&alpha.field)
                 }
@@ -106,10 +112,22 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
                 match alpha.operator.as_str() {
                     "==" => val == &alpha.value,
                     "!=" => val != &alpha.value,
-                    ">" => val.parse::<f64>().unwrap_or(0.0) > alpha.value.parse::<f64>().unwrap_or(0.0),
-                    "<" => val.parse::<f64>().unwrap_or(0.0) < alpha.value.parse::<f64>().unwrap_or(0.0),
-                    ">=" => val.parse::<f64>().unwrap_or(0.0) >= alpha.value.parse::<f64>().unwrap_or(0.0),
-                    "<=" => val.parse::<f64>().unwrap_or(0.0) <= alpha.value.parse::<f64>().unwrap_or(0.0),
+                    ">" => {
+                        val.parse::<f64>().unwrap_or(0.0)
+                            > alpha.value.parse::<f64>().unwrap_or(0.0)
+                    }
+                    "<" => {
+                        val.parse::<f64>().unwrap_or(0.0)
+                            < alpha.value.parse::<f64>().unwrap_or(0.0)
+                    }
+                    ">=" => {
+                        val.parse::<f64>().unwrap_or(0.0)
+                            >= alpha.value.parse::<f64>().unwrap_or(0.0)
+                    }
+                    "<=" => {
+                        val.parse::<f64>().unwrap_or(0.0)
+                            <= alpha.value.parse::<f64>().unwrap_or(0.0)
+                    }
                     _ => false,
                 }
             } else {
@@ -122,9 +140,7 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
         ReteUlNode::UlOr(left, right) => {
             evaluate_rete_ul_node(left, facts) || evaluate_rete_ul_node(right, facts)
         }
-        ReteUlNode::UlNot(inner) => {
-            !evaluate_rete_ul_node(inner, facts)
-        }
+        ReteUlNode::UlNot(inner) => !evaluate_rete_ul_node(inner, facts),
         ReteUlNode::UlExists(inner) => {
             let target_field = match &**inner {
                 ReteUlNode::UlAlpha(alpha) => alpha.field.clone(),
@@ -135,7 +151,8 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
                 if parts.len() == 2 {
                     let prefix = parts[0];
                     let suffix = parts[1];
-                    let filtered: Vec<_> = facts.iter()
+                    let filtered: Vec<_> = facts
+                        .iter()
                         .filter(|(k, _)| k.starts_with(prefix) && k.ends_with(suffix))
                         .collect();
                     filtered.iter().any(|(_, value)| {
@@ -168,7 +185,8 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
                 if parts.len() == 2 {
                     let prefix = parts[0];
                     let suffix = parts[1];
-                    let filtered: Vec<_> = facts.iter()
+                    let filtered: Vec<_> = facts
+                        .iter()
                         .filter(|(k, _)| k.starts_with(prefix) && k.ends_with(suffix))
                         .collect();
                     if filtered.is_empty() {
@@ -202,18 +220,23 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
             ..
         } => {
             // Evaluate accumulate: collect matching facts and run function
-            use super::accumulate::*;
 
             let pattern_prefix = format!("{}.", source_pattern);
             let mut matching_values = Vec::new();
 
             // Group facts by instance
-            let mut instances: std::collections::HashMap<String, std::collections::HashMap<String, String>> =
-                std::collections::HashMap::new();
+            let mut instances: std::collections::HashMap<
+                String,
+                std::collections::HashMap<String, String>,
+            > = std::collections::HashMap::new();
 
             for (key, value) in facts {
                 if key.starts_with(&pattern_prefix) {
-                    let parts: Vec<&str> = key.strip_prefix(&pattern_prefix).unwrap().split('.').collect();
+                    let parts: Vec<&str> = key
+                        .strip_prefix(&pattern_prefix)
+                        .unwrap()
+                        .split('.')
+                        .collect();
 
                     if parts.len() >= 2 {
                         let instance_id = parts[0];
@@ -221,12 +244,12 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
 
                         instances
                             .entry(instance_id.to_string())
-                            .or_insert_with(std::collections::HashMap::new)
+                            .or_default()
                             .insert(field_name, value.clone());
                     } else if parts.len() == 1 {
                         instances
                             .entry("default".to_string())
-                            .or_insert_with(std::collections::HashMap::new)
+                            .or_default()
                             .insert(parts[0].to_string(), value.clone());
                     }
                 }
@@ -272,7 +295,13 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
                 _ => true, // Unknown function - allow to continue
             }
         }
-        ReteUlNode::UlMultiField { field, operation, value, operator, compare_value } => {
+        ReteUlNode::UlMultiField {
+            field,
+            operation,
+            value,
+            operator,
+            compare_value,
+        } => {
             // Evaluate multi-field operations
             // Note: For HashMap<String, String> facts, we need to parse array representations
             // This is a simplified implementation
@@ -281,18 +310,22 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
             match operation.as_str() {
                 "empty" => {
                     // Check if field is empty or doesn't exist
-                    field_value.map(|v| v.is_empty() || v == "[]").unwrap_or(true)
+                    field_value
+                        .map(|v| v.is_empty() || v == "[]")
+                        .unwrap_or(true)
                 }
                 "not_empty" => {
                     // Check if field is not empty
-                    field_value.map(|v| !v.is_empty() && v != "[]").unwrap_or(false)
+                    field_value
+                        .map(|v| !v.is_empty() && v != "[]")
+                        .unwrap_or(false)
                 }
                 "count" => {
                     if let Some(val) = field_value {
                         // Try to parse as array and count elements
                         // Simple heuristic: count commas + 1 if not empty
                         let count = if val.starts_with('[') && val.ends_with(']') {
-                            let inner = &val[1..val.len()-1];
+                            let inner = &val[1..val.len() - 1];
                             if inner.trim().is_empty() {
                                 0
                             } else {
@@ -335,7 +368,7 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
                 }
             }
         }
-        ReteUlNode::UlTerminal(_) => true // Rule match
+        ReteUlNode::UlTerminal(_) => true, // Rule match
     }
 }
 
@@ -385,7 +418,11 @@ pub struct ReteUlRule {
 /// Drools-style RETE-UL rule firing loop
 /// Fires all matching rules, updates facts, repeats until no more rules can fire
 pub fn fire_rete_ul_rules(
-    rules: &mut [(String, ReteUlNode, Box<dyn FnMut(&mut std::collections::HashMap<String, String>)>)],
+    rules: &mut [(
+        String,
+        ReteUlNode,
+        Box<dyn FnMut(&mut std::collections::HashMap<String, String>)>,
+    )],
     facts: &mut std::collections::HashMap<String, String>,
 ) -> Vec<String> {
     let mut fired_rules = Vec::new();
@@ -421,7 +458,10 @@ pub fn fire_rete_ul_rules_with_agenda(
     loop {
         iterations += 1;
         if iterations > max_iterations {
-            eprintln!("Warning: RETE engine reached max iterations ({})", max_iterations);
+            eprintln!(
+                "Warning: RETE engine reached max iterations ({})",
+                max_iterations
+            );
             break;
         }
 
@@ -479,6 +519,12 @@ pub struct ReteUlEngine {
     facts: std::collections::HashMap<String, String>,
 }
 
+impl Default for ReteUlEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ReteUlEngine {
     /// Create new engine from Rule definitions (nodes are built and cached once)
     pub fn new() -> Self {
@@ -519,9 +565,11 @@ impl ReteUlEngine {
         let rule_name = rule.name.clone();
 
         // Default action: just mark as fired
-        let action = Arc::new(move |facts: &mut std::collections::HashMap<String, String>| {
-            facts.insert(format!("{}_executed", rule_name), "true".to_string());
-        });
+        let action = Arc::new(
+            move |facts: &mut std::collections::HashMap<String, String>| {
+                facts.insert(format!("{}_executed", rule_name), "true".to_string());
+            },
+        );
 
         self.rules.push(ReteUlRule {
             name: rule.name.clone(),
@@ -582,7 +630,8 @@ impl ReteUlEngine {
 
     /// Reset fired flags (allow rules to fire again)
     pub fn reset_fired_flags(&mut self) {
-        let keys_to_remove: Vec<_> = self.facts
+        let keys_to_remove: Vec<_> = self
+            .facts
             .keys()
             .filter(|k| k.ends_with("_fired") || k.ends_with("_executed"))
             .cloned()
@@ -602,18 +651,14 @@ use super::facts::{FactValue, TypedFacts};
 /// Evaluate RETE-UL node with typed facts (NEW!)
 pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> bool {
     match node {
-        ReteUlNode::UlAlpha(alpha) => {
-            alpha.matches_typed(facts)
-        }
+        ReteUlNode::UlAlpha(alpha) => alpha.matches_typed(facts),
         ReteUlNode::UlAnd(left, right) => {
             evaluate_rete_ul_node_typed(left, facts) && evaluate_rete_ul_node_typed(right, facts)
         }
         ReteUlNode::UlOr(left, right) => {
             evaluate_rete_ul_node_typed(left, facts) || evaluate_rete_ul_node_typed(right, facts)
         }
-        ReteUlNode::UlNot(inner) => {
-            !evaluate_rete_ul_node_typed(inner, facts)
-        }
+        ReteUlNode::UlNot(inner) => !evaluate_rete_ul_node_typed(inner, facts),
         ReteUlNode::UlExists(inner) => {
             let target_field = match &**inner {
                 ReteUlNode::UlAlpha(alpha) => alpha.field.clone(),
@@ -624,12 +669,14 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                 if parts.len() == 2 {
                     let prefix = parts[0];
                     let suffix = parts[1];
-                    let filtered: Vec<_> = facts.get_all().iter()
+                    let filtered: Vec<_> = facts
+                        .get_all()
+                        .iter()
                         .filter(|(k, _)| k.starts_with(prefix) && k.ends_with(suffix))
                         .collect();
-                    filtered.iter().any(|(_, _)| {
-                        evaluate_rete_ul_node_typed(inner, facts)
-                    })
+                    filtered
+                        .iter()
+                        .any(|(_, _)| evaluate_rete_ul_node_typed(inner, facts))
                 } else {
                     evaluate_rete_ul_node_typed(inner, facts)
                 }
@@ -647,15 +694,17 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                 if parts.len() == 2 {
                     let prefix = parts[0];
                     let suffix = parts[1];
-                    let filtered: Vec<_> = facts.get_all().iter()
+                    let filtered: Vec<_> = facts
+                        .get_all()
+                        .iter()
                         .filter(|(k, _)| k.starts_with(prefix) && k.ends_with(suffix))
                         .collect();
                     if filtered.is_empty() {
                         return true; // Vacuous truth
                     }
-                    filtered.iter().all(|(_, _)| {
-                        evaluate_rete_ul_node_typed(inner, facts)
-                    })
+                    filtered
+                        .iter()
+                        .all(|(_, _)| evaluate_rete_ul_node_typed(inner, facts))
                 } else {
                     if facts.get_all().is_empty() {
                         return true; // Vacuous truth
@@ -677,18 +726,23 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
             ..
         } => {
             // Evaluate accumulate with typed facts
-            use super::accumulate::*;
 
             let pattern_prefix = format!("{}.", source_pattern);
             let mut matching_values = Vec::new();
 
             // Group facts by instance
-            let mut instances: std::collections::HashMap<String, std::collections::HashMap<String, FactValue>> =
-                std::collections::HashMap::new();
+            let mut instances: std::collections::HashMap<
+                String,
+                std::collections::HashMap<String, FactValue>,
+            > = std::collections::HashMap::new();
 
             for (key, value) in facts.get_all() {
                 if key.starts_with(&pattern_prefix) {
-                    let parts: Vec<&str> = key.strip_prefix(&pattern_prefix).unwrap().split('.').collect();
+                    let parts: Vec<&str> = key
+                        .strip_prefix(&pattern_prefix)
+                        .unwrap()
+                        .split('.')
+                        .collect();
 
                     if parts.len() >= 2 {
                         let instance_id = parts[0];
@@ -696,12 +750,12 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
 
                         instances
                             .entry(instance_id.to_string())
-                            .or_insert_with(std::collections::HashMap::new)
+                            .or_default()
                             .insert(field_name, value.clone());
                     } else if parts.len() == 1 {
                         instances
                             .entry("default".to_string())
-                            .or_insert_with(std::collections::HashMap::new)
+                            .or_default()
                             .insert(parts[0].to_string(), value.clone());
                     }
                 }
@@ -740,7 +794,13 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                 _ => true,
             }
         }
-        ReteUlNode::UlMultiField { field, operation, value, operator, compare_value } => {
+        ReteUlNode::UlMultiField {
+            field,
+            operation,
+            value,
+            operator,
+            compare_value,
+        } => {
             // Evaluate multi-field operations on TypedFacts
             use super::facts::FactValue;
 
@@ -791,14 +851,12 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                     if let (Some(FactValue::Array(arr)), Some(search)) = (field_value, value) {
                         // Parse search value and check if array contains it
                         // For simplicity, check as string
-                        arr.iter().any(|item| {
-                            match item {
-                                FactValue::String(s) => s == search,
-                                FactValue::Integer(i) => i.to_string() == *search,
-                                FactValue::Float(f) => f.to_string() == *search,
-                                FactValue::Boolean(b) => b.to_string() == *search,
-                                _ => false,
-                            }
+                        arr.iter().any(|item| match item {
+                            FactValue::String(s) => s == search,
+                            FactValue::Integer(i) => i.to_string() == *search,
+                            FactValue::Float(f) => f.to_string() == *search,
+                            FactValue::Boolean(b) => b.to_string() == *search,
+                            _ => false,
                         })
                     } else {
                         false
@@ -830,7 +888,7 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                 }
             }
         }
-        ReteUlNode::UlTerminal(_) => true
+        ReteUlNode::UlTerminal(_) => true,
     }
 }
 
@@ -889,9 +947,11 @@ impl TypedReteUlEngine {
         let node = build_rete_ul_from_condition_group(&rule.conditions);
         let rule_name = rule.name.clone();
 
-        let action = Arc::new(move |facts: &mut TypedFacts, _results: &mut super::ActionResults| {
-            facts.set(format!("{}_executed", rule_name), true);
-        });
+        let action = Arc::new(
+            move |facts: &mut TypedFacts, _results: &mut super::ActionResults| {
+                facts.set(format!("{}_executed", rule_name), true);
+            },
+        );
 
         self.rules.push(TypedReteUlRule {
             name: rule.name.clone(),
@@ -938,11 +998,14 @@ impl TypedReteUlEngine {
             changed = false;
 
             // Build agenda: rules that match and not fired
-            agenda = self.rules.iter().enumerate()
+            agenda = self
+                .rules
+                .iter()
+                .enumerate()
                 .filter(|(_, rule)| {
                     let fired_flag = format!("{}_fired", rule.name);
-                    let already_fired = fired_flags.contains(&rule.name) ||
-                        self.facts.get(&fired_flag).and_then(|v| v.as_boolean()) == Some(true);
+                    let already_fired = fired_flags.contains(&rule.name)
+                        || self.facts.get(&fired_flag).and_then(|v| v.as_boolean()) == Some(true);
                     !rule.no_loop || !already_fired
                 })
                 .filter(|(_, rule)| evaluate_rete_ul_node_typed(&rule.node, &self.facts))
@@ -955,8 +1018,8 @@ impl TypedReteUlEngine {
             for &i in &agenda {
                 let rule = &mut self.rules[i];
                 let fired_flag = format!("{}_fired", rule.name);
-                let already_fired = fired_flags.contains(&rule.name) ||
-                    self.facts.get(&fired_flag).and_then(|v| v.as_boolean()) == Some(true);
+                let already_fired = fired_flags.contains(&rule.name)
+                    || self.facts.get(&fired_flag).and_then(|v| v.as_boolean()) == Some(true);
 
                 if rule.no_loop && already_fired {
                     continue;
@@ -966,7 +1029,7 @@ impl TypedReteUlEngine {
                 (rule.action)(&mut self.facts, &mut action_results);
                 // Note: ActionResults not processed in TypedReteUlEngine (legacy engine)
                 // Use IncrementalEngine for full ActionResults support
-                
+
                 fired_rules.push(rule.name.clone());
                 fired_flags.insert(rule.name.clone());
                 self.facts.set(fired_flag, true);
@@ -997,7 +1060,9 @@ impl TypedReteUlEngine {
 
     /// Reset fired flags
     pub fn reset_fired_flags(&mut self) {
-        let keys_to_remove: Vec<_> = self.facts.get_all()
+        let keys_to_remove: Vec<_> = self
+            .facts
+            .get_all()
             .keys()
             .filter(|k| k.ends_with("_fired") || k.ends_with("_executed"))
             .cloned()
@@ -1013,4 +1078,3 @@ impl Default for TypedReteUlEngine {
         Self::new()
     }
 }
-

@@ -9,7 +9,6 @@ pub struct AlphaNode {
     pub value: String,
 }
 
-
 impl AlphaNode {
     /// Match with string-based facts (backward compatible)
     pub fn matches(&self, fact_field: &str, fact_value: &str) -> bool {
@@ -38,7 +37,7 @@ impl AlphaNode {
         if self.field.starts_with("test(") && self.field.ends_with(')') {
             // Extract the expression: "test(expr)" -> "expr"
             let expr = &self.field[5..self.field.len() - 1];
-            
+
             // Try to evaluate as arithmetic expression
             if let Some(result) = self.evaluate_arithmetic_rete(expr, facts) {
                 // Compare result with expected value
@@ -50,7 +49,7 @@ impl AlphaNode {
             }
             return false;
         }
-        
+
         // Check if the value is a variable reference (field name in facts)
         // This enables variable-to-variable comparison like "L1 > L1Min"
         let expected_value = if let Some(var_value) = facts.get(&self.value) {
@@ -89,10 +88,10 @@ impl AlphaNode {
             if let Some(pos) = expr.find(op) {
                 let left = expr[..pos].trim();
                 let right = expr[pos + op.len()..].trim();
-                
+
                 // Evaluate left side (arithmetic expression)
-                let left_val = self.evaluate_arithmetic_expr(left, facts)?;
-                
+                let left_val = Self::evaluate_arithmetic_expr(left, facts)?;
+
                 // Evaluate right side
                 let right_val = if let Some(val) = facts.get(right) {
                     val.clone()
@@ -103,7 +102,7 @@ impl AlphaNode {
                 } else {
                     return None;
                 };
-                
+
                 // Compare values
                 let result = left_val.compare(op, &right_val);
                 return Some(FactValue::Boolean(result));
@@ -113,48 +112,54 @@ impl AlphaNode {
     }
 
     /// Evaluate arithmetic expression (handles +, -, *, /, %)
-    fn evaluate_arithmetic_expr(&self, expr: &str, facts: &TypedFacts) -> Option<FactValue> {
+    fn evaluate_arithmetic_expr(expr: &str, facts: &TypedFacts) -> Option<FactValue> {
         let expr = expr.trim();
-        
+
         // Try arithmetic operators in order of precedence (reverse)
         let ops = ["+", "-", "*", "/", "%"];
-        
+
         for op in &ops {
             if let Some(pos) = expr.rfind(op) {
                 // Skip if operator is at the start (negative number)
                 if pos == 0 {
                     continue;
                 }
-                
+
                 let left = expr[..pos].trim();
                 let right = expr[pos + 1..].trim();
-                
+
                 let left_val = if let Some(val) = facts.get(left) {
                     val.as_number()?
                 } else if let Ok(f) = left.parse::<f64>() {
                     f
                 } else {
                     // Recursive evaluation
-                    self.evaluate_arithmetic_expr(left, facts)?.as_number()?
+                    Self::evaluate_arithmetic_expr(left, facts)?.as_number()?
                 };
-                
+
                 let right_val = if let Some(val) = facts.get(right) {
                     val.as_number()?
                 } else if let Ok(f) = right.parse::<f64>() {
                     f
                 } else {
-                    self.evaluate_arithmetic_expr(right, facts)?.as_number()?
+                    Self::evaluate_arithmetic_expr(right, facts)?.as_number()?
                 };
-                
+
                 let result = match *op {
                     "+" => left_val + right_val,
                     "-" => left_val - right_val,
                     "*" => left_val * right_val,
-                    "/" => if right_val != 0.0 { left_val / right_val } else { return None; },
+                    "/" => {
+                        if right_val != 0.0 {
+                            left_val / right_val
+                        } else {
+                            return None;
+                        }
+                    }
                     "%" => left_val % right_val,
                     _ => return None,
                 };
-                
+
                 // Return Integer if result is whole number, otherwise Float
                 if result.fract() == 0.0 {
                     return Some(FactValue::Integer(result as i64));
@@ -163,7 +168,7 @@ impl AlphaNode {
                 }
             }
         }
-        
+
         // Base case: just a field reference or literal
         if let Some(val) = facts.get(expr) {
             Some(val.clone())

@@ -75,7 +75,7 @@ fn demo_without_no_loop() -> Result<()> {
         }
     });
 
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     facts.set(
         "Player",
         Value::Object({

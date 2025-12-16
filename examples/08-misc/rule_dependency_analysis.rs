@@ -3,7 +3,6 @@ use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::{EngineConfig, ParallelConfig, ParallelRuleEngine, RustRuleEngine};
 use rust_rule_engine::types::Value;
 use std::collections::HashMap;
-use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("⚠️  Rule Dependencies in Parallel Execution Analysis");
@@ -179,7 +178,7 @@ fn create_facts_for_demo() -> Facts {
 }
 
 fn create_safe_parallel_kb() -> Result<KnowledgeBase, Box<dyn std::error::Error>> {
-    let mut kb = KnowledgeBase::new("SafeParallelKB");
+    let kb = KnowledgeBase::new("SafeParallelKB");
 
     let rules = vec![
         // These rules are SAFE to run in parallel - no dependencies
@@ -205,7 +204,7 @@ fn create_safe_parallel_kb() -> Result<KnowledgeBase, Box<dyn std::error::Error>
 }
 
 fn create_dangerous_parallel_kb() -> Result<KnowledgeBase, Box<dyn std::error::Error>> {
-    let mut kb = KnowledgeBase::new("DangerousParallelKB");
+    let kb = KnowledgeBase::new("DangerousParallelKB");
 
     let rules = vec![
         // These rules have DEPENDENCIES - dangerous to run in parallel
@@ -231,7 +230,7 @@ fn create_dangerous_parallel_kb() -> Result<KnowledgeBase, Box<dyn std::error::E
 }
 
 fn create_conflict_kb() -> Result<KnowledgeBase, Box<dyn std::error::Error>> {
-    let mut kb = KnowledgeBase::new("ConflictKB");
+    let kb = KnowledgeBase::new("ConflictKB");
 
     let rules = vec![
         // ALL same salience - will run in parallel but have dependencies!
@@ -258,26 +257,35 @@ fn create_conflict_kb() -> Result<KnowledgeBase, Box<dyn std::error::Error>> {
 
 fn register_sequential_functions(engine: &mut RustRuleEngine) {
     // Register action handlers for custom actions used in rules
-    engine.register_action_handler("calculateScore", |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
-        println!("     🧮 Calculating score...");
-        // Simple stub: write a calculated Score into facts
-        facts.set_nested("User.Score", Value::Number(85.0));
-        Ok(())
-    });
+    engine.register_action_handler(
+        "calculateScore",
+        |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
+            println!("     🧮 Calculating score...");
+            // Simple stub: write a calculated Score into facts
+            facts.set_nested("User.Score", Value::Number(85.0));
+            Ok(())
+        },
+    );
 
-    engine.register_action_handler("setVIPStatus", |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
-        println!("     ⭐ Setting VIP status...");
-        // Simple stub: set IsVIP to true
-        facts.set_nested("User.IsVIP", Value::Boolean(true)).ok();
-        Ok(())
-    });
+    engine.register_action_handler(
+        "setVIPStatus",
+        |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
+            println!("     ⭐ Setting VIP status...");
+            // Simple stub: set IsVIP to true
+            facts.set_nested("User.IsVIP", Value::Boolean(true)).ok();
+            Ok(())
+        },
+    );
 
-    engine.register_action_handler("applyDiscount", |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
-        println!("     💰 Applying discount...");
-        // Simple stub: set a DiscountRate on Order
-        facts.set_nested("Order.DiscountRate", Value::Number(0.1));
-        Ok(())
-    });
+    engine.register_action_handler(
+        "applyDiscount",
+        |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
+            println!("     💰 Applying discount...");
+            // Simple stub: set a DiscountRate on Order
+            facts.set_nested("Order.DiscountRate", Value::Number(0.1));
+            Ok(())
+        },
+    );
 }
 
 fn register_parallel_functions(engine: &mut ParallelRuleEngine) {

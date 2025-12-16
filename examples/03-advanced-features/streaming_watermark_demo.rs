@@ -10,16 +10,11 @@
 //!
 //! Run with: cargo run --example streaming_watermark_demo --features streaming
 
-use rust_rule_engine::streaming::*;
-use rust_rule_engine::streaming::watermark::{Watermark, WatermarkGenerator, WatermarkStrategy};
-use rust_rule_engine::types::Value;
-use rust_rule_engine::engine::{
-    RustRuleEngine,
-    rule::{Rule, Condition, ConditionGroup},
-    knowledge_base::KnowledgeBase,
-    facts::Facts,
-};
+use rust_rule_engine::engine::{facts::Facts, knowledge_base::KnowledgeBase, RustRuleEngine};
 use rust_rule_engine::parser::grl::GRLParser;
+use rust_rule_engine::streaming::watermark::{WatermarkGenerator, WatermarkStrategy};
+use rust_rule_engine::streaming::*;
+use rust_rule_engine::types::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -27,11 +22,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🌊 Watermark-based Stream Processing + Rule Engine Demo");
     println!("{}", "=".repeat(80));
-    
+
     demo1_late_data_detection_with_rules()?;
     demo2_bounded_out_of_order_processing()?;
     demo3_time_window_aggregation_with_alerts()?;
-    
+
     println!("\n{}", "=".repeat(80));
     println!("✅ All watermark demos completed!");
     println!("\n📝 Key Features Demonstrated:");
@@ -39,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   ✅ Late data detection and handling");
     println!("   ✅ Out-of-order event processing");
     println!("   ✅ Rule Engine evaluates time-based business logic");
-    
+
     Ok(())
 }
 
@@ -49,11 +44,11 @@ fn demo1_late_data_detection_with_rules() -> Result<(), Box<dyn std::error::Erro
     println!("{}", "-".repeat(80));
 
     // Create watermark generator with bounded out-of-order strategy
-    let watermark_gen = Arc::new(Mutex::new(
-        WatermarkGenerator::new(WatermarkStrategy::BoundedOutOfOrder {
+    let watermark_gen = Arc::new(Mutex::new(WatermarkGenerator::new(
+        WatermarkStrategy::BoundedOutOfOrder {
             max_delay: Duration::from_secs(300), // 5 minutes tolerance
-        })
-    ));
+        },
+    )));
 
     // Load late data handling rules
     let grl_rules = r#"
@@ -100,30 +95,33 @@ rule OnTimeData "Normal processing for on-time data" salience 80 {
         .as_secs();
 
     let event_times = vec![
-        (base_time, "sensor-1", 25.5, false),          // On time
-        (base_time - 100, "sensor-2", 26.0, true),     // 100s late (OK)
-        (base_time - 200, "sensor-3", 24.5, true),     // 200s late (warning)
-        (base_time + 10, "sensor-1", 25.8, false),     // On time
-        (base_time - 700, "sensor-4", 27.0, true),     // 700s late (very late)
-        (base_time + 20, "sensor-2", 26.2, false),     // On time
-        (base_time - 400, "sensor-5", 23.5, true),     // 400s late (warning)
+        (base_time, "sensor-1", 25.5, false),      // On time
+        (base_time - 100, "sensor-2", 26.0, true), // 100s late (OK)
+        (base_time - 200, "sensor-3", 24.5, true), // 200s late (warning)
+        (base_time + 10, "sensor-1", 25.8, false), // On time
+        (base_time - 700, "sensor-4", 27.0, true), // 700s late (very late)
+        (base_time + 20, "sensor-2", 26.2, false), // On time
+        (base_time - 400, "sensor-5", 23.5, true), // 400s late (warning)
     ];
 
     let mut events = Vec::new();
     for (event_time, sensor_id, temperature, is_late) in event_times {
         let mut data = HashMap::new();
-        data.insert("sensor_id".to_string(), Value::String(sensor_id.to_string()));
+        data.insert(
+            "sensor_id".to_string(),
+            Value::String(sensor_id.to_string()),
+        );
         data.insert("temperature".to_string(), Value::Number(temperature));
         data.insert("event_time".to_string(), Value::Number(event_time as f64));
         data.insert("is_late".to_string(), Value::Boolean(is_late));
-        
+
         let delay = if is_late {
             base_time.saturating_sub(event_time)
         } else {
             0
         };
         data.insert("delay_seconds".to_string(), Value::Number(delay as f64));
-        
+
         events.push(StreamEvent::new("SensorReading", data, "iot"));
     }
 
@@ -137,12 +135,12 @@ rule OnTimeData "Normal processing for on-time data" salience 80 {
         let delay = e.get_numeric("delay_seconds").unwrap_or(0.0);
 
         // Update watermark
-        let mut wm_gen = watermark_gen.lock().unwrap();
+        let wm_gen = watermark_gen.lock().unwrap();
         let current_watermark = wm_gen.current_watermark();
-        
+
         // Check if event is late according to watermark
         let late_by_watermark = current_watermark.is_late(event_time);
-        
+
         // Advance watermark if this is newer event
         if event_time > current_watermark.timestamp {
             // Would normally call wm_gen.process_event() here
@@ -151,7 +149,7 @@ rule OnTimeData "Normal processing for on-time data" salience 80 {
 
         // Evaluate rules for late data handling
         let facts = Facts::new();
-        
+
         let mut event_data = HashMap::new();
         event_data.insert("SensorID".to_string(), Value::String(sensor_id.to_string()));
         event_data.insert("Temperature".to_string(), Value::Number(temperature));
@@ -169,13 +167,27 @@ rule OnTimeData "Normal processing for on-time data" salience 80 {
 
         // Extract rule results
         if let Some(Value::Object(event)) = facts.get("Event") {
-            let action = event.get("Action")
-                .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+            let action = event
+                .get("Action")
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or("PENDING");
-            
+
             if let Some(Value::Object(alert)) = facts.get("Alert") {
-                let alert_type = alert.get("Type")
-                    .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+                let alert_type = alert
+                    .get("Type")
+                    .and_then(|v| {
+                        if let Value::String(s) = v {
+                            Some(s.as_str())
+                        } else {
+                            None
+                        }
+                    })
                     .unwrap_or("NONE");
 
                 let icon = match action {
@@ -184,8 +196,10 @@ rule OnTimeData "Normal processing for on-time data" salience 80 {
                     _ => "✅",
                 };
 
-                println!("{} {} | {:.1}°C | Delay: {:.0}s | {} | Alert: {}",
-                         icon, sensor_id, temperature, delay, action, alert_type);
+                println!(
+                    "{} {} | {:.1}°C | Delay: {:.0}s | {} | Alert: {}",
+                    icon, sensor_id, temperature, delay, action, alert_type
+                );
             }
         }
     });
@@ -199,11 +213,11 @@ fn demo2_bounded_out_of_order_processing() -> Result<(), Box<dyn std::error::Err
     println!("\n\n🔄 Demo 2: Bounded Out-of-Order Processing");
     println!("{}", "-".repeat(80));
 
-    let watermark_gen = Arc::new(Mutex::new(
-        WatermarkGenerator::new(WatermarkStrategy::BoundedOutOfOrder {
+    let watermark_gen = Arc::new(Mutex::new(WatermarkGenerator::new(
+        WatermarkStrategy::BoundedOutOfOrder {
             max_delay: Duration::from_secs(60), // 1 minute tolerance
-        })
-    ));
+        },
+    )));
 
     // Load ordering rules
     let grl_rules = r#"
@@ -246,7 +260,7 @@ rule OutOfOrderReject "Reject severely out-of-order events" salience 80 {
     // Simulate network packets with various ordering
     let base_seq = 1000u64;
     let packet_data = vec![
-        (base_seq, 0),      // On time
+        (base_seq, 0),       // On time
         (base_seq + 1, 10),  // Slightly delayed
         (base_seq + 2, 5),   // Good order
         (base_seq + 4, 0),   // Jump ahead
@@ -273,7 +287,7 @@ rule OutOfOrderReject "Reject severely out-of-order events" salience 80 {
 
         // Evaluate ordering rules
         let facts = Facts::new();
-        
+
         let mut event_data = HashMap::new();
         event_data.insert("Sequence".to_string(), Value::Number(sequence as f64));
         event_data.insert("TimeDrift".to_string(), Value::Number(time_drift));
@@ -287,11 +301,25 @@ rule OutOfOrderReject "Reject severely out-of-order events" salience 80 {
 
         // Extract results
         if let Some(Value::Object(event)) = facts.get("Event") {
-            let status = event.get("Status")
-                .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+            let status = event
+                .get("Status")
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or("PENDING");
-            let priority = event.get("Priority")
-                .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+            let priority = event
+                .get("Priority")
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or("NORMAL");
 
             let icon = match status {
@@ -300,8 +328,10 @@ rule OutOfOrderReject "Reject severely out-of-order events" salience 80 {
                 _ => "✅",
             };
 
-            println!("{} Seq: {} | Drift: {:.0}s | {} | Priority: {}",
-                     icon, sequence, time_drift, status, priority);
+            println!(
+                "{} Seq: {} | Drift: {:.0}s | {} | Priority: {}",
+                icon, sequence, time_drift, status, priority
+            );
         }
     });
 
@@ -314,11 +344,11 @@ fn demo3_time_window_aggregation_with_alerts() -> Result<(), Box<dyn std::error:
     println!("\n\n📊 Demo 3: Time Window Aggregation with Alerts");
     println!("{}", "-".repeat(80));
 
-    let watermark_gen = Arc::new(Mutex::new(
-        WatermarkGenerator::new(WatermarkStrategy::Periodic {
+    let watermark_gen = Arc::new(Mutex::new(WatermarkGenerator::new(
+        WatermarkStrategy::Periodic {
             interval: Duration::from_secs(10),
-        })
-    ));
+        },
+    )));
 
     // Load window aggregation rules
     let grl_rules = r#"
@@ -360,19 +390,25 @@ rule AnomalousPattern "Detect anomalous patterns" salience 80 {
 
     // Simulate different traffic patterns
     let traffic_patterns = vec![
-        ("window-1", 60, 100.0),   // High traffic, normal values
-        ("window-2", 8, 150.0),    // Low traffic
-        ("window-3", 15, 1200.0),  // Anomalous: low count, high values
-        ("window-4", 45, 200.0),   // Normal traffic
+        ("window-1", 60, 100.0),  // High traffic, normal values
+        ("window-2", 8, 150.0),   // Low traffic
+        ("window-3", 15, 1200.0), // Anomalous: low count, high values
+        ("window-4", 45, 200.0),  // Normal traffic
     ];
 
     let mut events = Vec::new();
     for (window_id, count, avg_value) in traffic_patterns {
         let mut data = HashMap::new();
-        data.insert("window_id".to_string(), Value::String(window_id.to_string()));
+        data.insert(
+            "window_id".to_string(),
+            Value::String(window_id.to_string()),
+        );
         data.insert("event_count".to_string(), Value::Number(count as f64));
         data.insert("average_value".to_string(), Value::Number(avg_value));
-        data.insert("total_value".to_string(), Value::Number(count as f64 * avg_value));
+        data.insert(
+            "total_value".to_string(),
+            Value::Number(count as f64 * avg_value),
+        );
         events.push(StreamEvent::new("WindowAggregate", data, "aggregator"));
     }
 
@@ -386,7 +422,7 @@ rule AnomalousPattern "Detect anomalous patterns" salience 80 {
 
         // Evaluate window rules
         let facts = Facts::new();
-        
+
         let mut window_data = HashMap::new();
         window_data.insert("ID".to_string(), Value::String(window_id.to_string()));
         window_data.insert("EventCount".to_string(), Value::Number(event_count));
@@ -401,11 +437,25 @@ rule AnomalousPattern "Detect anomalous patterns" salience 80 {
 
         // Extract results
         if let Some(Value::Object(window)) = facts.get("Window") {
-            let alert = window.get("Alert")
-                .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+            let alert = window
+                .get("Alert")
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or("NONE");
-            let action = window.get("Action")
-                .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+            let action = window
+                .get("Action")
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or("NONE");
 
             let icon = match alert {
@@ -415,8 +465,10 @@ rule AnomalousPattern "Detect anomalous patterns" salience 80 {
                 _ => "✅",
             };
 
-            println!("{} {} | Events: {:.0} | Avg: ${:.0} | Total: ${:.0} | Alert: {} | Action: {}",
-                     icon, window_id, event_count, avg_value, total_value, alert, action);
+            println!(
+                "{} {} | Events: {:.0} | Avg: ${:.0} | Total: ${:.0} | Alert: {} | Action: {}",
+                icon, window_id, event_count, avg_value, total_value, alert, action
+            );
         }
     });
 

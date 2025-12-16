@@ -8,8 +8,8 @@
 use nom::{
     bytes::complete::{tag, take_while1},
     character::complete::{alpha1, char, digit1, multispace0, multispace1},
-    combinator::{map, opt},
-    sequence::{delimited, preceded, tuple},
+    combinator::opt,
+    sequence::{delimited, tuple},
     IResult,
 };
 use std::time::Duration;
@@ -134,10 +134,7 @@ pub fn parse_duration(input: &str) -> IResult<&str, Duration> {
     let (input, unit) = alpha1(input)?;
 
     let value: u64 = value.parse().map_err(|_| {
-        nom::Err::Error(nom::error::Error::new(
-            input,
-            nom::error::ErrorKind::Digit,
-        ))
+        nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
     })?;
 
     let duration = match unit {
@@ -183,8 +180,7 @@ pub fn parse_window_type(input: &str) -> IResult<&str, WindowType> {
 /// ```
 pub fn parse_stream_pattern(input: &str) -> IResult<&str, StreamPattern> {
     // Parse variable binding: event:
-    let (input, var_name) =
-        take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)?;
+    let (input, var_name) = take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)?;
     let (input, _) = multispace0(input)?;
     let (input, _) = char(':')(input)?;
     let (input, _) = multispace0(input)?;
@@ -192,11 +188,12 @@ pub fn parse_stream_pattern(input: &str) -> IResult<&str, StreamPattern> {
     // Optional event type (but not "from" keyword)
     let (input, event_type) = {
         let checkpoint = input;
-        match take_while1::<_, _, nom::error::Error<&str>>(|c: char| c.is_alphanumeric() || c == '_')(input) {
-            Ok((remaining, name)) if name != "from" => {
-                (remaining, Some(name))
-            }
-            _ => (checkpoint, None)
+        match take_while1::<_, _, nom::error::Error<&str>>(|c: char| {
+            c.is_alphanumeric() || c == '_'
+        })(input)
+        {
+            Ok((remaining, name)) if name != "from" => (remaining, Some(name)),
+            _ => (checkpoint, None),
         }
     };
 
@@ -344,8 +341,7 @@ mod tests {
 
     #[test]
     fn test_parse_stream_pattern_with_window() {
-        let input =
-            r#"reading: TempReading from stream("sensors") over window(10 min, sliding)"#;
+        let input = r#"reading: TempReading from stream("sensors") over window(10 min, sliding)"#;
         let result = parse_stream_pattern(input);
 
         assert!(result.is_ok());

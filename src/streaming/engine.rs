@@ -2,6 +2,8 @@
 //!
 //! Core engine for processing real-time event streams with rule evaluation.
 
+#![allow(clippy::type_complexity)]
+
 use crate::engine::facts::Facts;
 use crate::engine::knowledge_base::KnowledgeBase;
 use crate::engine::RustRuleEngine;

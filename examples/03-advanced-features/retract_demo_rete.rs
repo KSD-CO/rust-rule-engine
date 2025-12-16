@@ -5,11 +5,7 @@
 /// - Actual retract() method (not just marking)
 /// - CLIPS/Drools-style working memory management
 /// - FactHandle tracking like Drools
-
-use rust_rule_engine::rete::{
-    IncrementalEngine, GrlReteLoader, TypedFacts, FactValue,
-    TemplateBuilder, FieldType,
-};
+use rust_rule_engine::rete::{FactValue, IncrementalEngine, TemplateBuilder, TypedFacts};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🗑️ Retract Demo - RETE Engine with Real Working Memory");
@@ -39,7 +35,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Inserted session: {:?}", session_handle);
 
     // Check working memory
-    println!("📊 Working memory stats: {}", engine.working_memory().stats());
+    println!(
+        "📊 Working memory stats: {}",
+        engine.working_memory().stats()
+    );
 
     // Simulate session expiration
     let mut updated_session = TypedFacts::new();
@@ -56,12 +55,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Session retracted!");
 
     // Check working memory again
-    println!("📊 Working memory stats: {}", engine.working_memory().stats());
+    println!(
+        "📊 Working memory stats: {}",
+        engine.working_memory().stats()
+    );
 
     // Try to get retracted fact (should be None)
     let retrieved = engine.working_memory().get(&session_handle);
     println!("🔍 Try to get retracted fact: {:?}", retrieved);
-    assert!(retrieved.is_none(), "Retracted fact should not be accessible!");
+    assert!(
+        retrieved.is_none(),
+        "Retracted fact should not be accessible!"
+    );
 
     // Example 2: User Management
     println!("\n📋 Example 2: User Management (RETE)");
@@ -94,14 +99,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let h2 = engine2.insert_with_template("User", user2)?;
 
     println!("✅ Inserted 2 users");
-    println!("📊 Active facts: {}", engine2.working_memory().stats().active_facts);
+    println!(
+        "📊 Active facts: {}",
+        engine2.working_memory().stats().active_facts
+    );
 
     // Retract suspicious user
     println!("\n🗑️ Removing suspicious user...");
     engine2.retract(h2)?;
 
-    println!("📊 Active facts: {}", engine2.working_memory().stats().active_facts);
-    println!("📊 Retracted facts: {}", engine2.working_memory().stats().retracted_facts);
+    println!(
+        "📊 Active facts: {}",
+        engine2.working_memory().stats().active_facts
+    );
+    println!(
+        "📊 Retracted facts: {}",
+        engine2.working_memory().stats().retracted_facts
+    );
 
     // Example 3: Bulk Operations
     println!("\n📋 Example 3: Bulk Retraction (RETE)");
@@ -121,9 +135,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for i in 1..=10 {
         let mut order = TypedFacts::new();
         order.set("id", FactValue::String(format!("ORD-{:03}", i)));
-        order.set("status", FactValue::String(
-            if i % 2 == 0 { "completed" } else { "pending" }.to_string()
-        ));
+        order.set(
+            "status",
+            FactValue::String(if i % 2 == 0 { "completed" } else { "pending" }.to_string()),
+        );
         order.set("shipped", FactValue::Boolean(i % 2 == 0));
 
         let h = engine3.insert_with_template("Order", order)?;
@@ -131,21 +146,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("✅ Inserted 10 orders");
-    println!("📊 Active facts: {}", engine3.working_memory().stats().active_facts);
+    println!(
+        "📊 Active facts: {}",
+        engine3.working_memory().stats().active_facts
+    );
 
     // Retract all completed orders (5 orders)
     println!("\n🗑️ Retracting completed orders...");
     let mut retracted_count = 0;
     for (i, handle) in handles.iter().enumerate() {
-        if i % 2 == 1 { // Even index means completed (i+1 is even number)
+        if i % 2 == 1 {
+            // Even index means completed (i+1 is even number)
             engine3.retract(*handle)?;
             retracted_count += 1;
         }
     }
 
     println!("✅ Retracted {} completed orders", retracted_count);
-    println!("📊 Active facts: {}", engine3.working_memory().stats().active_facts);
-    println!("📊 Retracted facts: {}", engine3.working_memory().stats().retracted_facts);
+    println!(
+        "📊 Active facts: {}",
+        engine3.working_memory().stats().active_facts
+    );
+    println!(
+        "📊 Retracted facts: {}",
+        engine3.working_memory().stats().retracted_facts
+    );
 
     // Example 4: Query after Retraction
     println!("\n📋 Example 4: Query After Retraction");

@@ -10,35 +10,29 @@
 //!
 //! Run with: cargo run --example streaming_state_management_demo --features streaming
 
-use rust_rule_engine::streaming::*;
-use rust_rule_engine::streaming::state::{StateStore, StateBackend, StateConfig};
-use rust_rule_engine::types::Value;
-use rust_rule_engine::engine::{
-    RustRuleEngine,
-    rule::{Rule, Condition, ConditionGroup},
-    knowledge_base::KnowledgeBase,
-    facts::Facts,
-};
+use rust_rule_engine::engine::{facts::Facts, knowledge_base::KnowledgeBase, RustRuleEngine};
 use rust_rule_engine::parser::grl::GRLParser;
+use rust_rule_engine::streaming::state::{StateBackend, StateStore};
+use rust_rule_engine::streaming::*;
+use rust_rule_engine::types::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔄 Stateful Stream Processing + Rule Engine Demo");
     println!("{}", "=".repeat(80));
-    
+
     demo1_session_tracking_with_rules()?;
     demo2_aggregation_with_alerts()?;
     demo3_stateful_fraud_detection()?;
-    
+
     println!("\n{}", "=".repeat(80));
     println!("✅ All stateful demos completed!");
     println!("\n📝 Key Features Demonstrated:");
     println!("   ✅ StateStore for maintaining state across events");
     println!("   ✅ Rule Engine evaluates business logic on stateful data");
     println!("   ✅ Session tracking, aggregations, and fraud detection");
-    
+
     Ok(())
 }
 
@@ -49,7 +43,7 @@ fn demo1_session_tracking_with_rules() -> Result<(), Box<dyn std::error::Error>>
 
     // Create stateful store
     let state = Arc::new(Mutex::new(StateStore::new(StateBackend::Memory)));
-    
+
     // Load session rules from GRL
     let grl_rules = r#"
 rule SuspiciousActivity "Flag suspicious session patterns" salience 100 {
@@ -103,7 +97,10 @@ rule HighValueUser "Upgrade high-value user sessions" salience 80 {
     for (user_id, event_type, value) in user_events {
         let mut data = HashMap::new();
         data.insert("user_id".to_string(), Value::String(user_id.to_string()));
-        data.insert("event_type".to_string(), Value::String(event_type.to_string()));
+        data.insert(
+            "event_type".to_string(),
+            Value::String(event_type.to_string()),
+        );
         data.insert("value".to_string(), Value::Number(value));
         events.push(StreamEvent::new("UserEvent", data, "app"));
     }
@@ -118,7 +115,7 @@ rule HighValueUser "Upgrade high-value user sessions" salience 80 {
         // Get or create session state
         let session_key = format!("session:{}", user_id);
         let mut state_lock = state.lock().unwrap();
-        
+
         let mut session_data = if let Ok(Some(existing)) = state_lock.get(&session_key) {
             if let Value::Object(map) = existing {
                 map
@@ -151,23 +148,51 @@ rule HighValueUser "Upgrade high-value user sessions" salience 80 {
         // Evaluate rules on session data
         let facts = Facts::new();
         let _ = facts.add_value("Session", Value::Object(session_data.clone()));
-        
+
         let mut eng = engine.lock().unwrap();
         let _ = eng.execute(&facts);
 
         // Extract rule results
         if let Some(Value::Object(updated_session)) = facts.get("Session") {
-            let status = updated_session.get("Status")
-                .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+            let status = updated_session
+                .get("Status")
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or("ACTIVE");
-            let tier = updated_session.get("Tier")
-                .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+            let tier = updated_session
+                .get("Tier")
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or("STANDARD");
-            let count = updated_session.get("EventCount")
-                .and_then(|v| if let Value::Number(n) = v { Some(*n) } else { None })
+            let count = updated_session
+                .get("EventCount")
+                .and_then(|v| {
+                    if let Value::Number(n) = v {
+                        Some(*n)
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or(0.0);
-            let total = updated_session.get("TotalValue")
-                .and_then(|v| if let Value::Number(n) = v { Some(*n) } else { None })
+            let total = updated_session
+                .get("TotalValue")
+                .and_then(|v| {
+                    if let Value::Number(n) = v {
+                        Some(*n)
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or(0.0);
 
             let icon = match status {
@@ -177,8 +202,10 @@ rule HighValueUser "Upgrade high-value user sessions" salience 80 {
                 _ => "✅",
             };
 
-            println!("{} {} | {} | Events: {:.0} | Value: ${:.0} | Status: {} | Tier: {}",
-                     icon, user_id, event_type, count, total, status, tier);
+            println!(
+                "{} {} | {} | Events: {:.0} | Value: ${:.0} | Status: {} | Tier: {}",
+                icon, user_id, event_type, count, total, status, tier
+            );
 
             // Save updated session back to state
             let mut state_lock = state.lock().unwrap();
@@ -196,7 +223,7 @@ fn demo2_aggregation_with_alerts() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "-".repeat(80));
 
     let state = Arc::new(Mutex::new(StateStore::new(StateBackend::Memory)));
-    
+
     // Load aggregation alert rules
     let grl_rules = r#"
 rule HighVolumeAlert "Alert on high transaction volume" salience 100 {
@@ -236,8 +263,14 @@ rule LowAverageValue "Flag low average transaction value" salience 80 {
     for i in 0..120 {
         let mut data = HashMap::new();
         data.insert("tx_id".to_string(), Value::String(format!("TX-{:03}", i)));
-        data.insert("amount".to_string(), Value::Number(100.0 + (i as f64 * 50.0)));
-        data.insert("category".to_string(), Value::String(format!("cat-{}", i % 3)));
+        data.insert(
+            "amount".to_string(),
+            Value::Number(100.0 + (i as f64 * 50.0)),
+        );
+        data.insert(
+            "category".to_string(),
+            Value::String(format!("cat-{}", i % 3)),
+        );
         events.push(StreamEvent::new("Transaction", data, "payment"));
     }
 
@@ -250,7 +283,7 @@ rule LowAverageValue "Flag low average transaction value" salience 80 {
         // Get or create aggregation state
         let agg_key = format!("agg:{}", category);
         let mut state_lock = state.lock().unwrap();
-        
+
         let mut metrics = if let Ok(Some(existing)) = state_lock.get(&agg_key) {
             if let Value::Object(map) = existing {
                 map
@@ -271,11 +304,14 @@ rule LowAverageValue "Flag low average transaction value" salience 80 {
         if let Some(Value::Number(count)) = metrics.get("TotalTransactions") {
             let new_count = count + 1.0;
             metrics.insert("TotalTransactions".to_string(), Value::Number(new_count));
-            
+
             if let Some(Value::Number(total)) = metrics.get("TotalValue") {
                 let new_total = total + amount;
                 metrics.insert("TotalValue".to_string(), Value::Number(new_total));
-                metrics.insert("AverageValue".to_string(), Value::Number(new_total / new_count));
+                metrics.insert(
+                    "AverageValue".to_string(),
+                    Value::Number(new_total / new_count),
+                );
             }
         }
 
@@ -286,29 +322,59 @@ rule LowAverageValue "Flag low average transaction value" salience 80 {
         // Evaluate rules
         let facts = Facts::new();
         let _ = facts.add_value("Metrics", Value::Object(metrics.clone()));
-        
+
         let mut eng = engine.lock().unwrap();
         let _ = eng.execute(&facts);
 
         // Check for alerts
         if let Some(Value::Object(updated_metrics)) = facts.get("Metrics") {
-            let alert = updated_metrics.get("Alert")
-                .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+            let alert = updated_metrics
+                .get("Alert")
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or("NONE");
-            let count = updated_metrics.get("TotalTransactions")
-                .and_then(|v| if let Value::Number(n) = v { Some(*n) } else { None })
+            let count = updated_metrics
+                .get("TotalTransactions")
+                .and_then(|v| {
+                    if let Value::Number(n) = v {
+                        Some(*n)
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or(0.0);
 
             if alert != "NONE" && count % 20.0 == 1.0 {
-                let total = updated_metrics.get("TotalValue")
-                    .and_then(|v| if let Value::Number(n) = v { Some(*n) } else { None })
+                let total = updated_metrics
+                    .get("TotalValue")
+                    .and_then(|v| {
+                        if let Value::Number(n) = v {
+                            Some(*n)
+                        } else {
+                            None
+                        }
+                    })
                     .unwrap_or(0.0);
-                let avg = updated_metrics.get("AverageValue")
-                    .and_then(|v| if let Value::Number(n) = v { Some(*n) } else { None })
+                let avg = updated_metrics
+                    .get("AverageValue")
+                    .and_then(|v| {
+                        if let Value::Number(n) = v {
+                            Some(*n)
+                        } else {
+                            None
+                        }
+                    })
                     .unwrap_or(0.0);
 
-                println!("🚨 ALERT | {} | Count: {:.0} | Total: ${:.0} | Avg: ${:.0} | Alert: {}",
-                         category, count, total, avg, alert);
+                println!(
+                    "🚨 ALERT | {} | Count: {:.0} | Total: ${:.0} | Avg: ${:.0} | Alert: {}",
+                    category, count, total, avg, alert
+                );
             }
 
             // Save updated metrics
@@ -327,7 +393,7 @@ fn demo3_stateful_fraud_detection() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "-".repeat(80));
 
     let state = Arc::new(Mutex::new(StateStore::new(StateBackend::Memory)));
-    
+
     // Load fraud detection rules
     let grl_rules = r#"
 rule RapidTransactions "Detect rapid transaction pattern" salience 100 {
@@ -366,11 +432,15 @@ rule BlockHighFraud "Block transactions with high fraud score" salience 80 {
 
     // Simulate transactions with some fraudulent patterns
     let mut events = Vec::new();
-    let users = vec!["user-A", "user-B", "user-C"];
+    let users = ["user-A", "user-B", "user-C"];
     for i in 0..30 {
         let user = users[i % 3];
-        let amount = if user == "user-B" && i > 10 { 5000.0 } else { 200.0 }; // user-B has high velocity
-        
+        let amount = if user == "user-B" && i > 10 {
+            5000.0
+        } else {
+            200.0
+        }; // user-B has high velocity
+
         let mut data = HashMap::new();
         data.insert("tx_id".to_string(), Value::String(format!("TX-{:03}", i)));
         data.insert("user_id".to_string(), Value::String(user.to_string()));
@@ -388,7 +458,7 @@ rule BlockHighFraud "Block transactions with high fraud score" salience 80 {
         // Get user metrics from state
         let metrics_key = format!("fraud_metrics:{}", user_id);
         let mut state_lock = state.lock().unwrap();
-        
+
         let mut user_metrics = if let Ok(Some(existing)) = state_lock.get(&metrics_key) {
             if let Value::Object(map) = existing {
                 map
@@ -404,7 +474,10 @@ rule BlockHighFraud "Block transactions with high fraud score" salience 80 {
 
         // Update metrics
         if let Some(Value::Number(count)) = user_metrics.get("TransactionsLast5Min") {
-            user_metrics.insert("TransactionsLast5Min".to_string(), Value::Number(count + 1.0));
+            user_metrics.insert(
+                "TransactionsLast5Min".to_string(),
+                Value::Number(count + 1.0),
+            );
         }
         if let Some(Value::Number(total)) = user_metrics.get("TotalLast5Min") {
             user_metrics.insert("TotalLast5Min".to_string(), Value::Number(total + amount));
@@ -416,7 +489,7 @@ rule BlockHighFraud "Block transactions with high fraud score" salience 80 {
         // Evaluate fraud rules
         let facts = Facts::new();
         let _ = facts.add_value("UserMetrics", Value::Object(user_metrics));
-        
+
         let mut tx_data = HashMap::new();
         tx_data.insert("ID".to_string(), Value::String(tx_id.to_string()));
         tx_data.insert("Amount".to_string(), Value::Number(amount));
@@ -433,24 +506,49 @@ rule BlockHighFraud "Block transactions with high fraud score" salience 80 {
 
         // Check results
         if let Some(Value::Object(tx)) = facts.get("Transaction") {
-            let status = tx.get("Status")
-                .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+            let status = tx
+                .get("Status")
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or("APPROVED");
-            
+
             if let Some(Value::Object(score)) = facts.get("FraudScore") {
-                let fraud_value = score.get("Value")
-                    .and_then(|v| if let Value::Number(n) = v { Some(*n) } else { None })
+                let fraud_value = score
+                    .get("Value")
+                    .and_then(|v| {
+                        if let Value::Number(n) = v {
+                            Some(*n)
+                        } else {
+                            None
+                        }
+                    })
                     .unwrap_or(0.0);
-                let reason = score.get("Reason")
-                    .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+                let reason = score
+                    .get("Reason")
+                    .and_then(|v| {
+                        if let Value::String(s) = v {
+                            Some(s.as_str())
+                        } else {
+                            None
+                        }
+                    })
                     .unwrap_or("NONE");
 
                 if status == "BLOCKED" {
-                    println!("🚫 {} | {} | ${:.0} | BLOCKED | Fraud: {:.0} | Reason: {}",
-                             user_id, tx_id, amount, fraud_value, reason);
+                    println!(
+                        "🚫 {} | {} | ${:.0} | BLOCKED | Fraud: {:.0} | Reason: {}",
+                        user_id, tx_id, amount, fraud_value, reason
+                    );
                 } else if fraud_value > 0.0 {
-                    println!("⚠️  {} | {} | ${:.0} | {} | Fraud: {:.0}",
-                             user_id, tx_id, amount, status, fraud_value);
+                    println!(
+                        "⚠️  {} | {} | ${:.0} | {} | Fraud: {:.0}",
+                        user_id, tx_id, amount, status, fraud_value
+                    );
                 }
             }
         }

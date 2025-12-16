@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::engine::rule::Rule;
 use std::collections::{HashMap, HashSet};
 
@@ -118,7 +120,11 @@ impl DependencyAnalyzer {
                 // For FORALL, we're reading the fields to check all match
                 Self::extract_fields_from_condition_group(inner, reads);
             }
-            crate::engine::rule::ConditionGroup::Accumulate { source_pattern, extract_field, .. } => {
+            crate::engine::rule::ConditionGroup::Accumulate {
+                source_pattern,
+                extract_field,
+                ..
+            } => {
                 // For ACCUMULATE, we're reading the source pattern and extract field
                 reads.push(format!("{}.{}", source_pattern, extract_field));
             }
@@ -178,6 +184,7 @@ impl DependencyAnalyzer {
     }
 
     /// Analyze function calls for potential field writes
+    #[allow(dead_code)]
     fn analyze_function_side_effects(&self, function_name: &str) -> Vec<String> {
         let mut side_effects = Vec::new();
 

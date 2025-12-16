@@ -10,9 +10,9 @@
 
 #![cfg(feature = "backward-chaining")]
 
-use rust_rule_engine::backward::{BackwardEngine, BackwardConfig, SearchStrategy};
-use rust_rule_engine::{Facts, KnowledgeBase};
+use rust_rule_engine::backward::{BackwardConfig, BackwardEngine, SearchStrategy};
 use rust_rule_engine::types::Value;
+use rust_rule_engine::{Facts, KnowledgeBase};
 use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,8 +31,8 @@ fn demo_simple_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Demo 1: Simple Diagnosis - Flu Detection");
     println!("-------------------------------------------");
 
-    let mut kb = KnowledgeBase::new("SimpleDiagnosis");
-    
+    let kb = KnowledgeBase::new("SimpleDiagnosis");
+
     // Medical knowledge base
     let rules = r#"
     rule "DiagnoseFlu" salience 100 {
@@ -68,7 +68,7 @@ fn demo_simple_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
             Patient.HasFatigue = true;
     }
     "#;
-    
+
     kb.add_rules_from_grl(rules)?;
 
     println!("📋 Medical Knowledge Base loaded:");
@@ -79,13 +79,16 @@ fn demo_simple_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
 
     // Patient observations (lab results and symptoms)
     let mut facts = Facts::new();
-    facts.set("Patient", Value::Object({
-        let mut patient = HashMap::new();
-        patient.insert("WhiteBloodCellCount".to_string(), Value::Number(12500.0));
-        patient.insert("BodyTemperature".to_string(), Value::Number(39.2));
-        patient.insert("LungCongestion".to_string(), Value::Boolean(true));
-        patient
-    }));
+    facts.set(
+        "Patient",
+        Value::Object({
+            let mut patient = HashMap::new();
+            patient.insert("WhiteBloodCellCount".to_string(), Value::Number(12500.0));
+            patient.insert("BodyTemperature".to_string(), Value::Number(39.2));
+            patient.insert("LungCongestion".to_string(), Value::Boolean(true));
+            patient
+        }),
+    );
 
     println!("\n🔬 Patient Observations:");
     if let Some(Value::Object(patient)) = facts.get("Patient") {
@@ -100,7 +103,7 @@ fn demo_simple_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     // Query: Does patient have Influenza?
     println!("\n🔍 Query: Can we diagnose \"Influenza\"?");
     println!("   (Checking if Diagnosis.Disease == \"Influenza\")");
-    
+
     let result = bc_engine.query(r#"Diagnosis.Disease == "Influenza""#, &mut facts)?;
 
     if result.provable {
@@ -109,7 +112,7 @@ fn demo_simple_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
         println!("   • Reasoning steps: {}", result.stats.goals_explored);
         println!("   • Rules evaluated: {}", result.stats.rules_evaluated);
         println!("   • Reasoning depth: {}", result.stats.max_depth);
-        
+
         println!("\n📜 Reasoning Chain:");
         result.proof_trace.print();
     } else {
@@ -127,8 +130,8 @@ fn demo_complex_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n\n📝 Demo 2: Complex Diagnosis - Multiple Conditions");
     println!("--------------------------------------------------");
 
-    let mut kb = KnowledgeBase::new("ComplexDiagnosis");
-    
+    let kb = KnowledgeBase::new("ComplexDiagnosis");
+
     let rules = r#"
     rule "DiagnoseDiabetes" salience 100 {
         when
@@ -164,18 +167,21 @@ fn demo_complex_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
             Patient.HbA1c = 7.2;
     }
     "#;
-    
+
     kb.add_rules_from_grl(rules)?;
 
     let mut facts = Facts::new();
-    facts.set("Patient", Value::Object({
-        let mut patient = HashMap::new();
-        patient.insert("FastingHours".to_string(), Value::Number(10.0));
-        patient.insert("RecentGlucoseTest".to_string(), Value::Boolean(true));
-        patient.insert("SystolicBP".to_string(), Value::Number(155.0));
-        patient.insert("DiastolicBP".to_string(), Value::Number(95.0));
-        patient
-    }));
+    facts.set(
+        "Patient",
+        Value::Object({
+            let mut patient = HashMap::new();
+            patient.insert("FastingHours".to_string(), Value::Number(10.0));
+            patient.insert("RecentGlucoseTest".to_string(), Value::Boolean(true));
+            patient.insert("SystolicBP".to_string(), Value::Number(155.0));
+            patient.insert("DiastolicBP".to_string(), Value::Number(95.0));
+            patient
+        }),
+    );
 
     println!("🔬 Patient Test Results:");
     if let Some(Value::Object(patient)) = facts.get("Patient") {
@@ -211,8 +217,8 @@ fn demo_differential_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n\n📝 Demo 3: Differential Diagnosis - Chest Pain");
     println!("---------------------------------------------");
 
-    let mut kb = KnowledgeBase::new("ChestPainDiagnosis");
-    
+    let kb = KnowledgeBase::new("ChestPainDiagnosis");
+
     let rules = r#"
     rule "DiagnoseHeartAttack" salience 100 {
         when
@@ -254,7 +260,7 @@ fn demo_differential_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
             Action.Treatment = "NSAIDs, rest";
     }
     "#;
-    
+
     kb.add_rules_from_grl(rules)?;
 
     println!("🏥 Differential Diagnosis Knowledge Base:");
@@ -267,22 +273,34 @@ fn demo_differential_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     // Scenario 1: Heart Attack
     println!("\n📋 SCENARIO 1: Emergency Case");
     println!("------------------------------");
-    
+
     let mut facts1 = Facts::new();
-    facts1.set("Symptoms", Value::Object({
-        let mut symptoms = HashMap::new();
-        symptoms.insert("ChestPain".to_string(), Value::String("Crushing".to_string()));
-        symptoms.insert("RadiatingPain".to_string(), Value::Boolean(true));
-        symptoms
-    }));
-    facts1.set("Tests", Value::Object({
-        let mut tests = HashMap::new();
-        tests.insert("TroponinElevated".to_string(), Value::Boolean(true));
-        tests
-    }));
+    facts1.set(
+        "Symptoms",
+        Value::Object({
+            let mut symptoms = HashMap::new();
+            symptoms.insert(
+                "ChestPain".to_string(),
+                Value::String("Crushing".to_string()),
+            );
+            symptoms.insert("RadiatingPain".to_string(), Value::Boolean(true));
+            symptoms
+        }),
+    );
+    facts1.set(
+        "Tests",
+        Value::Object({
+            let mut tests = HashMap::new();
+            tests.insert("TroponinElevated".to_string(), Value::Boolean(true));
+            tests
+        }),
+    );
 
     let mut bc_engine = BackwardEngine::new(kb.clone());
-    let result = bc_engine.query(r#"Diagnosis.Critical == "Myocardial Infarction""#, &mut facts1)?;
+    let result = bc_engine.query(
+        r#"Diagnosis.Critical == "Myocardial Infarction""#,
+        &mut facts1,
+    )?;
 
     if result.provable {
         println!("🚨 CRITICAL: Myocardial Infarction (Heart Attack)");
@@ -294,19 +312,28 @@ fn demo_differential_diagnosis() -> Result<(), Box<dyn std::error::Error>> {
     // Scenario 2: GERD
     println!("\n\n📋 SCENARIO 2: Non-Emergency Case");
     println!("----------------------------------");
-    
+
     let mut facts2 = Facts::new();
-    facts2.set("Symptoms", Value::Object({
-        let mut symptoms = HashMap::new();
-        symptoms.insert("ChestPain".to_string(), Value::String("Burning".to_string()));
-        symptoms.insert("AfterMeals".to_string(), Value::Boolean(true));
-        symptoms
-    }));
-    facts2.set("Tests", Value::Object({
-        let mut tests = HashMap::new();
-        tests.insert("ECGNormal".to_string(), Value::Boolean(true));
-        tests
-    }));
+    facts2.set(
+        "Symptoms",
+        Value::Object({
+            let mut symptoms = HashMap::new();
+            symptoms.insert(
+                "ChestPain".to_string(),
+                Value::String("Burning".to_string()),
+            );
+            symptoms.insert("AfterMeals".to_string(), Value::Boolean(true));
+            symptoms
+        }),
+    );
+    facts2.set(
+        "Tests",
+        Value::Object({
+            let mut tests = HashMap::new();
+            tests.insert("ECGNormal".to_string(), Value::Boolean(true));
+            tests
+        }),
+    );
 
     let mut bc_engine2 = BackwardEngine::new(kb);
     let result2 = bc_engine2.query(r#"Diagnosis.Condition == "GERD""#, &mut facts2)?;
@@ -325,8 +352,8 @@ fn demo_explain_reasoning() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n\n📝 Demo 4: Explain Medical Reasoning");
     println!("------------------------------------");
 
-    let mut kb = KnowledgeBase::new("ExplainReasoning");
-    
+    let kb = KnowledgeBase::new("ExplainReasoning");
+
     let rules = r#"
     rule "PneumoniaDiagnosis" salience 100 {
         when
@@ -369,27 +396,42 @@ fn demo_explain_reasoning() -> Result<(), Box<dyn std::error::Error>> {
             Lab.ElevatedWBC = true;
     }
     "#;
-    
+
     kb.add_rules_from_grl(rules)?;
 
     let mut facts = Facts::new();
-    facts.set("Patient", Value::Object({
-        let mut patient = HashMap::new();
-        patient.insert("Temperature".to_string(), Value::Number(39.5));
-        patient.insert("CoughType".to_string(), Value::String("Productive".to_string()));
-        patient.insert("SputumColor".to_string(), Value::String("Yellow-Green".to_string()));
-        patient
-    }));
-    facts.set("Imaging", Value::Object({
-        let mut imaging = HashMap::new();
-        imaging.insert("Consolidation".to_string(), Value::Boolean(true));
-        imaging
-    }));
-    facts.set("Lab", Value::Object({
-        let mut lab = HashMap::new();
-        lab.insert("WhiteBloodCells".to_string(), Value::Number(15000.0));
-        lab
-    }));
+    facts.set(
+        "Patient",
+        Value::Object({
+            let mut patient = HashMap::new();
+            patient.insert("Temperature".to_string(), Value::Number(39.5));
+            patient.insert(
+                "CoughType".to_string(),
+                Value::String("Productive".to_string()),
+            );
+            patient.insert(
+                "SputumColor".to_string(),
+                Value::String("Yellow-Green".to_string()),
+            );
+            patient
+        }),
+    );
+    facts.set(
+        "Imaging",
+        Value::Object({
+            let mut imaging = HashMap::new();
+            imaging.insert("Consolidation".to_string(), Value::Boolean(true));
+            imaging
+        }),
+    );
+    facts.set(
+        "Lab",
+        Value::Object({
+            let mut lab = HashMap::new();
+            lab.insert("WhiteBloodCells".to_string(), Value::Number(15000.0));
+            lab
+        }),
+    );
 
     println!("🔬 Clinical Data:");
     println!("   Temperature: 39.5°C");
@@ -403,12 +445,12 @@ fn demo_explain_reasoning() -> Result<(), Box<dyn std::error::Error>> {
         enable_memoization: true,
         max_solutions: 1,
     };
-    
+
     let mut bc_engine = BackwardEngine::with_config(kb, config);
 
     println!("\n🔍 Query: Can we diagnose Pneumonia?");
     let explanation = bc_engine.explain_why(r#"Diagnosis.Disease == "Pneumonia""#, &mut facts)?;
-    
+
     println!("\n📖 Medical Reasoning Explanation:");
     println!("{}", explanation);
 

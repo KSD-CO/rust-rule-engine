@@ -5,17 +5,17 @@
 //! - Track affected rules and activations
 //! - Efficient re-evaluation after updates
 
+use super::agenda::{Activation, AdvancedAgenda};
+use super::deffacts::DeffactsRegistry;
+use super::facts::{FactValue, TypedFacts};
+use super::globals::GlobalsRegistry;
+use super::network::TypedReteUlRule;
+use super::template::TemplateRegistry;
+use super::tms::TruthMaintenanceSystem;
+use super::working_memory::{FactHandle, WorkingMemory};
+use crate::errors::{Result, RuleEngineError};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use super::working_memory::{WorkingMemory, FactHandle};
-use super::network::{ReteUlNode, TypedReteUlRule};
-use super::facts::{TypedFacts, FactValue};
-use super::agenda::{AdvancedAgenda, Activation};
-use super::template::TemplateRegistry;
-use super::globals::GlobalsRegistry;
-use super::deffacts::DeffactsRegistry;
-use super::tms::TruthMaintenanceSystem;
-use crate::errors::{Result, RuleEngineError};
 
 /// Track which rules are affected by which fact types
 #[derive(Debug)]
@@ -39,12 +39,12 @@ impl RuleDependencyGraph {
     pub fn add_dependency(&mut self, rule_idx: usize, fact_type: String) {
         self.fact_type_to_rules
             .entry(fact_type.clone())
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(rule_idx);
 
         self.rule_to_fact_types
             .entry(rule_idx)
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(fact_type);
     }
 
@@ -73,7 +73,8 @@ impl Default for RuleDependencyGraph {
 
 /// Type alias for custom test functions in RETE engine
 /// Functions take a slice of FactValues and return a FactValue (typically Boolean)
-pub type ReteCustomFunction = Arc<dyn Fn(&[FactValue], &TypedFacts) -> Result<FactValue> + Send + Sync>;
+pub type ReteCustomFunction =
+    Arc<dyn Fn(&[FactValue], &TypedFacts) -> Result<FactValue> + Send + Sync>;
 
 /// Incremental Propagation Engine
 /// Only re-evaluates rules affected by changed facts
@@ -132,7 +133,7 @@ impl IncrementalEngine {
     /// Insert fact into working memory
     pub fn insert(&mut self, fact_type: String, data: TypedFacts) -> FactHandle {
         let handle = self.working_memory.insert(fact_type.clone(), data);
-        
+
         // Default: Treat as explicit assertion (backward compatible)
         self.tms.add_explicit_justification(handle);
 
@@ -145,16 +146,17 @@ impl IncrementalEngine {
     /// Update fact in working memory
     pub fn update(&mut self, handle: FactHandle, data: TypedFacts) -> Result<()> {
         // Get fact type before update
-        let fact_type = self.working_memory
+        let fact_type = self
+            .working_memory
             .get(&handle)
             .map(|f| f.fact_type.clone())
             .ok_or_else(|| RuleEngineError::FieldNotFound {
                 field: format!("FactHandle {} not found", handle),
             })?;
 
-        self.working_memory.update(handle, data).map_err(|e| RuleEngineError::EvaluationError {
-            message: e,
-        })?;
+        self.working_memory
+            .update(handle, data)
+            .map_err(|e| RuleEngineError::EvaluationError { message: e })?;
 
         // Trigger incremental propagation for this fact type
         self.propagate_changes_for_type(&fact_type);
@@ -165,23 +167,25 @@ impl IncrementalEngine {
     /// Retract fact from working memory
     pub fn retract(&mut self, handle: FactHandle) -> Result<()> {
         // Get fact type before retract
-        let fact_type = self.working_memory
+        let fact_type = self
+            .working_memory
             .get(&handle)
             .map(|f| f.fact_type.clone())
             .ok_or_else(|| RuleEngineError::FieldNotFound {
                 field: format!("FactHandle {} not found", handle),
             })?;
 
-        self.working_memory.retract(handle).map_err(|e| RuleEngineError::EvaluationError {
-            message: e,
-        })?;
+        self.working_memory
+            .retract(handle)
+            .map_err(|e| RuleEngineError::EvaluationError { message: e })?;
 
         // TMS: Handle cascade retraction
         let cascaded_facts = self.tms.retract_with_cascade(handle);
-        
+
         // Actually retract cascaded facts from working memory
         for cascaded_handle in cascaded_facts {
-            if let Ok(fact_type) = self.working_memory
+            if let Ok(fact_type) = self
+                .working_memory
                 .get(&cascaded_handle)
                 .map(|f| f.fact_type.clone())
                 .ok_or_else(|| RuleEngineError::FieldNotFound {
@@ -199,21 +203,21 @@ impl IncrementalEngine {
 
         Ok(())
     }
-    
+
     /// Insert a fact with explicit assertion (user provided)
     /// This fact will NOT be auto-retracted by TMS
     pub fn insert_explicit(&mut self, fact_type: String, data: TypedFacts) -> FactHandle {
         let handle = self.working_memory.insert(fact_type.clone(), data);
-        
+
         // Add explicit justification in TMS
         self.tms.add_explicit_justification(handle);
-        
+
         // Trigger incremental propagation for this fact type
         self.propagate_changes_for_type(&fact_type);
-        
+
         handle
     }
-    
+
     /// Insert a fact with logical assertion (derived by a rule)
     /// This fact WILL be auto-retracted if its premises become invalid
     ///
@@ -230,13 +234,14 @@ impl IncrementalEngine {
         premise_handles: Vec<FactHandle>,
     ) -> FactHandle {
         let handle = self.working_memory.insert(fact_type.clone(), data);
-        
+
         // Add logical justification in TMS
-        self.tms.add_logical_justification(handle, source_rule, premise_handles);
-        
+        self.tms
+            .add_logical_justification(handle, source_rule, premise_handles);
+
         // Trigger incremental propagation for this fact type
         self.propagate_changes_for_type(&fact_type);
-        
+
         handle
     }
 
@@ -279,8 +284,12 @@ impl IncrementalEngine {
                                 return super::facts::FactValue::Boolean(false);
                             }
                             // Quoted string
-                            if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
-                                return super::facts::FactValue::String(s[1..s.len()-1].to_string());
+                            if (s.starts_with('"') && s.ends_with('"'))
+                                || (s.starts_with('\'') && s.ends_with('\''))
+                            {
+                                return super::facts::FactValue::String(
+                                    s[1..s.len() - 1].to_string(),
+                                );
                             }
                             // Integer
                             if let Ok(i) = s.parse::<i64>() {
@@ -295,15 +304,22 @@ impl IncrementalEngine {
                             super::facts::FactValue::String(s.to_string())
                         }
 
-                        fn fact_value_equal(a: &super::facts::FactValue, b: &super::facts::FactValue) -> bool {
+                        fn fact_value_equal(
+                            a: &super::facts::FactValue,
+                            b: &super::facts::FactValue,
+                        ) -> bool {
                             use super::facts::FactValue;
                             match (a, b) {
                                 (FactValue::Boolean(x), FactValue::Boolean(y)) => x == y,
                                 (FactValue::Integer(x), FactValue::Integer(y)) => x == y,
                                 (FactValue::Float(x), FactValue::Float(y)) => (x - y).abs() < 1e-9,
                                 // Number cross-type comparisons
-                                (FactValue::Integer(x), FactValue::Float(y)) => ((*x as f64) - *y).abs() < 1e-9,
-                                (FactValue::Float(x), FactValue::Integer(y)) => (*x - (*y as f64)).abs() < 1e-9,
+                                (FactValue::Integer(x), FactValue::Float(y)) => {
+                                    ((*x as f64) - *y).abs() < 1e-9
+                                }
+                                (FactValue::Float(x), FactValue::Integer(y)) => {
+                                    (*x - (*y as f64)).abs() < 1e-9
+                                }
                                 (FactValue::String(x), FactValue::String(y)) => x == y,
                                 // Mixed string vs other: compare stringified forms
                                 _ => a.as_string() == b.as_string(),
@@ -314,7 +330,9 @@ impl IncrementalEngine {
 
                         // Prefer the most recent non-retracted matching fact for determinism
                         if let Some(fact) = facts.iter().rev().find(|fact| {
-                            if fact.metadata.retracted { return false; }
+                            if fact.metadata.retracted {
+                                return false;
+                            }
                             if let Some(fv) = fact.data.get(field) {
                                 fact_value_equal(fv, &expected) || fv.as_string() == value_part
                             } else {
@@ -330,12 +348,12 @@ impl IncrementalEngine {
 
         handles
     }
-    
+
     /// Get TMS reference
     pub fn tms(&self) -> &TruthMaintenanceSystem {
         &self.tms
     }
-    
+
     /// Get mutable TMS reference
     pub fn tms_mut(&mut self) -> &mut TruthMaintenanceSystem {
         &mut self.tms
@@ -352,7 +370,7 @@ impl IncrementalEngine {
 
         // Get facts of this type
         let facts_of_type = self.working_memory.get_by_type(fact_type);
-        
+
         // Re-evaluate only affected rules, checking each fact individually
         for &rule_idx in &affected_rules {
             let rule = &self.rules[rule_idx];
@@ -366,9 +384,10 @@ impl IncrementalEngine {
                 }
                 // Store handle for Retract action
                 single_fact_data.set_fact_handle(fact_type.to_string(), fact.handle);
-                
+
                 // Evaluate rule condition with this single fact
-                let matches = super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data);
+                let matches =
+                    super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data);
 
                 if matches {
                     // Create activation for this specific fact match
@@ -385,37 +404,40 @@ impl IncrementalEngine {
     /// Propagate changes for all fact types (re-evaluate all rules)
     fn propagate_changes(&mut self) {
         // Get all fact types
-        let fact_types: Vec<String> = self.working_memory.get_all_facts()
+        let fact_types: Vec<String> = self
+            .working_memory
+            .get_all_facts()
             .iter()
             .map(|f| f.fact_type.clone())
             .collect::<std::collections::HashSet<_>>()
             .into_iter()
             .collect();
-        
+
         // Evaluate each fact type using per-fact evaluation
         for fact_type in fact_types {
             let facts_of_type = self.working_memory.get_by_type(&fact_type);
-            
-            for (rule_idx, rule) in self.rules.iter().enumerate() {
+
+            for rule in self.rules.iter() {
                 // Skip if rule has no-loop and already fired
                 if rule.no_loop && self.agenda.has_fired(&rule.name) {
                     continue;
                 }
-                
+
                 // Check each fact against the rule
                 for fact in &facts_of_type {
                     let mut single_fact_data = TypedFacts::new();
                     for (key, value) in fact.data.get_all() {
                         single_fact_data.set(format!("{}.{}", fact_type, key), value.clone());
                     }
-                    
-                    let matches = super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data);
-                    
+
+                    let matches =
+                        super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data);
+
                     if matches {
                         let activation = Activation::new(rule.name.clone(), rule.priority)
                             .with_no_loop(rule.no_loop)
                             .with_matched_fact(fact.handle);
-                        
+
                         self.agenda.add_activation(activation);
                     }
                 }
@@ -435,9 +457,10 @@ impl IncrementalEngine {
                 eprintln!("WARNING: Maximum iterations ({}) reached in fire_all(). Possible infinite loop!", max_iterations);
                 break;
             }
-            
+
             // Find rule
-            if let Some((idx, rule)) = self.rules
+            if let Some((_idx, rule)) = self
+                .rules
                 .iter_mut()
                 .enumerate()
                 .find(|(_, r)| r.name == activation.rule_name)
@@ -449,11 +472,11 @@ impl IncrementalEngine {
                         continue;
                     }
                 }
-                
+
                 // Execute action on a copy of all facts
                 let original_facts = self.working_memory.to_typed_facts();
                 let mut modified_facts = original_facts.clone();
-                
+
                 // Inject matched fact handle if available
                 if let Some(matched_handle) = activation.matched_fact_handle {
                     // Find the fact type from working memory
@@ -461,14 +484,14 @@ impl IncrementalEngine {
                         modified_facts.set_fact_handle(fact.fact_type.clone(), matched_handle);
                     }
                 }
-                
+
                 let mut action_results = super::ActionResults::new();
                 (rule.action)(&mut modified_facts, &mut action_results);
 
                 // Update working memory: detect changes and apply them
                 // Build a map of fact_type -> updated fields
                 let mut updates_by_type: HashMap<String, Vec<(String, FactValue)>> = HashMap::new();
-                
+
                 for (key, value) in modified_facts.get_all() {
                     // Keys are in format "FactType.field" or "FactType.handle.field"
                     // We want to extract the FactType and field name
@@ -484,10 +507,10 @@ impl IncrementalEngine {
                                 } else {
                                     parts[parts.len() - 1].to_string()
                                 };
-                                
+
                                 updates_by_type
                                     .entry(fact_type)
-                                    .or_insert_with(Vec::new)
+                                    .or_default()
                                     .push((field, value.clone()));
                             }
                         }
@@ -501,33 +524,34 @@ impl IncrementalEngine {
                             } else {
                                 parts[parts.len() - 1].to_string()
                             };
-                            
+
                             updates_by_type
                                 .entry(fact_type)
-                                .or_insert_with(Vec::new)
+                                .or_default()
                                 .push((field, value.clone()));
                         }
                     }
                 }
-                
+
                 // Apply updates to working memory facts
                 for (fact_type, field_updates) in updates_by_type {
                     // Get handles of all facts of this type (collect to avoid borrow issues)
-                    let fact_handles: Vec<FactHandle> = self.working_memory
+                    let fact_handles: Vec<FactHandle> = self
+                        .working_memory
                         .get_by_type(&fact_type)
                         .iter()
                         .map(|f| f.handle)
                         .collect();
-                    
+
                     for handle in fact_handles {
                         if let Some(fact) = self.working_memory.get(&handle) {
                             let mut updated_data = fact.data.clone();
-                            
+
                             // Apply all field updates
                             for (field, value) in &field_updates {
                                 updated_data.set(field, value.clone());
                             }
-                            
+
                             let _ = self.working_memory.update(handle, updated_data);
                         }
                     }
@@ -584,18 +608,25 @@ impl IncrementalEngine {
                     // Insert new explicit fact
                     self.insert_explicit(fact_type, data);
                 }
-                super::ActionResult::InsertLogicalFact { fact_type, data, rule_name, premises } => {
+                super::ActionResult::InsertLogicalFact {
+                    fact_type,
+                    data,
+                    rule_name,
+                    premises,
+                } => {
                     // Insert new logical fact
                     let _handle = self.insert_logical(fact_type, data, rule_name, premises);
                 }
-                super::ActionResult::CallFunction { function_name, args } => {
+                super::ActionResult::CallFunction {
+                    function_name,
+                    args,
+                } => {
                     // Try to execute function if registered
                     if let Some(func) = self.custom_functions.get(&function_name) {
                         // Convert string args to FactValues
-                        let fact_values: Vec<FactValue> = args.iter()
-                            .map(|s| FactValue::String(s.clone()))
-                            .collect();
-                        
+                        let fact_values: Vec<FactValue> =
+                            args.iter().map(|s| FactValue::String(s.clone())).collect();
+
                         // Execute function (ignore return value for actions)
                         let all_facts = self.working_memory.to_typed_facts();
                         match func(&fact_values, &all_facts) {
@@ -607,7 +638,10 @@ impl IncrementalEngine {
                         println!("🔧 Function call queued: {}({:?})", function_name, args);
                     }
                 }
-                super::ActionResult::ScheduleRule { rule_name, delay_ms } => {
+                super::ActionResult::ScheduleRule {
+                    rule_name,
+                    delay_ms,
+                } => {
                     // Log scheduled rules (requires scheduler to actually execute)
                     println!("⏰ Rule scheduled: {} after {}ms", rule_name, delay_ms);
                     // TODO: Implement rule scheduler
@@ -702,7 +736,8 @@ impl IncrementalEngine {
     where
         F: Fn(&[FactValue], &TypedFacts) -> Result<FactValue> + Send + Sync + 'static,
     {
-        self.custom_functions.insert(name.to_string(), Arc::new(func));
+        self.custom_functions
+            .insert(name.to_string(), Arc::new(func));
     }
 
     /// Get a custom function by name (for Test CE evaluation)
@@ -834,10 +869,7 @@ impl std::fmt::Display for IncrementalEngineStats {
         write!(
             f,
             "Engine Stats: {} rules, {} fact types tracked\nWM: {}\nAgenda: {}",
-            self.rules,
-            self.dependencies,
-            self.working_memory,
-            self.agenda
+            self.rules, self.dependencies, self.working_memory, self.agenda
         )
     }
 }
@@ -845,8 +877,8 @@ impl std::fmt::Display for IncrementalEngineStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rete::network::ReteUlNode;
     use crate::rete::alpha::AlphaNode;
+    use crate::rete::network::ReteUlNode;
 
     #[test]
     fn test_dependency_graph() {

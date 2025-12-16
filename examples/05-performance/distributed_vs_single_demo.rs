@@ -1,5 +1,4 @@
 use rust_rule_engine::*;
-use std::collections::HashMap;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -52,7 +51,7 @@ fn test_single_node_processing(
     let start = Instant::now();
 
     // Create single engine with all rules
-    let mut kb = KnowledgeBase::new("SingleNodeKB");
+    let kb = KnowledgeBase::new("SingleNodeKB");
     let config = EngineConfig {
         max_cycles: 5,
         debug_mode: false,
@@ -116,7 +115,7 @@ fn test_distributed_processing(
             thread::spawn(
                 move || -> std::result::Result<(usize, usize), RuleEngineError> {
                     // Create specialized engine for this node
-                    let mut kb = KnowledgeBase::new(&format!("Node{}KB", node_id));
+                    let kb = KnowledgeBase::new(&format!("Node{}KB", node_id));
                     let config = EngineConfig {
                         max_cycles: 5,
                         debug_mode: false,

@@ -6,28 +6,24 @@
 //! - Query execution
 //! - Rule chaining
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 #[cfg(feature = "backward-chaining")]
 mod benchmarks {
     use super::*;
-    use rust_rule_engine::backward::expression::ExpressionParser;
-    use rust_rule_engine::backward::conclusion_index::ConclusionIndex;
     use rust_rule_engine::backward::backward_engine::BackwardEngine;
-    use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
+    use rust_rule_engine::backward::conclusion_index::ConclusionIndex;
+    use rust_rule_engine::backward::expression::ExpressionParser;
     use rust_rule_engine::engine::facts::Facts;
-    use rust_rule_engine::engine::rule::{Rule, Condition};
-    use rust_rule_engine::types::{ActionType, Value, Operator};
+    use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
+    use rust_rule_engine::engine::rule::{Condition, Rule};
+    use rust_rule_engine::types::{ActionType, Operator, Value};
     use rust_rule_engine::ConditionGroup;
 
     // ===== Helper Functions =====
 
     fn create_simple_rule(name: &str, sets_field: &str) -> Rule {
-        let condition = Condition::new(
-            "dummy".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        );
+        let condition = Condition::new("dummy".to_string(), Operator::Equal, Value::Boolean(true));
 
         Rule::new(
             name.to_string(),
@@ -40,13 +36,10 @@ mod benchmarks {
     }
 
     fn create_kb_with_rules(num_rules: usize) -> KnowledgeBase {
-        let mut kb = KnowledgeBase::new("benchmark_kb");
+        let kb = KnowledgeBase::new("benchmark_kb");
 
         for i in 0..num_rules {
-            let rule = create_simple_rule(
-                &format!("Rule{}", i),
-                &format!("Field{}", i)
-            );
+            let rule = create_simple_rule(&format!("Rule{}", i), &format!("Field{}", i));
             kb.add_rule(rule).unwrap();
         }
 
@@ -60,16 +53,12 @@ mod benchmarks {
 
         // Simple field
         group.bench_function("simple_field", |b| {
-            b.iter(|| {
-                ExpressionParser::parse(black_box("User.IsVIP"))
-            })
+            b.iter(|| ExpressionParser::parse(black_box("User.IsVIP")))
         });
 
         // Simple comparison
         group.bench_function("simple_comparison", |b| {
-            b.iter(|| {
-                ExpressionParser::parse(black_box("User.Age == 25"))
-            })
+            b.iter(|| ExpressionParser::parse(black_box("User.Age == 25")))
         });
 
         // Logical AND
@@ -114,27 +103,22 @@ mod benchmarks {
         // Simple comparison
         let simple_expr = ExpressionParser::parse("User.Age == 25").unwrap();
         group.bench_function("simple_comparison", |b| {
-            b.iter(|| {
-                simple_expr.evaluate(black_box(&facts))
-            })
+            b.iter(|| simple_expr.evaluate(black_box(&facts)))
         });
 
         // Logical AND
-        let and_expr = ExpressionParser::parse("User.IsVIP == true && Order.Amount > 1000").unwrap();
+        let and_expr =
+            ExpressionParser::parse("User.IsVIP == true && Order.Amount > 1000").unwrap();
         group.bench_function("logical_and", |b| {
-            b.iter(|| {
-                and_expr.evaluate(black_box(&facts))
-            })
+            b.iter(|| and_expr.evaluate(black_box(&facts)))
         });
 
         // Complex expression
-        let complex_expr = ExpressionParser::parse(
-            "(User.IsVIP == true && Order.Amount > 1000) || Score > 80"
-        ).unwrap();
+        let complex_expr =
+            ExpressionParser::parse("(User.IsVIP == true && Order.Amount > 1000) || Score > 80")
+                .unwrap();
         group.bench_function("complex_expression", |b| {
-            b.iter(|| {
-                complex_expr.evaluate(black_box(&facts))
-            })
+            b.iter(|| complex_expr.evaluate(black_box(&facts)))
         });
 
         group.finish();
@@ -150,15 +134,9 @@ mod benchmarks {
                 .map(|i| create_simple_rule(&format!("Rule{}", i), &format!("Field{}", i)))
                 .collect();
 
-            group.bench_with_input(
-                BenchmarkId::from_parameter(num_rules),
-                num_rules,
-                |b, _| {
-                    b.iter(|| {
-                        ConclusionIndex::from_rules(black_box(&rules))
-                    })
-                },
-            );
+            group.bench_with_input(BenchmarkId::from_parameter(num_rules), num_rules, |b, _| {
+                b.iter(|| ConclusionIndex::from_rules(black_box(&rules)))
+            });
         }
 
         group.finish();
@@ -174,15 +152,9 @@ mod benchmarks {
 
             let index = ConclusionIndex::from_rules(&rules);
 
-            group.bench_with_input(
-                BenchmarkId::from_parameter(num_rules),
-                num_rules,
-                |b, _| {
-                    b.iter(|| {
-                        index.find_candidates(black_box("Field50 == true"))
-                    })
-                },
-            );
+            group.bench_with_input(BenchmarkId::from_parameter(num_rules), num_rules, |b, _| {
+                b.iter(|| index.find_candidates(black_box("Field50 == true")))
+            });
         }
 
         group.finish();
@@ -219,24 +191,17 @@ mod benchmarks {
 
         for num_rules in [10, 50, 100].iter() {
             let kb = create_kb_with_rules(*num_rules);
-            let mut facts = Facts::new();
+            let facts = Facts::new();
             facts.set("Field50", Value::Boolean(true));
 
-            group.bench_with_input(
-                BenchmarkId::from_parameter(num_rules),
-                num_rules,
-                |b, _| {
-                    let mut bc_engine = BackwardEngine::new(kb.clone());
-                    let mut facts_clone = facts.clone();
+            group.bench_with_input(BenchmarkId::from_parameter(num_rules), num_rules, |b, _| {
+                let mut bc_engine = BackwardEngine::new(kb.clone());
+                let mut facts_clone = facts.clone();
 
-                    b.iter(|| {
-                        bc_engine.query(
-                            black_box("Field50 == true"),
-                            black_box(&mut facts_clone)
-                        )
-                    })
-                },
-            );
+                b.iter(|| {
+                    bc_engine.query(black_box("Field50 == true"), black_box(&mut facts_clone))
+                })
+            });
         }
 
         group.finish();
@@ -248,28 +213,22 @@ mod benchmarks {
         let mut group = c.benchmark_group("field_extraction");
 
         let simple_expr = ExpressionParser::parse("User.IsVIP == true").unwrap();
-        group.bench_function("single_field", |b| {
-            b.iter(|| {
-                simple_expr.extract_fields()
-            })
-        });
+        group.bench_function("single_field", |b| b.iter(|| simple_expr.extract_fields()));
 
         let complex_expr = ExpressionParser::parse(
-            "User.IsVIP == true && Order.Amount > 1000 && Customer.Age >= 18"
-        ).unwrap();
+            "User.IsVIP == true && Order.Amount > 1000 && Customer.Age >= 18",
+        )
+        .unwrap();
         group.bench_function("multiple_fields", |b| {
-            b.iter(|| {
-                complex_expr.extract_fields()
-            })
+            b.iter(|| complex_expr.extract_fields())
         });
 
         let very_complex_expr = ExpressionParser::parse(
-            "(A == 1 && B == 2 && C == 3) || (D == 4 && E == 5 && F == 6) || (G == 7 && H == 8)"
-        ).unwrap();
+            "(A == 1 && B == 2 && C == 3) || (D == 4 && E == 5 && F == 6) || (G == 7 && H == 8)",
+        )
+        .unwrap();
         group.bench_function("many_fields", |b| {
-            b.iter(|| {
-                very_complex_expr.extract_fields()
-            })
+            b.iter(|| very_complex_expr.extract_fields())
         });
 
         group.finish();
@@ -291,11 +250,7 @@ mod benchmarks {
             group.bench_with_input(
                 BenchmarkId::new("O1_index", num_rules),
                 num_rules,
-                |b, _| {
-                    b.iter(|| {
-                        index.find_candidates(black_box("Field500 == true"))
-                    })
-                },
+                |b, _| b.iter(|| index.find_candidates(black_box("Field500 == true"))),
             );
 
             // O(n) linear search (simulated)

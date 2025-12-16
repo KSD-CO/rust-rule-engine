@@ -31,7 +31,8 @@ mod end_to_end_tests {
         // Step 1: Parse GRL patterns
         println!("Step 1: Parsing GRL patterns...");
         let login_grl = r#"login: LoginEvent from stream("logins") over window(10 min, sliding)"#;
-        let purchase_grl = r#"purchase: PurchaseEvent from stream("purchases") over window(10 min, sliding)"#;
+        let purchase_grl =
+            r#"purchase: PurchaseEvent from stream("purchases") over window(10 min, sliding)"#;
 
         let (_, login_pattern) = parse_stream_pattern(login_grl).unwrap();
         let (_, purchase_pattern) = parse_stream_pattern(purchase_grl).unwrap();
@@ -57,8 +58,14 @@ mod end_to_end_tests {
                 window_type: w.window_type.clone(),
             }),
         );
-        println!("  ✓ Created login node for stream: {}", login_pattern.source.stream_name);
-        println!("  ✓ Created purchase node for stream: {}", purchase_pattern.source.stream_name);
+        println!(
+            "  ✓ Created login node for stream: {}",
+            login_pattern.source.stream_name
+        );
+        println!(
+            "  ✓ Created purchase node for stream: {}",
+            purchase_pattern.source.stream_name
+        );
 
         // Step 3: Initialize WorkingMemory
         println!("\nStep 3: Initializing WorkingMemory...");
@@ -72,14 +79,16 @@ mod end_to_end_tests {
         // User logs in from New York
         let mut login_data = HashMap::new();
         login_data.insert("user_id".to_string(), Value::String("user123".to_string()));
-        login_data.insert("ip_address".to_string(), Value::String("192.168.1.1".to_string()));
-        login_data.insert("location".to_string(), Value::String("New York".to_string()));
-        let login_event = StreamEvent::with_timestamp(
-            "LoginEvent",
-            login_data,
-            "logins",
-            current_time - 60_000,
+        login_data.insert(
+            "ip_address".to_string(),
+            Value::String("192.168.1.1".to_string()),
         );
+        login_data.insert(
+            "location".to_string(),
+            Value::String("New York".to_string()),
+        );
+        let login_event =
+            StreamEvent::with_timestamp("LoginEvent", login_data, "logins", current_time - 60_000);
 
         if login_node.process_event(&login_event) {
             let handle = wm.insert_from_stream("logins".to_string(), login_event.clone());
@@ -90,7 +99,10 @@ mod end_to_end_tests {
         let mut purchase_data = HashMap::new();
         purchase_data.insert("user_id".to_string(), Value::String("user123".to_string()));
         purchase_data.insert("amount".to_string(), Value::Number(9999.99));
-        purchase_data.insert("ip_address".to_string(), Value::String("10.0.0.1".to_string()));
+        purchase_data.insert(
+            "ip_address".to_string(),
+            Value::String("10.0.0.1".to_string()),
+        );
         purchase_data.insert("location".to_string(), Value::String("London".to_string()));
         let purchase_event = StreamEvent::with_timestamp(
             "PurchaseEvent",
@@ -178,11 +190,14 @@ mod end_to_end_tests {
 
         // Process temperature readings
         println!("\n📊 Processing temperature readings...");
-        let temperatures = vec![20.0, 25.0, 35.0, 50.0, 70.0, 85.0];
+        let temperatures = [20.0, 25.0, 35.0, 50.0, 70.0, 85.0];
 
         for (i, temp) in temperatures.iter().enumerate() {
             let mut data = HashMap::new();
-            data.insert("sensor_id".to_string(), Value::String("sensor-001".to_string()));
+            data.insert(
+                "sensor_id".to_string(),
+                Value::String("sensor-001".to_string()),
+            );
             data.insert("temperature".to_string(), Value::Number(*temp));
             data.insert("reading_num".to_string(), Value::Integer(i as i64));
 
@@ -206,11 +221,9 @@ mod end_to_end_tests {
 
         let mut temps: Vec<f64> = sensor_facts
             .iter()
-            .filter_map(|f| {
-                match f.data.get("temperature")? {
-                    rust_rule_engine::rete::facts::FactValue::Float(t) => Some(*t),
-                    _ => None,
-                }
+            .filter_map(|f| match f.data.get("temperature")? {
+                rust_rule_engine::rete::facts::FactValue::Float(t) => Some(*t),
+                _ => None,
             })
             .collect();
 

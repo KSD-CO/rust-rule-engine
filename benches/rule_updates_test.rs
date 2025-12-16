@@ -1,7 +1,7 @@
-use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
+use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::types::{ActionType, Operator, Value};
 use std::collections::HashMap;
 use std::time::Instant;
@@ -18,7 +18,7 @@ fn main() {
     let config = EngineConfig::default();
     let mut engine = RustRuleEngine::with_config(kb, config);
 
-    let mut facts = create_test_facts();
+    let facts = create_test_facts();
 
     // Test initial performance
     let initial_time = measure_execution_time(&mut engine, &facts);
@@ -35,8 +35,14 @@ fn main() {
 
     // Test performance after adding rules
     let after_add_time = measure_execution_time(&mut engine, &facts);
-    println!("Execution time after adding rules: {:.2} µs", after_add_time);
-    println!("Performance degradation: {:.2}x", after_add_time as f64 / initial_time as f64);
+    println!(
+        "Execution time after adding rules: {:.2} µs",
+        after_add_time
+    );
+    println!(
+        "Performance degradation: {:.2}x",
+        after_add_time as f64 / initial_time as f64
+    );
 
     // Test with different fact sets
     println!("\nTesting with varying fact complexity:");
@@ -95,7 +101,7 @@ fn create_dynamic_rule(index: usize) -> Rule {
 }
 
 fn create_test_facts() -> Facts {
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     let mut data_props = HashMap::new();
     data_props.insert("value".to_string(), Value::Integer(75));
     data_props.insert("status".to_string(), Value::String("active".to_string()));
@@ -105,7 +111,7 @@ fn create_test_facts() -> Facts {
 }
 
 fn create_complex_facts(count: usize) -> Facts {
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     for i in 0..count {
         let mut props = HashMap::new();
         props.insert("id".to_string(), Value::Integer(i as i64));

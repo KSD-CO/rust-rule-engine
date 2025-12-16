@@ -173,7 +173,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             ActionType::Custom {
                 action_type: "format".to_string(),
-                params: std::collections::HashMap::from([("args".to_string(), Value::String("Transaction TX123456 BLOCKED - Fraud Score: Alert.FraudScore".to_string()))]),
+                params: std::collections::HashMap::from([(
+                    "args".to_string(),
+                    Value::String(
+                        "Transaction TX123456 BLOCKED - Fraud Score: Alert.FraudScore".to_string(),
+                    ),
+                )]),
             },
         ],
     )

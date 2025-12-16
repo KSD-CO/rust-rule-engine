@@ -13,7 +13,7 @@ use rust_rule_engine::rete::working_memory::WorkingMemory;
 use rust_rule_engine::streaming::event::StreamEvent;
 use rust_rule_engine::types::Value;
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 fn current_time_ms() -> u64 {
     SystemTime::now()
@@ -43,8 +43,10 @@ impl FraudDetectionSystem {
 
         // Parse GRL patterns for each stream
         let login_grl = r#"login: LoginEvent from stream("logins") over window(15 min, sliding)"#;
-        let purchase_grl = r#"purchase: PurchaseEvent from stream("purchases") over window(15 min, sliding)"#;
-        let location_grl = r#"location: LocationEvent from stream("locations") over window(30 min, sliding)"#;
+        let purchase_grl =
+            r#"purchase: PurchaseEvent from stream("purchases") over window(15 min, sliding)"#;
+        let location_grl =
+            r#"location: LocationEvent from stream("locations") over window(30 min, sliding)"#;
 
         let (_, login_pattern) = parse_stream_pattern(login_grl).unwrap();
         let (_, purchase_pattern) = parse_stream_pattern(purchase_grl).unwrap();
@@ -104,7 +106,8 @@ impl FraudDetectionSystem {
         let event = StreamEvent::new("LoginEvent", data, "logins");
 
         if self.login_stream.process_event(&event) {
-            self.working_memory.insert_from_stream("logins".to_string(), event);
+            self.working_memory
+                .insert_from_stream("logins".to_string(), event);
             self.total_events += 1;
         }
     }
@@ -120,7 +123,8 @@ impl FraudDetectionSystem {
         let event = StreamEvent::new("PurchaseEvent", data, "purchases");
 
         if self.purchase_stream.process_event(&event) {
-            self.working_memory.insert_from_stream("purchases".to_string(), event);
+            self.working_memory
+                .insert_from_stream("purchases".to_string(), event);
             self.total_events += 1;
         }
     }
@@ -129,13 +133,20 @@ impl FraudDetectionSystem {
     fn process_location_change(&mut self, user_id: &str, old_location: &str, new_location: &str) {
         let mut data = HashMap::new();
         data.insert("user_id".to_string(), Value::String(user_id.to_string()));
-        data.insert("old_location".to_string(), Value::String(old_location.to_string()));
-        data.insert("new_location".to_string(), Value::String(new_location.to_string()));
+        data.insert(
+            "old_location".to_string(),
+            Value::String(old_location.to_string()),
+        );
+        data.insert(
+            "new_location".to_string(),
+            Value::String(new_location.to_string()),
+        );
 
         let event = StreamEvent::new("LocationEvent", data, "locations");
 
         if self.location_stream.process_event(&event) {
-            self.working_memory.insert_from_stream("locations".to_string(), event);
+            self.working_memory
+                .insert_from_stream("locations".to_string(), event);
             self.total_events += 1;
         }
     }
@@ -148,8 +159,9 @@ impl FraudDetectionSystem {
         let mut user_logins: HashMap<String, Vec<&StreamEvent>> = HashMap::new();
         for login in logins.iter() {
             if let Some(user_id) = login.get_string("user_id") {
-                user_logins.entry(user_id.to_string())
-                    .or_insert_with(Vec::new)
+                user_logins
+                    .entry(user_id.to_string())
+                    .or_default()
                     .push(login);
             }
         }
@@ -158,7 +170,8 @@ impl FraudDetectionSystem {
         let mut alerts = Vec::new();
         for (user_id, events) in user_logins {
             if events.len() >= 2 {
-                let mut ips: Vec<String> = events.iter()
+                let mut ips: Vec<String> = events
+                    .iter()
                     .filter_map(|e| e.get_string("ip_address").map(|s| s.to_string()))
                     .collect();
                 ips.sort();
@@ -184,8 +197,9 @@ impl FraudDetectionSystem {
         let mut user_purchases: HashMap<String, Vec<&StreamEvent>> = HashMap::new();
         for purchase in purchases.iter() {
             if let Some(user_id) = purchase.get_string("user_id") {
-                user_purchases.entry(user_id.to_string())
-                    .or_insert_with(Vec::new)
+                user_purchases
+                    .entry(user_id.to_string())
+                    .or_default()
                     .push(purchase);
             }
         }
@@ -195,15 +209,21 @@ impl FraudDetectionSystem {
         for (user_id, events) in user_purchases {
             if events.len() >= 3 {
                 // Calculate total amount
-                let total: f64 = events.iter()
-                    .filter_map(|e| e.get_numeric("amount"))
-                    .sum();
+                let total: f64 = events.iter().filter_map(|e| e.get_numeric("amount")).sum();
 
-                let severity = if events.len() > 5 { "CRITICAL" } else { "MEDIUM" };
+                let severity = if events.len() > 5 {
+                    "CRITICAL"
+                } else {
+                    "MEDIUM"
+                };
                 alerts.push((
                     user_id,
-                    format!("{} purchases totaling ${:.2} in 15 minutes", events.len(), total),
-                    severity
+                    format!(
+                        "{} purchases totaling ${:.2} in 15 minutes",
+                        events.len(),
+                        total
+                    ),
+                    severity,
                 ));
             }
         }
@@ -222,8 +242,9 @@ impl FraudDetectionSystem {
         let mut user_logins: HashMap<String, Vec<&StreamEvent>> = HashMap::new();
         for login in logins.iter() {
             if let Some(user_id) = login.get_string("user_id") {
-                user_logins.entry(user_id.to_string())
-                    .or_insert_with(Vec::new)
+                user_logins
+                    .entry(user_id.to_string())
+                    .or_default()
                     .push(login);
             }
         }
@@ -232,7 +253,8 @@ impl FraudDetectionSystem {
         let mut alerts = Vec::new();
         for (user_id, events) in user_logins {
             if events.len() >= 2 {
-                let locations: Vec<String> = events.iter()
+                let locations: Vec<String> = events
+                    .iter()
                     .filter_map(|e| e.get_string("location").map(|s| s.to_string()))
                     .collect();
 
@@ -244,10 +266,12 @@ impl FraudDetectionSystem {
                     if time_diff_min < 60 {
                         alerts.push((
                             user_id,
-                            format!("Travel from {} to {} in {} minutes",
+                            format!(
+                                "Travel from {} to {} in {} minutes",
                                 locations.first().unwrap(),
                                 locations.last().unwrap(),
-                                time_diff_min)
+                                time_diff_min
+                            ),
                         ));
                     }
                 }
@@ -278,7 +302,10 @@ impl FraudDetectionSystem {
                             if login_ip != purchase_ip {
                                 alerts.push((
                                     format!("{:?}", login_user),
-                                    format!("Login IP: {:?}, Purchase IP: {:?}", login_ip, purchase_ip)
+                                    format!(
+                                        "Login IP: {:?}, Purchase IP: {:?}",
+                                        login_ip, purchase_ip
+                                    ),
                                 ));
                             }
                         }
@@ -334,16 +361,37 @@ impl FraudDetectionSystem {
         let purchase_stats = self.purchase_stream.window_stats();
         let location_stats = self.location_stream.window_stats();
 
-        println!("  Login stream: {} events in window", login_stats.event_count);
-        println!("  Purchase stream: {} events in window", purchase_stats.event_count);
-        println!("  Location stream: {} events in window", location_stats.event_count);
+        println!(
+            "  Login stream: {} events in window",
+            login_stats.event_count
+        );
+        println!(
+            "  Purchase stream: {} events in window",
+            purchase_stats.event_count
+        );
+        println!(
+            "  Location stream: {} events in window",
+            location_stats.event_count
+        );
         println!();
 
         println!("Working Memory:");
-        println!("  Total facts: {}", self.working_memory.get_all_facts().len());
-        println!("  Login facts: {}", self.working_memory.get_by_type("logins").len());
-        println!("  Purchase facts: {}", self.working_memory.get_by_type("purchases").len());
-        println!("  Location facts: {}", self.working_memory.get_by_type("locations").len());
+        println!(
+            "  Total facts: {}",
+            self.working_memory.get_all_facts().len()
+        );
+        println!(
+            "  Login facts: {}",
+            self.working_memory.get_by_type("logins").len()
+        );
+        println!(
+            "  Purchase facts: {}",
+            self.working_memory.get_by_type("purchases").len()
+        );
+        println!(
+            "  Location facts: {}",
+            self.working_memory.get_by_type("locations").len()
+        );
     }
 }
 

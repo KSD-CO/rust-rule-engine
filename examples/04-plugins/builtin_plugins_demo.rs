@@ -6,8 +6,6 @@ use rust_rule_engine::errors::Result;
 use rust_rule_engine::plugins::{
     CollectionUtilsPlugin, DateUtilsPlugin, MathUtilsPlugin, StringUtilsPlugin, ValidationPlugin,
 };
-use rust_rule_engine::types::Value;
-use std::collections::HashMap;
 
 fn main() -> Result<()> {
     println!("=== Rust Rule Engine - Built-in Plugin Suite Demo ===\n");

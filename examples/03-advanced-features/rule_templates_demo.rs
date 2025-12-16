@@ -140,7 +140,13 @@ fn demo_vip_template() -> Result<(), Box<dyn std::error::Error>> {
                 if let Value::Object(obj) = existing {
                     let mut updated = obj.clone();
                     updated.insert("VIPLevel".to_string(), val.clone());
-                    facts.add_value("User", Value::Object(updated)).map_err(|e| rust_rule_engine::errors::RuleEngineError::EvaluationError { message: format!("setIsVIP failed: {}", e) })?;
+                    facts
+                        .add_value("User", Value::Object(updated))
+                        .map_err(|e| {
+                            rust_rule_engine::errors::RuleEngineError::EvaluationError {
+                                message: format!("setIsVIP failed: {}", e),
+                            }
+                        })?;
                 }
             }
         }

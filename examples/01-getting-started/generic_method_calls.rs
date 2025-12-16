@@ -5,6 +5,7 @@ use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::types::{ActionType, Operator, Value};
 use std::collections::HashMap;
 
+#[allow(clippy::collapsible_match)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Demo: Generic Method Calls ===\n");
 

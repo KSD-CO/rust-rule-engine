@@ -13,6 +13,8 @@
 //!
 //! ## Example
 //!
+
+#![allow(missing_docs)]
 //! ```rust,ignore
 //! use rust_rule_engine::streaming::*;
 //!
@@ -41,13 +43,13 @@ pub mod engine;
 #[cfg(feature = "streaming")]
 pub mod event;
 #[cfg(feature = "streaming")]
-pub mod window;
-#[cfg(feature = "streaming")]
 pub mod operators;
 #[cfg(feature = "streaming")]
 pub mod state;
 #[cfg(feature = "streaming")]
 pub mod watermark;
+#[cfg(feature = "streaming")]
+pub mod window;
 
 #[cfg(feature = "streaming")]
 pub use aggregator::{AggregationType, Aggregator};
@@ -56,24 +58,21 @@ pub use engine::StreamRuleEngine;
 #[cfg(feature = "streaming")]
 pub use event::{EventMetadata, StreamEvent};
 #[cfg(feature = "streaming")]
-pub use window::{TimeWindow, WindowManager, WindowType};
-#[cfg(feature = "streaming")]
 pub use operators::{
-    DataStream, KeyedStream, WindowedStream, WindowConfig, GroupedStream,
-    Aggregation, AggregateResult,
-    Count, Sum, Average, Min, Max, CustomAggregator,
+    AggregateResult, Aggregation, Average, Count, CustomAggregator, DataStream, GroupedStream,
+    KeyedStream, Max, Min, Sum, WindowConfig, WindowedStream,
 };
 #[cfg(feature = "streaming")]
 pub use state::{
-    StateStore, StateBackend, StateConfig, StatefulOperator,
-    CheckpointMetadata, StateStatistics,
+    CheckpointMetadata, StateBackend, StateConfig, StateStatistics, StateStore, StatefulOperator,
 };
 #[cfg(feature = "streaming")]
 pub use watermark::{
-    Watermark, WatermarkStrategy, WatermarkGenerator,
-    LateDataStrategy, LateDataHandler, WatermarkedStream,
-    LateEventDecision, LateDataStats,
+    LateDataHandler, LateDataStats, LateDataStrategy, LateEventDecision, Watermark,
+    WatermarkGenerator, WatermarkStrategy, WatermarkedStream,
 };
+#[cfg(feature = "streaming")]
+pub use window::{TimeWindow, WindowManager, WindowType};
 
 /// Re-export for non-streaming builds
 #[cfg(not(feature = "streaming"))]
@@ -95,7 +94,8 @@ impl StreamRuleEngine {
     pub async fn add_rule(&mut self, _grl_rule: &str) -> Result<()> {
         Err(crate::RuleEngineError::FeatureNotEnabled {
             feature: "streaming".to_string(),
-            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled"
+                .to_string(),
         })
     }
 
@@ -103,7 +103,8 @@ impl StreamRuleEngine {
     pub async fn add_rule_file<P: AsRef<std::path::Path>>(&mut self, _path: P) -> Result<()> {
         Err(crate::RuleEngineError::FeatureNotEnabled {
             feature: "streaming".to_string(),
-            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled"
+                .to_string(),
         })
     }
 
@@ -119,7 +120,8 @@ impl StreamRuleEngine {
     pub async fn start(&mut self) -> Result<()> {
         Err(crate::RuleEngineError::FeatureNotEnabled {
             feature: "streaming".to_string(),
-            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled"
+                .to_string(),
         })
     }
 
@@ -132,7 +134,8 @@ impl StreamRuleEngine {
     pub async fn send_event(&self, _event: StreamEvent) -> Result<()> {
         Err(crate::RuleEngineError::FeatureNotEnabled {
             feature: "streaming".to_string(),
-            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled"
+                .to_string(),
         })
     }
 
@@ -140,7 +143,8 @@ impl StreamRuleEngine {
     pub async fn execute_rules(&mut self) -> Result<StreamExecutionResult> {
         Err(crate::RuleEngineError::FeatureNotEnabled {
             feature: "streaming".to_string(),
-            message: "Streaming rule engine requires the 'streaming' feature to be enabled".to_string(),
+            message: "Streaming rule engine requires the 'streaming' feature to be enabled"
+                .to_string(),
         })
     }
 
@@ -150,7 +154,10 @@ impl StreamRuleEngine {
     }
 
     /// Get field analytics (requires streaming feature)
-    pub async fn get_field_analytics(&self, _field: &str) -> std::collections::HashMap<String, crate::types::Value> {
+    pub async fn get_field_analytics(
+        &self,
+        _field: &str,
+    ) -> std::collections::HashMap<String, crate::types::Value> {
         panic!("StreamRuleEngine field analytics require the 'streaming' feature to be enabled. Enable it in Cargo.toml: features = [\"streaming\"]");
     }
 

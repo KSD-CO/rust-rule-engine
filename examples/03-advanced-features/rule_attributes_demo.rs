@@ -4,7 +4,6 @@ use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::parser::grl::GRLParser;
 use rust_rule_engine::types::Value;
 use std::collections::HashMap;
-use std::time::Duration;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🎯 Rule Attributes Enhancement Demo v0.6.0");

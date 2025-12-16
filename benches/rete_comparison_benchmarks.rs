@@ -3,12 +3,12 @@ use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::parser::grl::GRLParser;
-use rust_rule_engine::types::Value;
 use rust_rule_engine::rete::{
-    ReteUlEngine, IncrementalEngine, TypedReteUlRule, TypedFacts, FactValue,
-    auto_network::{Rule, ConditionGroup, Condition},
+    auto_network::{Condition, ConditionGroup, Rule},
     network::build_rete_ul_from_condition_group,
+    FactValue, IncrementalEngine, ReteUlEngine, TypedFacts, TypedReteUlRule,
 };
+use rust_rule_engine::types::Value;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -97,10 +97,7 @@ fn setup_rete_facts(user_count: usize) -> HashMap<String, String> {
     let mut facts = HashMap::new();
 
     for i in 0..user_count {
-        facts.insert(
-            format!("User{}.Age", i),
-            format!("{}", 20 + (i % 50)),
-        );
+        facts.insert(format!("User{}.Age", i), format!("{}", 20 + (i % 50)));
         facts.insert(
             format!("User{}.Country", i),
             match i % 4 {
@@ -108,16 +105,14 @@ fn setup_rete_facts(user_count: usize) -> HashMap<String, String> {
                 1 => "UK",
                 2 => "CA",
                 _ => "AU",
-            }.to_string(),
+            }
+            .to_string(),
         );
         facts.insert(
             format!("User{}.SpendingTotal", i),
             format!("{}", 100.0 + (i as f64 * 50.0)),
         );
-        facts.insert(
-            format!("User{}.IsVIP", i),
-            (i % 10 == 0).to_string(),
-        );
+        facts.insert(format!("User{}.IsVIP", i), (i % 10 == 0).to_string());
     }
 
     facts
@@ -170,7 +165,10 @@ fn setup_incremental_facts(user_count: usize) -> Vec<(String, TypedFacts)> {
 
     for i in 0..user_count {
         let mut typed_facts = TypedFacts::new();
-        typed_facts.set("Age".to_string(), FactValue::Integer((20 + (i % 50)) as i64));
+        typed_facts.set(
+            "Age".to_string(),
+            FactValue::Integer((20 + (i % 50)) as i64),
+        );
         typed_facts.set(
             "Country".to_string(),
             FactValue::String(
@@ -179,7 +177,8 @@ fn setup_incremental_facts(user_count: usize) -> Vec<(String, TypedFacts)> {
                     1 => "UK",
                     2 => "CA",
                     _ => "AU",
-                }.to_string(),
+                }
+                .to_string(),
             ),
         );
         typed_facts.set(
@@ -376,15 +375,11 @@ fn bench_rule_scalability_comparison(c: &mut Criterion) {
 
         // RETE
         let mut rete_engine = create_rete_engine(*rule_count, user_count);
-        group.bench_with_input(
-            BenchmarkId::new("rete", rule_count),
-            rule_count,
-            |b, &_| {
-                b.iter(|| {
-                    black_box(rete_engine.fire_all());
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("rete", rule_count), rule_count, |b, &_| {
+            b.iter(|| {
+                black_box(rete_engine.fire_all());
+            })
+        });
 
         // Incremental
         let mut incr_engine = create_incremental_engine(*rule_count, user_count);
@@ -434,7 +429,10 @@ fn bench_incremental_updates(c: &mut Criterion) {
             let user_idx = counter % user_count;
             let mut typed_facts = TypedFacts::new();
             typed_facts.set("Age".to_string(), FactValue::Integer(25 + counter as i64));
-            typed_facts.set("SpendingTotal".to_string(), FactValue::Float(150.0 + counter as f64));
+            typed_facts.set(
+                "SpendingTotal".to_string(),
+                FactValue::Float(150.0 + counter as f64),
+            );
             typed_facts.set("Country".to_string(), FactValue::String("US".to_string()));
             typed_facts.set("IsVIP".to_string(), FactValue::Boolean(true));
 

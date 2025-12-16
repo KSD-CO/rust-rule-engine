@@ -4,7 +4,6 @@
 /// - retract($Object) - Remove facts from working memory (CLIPS-style)
 /// - Marks facts as retracted to prevent further rule matches
 /// - Useful for cleanup, session management, and workflow completion
-
 use rust_rule_engine::engine::engine::RustRuleEngine;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::parser::grl::GRLParser;
@@ -22,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grl_content = std::fs::read_to_string("examples/rules/03-advanced/retract_demo.grl")?;
     let rules = GRLParser::parse_rules(&grl_content)?;
 
-    let mut kb = KnowledgeBase::new("retract_demo");
+    let kb = KnowledgeBase::new("retract_demo");
     for rule in &rules {
         kb.add_rule(rule.clone());
     }
@@ -42,13 +41,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nAfter retract:");
     println!("  Session.active: {:?}", facts.get("Session.active"));
-    println!("  _retracted_Session: {:?}", facts.get("_retracted_Session"));
+    println!(
+        "  _retracted_Session: {:?}",
+        facts.get("_retracted_Session")
+    );
 
     // Example 2: Delete invalid user
     println!("\n📋 Example 2: Delete Invalid User");
     println!("----------------------------------");
 
-    let mut kb2 = KnowledgeBase::new("retract_demo");
+    let kb2 = KnowledgeBase::new("retract_demo");
     for rule in &rules {
         kb2.add_rule(rule.clone());
     }
@@ -57,11 +59,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut facts2 = Facts::new();
     facts2.set("User.verified", Value::Boolean(false));
     facts2.set("User.loginAttempts", Value::Integer(5));
-    facts2.set("User.username", Value::String("suspicious_user".to_string()));
+    facts2.set(
+        "User.username",
+        Value::String("suspicious_user".to_string()),
+    );
 
     println!("Before delete:");
     println!("  User.verified: {:?}", facts2.get("User.verified"));
-    println!("  User.loginAttempts: {:?}", facts2.get("User.loginAttempts"));
+    println!(
+        "  User.loginAttempts: {:?}",
+        facts2.get("User.loginAttempts")
+    );
 
     engine2.execute(&mut facts2)?;
 
@@ -73,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n📋 Example 3: Cleanup Completed Order");
     println!("-------------------------------------");
 
-    let mut kb3 = KnowledgeBase::new("retract_demo");
+    let kb3 = KnowledgeBase::new("retract_demo");
     for rule in &rules {
         kb3.add_rule(rule.clone());
     }
@@ -98,7 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n📋 Example 4: Remove Discontinued Product");
     println!("------------------------------------------");
 
-    let mut kb4 = KnowledgeBase::new("retract_demo");
+    let kb4 = KnowledgeBase::new("retract_demo");
     for rule in &rules {
         kb4.add_rule(rule.clone());
     }
@@ -111,12 +119,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Before delete:");
     println!("  Product.stock: {:?}", facts4.get("Product.stock"));
-    println!("  Product.discontinued: {:?}", facts4.get("Product.discontinued"));
+    println!(
+        "  Product.discontinued: {:?}",
+        facts4.get("Product.discontinued")
+    );
 
     engine4.execute(&mut facts4)?;
 
     println!("\nAfter delete:");
-    println!("  _retracted_Product: {:?}", facts4.get("_retracted_Product"));
+    println!(
+        "  _retracted_Product: {:?}",
+        facts4.get("_retracted_Product")
+    );
 
     // Summary
     println!("\n✨ Retract Feature Summary");

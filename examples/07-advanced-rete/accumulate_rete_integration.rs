@@ -2,10 +2,8 @@
 ///!
 ///! This example demonstrates how accumulate functions can be used
 ///! with RETE engine for complex aggregations in business rules.
-
 use rust_rule_engine::rete::accumulate::*;
-use rust_rule_engine::rete::{FactValue, IncrementalEngine, TypedFacts, GrlReteLoader};
-use std::collections::HashMap;
+use rust_rule_engine::rete::FactValue;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🎯 Accumulate + RETE Integration Demo");
@@ -51,7 +49,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for value in &electronics_completed {
             state.accumulate(value);
         }
-        println!("   Electronics Revenue (completed): {:?}", state.get_result());
+        println!(
+            "   Electronics Revenue (completed): {:?}",
+            state.get_result()
+        );
     }
 
     // Calculate average order value
@@ -152,7 +153,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Rule 1: High revenue alert
         if revenue > 9000.0 {
             println!("   ✅ RULE FIRED: High Revenue Alert");
-            println!("      → Total Revenue: ${:.2} exceeds threshold $9000", revenue);
+            println!(
+                "      → Total Revenue: ${:.2} exceeds threshold $9000",
+                revenue
+            );
             println!("      → Action: Send notification to sales team");
         }
 
@@ -219,7 +223,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   ──────────────────");
 
     let registry = AccumulateFunctionRegistry::new();
-    println!("   Available functions: {:?}", registry.available_functions());
+    println!(
+        "   Available functions: {:?}",
+        registry.available_functions()
+    );
     println!();
 
     // Get each function and show example

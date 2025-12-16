@@ -1,9 +1,8 @@
 use rust_rule_engine::rete::{
+    auto_network::{Condition, ConditionGroup, Rule},
     ReteUlEngine,
-    auto_network::{Rule, ConditionGroup, Condition},
 };
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
 
 fn main() {
     println!("🧪 ADVANCED RETE-UL PERFORMANCE ANALYSIS");
@@ -79,7 +78,7 @@ fn test_complex_conditions() {
             action: format!("log('complex rule {} fired')", i),
         };
 
-        engine.add_rule_from_definition(&rule, 1000 - i as i32, false);
+        engine.add_rule_from_definition(&rule, 1000 - i, false);
     }
 
     // Set facts that match ~10% of rules
@@ -98,7 +97,10 @@ fn test_complex_conditions() {
     println!("  📊 Complex conditions (500 rules):");
     println!("     Time: {:?}", elapsed);
     println!("     Rules fired: {}", result.len());
-    println!("     Latency: {:.2} µs/rule", elapsed.as_micros() as f64 / 500.0);
+    println!(
+        "     Latency: {:.2} µs/rule",
+        elapsed.as_micros() as f64 / 500.0
+    );
     println!("     Match rate: {:.1}%", result.len() as f64 / 5.0);
 
     if elapsed < Duration::from_millis(10) {
@@ -136,7 +138,7 @@ fn test_match_rates() {
                 action: format!("log('rate {} rule {} fired')", rate, i),
             };
 
-            engine.add_rule_from_definition(&rule, 1000 - i as i32, false);
+            engine.add_rule_from_definition(&rule, 1000 - i, false);
         }
 
         // Set facts to achieve desired match rate
@@ -148,8 +150,13 @@ fn test_match_rates() {
         let elapsed = start.elapsed();
 
         let actual_rate = result.len() as f64 / 1000.0;
-        println!("  📊 Match rate {:.1}%: {:?} ({} rules fired, actual rate: {:.1}%)",
-                rate * 100.0, elapsed, result.len(), actual_rate * 100.0);
+        println!(
+            "  📊 Match rate {:.1}%: {:?} ({} rules fired, actual rate: {:.1}%)",
+            rate * 100.0,
+            elapsed,
+            result.len(),
+            actual_rate * 100.0
+        );
     }
 
     println!("  💡 Insight: Match rate has minimal impact on RETE-UL performance");
@@ -188,7 +195,7 @@ fn test_deep_nesting() {
             action: format!("log('depth {} rule fired')", depth),
         };
 
-        engine.add_rule_from_definition(&rule, 1000 - depth as i32, false);
+        engine.add_rule_from_definition(&rule, 1000 - depth, false);
     }
 
     // Set facts to satisfy all nesting levels
@@ -204,7 +211,10 @@ fn test_deep_nesting() {
     println!("  📊 Deep nesting (10 levels):");
     println!("     Time: {:?}", elapsed);
     println!("     Rules fired: {} (expected: 10)", result.len());
-    println!("     Avg latency per nesting level: {:.2} µs", elapsed.as_micros() as f64 / 10.0);
+    println!(
+        "     Avg latency per nesting level: {:.2} µs",
+        elapsed.as_micros() as f64 / 10.0
+    );
 
     if result.len() == 10 {
         println!("     ✅ SUCCESS: All nesting levels handled correctly");
@@ -234,10 +244,10 @@ fn test_memory_usage() {
                     operator: "==".to_string(),
                     value: format!("value{}", i % 10),
                 }),
-                action: format!("log('mem test')"),
+                action: "log('mem test')".to_string(),
             };
 
-            engine.add_rule_from_definition(&rule, 1000 - i as i32, false);
+            engine.add_rule_from_definition(&rule, 1000 - i, false);
         }
 
         // Rough memory estimation (in real app, use proper profiling)
@@ -257,8 +267,13 @@ fn test_memory_usage() {
     println!("     ------|-------------|------|-------");
 
     for (rules, mem_kb, time, fired) in &results {
-        println!("     {:5} | {:8} KB | {:>4} | {:5}",
-                rules, mem_kb, format!("{:?}", time), fired);
+        println!(
+            "     {:5} | {:8} KB | {:>4} | {:5}",
+            rules,
+            mem_kb,
+            format!("{:?}", time),
+            fired
+        );
     }
 
     // Calculate memory efficiency
@@ -266,7 +281,10 @@ fn test_memory_usage() {
     let scale_time = results.last().unwrap().2.as_micros();
     let scaling_efficiency = base_time as f64 / scale_time as f64 * 20.0; // Normalized
 
-    println!("  💡 Memory efficiency: {:.2}x (higher is better)", scaling_efficiency);
+    println!(
+        "  💡 Memory efficiency: {:.2}x (higher is better)",
+        scaling_efficiency
+    );
 
     if scaling_efficiency > 10.0 {
         println!("     ✅ EXCELLENT: Memory usage scales very efficiently");
@@ -284,14 +302,38 @@ fn test_business_rules() {
 
     // E-commerce rules
     let rules = vec![
-        ("HighValueOrder", "order.total > 1000 AND customer.tier == 'gold'", 100),
+        (
+            "HighValueOrder",
+            "order.total > 1000 AND customer.tier == 'gold'",
+            100,
+        ),
         ("BulkDiscount", "order.items > 10 AND order.total > 500", 90),
         ("NewCustomer", "customer.age < 30 AND order.total < 100", 80),
-        ("LoyaltyBonus", "customer.orders > 5 AND customer.tier != 'platinum'", 70),
-        ("HolidaySpecial", "date.month == 12 AND order.total > 200", 60),
-        ("CategoryDiscount", "product.category == 'electronics' AND order.total > 300", 50),
-        ("TimeSensitive", "time.hour < 12 AND customer.region == 'US'", 40),
-        ("VolumePricing", "order.quantity > 50 OR order.weight > 100", 30),
+        (
+            "LoyaltyBonus",
+            "customer.orders > 5 AND customer.tier != 'platinum'",
+            70,
+        ),
+        (
+            "HolidaySpecial",
+            "date.month == 12 AND order.total > 200",
+            60,
+        ),
+        (
+            "CategoryDiscount",
+            "product.category == 'electronics' AND order.total > 300",
+            50,
+        ),
+        (
+            "TimeSensitive",
+            "time.hour < 12 AND customer.region == 'US'",
+            40,
+        ),
+        (
+            "VolumePricing",
+            "order.quantity > 50 OR order.weight > 100",
+            30,
+        ),
     ];
 
     for (name, condition_str, priority) in rules {
@@ -335,7 +377,10 @@ fn test_business_rules() {
     println!("  📊 Business rules simulation:");
     println!("     Time: {:?}", elapsed);
     println!("     Rules fired: {} (expected: 4-6)", result.len());
-    println!("     Business logic latency: {:.2} µs", elapsed.as_micros() as f64);
+    println!(
+        "     Business logic latency: {:.2} µs",
+        elapsed.as_micros() as f64
+    );
 
     if elapsed < Duration::from_millis(1) && result.len() >= 4 {
         println!("     ✅ EXCELLENT: Handles business rules efficiently");

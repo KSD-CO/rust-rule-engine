@@ -82,7 +82,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Functions from SpeedLimitCheck rule
     engine.register_function("checkSpeedLimit", |args, facts| {
-        let _speed_field = args.get(0).unwrap().to_string();
+        let _speed_field = args.first().unwrap().to_string();
         let limit = args.get(1).unwrap();
 
         let speed = if let Some(car) = facts.get("Car") {
@@ -99,19 +99,13 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         println!("{}", result);
         Ok(Value::String(result))
     });
-        // Also register action handlers for the same names because parser maps some
+    // Also register action handlers for the same names because parser maps some
     // 'then' function calls to ActionType::Custom, not function calls. This
     // ensures both styles are handled by this demo.
     engine.register_action_handler("checkSpeedLimit", |params, facts| {
         // params use numeric keys "0", "1" etc.
-        let speed = params
-            .get("0")
-            .cloned()
-            .unwrap_or(Value::Number(0.0));
-        let limit = params
-            .get("1")
-            .cloned()
-            .unwrap_or(Value::Number(0.0));
+        let speed = params.get("0").cloned().unwrap_or(Value::Number(0.0));
+        let limit = params.get("1").cloned().unwrap_or(Value::Number(0.0));
         println!("🚦 Action Handler: Speed check: {:?} vs {:?}", speed, limit);
         Ok(())
     });
@@ -128,27 +122,42 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     });
 
     engine.register_action_handler("calculateInsurance", |params, _facts| {
-        println!("💰 Action Handler: calculateInsurance called with {:?}", params);
+        println!(
+            "💰 Action Handler: calculateInsurance called with {:?}",
+            params
+        );
         Ok(())
     });
 
     engine.register_action_handler("performDiagnostics", |params, _facts| {
-        println!("🔧 Action Handler: performDiagnostics called with {:?}", params);
+        println!(
+            "🔧 Action Handler: performDiagnostics called with {:?}",
+            params
+        );
         Ok(())
     });
 
     engine.register_action_handler("optimizePerformance", |params, _facts| {
-        println!("⚡ Action Handler: optimizePerformance called with {:?}", params);
+        println!(
+            "⚡ Action Handler: optimizePerformance called with {:?}",
+            params
+        );
         Ok(())
     });
 
     engine.register_action_handler("scheduleMaintenanceCheck", |params, _facts| {
-        println!("🔧 Action Handler: scheduleMaintenanceCheck called with {:?}", params);
+        println!(
+            "🔧 Action Handler: scheduleMaintenanceCheck called with {:?}",
+            params
+        );
         Ok(())
     });
 
     engine.register_action_handler("updateMaintenanceRecord", |params, _facts| {
-        println!("📋 Action Handler: updateMaintenanceRecord called with {:?}", params);
+        println!(
+            "📋 Action Handler: updateMaintenanceRecord called with {:?}",
+            params
+        );
         Ok(())
     });
 
@@ -157,7 +166,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         Ok(())
     });
     engine.register_function("sendAlert", |args, facts| {
-        let message = args.get(0).unwrap().to_string();
+        let message = args.first().unwrap().to_string();
         let _driver_field = args.get(1).unwrap().to_string();
 
         let driver_name = if let Some(driver) = facts.get("Driver") {
@@ -179,7 +188,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Functions from DriverValidation rule
     engine.register_function("validateDriver", |args, _facts| {
-        let name_field = args.get(0).unwrap().to_string();
+        let name_field = args.first().unwrap().to_string();
         let exp_field = args.get(1).unwrap().to_string();
 
         let result = format!(
@@ -191,7 +200,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     });
 
     engine.register_function("calculateInsurance", |args, _facts| {
-        let exp_field = args.get(0).unwrap().to_string();
+        let exp_field = args.first().unwrap().to_string();
         let engine_field = args.get(1).unwrap().to_string();
 
         let result = format!(
@@ -204,7 +213,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Functions from EngineDiagnostics rule
     engine.register_function("performDiagnostics", |args, _facts| {
-        let engine_field = args.get(0).unwrap().to_string();
+        let engine_field = args.first().unwrap().to_string();
         let speed_field = args.get(1).unwrap().to_string();
 
         let result = format!(
@@ -216,7 +225,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     });
 
     engine.register_function("optimizePerformance", |args, _facts| {
-        let current_speed = args.get(0).unwrap().to_string();
+        let current_speed = args.first().unwrap().to_string();
         let max_speed = args.get(1).unwrap().to_string();
 
         let result = format!(
@@ -229,7 +238,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Functions from MaintenanceCheck rule
     engine.register_function("scheduleMaintenanceCheck", |args, _facts| {
-        let engine_field = args.get(0).unwrap().to_string();
+        let engine_field = args.first().unwrap().to_string();
         let exp_field = args.get(1).unwrap().to_string();
 
         let result = format!(
@@ -241,7 +250,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     });
 
     engine.register_function("updateMaintenanceRecord", |args, _facts| {
-        let name_field = args.get(0).unwrap().to_string();
+        let name_field = args.first().unwrap().to_string();
         let engine_field = args.get(1).unwrap().to_string();
 
         let result = format!("📋 Record updated: {} - {}", name_field, engine_field);

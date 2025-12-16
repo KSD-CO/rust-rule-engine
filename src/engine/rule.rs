@@ -1,3 +1,6 @@
+#![allow(deprecated)]
+#![allow(clippy::type_complexity)]
+
 use crate::types::{ActionType, LogicalOperator, Operator, Value};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
@@ -34,7 +37,7 @@ pub enum ConditionExpression {
         /// Field name (e.g., "Order.items")
         field: String,
         /// Multi-field operation type
-        operation: String,  // "collect", "contains", "count", "first", "last", "empty", "not_empty"
+        operation: String, // "collect", "contains", "count", "first", "last", "empty", "not_empty"
         /// Optional variable for binding (e.g., "$?all_items")
         variable: Option<String>,
     },
@@ -93,7 +96,7 @@ impl Condition {
                 name: function_name.clone(),
                 args,
             },
-            operator: Operator::Equal, // Not used for Test CE
+            operator: Operator::Equal,   // Not used for Test CE
             value: Value::Boolean(true), // Not used for Test CE
             field: format!("test({})", function_name), // For backward compat
         }
@@ -108,9 +111,9 @@ impl Condition {
                 operation: "collect".to_string(),
                 variable: Some(variable),
             },
-            operator: Operator::Equal, // Not used for MultiField
+            operator: Operator::Equal,   // Not used for MultiField
             value: Value::Boolean(true), // Not used
-            field, // For backward compat
+            field,                       // For backward compat
         }
     }
 
@@ -138,9 +141,9 @@ impl Condition {
                 operation: "first".to_string(),
                 variable,
             },
-            operator: Operator::Equal, // Not used
+            operator: Operator::Equal,   // Not used
             value: Value::Boolean(true), // Not used
-            field, // For backward compat
+            field,                       // For backward compat
         }
     }
 
@@ -153,9 +156,9 @@ impl Condition {
                 operation: "last".to_string(),
                 variable,
             },
-            operator: Operator::Equal, // Not used
+            operator: Operator::Equal,   // Not used
             value: Value::Boolean(true), // Not used
-            field, // For backward compat
+            field,                       // For backward compat
         }
     }
 
@@ -168,9 +171,9 @@ impl Condition {
                 operation: "empty".to_string(),
                 variable: None,
             },
-            operator: Operator::Equal, // Not used
+            operator: Operator::Equal,   // Not used
             value: Value::Boolean(true), // Not used
-            field, // For backward compat
+            field,                       // For backward compat
         }
     }
 
@@ -183,9 +186,9 @@ impl Condition {
                 operation: "not_empty".to_string(),
                 variable: None,
             },
-            operator: Operator::Equal, // Not used
+            operator: Operator::Equal,   // Not used
             value: Value::Boolean(true), // Not used
-            field, // For backward compat
+            field,                       // For backward compat
         }
     }
 
@@ -197,7 +200,7 @@ impl Condition {
                 let field_value = get_nested_value(facts, field_name)
                     .cloned()
                     .unwrap_or(Value::Null);
-                
+
                 self.operator.evaluate(&field_value, &self.value)
             }
             ConditionExpression::FunctionCall { .. }
@@ -217,7 +220,11 @@ impl Condition {
         facts: &HashMap<String, Value>,
         function_registry: &HashMap<
             String,
-            std::sync::Arc<dyn Fn(Vec<Value>, &HashMap<String, Value>) -> crate::errors::Result<Value> + Send + Sync>,
+            std::sync::Arc<
+                dyn Fn(Vec<Value>, &HashMap<String, Value>) -> crate::errors::Result<Value>
+                    + Send
+                    + Sync,
+            >,
         >,
     ) -> bool {
         match &self.expression {
@@ -226,7 +233,7 @@ impl Condition {
                 let field_value = get_nested_value(facts, field_name)
                     .cloned()
                     .unwrap_or(Value::Null);
-                
+
                 self.operator.evaluate(&field_value, &self.value)
             }
             ConditionExpression::FunctionCall { name, args } => {
@@ -277,7 +284,11 @@ impl Condition {
                 }
                 false
             }
-            ConditionExpression::MultiField { field, operation, variable: _ } => {
+            ConditionExpression::MultiField {
+                field,
+                operation,
+                variable: _,
+            } => {
                 // MultiField operations for array/collection handling
                 if let Some(field_value) = get_nested_value(facts, field) {
                     match operation.as_str() {
@@ -325,7 +336,8 @@ impl Condition {
                         "contains" => {
                             // Check if array contains the specified value
                             if let Value::Array(arr) = field_value {
-                                arr.iter().any(|item| self.operator.evaluate(item, &self.value))
+                                arr.iter()
+                                    .any(|item| self.operator.evaluate(item, &self.value))
                             } else {
                                 false
                             }
@@ -463,7 +475,9 @@ impl ConditionGroup {
                 }
             }
             ConditionGroup::Not(condition) => !condition.evaluate(facts),
-            ConditionGroup::Exists(_) | ConditionGroup::Forall(_) | ConditionGroup::Accumulate { .. } => {
+            ConditionGroup::Exists(_)
+            | ConditionGroup::Forall(_)
+            | ConditionGroup::Accumulate { .. } => {
                 // Pattern matching and accumulate conditions need Facts struct, not HashMap
                 // For now, return false - these will be handled by the engine
                 false

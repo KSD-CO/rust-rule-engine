@@ -235,7 +235,14 @@ impl ProofTree {
     /// Print the entire tree
     pub fn print(&self) {
         println!("Query: {}", self.query);
-        println!("Result: {}", if self.success { "✓ Proven" } else { "✗ Unprovable" });
+        println!(
+            "Result: {}",
+            if self.success {
+                "✓ Proven"
+            } else {
+                "✗ Unprovable"
+            }
+        );
         println!("\nProof Tree:");
         println!("{}", "=".repeat(80));
         self.root.print_tree(0);
@@ -264,17 +271,31 @@ impl ProofTree {
 
         md.push_str("# Proof Explanation\n\n");
         md.push_str(&format!("**Query:** `{}`\n\n", self.query));
-        md.push_str(&format!("**Result:** {}\n\n",
-            if self.success { "✓ Proven" } else { "✗ Unprovable" }
+        md.push_str(&format!(
+            "**Result:** {}\n\n",
+            if self.success {
+                "✓ Proven"
+            } else {
+                "✗ Unprovable"
+            }
         ));
 
         md.push_str("## Proof Tree\n\n");
-        self.node_to_markdown(&self.root, &mut md, 0);
+        Self::node_to_markdown(&self.root, &mut md, 0);
 
         md.push_str("\n## Statistics\n\n");
-        md.push_str(&format!("- **Goals explored:** {}\n", self.stats.goals_explored));
-        md.push_str(&format!("- **Rules evaluated:** {}\n", self.stats.rules_evaluated));
-        md.push_str(&format!("- **Facts checked:** {}\n", self.stats.facts_checked));
+        md.push_str(&format!(
+            "- **Goals explored:** {}\n",
+            self.stats.goals_explored
+        ));
+        md.push_str(&format!(
+            "- **Rules evaluated:** {}\n",
+            self.stats.rules_evaluated
+        ));
+        md.push_str(&format!(
+            "- **Facts checked:** {}\n",
+            self.stats.facts_checked
+        ));
         md.push_str(&format!("- **Max depth:** {}\n", self.stats.max_depth));
         md.push_str(&format!("- **Total nodes:** {}\n", self.stats.total_nodes));
 
@@ -282,7 +303,7 @@ impl ProofTree {
     }
 
     /// Convert node to markdown recursively
-    fn node_to_markdown(&self, node: &ProofNode, md: &mut String, depth: usize) {
+    fn node_to_markdown(node: &ProofNode, md: &mut String, depth: usize) {
         let prefix = "  ".repeat(depth);
         let status = if node.proven { "✓" } else { "✗" };
 
@@ -305,7 +326,7 @@ impl ProofTree {
         }
 
         for child in &node.children {
-            self.node_to_markdown(child, md, depth + 1);
+            Self::node_to_markdown(child, md, depth + 1);
         }
     }
 
@@ -326,21 +347,38 @@ impl ProofTree {
         html.push_str("  </style>\n");
         html.push_str("</head>\n<body>\n");
 
-        html.push_str(&format!("<h1>Proof Explanation</h1>\n"));
-        html.push_str(&format!("<p><strong>Query:</strong> <code>{}</code></p>\n", self.query));
-        html.push_str(&format!("<p><strong>Result:</strong> <span class=\"{}\">{}</span></p>\n",
+        html.push_str("<h1>Proof Explanation</h1>\n");
+        html.push_str(&format!(
+            "<p><strong>Query:</strong> <code>{}</code></p>\n",
+            self.query
+        ));
+        html.push_str(&format!(
+            "<p><strong>Result:</strong> <span class=\"{}\">{}</span></p>\n",
             if self.success { "proven" } else { "failed" },
-            if self.success { "✓ Proven" } else { "✗ Unprovable" }
+            if self.success {
+                "✓ Proven"
+            } else {
+                "✗ Unprovable"
+            }
         ));
 
         html.push_str("<h2>Proof Tree</h2>\n");
-        self.node_to_html(&self.root, &mut html);
+        Self::node_to_html(&self.root, &mut html);
 
         html.push_str("<div class=\"stats\">\n");
         html.push_str("<h2>Statistics</h2>\n");
-        html.push_str(&format!("<p>Goals explored: {}</p>\n", self.stats.goals_explored));
-        html.push_str(&format!("<p>Rules evaluated: {}</p>\n", self.stats.rules_evaluated));
-        html.push_str(&format!("<p>Facts checked: {}</p>\n", self.stats.facts_checked));
+        html.push_str(&format!(
+            "<p>Goals explored: {}</p>\n",
+            self.stats.goals_explored
+        ));
+        html.push_str(&format!(
+            "<p>Rules evaluated: {}</p>\n",
+            self.stats.rules_evaluated
+        ));
+        html.push_str(&format!(
+            "<p>Facts checked: {}</p>\n",
+            self.stats.facts_checked
+        ));
         html.push_str(&format!("<p>Max depth: {}</p>\n", self.stats.max_depth));
         html.push_str(&format!("<p>Total nodes: {}</p>\n", self.stats.total_nodes));
         html.push_str("</div>\n");
@@ -350,13 +388,15 @@ impl ProofTree {
     }
 
     /// Convert node to HTML recursively
-    fn node_to_html(&self, node: &ProofNode, html: &mut String) {
+    fn node_to_html(node: &ProofNode, html: &mut String) {
         let status = if node.proven { "✓" } else { "✗" };
         let class = if node.proven { "proven" } else { "failed" };
 
         html.push_str("<div class=\"node\">\n");
-        html.push_str(&format!("  <span class=\"{}\">{} {}</span>",
-            class, status, node.goal));
+        html.push_str(&format!(
+            "  <span class=\"{}\">{} {}</span>",
+            class, status, node.goal
+        ));
 
         if let Some(rule) = &node.rule_name {
             html.push_str(&format!(" <span class=\"rule\">[Rule: {}]</span>", rule));
@@ -369,14 +409,16 @@ impl ProofTree {
         }
 
         if !node.bindings.is_empty() {
-            html.push_str(&format!("<br><span class=\"bindings\">Bindings: {:?}</span>",
-                node.bindings));
+            html.push_str(&format!(
+                "<br><span class=\"bindings\">Bindings: {:?}</span>",
+                node.bindings
+            ));
         }
 
-        html.push_str("\n");
+        html.push('\n');
 
         for child in &node.children {
-            self.node_to_html(child, html);
+            Self::node_to_html(child, html);
         }
 
         html.push_str("</div>\n");

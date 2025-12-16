@@ -6,10 +6,10 @@
 //!
 //! Run: cargo run --example rete_template_globals_demo
 
-use rust_rule_engine::rete::{
-    IncrementalEngine, GrlReteLoader, TemplateBuilder, FieldType, FactValue, TypedFacts,
-};
 use rust_rule_engine::errors::Result;
+use rust_rule_engine::rete::{
+    FactValue, FieldType, GrlReteLoader, IncrementalEngine, TemplateBuilder, TypedFacts,
+};
 
 fn main() -> Result<()> {
     println!("=== RETE Template System & Defglobal Demo ===\n");
@@ -182,7 +182,10 @@ fn demo_template_with_rules() -> Result<()> {
     // Insert with template validation
     match engine.insert_with_template("Customer", customer) {
         Ok(handle) => {
-            println!("   ✅ Customer inserted with validation (handle: {})", handle);
+            println!(
+                "   ✅ Customer inserted with validation (handle: {})",
+                handle
+            );
 
             // Fire rules
             engine.reset();
@@ -210,17 +213,28 @@ fn demo_template_with_rules() -> Result<()> {
 fn demo_globals_basic() -> Result<()> {
     println!("1️⃣ Basic Defglobal Usage");
 
-    let mut engine = IncrementalEngine::new();
+    let engine = IncrementalEngine::new();
 
     // Define global variables
-    engine.globals().define("max_retries", FactValue::Integer(3))?;
-    engine.globals().define("timeout_seconds", FactValue::Float(30.0))?;
-    engine.globals().define("debug_mode", FactValue::Boolean(true))?;
-    engine.globals().define_readonly("VERSION", FactValue::String("1.0.0".to_string()))?;
+    engine
+        .globals()
+        .define("max_retries", FactValue::Integer(3))?;
+    engine
+        .globals()
+        .define("timeout_seconds", FactValue::Float(30.0))?;
+    engine
+        .globals()
+        .define("debug_mode", FactValue::Boolean(true))?;
+    engine
+        .globals()
+        .define_readonly("VERSION", FactValue::String("1.0.0".to_string()))?;
 
     // Access globals
     println!("   max_retries: {:?}", engine.globals().get("max_retries")?);
-    println!("   timeout_seconds: {:?}", engine.globals().get("timeout_seconds")?);
+    println!(
+        "   timeout_seconds: {:?}",
+        engine.globals().get("timeout_seconds")?
+    );
     println!("   debug_mode: {:?}", engine.globals().get("debug_mode")?);
     println!("   VERSION: {:?}", engine.globals().get("VERSION")?);
 
@@ -230,7 +244,10 @@ fn demo_globals_basic() -> Result<()> {
     println!("   max_retries: {:?}", engine.globals().get("max_retries")?);
 
     // Try to modify read-only (should fail)
-    match engine.globals().set("VERSION", FactValue::String("2.0.0".to_string())) {
+    match engine
+        .globals()
+        .set("VERSION", FactValue::String("2.0.0".to_string()))
+    {
         Ok(_) => println!("   ⚠️  Modified read-only (shouldn't happen)"),
         Err(e) => println!("   ✅ Correctly prevented read-only modification: {}", e),
     }
@@ -250,8 +267,12 @@ fn demo_globals_in_rules() -> Result<()> {
     let mut engine = IncrementalEngine::new();
 
     // Define global counters
-    engine.globals().define("orders_processed", FactValue::Integer(0))?;
-    engine.globals().define("total_revenue", FactValue::Float(0.0))?;
+    engine
+        .globals()
+        .define("orders_processed", FactValue::Integer(0))?;
+    engine
+        .globals()
+        .define("total_revenue", FactValue::Float(0.0))?;
 
     // Load rules (rules can access globals in actions)
     let rules = r#"
@@ -314,16 +335,24 @@ fn demo_globals_thread_safety() -> Result<()> {
     let engine = IncrementalEngine::new();
 
     // Define shared counter
-    engine.globals().define("shared_counter", FactValue::Integer(0))?;
+    engine
+        .globals()
+        .define("shared_counter", FactValue::Integer(0))?;
 
-    println!("   Initial counter: {:?}", engine.globals().get("shared_counter")?);
+    println!(
+        "   Initial counter: {:?}",
+        engine.globals().get("shared_counter")?
+    );
 
     // Simulate concurrent access (GlobalsRegistry is thread-safe via Arc<RwLock>)
     for _ in 0..10 {
         engine.globals().increment("shared_counter", 1.0)?;
     }
 
-    println!("   After 10 increments: {:?}", engine.globals().get("shared_counter")?);
+    println!(
+        "   After 10 increments: {:?}",
+        engine.globals().get("shared_counter")?
+    );
     println!("   ✅ Thread-safe access verified");
 
     println!();
@@ -358,9 +387,15 @@ fn demo_combined() -> Result<()> {
     engine.templates_mut().register(order_template);
 
     // Define globals
-    engine.globals().define("orders_today", FactValue::Integer(0))?;
-    engine.globals().define("revenue_today", FactValue::Float(0.0))?;
-    engine.globals().define("vip_threshold", FactValue::Float(10000.0))?;
+    engine
+        .globals()
+        .define("orders_today", FactValue::Integer(0))?;
+    engine
+        .globals()
+        .define("revenue_today", FactValue::Float(0.0))?;
+    engine
+        .globals()
+        .define("vip_threshold", FactValue::Float(10000.0))?;
 
     // Load business rules
     let rules = r#"
@@ -425,9 +460,18 @@ fn demo_combined() -> Result<()> {
     }
 
     println!("\n   Global State:");
-    println!("     orders_today: {:?}", engine.globals().get("orders_today")?);
-    println!("     revenue_today: {:?}", engine.globals().get("revenue_today")?);
-    println!("     vip_threshold: {:?}", engine.globals().get("vip_threshold")?);
+    println!(
+        "     orders_today: {:?}",
+        engine.globals().get("orders_today")?
+    );
+    println!(
+        "     revenue_today: {:?}",
+        engine.globals().get("revenue_today")?
+    );
+    println!(
+        "     vip_threshold: {:?}",
+        engine.globals().get("vip_threshold")?
+    );
 
     println!();
     Ok(())

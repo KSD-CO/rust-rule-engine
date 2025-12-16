@@ -1,3 +1,5 @@
+#![allow(clippy::unnecessary_get_then_check)]
+
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
@@ -12,7 +14,10 @@ fn action_handlers_end_to_end() -> Result<(), Box<dyn std::error::Error>> {
     let facts = Facts::new();
 
     let mut customer_props = HashMap::new();
-    customer_props.insert("name".to_string(), Value::String("Alice Johnson".to_string()));
+    customer_props.insert(
+        "name".to_string(),
+        Value::String("Alice Johnson".to_string()),
+    );
     customer_props.insert(
         "email".to_string(),
         Value::String("alice.johnson@example.com".to_string()),
@@ -38,7 +43,10 @@ fn action_handlers_end_to_end() -> Result<(), Box<dyn std::error::Error>> {
     facts.add_value("Transaction", Value::Object(transaction_props))?;
 
     let mut payment_props = HashMap::new();
-    payment_props.insert("method".to_string(), Value::String("credit_card".to_string()));
+    payment_props.insert(
+        "method".to_string(),
+        Value::String("credit_card".to_string()),
+    );
     payment_props.insert("status".to_string(), Value::String("verified".to_string()));
     payment_props.insert("amount".to_string(), Value::Number(3500.0));
     facts.add_value("Payment", Value::Object(payment_props))?;
@@ -106,22 +114,34 @@ fn action_handlers_end_to_end() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check facts updated by actions
     if let Some(Value::Object(alert_obj)) = facts.get("Alert") {
-        let v = alert_obj.get("fraud_sent").cloned().unwrap_or(Value::Boolean(false));
+        let v = alert_obj
+            .get("fraud_sent")
+            .cloned()
+            .unwrap_or(Value::Boolean(false));
         assert_eq!(v, Value::Boolean(true));
     } else {
         panic!("Alert fact missing");
     }
 
     if let Some(Value::Object(customer_obj)) = facts.get("Customer") {
-        let _ = customer_obj.get("welcome_sent").cloned().unwrap_or(Value::Boolean(false));
+        let _ = customer_obj
+            .get("welcome_sent")
+            .cloned()
+            .unwrap_or(Value::Boolean(false));
         // Ensure SendEmail updated last_email_sent
-        assert!(customer_obj.get("last_email_sent").is_some(), "expected last_email_sent set");
+        assert!(
+            customer_obj.get("last_email_sent").is_some(),
+            "expected last_email_sent set"
+        );
     } else {
         panic!("Customer fact missing");
     }
 
     if let Some(Value::Object(payment_obj)) = facts.get("Payment") {
-        let status = payment_obj.get("status").cloned().unwrap_or(Value::String("".to_string()));
+        let status = payment_obj
+            .get("status")
+            .cloned()
+            .unwrap_or(Value::String("".to_string()));
         assert_eq!(status, Value::String("processed".to_string()));
     } else {
         panic!("Payment fact missing");
@@ -149,7 +169,10 @@ fn method_calls_smoke() -> Result<(), Box<dyn std::error::Error>> {
     car.insert("SpeedUp".to_string(), Value::Boolean(true));
     facts.add_value("TestCar", Value::Object(car))?;
 
-    let config = EngineConfig { debug_mode: false, ..Default::default() };
+    let config = EngineConfig {
+        debug_mode: false,
+        ..Default::default()
+    };
     let mut engine = RustRuleEngine::with_config(kb, config);
     // Register action handlers for the method calls used in the GRL file
     engine.register_action_handler("setSpeed", |params, facts| {

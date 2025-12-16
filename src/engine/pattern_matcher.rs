@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::engine::facts::Facts;
 use crate::engine::rule::ConditionGroup;
 use std::collections::HashMap;

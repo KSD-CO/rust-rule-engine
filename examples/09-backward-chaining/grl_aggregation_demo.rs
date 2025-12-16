@@ -6,8 +6,8 @@
 
 use rust_rule_engine::backward::{BackwardEngine, GRLQuery};
 use rust_rule_engine::engine::facts::Facts;
-use rust_rule_engine::KnowledgeBase;
 use rust_rule_engine::types::Value;
+use rust_rule_engine::KnowledgeBase;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 GRL Aggregation Queries Demo");
@@ -35,8 +35,8 @@ fn demo_inline_grl_aggregation() -> Result<(), Box<dyn std::error::Error>> {
     // For now, we demonstrate the goal pattern format
 
     let kb = KnowledgeBase::new("AggregationDemo");
-    let mut engine = BackwardEngine::new(kb);
-    let mut facts = Facts::new();
+    let engine = BackwardEngine::new(kb);
+    let facts = Facts::new();
 
     // Add some employee data
     facts.set("employee1.name", Value::String("Alice".to_string()));
@@ -86,8 +86,8 @@ fn demo_programmatic_aggregation() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "-".repeat(80));
 
     let kb = KnowledgeBase::new("ProgrammaticDemo");
-    let mut engine = BackwardEngine::new(kb);
-    let mut facts = Facts::new();
+    let engine = BackwardEngine::new(kb);
+    let facts = Facts::new();
 
     // Add product data
     let products = vec![
@@ -98,7 +98,10 @@ fn demo_programmatic_aggregation() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (i, (name, price)) in products.iter().enumerate() {
-        facts.set(&format!("product{}.name", i), Value::String(name.to_string()));
+        facts.set(
+            &format!("product{}.name", i),
+            Value::String(name.to_string()),
+        );
         facts.set(&format!("product{}.price", i), Value::Number(*price));
     }
 
@@ -149,7 +152,9 @@ fn demo_programmatic_aggregation() -> Result<(), Box<dyn std::error::Error>> {
     // These queries can be executed directly using engine.query_aggregate()
     println!("Execution:");
     println!("  // For full GRL support, use:");
-    println!("  // let result = GRLQueryExecutor::execute(&count_query, &mut engine, &mut facts)?;");
+    println!(
+        "  // let result = GRLQueryExecutor::execute(&count_query, &mut engine, &mut facts)?;"
+    );
     println!("  ");
     println!("  // For now, use direct API:");
     println!("  // let count = engine.query_aggregate(&count_query.goal, &mut facts)?;");

@@ -71,46 +71,47 @@
 //! ### Collections (10 actions, 9 functions)
 //! - Actions: ArrayLength, ArrayPush, ArrayPop, ArraySort, ArrayFilter, ArrayMap, ArrayFind, ObjectKeys, ObjectValues, ObjectMerge
 //! - Functions: length, contains, first, last, reverse, join, slice, keys, values
-//!     
-//!     // Create engine
-//!     let mut engine = RustRuleEngine::new(kb);
-//!     
-//!     // Create facts
-//!     let facts = Facts::new();
-//!     let user = FactHelper::create_user("john", 25, "john@email.com", "US", false);
-//!     facts.add_value("User", user)?;
-//!     
-//!     // Execute rules
-//!     let result = engine.execute(&facts)?;
-//!     println!("Rules fired: {}", result.rules_fired);
-//!     
-//!     Ok(())
-//! }
+//!
+//!   // Create engine
+//!   let mut engine = RustRuleEngine::new(kb);
+//!
+//!   // Create facts
+//!   let facts = Facts::new();
+//!   let user = FactHelper::create_user("john", 25, "john@email.com", "US", false);
+//!   facts.add_value("User", user)?;
+//!
+//!   // Execute rules
+//!   let result = engine.execute(&facts)?;
+//!   println!("Rules fired: {}", result.rules_fired);
+//!
+//!   Ok(())
+//!   }
 //! ```
 
-#![warn(missing_docs)]
+// TODO: Re-enable missing_docs after documenting all public items
+// #![warn(missing_docs)]
 #![warn(clippy::all)]
 
+/// Backward chaining (goal-driven reasoning) - requires 'backward-chaining' feature
+#[cfg(feature = "backward-chaining")]
+pub mod backward;
 /// Rule execution engine and related components
 pub mod engine;
 /// Error types and result handling
 pub mod errors;
+/// Expression evaluation (arithmetic operations)
+pub mod expression;
 /// Rule parsing and language support  
 pub mod parser;
 /// Built-in plugin system for extended functionality
 pub mod plugins;
+/// RETE module for rule evaluation
+pub mod rete;
 /// Streaming rule engine for real-time event processing
 #[cfg(feature = "streaming")]
 pub mod streaming;
-/// Backward chaining (goal-driven reasoning) - requires 'backward-chaining' feature
-#[cfg(feature = "backward-chaining")]
-pub mod backward;
 /// Core type definitions for values, operators, and actions
 pub mod types;
-/// RETE module for rule evaluation
-pub mod rete;
-/// Expression evaluation (arithmetic operations)
-pub mod expression;
 
 // Re-export core types for easy access
 pub use errors::{Result, RuleEngineError};

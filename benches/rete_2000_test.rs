@@ -1,6 +1,6 @@
 use rust_rule_engine::rete::{
+    auto_network::{Condition, ConditionGroup, Rule},
     ReteUlEngine,
-    auto_network::{Rule, ConditionGroup, Condition},
 };
 use std::time::{Duration, Instant};
 
@@ -33,7 +33,7 @@ fn main() {
             action: format!("log('Rule{} fired')", i),
         };
 
-        engine.add_rule_from_definition(&rule, (2000 - i) as i32, false);
+        engine.add_rule_from_definition(&rule, 2000 - i, false);
     }
 
     let create_time = start_create.elapsed();
@@ -53,7 +53,10 @@ fn main() {
     println!("📈 Single execution results:");
     println!("   Time: {:?}", single_time);
     println!("   Rules fired: {}", result.len());
-    println!("   Latency per rule: {:.2} µs", single_time.as_micros() as f64 / 2000.0);
+    println!(
+        "   Latency per rule: {:.2} µs",
+        single_time.as_micros() as f64 / 2000.0
+    );
     println!("   Rules/second: {:.2}", 2000.0 / single_time.as_secs_f64());
 
     // Test multiple executions
@@ -68,18 +71,29 @@ fn main() {
         let elapsed = start.elapsed();
         total_fired += result.len();
         times.push(elapsed);
-        println!("   Run {}: {:?} ({} rules fired)", run + 1, elapsed, result.len());
+        println!(
+            "   Run {}: {:?} ({} rules fired)",
+            run + 1,
+            elapsed,
+            result.len()
+        );
     }
 
     let avg_time = times.iter().sum::<Duration>() / times.len() as u32;
     println!("📊 Average execution time: {:?}", avg_time);
-    println!("🎯 Total rules fired across {} runs: {}", num_runs, total_fired);
+    println!(
+        "🎯 Total rules fired across {} runs: {}",
+        num_runs, total_fired
+    );
     println!("📈 Average rules fired per run: {}", total_fired / num_runs);
 
     // Performance analysis
     let rules_per_second = 2000.0 / avg_time.as_secs_f64();
     println!("🚀 Performance: {:.2} rules/second", rules_per_second);
-    println!("⚡ Latency: {:.2} µs per rule", avg_time.as_micros() as f64 / 2000.0);
+    println!(
+        "⚡ Latency: {:.2} µs per rule",
+        avg_time.as_micros() as f64 / 2000.0
+    );
 
     // Scalability assessment
     if avg_time > Duration::from_secs(1) {
@@ -98,21 +112,34 @@ fn main() {
 
     // Memory assessment (rough estimate)
     let estimated_memory_kb = 2000 * 50; // Rough estimate: 50KB per rule
-    if estimated_memory_kb > 100 * 1024 { // 100MB
-        println!("⚠️  WARNING: Estimated high memory usage ({} KB)", estimated_memory_kb);
+    if estimated_memory_kb > 100 * 1024 {
+        // 100MB
+        println!(
+            "⚠️  WARNING: Estimated high memory usage ({} KB)",
+            estimated_memory_kb
+        );
         println!("   Monitor for memory leaks in production");
     } else {
-        println!("✅ Reasonable memory usage estimated at {} KB", estimated_memory_kb);
+        println!(
+            "✅ Reasonable memory usage estimated at {} KB",
+            estimated_memory_kb
+        );
     }
 
     // Comparison with smaller scales
     println!("📊 Scale Comparison:");
     println!("   10 rules: ~5 µs per rule (estimated from benchmarks)");
     println!("   50 rules: ~2.3 µs per rule (from existing benchmarks)");
-    println!("   2000 rules: {:.2} µs per rule (measured)", avg_time.as_micros() as f64 / 2000.0);
+    println!(
+        "   2000 rules: {:.2} µs per rule (measured)",
+        avg_time.as_micros() as f64 / 2000.0
+    );
 
     let scaling_factor = (avg_time.as_micros() as f64 / 2000.0) / 2.3;
-    println!("   Scaling degradation: {:.1}x slower than 50-rule baseline", scaling_factor);
+    println!(
+        "   Scaling degradation: {:.1}x slower than 50-rule baseline",
+        scaling_factor
+    );
 
     if scaling_factor > 10.0 {
         println!("❌ POOR SCALING: Performance degrades significantly with rule count");

@@ -1,7 +1,6 @@
 /// Demo: CallFunction action in RETE engine
 /// Shows how custom functions are called from GRL rules
-
-use rust_rule_engine::rete::{IncrementalEngine, GrlReteLoader, TypedFacts, FactValue};
+use rust_rule_engine::rete::{FactValue, GrlReteLoader, IncrementalEngine, TypedFacts};
 use std::sync::{Arc, Mutex};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let call_log_clone2 = call_log.clone();
-    
+
     // Register custom function: processPayment
     engine.register_function("processPayment", move |args, _facts| {
         if let Some(FactValue::String(method)) = args.first() {
@@ -73,13 +72,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Insert Customer fact
     let mut customer = TypedFacts::new();
-    customer.set("email", FactValue::String("customer@example.com".to_string()));
+    customer.set(
+        "email",
+        FactValue::String("customer@example.com".to_string()),
+    );
     engine.insert("Customer".to_string(), customer);
 
     // Insert Order fact
     let mut order = TypedFacts::new();
     order.set("status", FactValue::String("pending".to_string()));
-    order.set("paymentMethod", FactValue::String("credit_card".to_string()));
+    order.set(
+        "paymentMethod",
+        FactValue::String("credit_card".to_string()),
+    );
     engine.insert("Order".to_string(), order);
 
     println!("🏁 Firing rules...\n");

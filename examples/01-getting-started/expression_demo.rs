@@ -4,7 +4,6 @@
 /// - Arithmetic operations: +, -, *, /, %
 /// - Field references in expressions (Order.quantity * Order.price)
 /// - CLIPS-like (bind ?total (* ?quantity ?price))
-
 use rust_rule_engine::engine::engine::RustRuleEngine;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::parser::grl::GRLParser;
@@ -19,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grl_content = std::fs::read_to_string("examples/rules/01-basic/expression_demo.grl")?;
     let rules = GRLParser::parse_rules(&grl_content)?;
 
-    let mut kb = KnowledgeBase::new("expression_demo");
+    let kb = KnowledgeBase::new("expression_demo");
     for rule in &rules {
         kb.add_rule(rule.clone());
     }
@@ -42,17 +41,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nAfter execution:");
     println!("  Order.total (10 * 100): {:?}", facts.get("Order.total"));
-    println!("  Order.discount (1000 * 0.1): {:?}", facts.get("Order.discount"));
+    println!(
+        "  Order.discount (1000 * 0.1): {:?}",
+        facts.get("Order.discount")
+    );
     println!("  Order.final (1000 - 100): {:?}", facts.get("Order.final"));
     println!("  Order.tax (900 * 0.08): {:?}", facts.get("Order.tax"));
-    println!("  Order.grandTotal (900 + 72): {:?}", facts.get("Order.grandTotal"));
-    println!("  Order.bulkSavings (1000 * 0.15): {:?}", facts.get("Order.bulkSavings"));
+    println!(
+        "  Order.grandTotal (900 + 72): {:?}",
+        facts.get("Order.grandTotal")
+    );
+    println!(
+        "  Order.bulkSavings (1000 * 0.15): {:?}",
+        facts.get("Order.bulkSavings")
+    );
 
     // Example 2: Different quantities
     println!("\n📋 Example 2: Small Order (No Bulk Discount)");
     println!("---------------------------------------------");
 
-    let mut kb2 = KnowledgeBase::new("expression_demo");
+    let kb2 = KnowledgeBase::new("expression_demo");
     for rule in &rules {
         kb2.add_rule(rule.clone());
     }
@@ -70,10 +78,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nAfter execution:");
     println!("  Order.total (5 * 50): {:?}", facts2.get("Order.total"));
-    println!("  Order.discount (250 * 0.1): {:?}", facts2.get("Order.discount"));
+    println!(
+        "  Order.discount (250 * 0.1): {:?}",
+        facts2.get("Order.discount")
+    );
     println!("  Order.final (250 - 25): {:?}", facts2.get("Order.final"));
     println!("  Order.tax (225 * 0.08): {:?}", facts2.get("Order.tax"));
-    println!("  Order.grandTotal (225 + 18): {:?}", facts2.get("Order.grandTotal"));
+    println!(
+        "  Order.grandTotal (225 + 18): {:?}",
+        facts2.get("Order.grandTotal")
+    );
     println!("  Order.bulkSavings: {:?}", facts2.get("Order.bulkSavings")); // Should be None
 
     // Example 3: RETE Engine Test
@@ -89,7 +103,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     order.set("price", 80i64);
 
     println!("Before (RETE):");
-    println!("  quantity: {:?}, price: {:?}", order.get("quantity"), order.get("price"));
+    println!(
+        "  quantity: {:?}, price: {:?}",
+        order.get("quantity"),
+        order.get("price")
+    );
 
     let handle = rete.insert("Order".to_string(), order);
     let fired = rete.fire_all();

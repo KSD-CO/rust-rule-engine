@@ -1,3 +1,4 @@
+use rust_rule_engine::rete::facts::TypedFacts;
 /// Demo: Working Memory with FactHandles (P2 Feature - Drools-style)
 ///
 /// This example demonstrates the Working Memory system similar to Drools:
@@ -5,9 +6,7 @@
 /// - Type indexing for fast lookups
 /// - Change tracking for incremental updates
 /// - Fact metadata and statistics
-
-use rust_rule_engine::rete::working_memory::{WorkingMemory, FactHandle};
-use rust_rule_engine::rete::facts::TypedFacts;
+use rust_rule_engine::rete::working_memory::WorkingMemory;
 
 fn main() {
     println!("\n📦 Working Memory Demo (Drools-style)");
@@ -62,7 +61,10 @@ fn main() {
     for order in orders {
         let id = order.data.get("id").unwrap().as_integer().unwrap();
         let customer = order.data.get("customer").unwrap().as_string();
-        println!("  - {} (Order #{}), customer: {}", order.handle, id, customer);
+        println!(
+            "  - {} (Order #{}), customer: {}",
+            order.handle, id, customer
+        );
     }
 
     // Example 3: Update a fact
@@ -71,7 +73,11 @@ fn main() {
 
     let fact1 = wm.get(&handle1).unwrap();
     println!("Before update:");
-    println!("  {} - age: {}", handle1, fact1.data.get("age").unwrap().as_integer().unwrap());
+    println!(
+        "  {} - age: {}",
+        handle1,
+        fact1.data.get("age").unwrap().as_integer().unwrap()
+    );
     println!("  Update count: {}", fact1.metadata.update_count);
 
     let mut updated_person = TypedFacts::new();
@@ -83,7 +89,11 @@ fn main() {
 
     let fact1_after = wm.get(&handle1).unwrap();
     println!("\nAfter update:");
-    println!("  {} - age: {}", handle1, fact1_after.data.get("age").unwrap().as_integer().unwrap());
+    println!(
+        "  {} - age: {}",
+        handle1,
+        fact1_after.data.get("age").unwrap().as_integer().unwrap()
+    );
     println!("  Update count: {}", fact1_after.metadata.update_count);
 
     // Example 4: Change tracking
@@ -110,7 +120,10 @@ fn main() {
     println!("\n📊 Statistics: {}", wm.stats());
 
     // Verify fact is no longer accessible
-    assert!(wm.get(&handle2).is_none(), "Retracted fact should not be accessible");
+    assert!(
+        wm.get(&handle2).is_none(),
+        "Retracted fact should not be accessible"
+    );
     println!("✅ Retracted fact is no longer accessible");
 
     // Example 6: Metadata
@@ -187,6 +200,9 @@ fn main() {
     println!("✅ Change tracking (modified/retracted)");
     println!("✅ Fact metadata (timestamps, update count)");
     println!("✅ Statistics and monitoring");
-    println!("✅ Performance: 1000 inserts in ~{}µs", insert_time.as_micros());
+    println!(
+        "✅ Performance: 1000 inserts in ~{}µs",
+        insert_time.as_micros()
+    );
     println!("\n🚀 Similar to Drools KieSession.insert/update/delete!");
 }

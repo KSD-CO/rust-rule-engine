@@ -5,8 +5,8 @@
 //!
 //! Run with: cargo run --example grl_optimizer_demo --features backward-chaining
 
-use rust_rule_engine::backward::{GRLQueryParser, GRLQueryExecutor, BackwardEngine};
-use rust_rule_engine::{KnowledgeBase, Facts, Value};
+use rust_rule_engine::backward::{BackwardEngine, GRLQueryParser};
+use rust_rule_engine::{Facts, KnowledgeBase, Value};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "=".repeat(80));
@@ -54,16 +54,22 @@ fn demo_with_optimization() -> Result<(), Box<dyn std::error::Error>> {
 
     let query = GRLQueryParser::parse(query_str)?;
 
-    println!("Optimization Status: {}",
-        if query.enable_optimization { "ENABLED" } else { "DISABLED" });
+    println!(
+        "Optimization Status: {}",
+        if query.enable_optimization {
+            "ENABLED"
+        } else {
+            "DISABLED"
+        }
+    );
     println!("Strategy: {:?}", query.strategy);
     println!("Max Depth: {}", query.max_depth);
     println!();
 
     // Setup engine and facts
     let kb = KnowledgeBase::new("test");
-    let mut bc_engine = BackwardEngine::new(kb);
-    let mut facts = Facts::new();
+    let bc_engine = BackwardEngine::new(kb);
+    let facts = Facts::new();
 
     // Add some test facts
     facts.set("customer.vip", Value::Boolean(true));
@@ -94,8 +100,14 @@ fn demo_without_optimization() -> Result<(), Box<dyn std::error::Error>> {
 
     let query = GRLQueryParser::parse(query_str)?;
 
-    println!("Optimization Status: {}",
-        if query.enable_optimization { "ENABLED" } else { "DISABLED" });
+    println!(
+        "Optimization Status: {}",
+        if query.enable_optimization {
+            "ENABLED"
+        } else {
+            "DISABLED"
+        }
+    );
     println!();
 
     println!("Note: With optimization disabled, goals are evaluated in the order");
@@ -137,8 +149,22 @@ fn demo_complex_optimization() -> Result<(), Box<dyn std::error::Error>> {
     println!("Query Analysis:");
     println!("  Name: {}", query.name);
     println!("  Goal: {}", query.goal);
-    println!("  Optimization: {}", if query.enable_optimization { "ENABLED" } else { "DISABLED" });
-    println!("  Memoization: {}", if query.enable_memoization { "ENABLED" } else { "DISABLED" });
+    println!(
+        "  Optimization: {}",
+        if query.enable_optimization {
+            "ENABLED"
+        } else {
+            "DISABLED"
+        }
+    );
+    println!(
+        "  Memoization: {}",
+        if query.enable_memoization {
+            "ENABLED"
+        } else {
+            "DISABLED"
+        }
+    );
     println!("  Max Solutions: {}", query.max_solutions);
     println!();
 

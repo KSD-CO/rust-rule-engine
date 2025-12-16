@@ -29,10 +29,9 @@
 //! )?;
 //! ```
 
-use crate::types::Value;
-use crate::errors::{Result, RuleEngineError};
 use super::search::Solution;
-use std::collections::HashMap;
+use crate::errors::{Result, RuleEngineError};
+use crate::types::Value;
 
 /// Aggregate function types
 #[derive(Debug, Clone, PartialEq)]
@@ -63,10 +62,10 @@ impl AggregateFunction {
     /// Get the field name for field-based aggregates
     pub fn field_name(&self) -> Option<&str> {
         match self {
-            AggregateFunction::Sum(f) |
-            AggregateFunction::Avg(f) |
-            AggregateFunction::Min(f) |
-            AggregateFunction::Max(f) => Some(f),
+            AggregateFunction::Sum(f)
+            | AggregateFunction::Avg(f)
+            | AggregateFunction::Min(f)
+            | AggregateFunction::Max(f) => Some(f),
             _ => None,
         }
     }
@@ -174,7 +173,10 @@ pub fn parse_aggregate_query(query: &str) -> Result<AggregateQuery> {
     // Split pattern and filter (on AND)
     let (pattern, filter) = if pattern_part.contains(" AND ") {
         let parts: Vec<&str> = pattern_part.splitn(2, " AND ").collect();
-        (parts[0].trim().to_string(), Some(parts[1].trim().to_string()))
+        (
+            parts[0].trim().to_string(),
+            Some(parts[1].trim().to_string()),
+        )
     } else {
         (pattern_part.to_string(), None)
     };
@@ -210,8 +212,8 @@ fn parse_function_call(s: &str) -> Result<(String, String)> {
     let var_name = s[open_idx + 1..close_idx].trim().to_string();
 
     // Remove leading ? from variable name if present
-    let var_name = if var_name.starts_with('?') {
-        var_name[1..].to_string()
+    let var_name = if let Some(stripped) = var_name.strip_prefix('?') {
+        stripped.to_string()
     } else {
         var_name
     };
@@ -220,10 +222,7 @@ fn parse_function_call(s: &str) -> Result<(String, String)> {
 }
 
 /// Apply aggregate function to solutions
-pub fn apply_aggregate(
-    function: &AggregateFunction,
-    solutions: &[Solution],
-) -> Result<Value> {
+pub fn apply_aggregate(function: &AggregateFunction, solutions: &[Solution]) -> Result<Value> {
     if solutions.is_empty() {
         // Return appropriate zero value
         return Ok(match function {
@@ -238,12 +237,11 @@ pub fn apply_aggregate(
     }
 
     match function {
-        AggregateFunction::Count => {
-            Ok(Value::Integer(solutions.len() as i64))
-        }
+        AggregateFunction::Count => Ok(Value::Integer(solutions.len() as i64)),
 
         AggregateFunction::Sum(field) => {
-            let sum: f64 = solutions.iter()
+            let sum: f64 = solutions
+                .iter()
                 .filter_map(|s| s.bindings.get(field))
                 .filter_map(|v| value_to_float(v).ok())
                 .sum();
@@ -251,7 +249,8 @@ pub fn apply_aggregate(
         }
 
         AggregateFunction::Avg(field) => {
-            let values: Vec<f64> = solutions.iter()
+            let values: Vec<f64> = solutions
+                .iter()
                 .filter_map(|s| s.bindings.get(field))
                 .filter_map(|v| value_to_float(v).ok())
                 .collect();
@@ -265,7 +264,8 @@ pub fn apply_aggregate(
         }
 
         AggregateFunction::Min(field) => {
-            let min = solutions.iter()
+            let min = solutions
+                .iter()
                 .filter_map(|s| s.bindings.get(field))
                 .filter_map(|v| value_to_float(v).ok())
                 .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -274,7 +274,8 @@ pub fn apply_aggregate(
         }
 
         AggregateFunction::Max(field) => {
-            let max = solutions.iter()
+            let max = solutions
+                .iter()
                 .filter_map(|s| s.bindings.get(field))
                 .filter_map(|v| value_to_float(v).ok())
                 .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -283,7 +284,8 @@ pub fn apply_aggregate(
         }
 
         AggregateFunction::First => {
-            Ok(solutions.first()
+            Ok(solutions
+                .first()
                 .and_then(|s| {
                     // Return the first non-null binding
                     s.bindings.values().next().cloned()
@@ -292,7 +294,8 @@ pub fn apply_aggregate(
         }
 
         AggregateFunction::Last => {
-            Ok(solutions.last()
+            Ok(solutions
+                .last()
                 .and_then(|s| {
                     // Return the last non-null binding
                     s.bindings.values().last().cloned()
@@ -307,11 +310,11 @@ fn value_to_float(value: &Value) -> Result<f64> {
     match value {
         Value::Number(n) => Ok(*n),
         Value::Integer(i) => Ok(*i as f64),
-        Value::String(s) => s.parse::<f64>().map_err(|_| {
-            RuleEngineError::EvaluationError {
+        Value::String(s) => s
+            .parse::<f64>()
+            .map_err(|_| RuleEngineError::EvaluationError {
                 message: format!("Cannot convert '{}' to number", s),
-            }
-        }),
+            }),
         _ => Err(RuleEngineError::EvaluationError {
             message: format!("Cannot aggregate non-numeric value: {:?}", value),
         }),
@@ -321,6 +324,7 @@ fn value_to_float(value: &Value) -> Result<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn test_parse_count_query() {
@@ -337,7 +341,10 @@ mod tests {
         let query = "sum(?amount) WHERE purchase(?item, ?amount)";
         let result = parse_aggregate_query(query).unwrap();
 
-        assert_eq!(result.function, AggregateFunction::Sum("amount".to_string()));
+        assert_eq!(
+            result.function,
+            AggregateFunction::Sum("amount".to_string())
+        );
         assert_eq!(result.pattern, "purchase(?item, ?amount)");
     }
 
@@ -346,7 +353,10 @@ mod tests {
         let query = "avg(?salary) WHERE salary(?name, ?salary) AND ?salary > 50000";
         let result = parse_aggregate_query(query).unwrap();
 
-        assert_eq!(result.function, AggregateFunction::Avg("salary".to_string()));
+        assert_eq!(
+            result.function,
+            AggregateFunction::Avg("salary".to_string())
+        );
         assert_eq!(result.pattern, "salary(?name, ?salary)");
         assert_eq!(result.filter, Some("?salary > 50000".to_string()));
     }
@@ -384,9 +394,18 @@ mod tests {
     #[test]
     fn test_apply_count() {
         let solutions = vec![
-            Solution { path: vec![], bindings: HashMap::new() },
-            Solution { path: vec![], bindings: HashMap::new() },
-            Solution { path: vec![], bindings: HashMap::new() },
+            Solution {
+                path: vec![],
+                bindings: HashMap::new(),
+            },
+            Solution {
+                path: vec![],
+                bindings: HashMap::new(),
+            },
+            Solution {
+                path: vec![],
+                bindings: HashMap::new(),
+            },
         ];
 
         let result = apply_aggregate(&AggregateFunction::Count, &solutions).unwrap();
@@ -405,12 +424,22 @@ mod tests {
         b3.insert("amount".to_string(), Value::Number(300.0));
 
         let solutions = vec![
-            Solution { path: vec![], bindings: b1 },
-            Solution { path: vec![], bindings: b2 },
-            Solution { path: vec![], bindings: b3 },
+            Solution {
+                path: vec![],
+                bindings: b1,
+            },
+            Solution {
+                path: vec![],
+                bindings: b2,
+            },
+            Solution {
+                path: vec![],
+                bindings: b3,
+            },
         ];
 
-        let result = apply_aggregate(&AggregateFunction::Sum("amount".to_string()), &solutions).unwrap();
+        let result =
+            apply_aggregate(&AggregateFunction::Sum("amount".to_string()), &solutions).unwrap();
         assert_eq!(result, Value::Number(600.0));
     }
 
@@ -426,12 +455,22 @@ mod tests {
         b3.insert("score".to_string(), Value::Integer(100));
 
         let solutions = vec![
-            Solution { path: vec![], bindings: b1 },
-            Solution { path: vec![], bindings: b2 },
-            Solution { path: vec![], bindings: b3 },
+            Solution {
+                path: vec![],
+                bindings: b1,
+            },
+            Solution {
+                path: vec![],
+                bindings: b2,
+            },
+            Solution {
+                path: vec![],
+                bindings: b3,
+            },
         ];
 
-        let result = apply_aggregate(&AggregateFunction::Avg("score".to_string()), &solutions).unwrap();
+        let result =
+            apply_aggregate(&AggregateFunction::Avg("score".to_string()), &solutions).unwrap();
         assert_eq!(result, Value::Number(90.0));
     }
 
@@ -447,12 +486,22 @@ mod tests {
         b3.insert("price".to_string(), Value::Number(149.99));
 
         let solutions = vec![
-            Solution { path: vec![], bindings: b1 },
-            Solution { path: vec![], bindings: b2 },
-            Solution { path: vec![], bindings: b3 },
+            Solution {
+                path: vec![],
+                bindings: b1,
+            },
+            Solution {
+                path: vec![],
+                bindings: b2,
+            },
+            Solution {
+                path: vec![],
+                bindings: b3,
+            },
         ];
 
-        let result = apply_aggregate(&AggregateFunction::Min("price".to_string()), &solutions).unwrap();
+        let result =
+            apply_aggregate(&AggregateFunction::Min("price".to_string()), &solutions).unwrap();
         assert_eq!(result, Value::Number(49.99));
     }
 
@@ -468,12 +517,22 @@ mod tests {
         b3.insert("price".to_string(), Value::Number(149.99));
 
         let solutions = vec![
-            Solution { path: vec![], bindings: b1 },
-            Solution { path: vec![], bindings: b2 },
-            Solution { path: vec![], bindings: b3 },
+            Solution {
+                path: vec![],
+                bindings: b1,
+            },
+            Solution {
+                path: vec![],
+                bindings: b2,
+            },
+            Solution {
+                path: vec![],
+                bindings: b3,
+            },
         ];
 
-        let result = apply_aggregate(&AggregateFunction::Max("price".to_string()), &solutions).unwrap();
+        let result =
+            apply_aggregate(&AggregateFunction::Max("price".to_string()), &solutions).unwrap();
         assert_eq!(result, Value::Number(149.99));
     }
 
@@ -484,10 +543,12 @@ mod tests {
         let count = apply_aggregate(&AggregateFunction::Count, &solutions).unwrap();
         assert_eq!(count, Value::Integer(0));
 
-        let sum = apply_aggregate(&AggregateFunction::Sum("amount".to_string()), &solutions).unwrap();
+        let sum =
+            apply_aggregate(&AggregateFunction::Sum("amount".to_string()), &solutions).unwrap();
         assert_eq!(sum, Value::Number(0.0));
 
-        let min = apply_aggregate(&AggregateFunction::Min("price".to_string()), &solutions).unwrap();
+        let min =
+            apply_aggregate(&AggregateFunction::Min("price".to_string()), &solutions).unwrap();
         assert_eq!(min, Value::Null);
     }
 }

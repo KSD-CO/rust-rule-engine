@@ -18,10 +18,10 @@
 //! assert_eq!(bindings.get("X"), Some(&Value::Number(42.0)));
 //! ```
 
-use crate::types::Value;
-use crate::errors::{Result, RuleEngineError};
-use crate::Facts;
 use super::expression::Expression;
+use crate::errors::{Result, RuleEngineError};
+use crate::types::Value;
+use crate::Facts;
 use std::collections::HashMap;
 
 /// Variable bindings during proof
@@ -63,12 +63,10 @@ impl Bindings {
         if let Some(existing) = self.bindings.get(&var_name) {
             // Must match existing binding
             if existing != &value {
-                return Err(RuleEngineError::ExecutionError(
-                    format!(
-                        "Variable binding conflict: {} is already bound to {:?}, cannot rebind to {:?}",
-                        var_name, existing, value
-                    )
-                ));
+                return Err(RuleEngineError::ExecutionError(format!(
+                    "Variable binding conflict: {} is already bound to {:?}, cannot rebind to {:?}",
+                    var_name, existing, value
+                )));
             }
         } else {
             self.bindings.insert(var_name, value);
@@ -157,21 +155,13 @@ impl Unifier {
     /// - `Ok(true)` if unification succeeded
     /// - `Ok(false)` if expressions cannot be unified
     /// - `Err(_)` if there's a binding conflict
-    pub fn unify(
-        left: &Expression,
-        right: &Expression,
-        bindings: &mut Bindings,
-    ) -> Result<bool> {
+    pub fn unify(left: &Expression, right: &Expression, bindings: &mut Bindings) -> Result<bool> {
         match (left, right) {
             // Variable on left
             (Expression::Variable(var), expr) => {
                 if let Some(bound_value) = bindings.get(var) {
                     // Variable already bound - check if it matches
-                    Self::unify(
-                        &Expression::Literal(bound_value.clone()),
-                        expr,
-                        bindings
-                    )
+                    Self::unify(&Expression::Literal(bound_value.clone()), expr, bindings)
                 } else {
                     // Bind variable to expression value
                     if let Some(value) = Self::expression_to_value(expr, bindings)? {
@@ -190,19 +180,23 @@ impl Unifier {
             }
 
             // Two literals - must be equal
-            (Expression::Literal(v1), Expression::Literal(v2)) => {
-                Ok(v1 == v2)
-            }
+            (Expression::Literal(v1), Expression::Literal(v2)) => Ok(v1 == v2),
 
             // Two fields - must be same field
-            (Expression::Field(f1), Expression::Field(f2)) => {
-                Ok(f1 == f2)
-            }
+            (Expression::Field(f1), Expression::Field(f2)) => Ok(f1 == f2),
 
             // Comparison - both sides must unify
             (
-                Expression::Comparison { left: l1, operator: op1, right: r1 },
-                Expression::Comparison { left: l2, operator: op2, right: r2 }
+                Expression::Comparison {
+                    left: l1,
+                    operator: op1,
+                    right: r1,
+                },
+                Expression::Comparison {
+                    left: l2,
+                    operator: op2,
+                    right: r2,
+                },
             ) => {
                 if op1 != op2 {
                     return Ok(false);
@@ -216,8 +210,14 @@ impl Unifier {
 
             // Logical AND - both sides must unify
             (
-                Expression::And { left: l1, right: r1 },
-                Expression::And { left: l2, right: r2 }
+                Expression::And {
+                    left: l1,
+                    right: r1,
+                },
+                Expression::And {
+                    left: l2,
+                    right: r2,
+                },
             ) => {
                 let left_match = Self::unify(l1, l2, bindings)?;
                 let right_match = Self::unify(r1, r2, bindings)?;
@@ -226,8 +226,14 @@ impl Unifier {
 
             // Logical OR - both sides must unify
             (
-                Expression::Or { left: l1, right: r1 },
-                Expression::Or { left: l2, right: r2 }
+                Expression::Or {
+                    left: l1,
+                    right: r1,
+                },
+                Expression::Or {
+                    left: l2,
+                    right: r2,
+                },
             ) => {
                 let left_match = Self::unify(l1, l2, bindings)?;
                 let right_match = Self::unify(r1, r2, bindings)?;
@@ -235,9 +241,7 @@ impl Unifier {
             }
 
             // Negation - inner expression must unify
-            (Expression::Not(e1), Expression::Not(e2)) => {
-                Self::unify(e1, e2, bindings)
-            }
+            (Expression::Not(e1), Expression::Not(e2)) => Self::unify(e1, e2, bindings),
 
             // Different expression types - cannot unify
             _ => Ok(false),
@@ -272,7 +276,11 @@ impl Unifier {
                 Ok(true)
             }
 
-            Expression::Comparison { left, operator, right } => {
+            Expression::Comparison {
+                left,
+                operator,
+                right,
+            } => {
                 // Evaluate both sides with bindings
                 let left_val = Self::evaluate_with_bindings(left, facts, bindings)?;
                 let right_val = Self::evaluate_with_bindings(right, facts, bindings)?;
@@ -294,9 +302,10 @@ impl Unifier {
                         Self::compare_values(&left_val, &right_val)? <= 0
                     }
                     _ => {
-                        return Err(RuleEngineError::ExecutionError(
-                            format!("Unsupported operator: {:?}", operator)
-                        ));
+                        return Err(RuleEngineError::ExecutionError(format!(
+                            "Unsupported operator: {:?}",
+                            operator
+                        )));
                     }
                 };
 
@@ -335,24 +344,21 @@ impl Unifier {
         bindings: &Bindings,
     ) -> Result<Value> {
         match expr {
-            Expression::Variable(var) => {
-                bindings.get(var)
-                    .cloned()
-                    .ok_or_else(|| RuleEngineError::ExecutionError(
-                        format!("Unbound variable: {}", var)
-                    ))
-            }
+            Expression::Variable(var) => bindings.get(var).cloned().ok_or_else(|| {
+                RuleEngineError::ExecutionError(format!("Unbound variable: {}", var))
+            }),
 
-            Expression::Field(field) => {
-                facts.get(field)
-                    .ok_or_else(|| RuleEngineError::ExecutionError(
-                        format!("Field not found: {}", field)
-                    ))
-            }
+            Expression::Field(field) => facts.get(field).ok_or_else(|| {
+                RuleEngineError::ExecutionError(format!("Field not found: {}", field))
+            }),
 
             Expression::Literal(val) => Ok(val.clone()),
 
-            Expression::Comparison { left, operator, right } => {
+            Expression::Comparison {
+                left,
+                operator,
+                right,
+            } => {
                 let left_val = Self::evaluate_with_bindings(left, facts, bindings)?;
                 let right_val = Self::evaluate_with_bindings(right, facts, bindings)?;
 
@@ -372,9 +378,10 @@ impl Unifier {
                         Self::compare_values(&left_val, &right_val)? <= 0
                     }
                     _ => {
-                        return Err(RuleEngineError::ExecutionError(
-                            format!("Unsupported operator: {:?}", operator)
-                        ));
+                        return Err(RuleEngineError::ExecutionError(format!(
+                            "Unsupported operator: {:?}",
+                            operator
+                        )));
                     }
                 };
 
@@ -427,15 +434,12 @@ impl Unifier {
                     Ok(0)
                 }
             }
-            (Value::String(a), Value::String(b)) => {
-                Ok(a.cmp(b) as i32)
-            }
-            (Value::Boolean(a), Value::Boolean(b)) => {
-                Ok(a.cmp(b) as i32)
-            }
-            _ => Err(RuleEngineError::ExecutionError(
-                format!("Cannot compare values: {:?} and {:?}", left, right)
-            ))
+            (Value::String(a), Value::String(b)) => Ok(a.cmp(b) as i32),
+            (Value::Boolean(a), Value::Boolean(b)) => Ok(a.cmp(b) as i32),
+            _ => Err(RuleEngineError::ExecutionError(format!(
+                "Cannot compare values: {:?} and {:?}",
+                left, right
+            ))),
         }
     }
 }
@@ -470,7 +474,9 @@ mod tests {
         assert!(bindings.bind("X".to_string(), Value::Number(42.0)).is_ok());
 
         // Different value - should fail
-        assert!(bindings.bind("X".to_string(), Value::Number(100.0)).is_err());
+        assert!(bindings
+            .bind("X".to_string(), Value::Number(100.0))
+            .is_err());
     }
 
     #[test]
@@ -478,14 +484,21 @@ mod tests {
         let mut bindings1 = Bindings::new();
         let mut bindings2 = Bindings::new();
 
-        bindings1.bind("X".to_string(), Value::Number(42.0)).unwrap();
-        bindings2.bind("Y".to_string(), Value::String("hello".to_string())).unwrap();
+        bindings1
+            .bind("X".to_string(), Value::Number(42.0))
+            .unwrap();
+        bindings2
+            .bind("Y".to_string(), Value::String("hello".to_string()))
+            .unwrap();
 
         bindings1.merge(&bindings2).unwrap();
 
         assert_eq!(bindings1.len(), 2);
         assert_eq!(bindings1.get("X"), Some(&Value::Number(42.0)));
-        assert_eq!(bindings1.get("Y"), Some(&Value::String("hello".to_string())));
+        assert_eq!(
+            bindings1.get("Y"),
+            Some(&Value::String("hello".to_string()))
+        );
     }
 
     #[test]
@@ -493,8 +506,12 @@ mod tests {
         let mut bindings1 = Bindings::new();
         let mut bindings2 = Bindings::new();
 
-        bindings1.bind("X".to_string(), Value::Number(42.0)).unwrap();
-        bindings2.bind("X".to_string(), Value::Number(100.0)).unwrap();
+        bindings1
+            .bind("X".to_string(), Value::Number(42.0))
+            .unwrap();
+        bindings2
+            .bind("X".to_string(), Value::Number(100.0))
+            .unwrap();
 
         // Should fail due to conflict
         assert!(bindings1.merge(&bindings2).is_err());
@@ -545,7 +562,7 @@ mod tests {
 
     #[test]
     fn test_match_expression_simple() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.IsVIP", Value::Boolean(true));
 
         let mut bindings = Bindings::new();
@@ -562,7 +579,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_with_bindings() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("Order.Amount", Value::Number(100.0));
 
         let mut bindings = Bindings::new();

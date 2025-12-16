@@ -14,13 +14,12 @@
 /// HYBRID APPROACH:
 /// 1. Forward chaining: derive facts (shortage, order_qty, totals, approval status)
 /// 2. Backward chaining: answer questions (should create PO? is approved?)
-
-use rust_rule_engine::{Facts, KnowledgeBase, RustRuleEngine, Value, GRLParser};
+use rust_rule_engine::{Facts, GRLParser, KnowledgeBase, RustRuleEngine, Value};
 use std::fs;
 use std::path::Path;
 
 #[cfg(feature = "backward-chaining")]
-use rust_rule_engine::backward::{BackwardEngine, GRLQueryParser, GRLQueryExecutor};
+use rust_rule_engine::backward::{BackwardEngine, GRLQueryExecutor, GRLQueryParser};
 
 /// Load rules from a .grl file
 fn load_rules_from_file(filename: &str) -> String {
@@ -32,14 +31,14 @@ fn load_rules_from_file(filename: &str) -> String {
 /// Load a query block from a .grl file
 fn load_query_from_file(filename: &str, query_name: &str) -> String {
     let content = load_rules_from_file(filename);
-    
+
     let query_start = format!("query \"{}\"", query_name);
     if let Some(start_idx) = content.find(&query_start) {
         let remaining = &content[start_idx..];
         let mut brace_count = 0;
         let mut in_query = false;
         let mut end_idx = 0;
-        
+
         for (i, ch) in remaining.chars().enumerate() {
             if ch == '{' {
                 brace_count += 1;
@@ -52,12 +51,12 @@ fn load_query_from_file(filename: &str, query_name: &str) -> String {
                 }
             }
         }
-        
+
         if end_idx > 0 {
             return remaining[..end_idx].to_string();
         }
     }
-    
+
     panic!("❌ Query '{}' not found in file {}", query_name, filename);
 }
 
@@ -86,7 +85,7 @@ fn scenario_1_normal_reorder() {
 
     // Load rules
     let rules = load_rules_from_file("purchasing_flow.grl");
-    let mut kb = KnowledgeBase::new("PurchasingFlow");
+    let kb = KnowledgeBase::new("PurchasingFlow");
     let parsed_rules = GRLParser::parse_rules(&rules).unwrap();
     for rule in parsed_rules {
         kb.add_rule(rule).unwrap();
@@ -109,12 +108,10 @@ fn scenario_1_normal_reorder() {
     // Step 1: Forward chaining
     println!("\n🔄 Step 1: Forward chaining (deriving facts)...\n");
     let mut forward_engine = RustRuleEngine::new(kb.clone());
-    
+
     // Register LogMessage handler
-    forward_engine.register_action_handler("LogMessage", |_args, _facts| {
-        Ok(())
-    });
-    
+    forward_engine.register_action_handler("LogMessage", |_args, _facts| Ok(()));
+
     forward_engine.execute(&mut facts).unwrap();
 
     println!("✅ Forward chaining complete. Derived facts:");
@@ -132,7 +129,7 @@ fn scenario_1_normal_reorder() {
     let parsed_query = GRLQueryParser::parse(&query).unwrap();
     let mut bc_engine = BackwardEngine::new(kb);
     let result = GRLQueryExecutor::execute(&parsed_query, &mut bc_engine, &mut facts).unwrap();
-    
+
     if result.provable {
         println!("✅ ANSWER: Yes, create PO");
         println!("   PO Status: {:?}", facts.get("po_status"));
@@ -151,7 +148,7 @@ fn scenario_2_high_value_order() {
     println!("──────────────────────────────────────────────────────\n");
 
     let rules = load_rules_from_file("purchasing_flow.grl");
-    let mut kb = KnowledgeBase::new("HighValueOrder");
+    let kb = KnowledgeBase::new("HighValueOrder");
     let parsed_rules = GRLParser::parse_rules(&rules).unwrap();
     for rule in parsed_rules {
         kb.add_rule(rule).unwrap();
@@ -172,12 +169,10 @@ fn scenario_2_high_value_order() {
 
     println!("\n🔄 Step 1: Forward chaining...\n");
     let mut forward_engine = RustRuleEngine::new(kb.clone());
-    
+
     // Register LogMessage handler
-    forward_engine.register_action_handler("LogMessage", |_args, _facts| {
-        Ok(())
-    });
-    
+    forward_engine.register_action_handler("LogMessage", |_args, _facts| Ok(()));
+
     forward_engine.execute(&mut facts).unwrap();
 
     println!("✅ Forward chaining complete:");
@@ -193,7 +188,7 @@ fn scenario_2_high_value_order() {
     let parsed_query = GRLQueryParser::parse(&query).unwrap();
     let mut bc_engine = BackwardEngine::new(kb.clone());
     let result = GRLQueryExecutor::execute(&parsed_query, &mut bc_engine, &mut facts).unwrap();
-    
+
     if result.provable {
         println!("✅ ANSWER: Yes, auto-approved");
     } else {
@@ -207,7 +202,7 @@ fn scenario_2_high_value_order() {
     let parsed_query = GRLQueryParser::parse(&query).unwrap();
     let mut bc_engine = BackwardEngine::new(kb);
     let result = GRLQueryExecutor::execute(&parsed_query, &mut bc_engine, &mut facts).unwrap();
-    
+
     if result.provable {
         println!("🎉 ANSWER: Yes, bulk discount applied!");
         println!("   Discount: {:?}", facts.get("discount_amount"));

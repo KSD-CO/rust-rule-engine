@@ -8,9 +8,9 @@
 //! cargo run --example multiple_solutions_demo --features backward-chaining
 //! ```
 
-use rust_rule_engine::backward::{BackwardEngine, BackwardConfig};
-use rust_rule_engine::{KnowledgeBase, Facts};
+use rust_rule_engine::backward::{BackwardConfig, BackwardEngine};
 use rust_rule_engine::types::Value;
+use rust_rule_engine::{Facts, KnowledgeBase};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Multiple Solutions Demo ===\n");
@@ -32,13 +32,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_multiple_discount_paths() -> Result<(), Box<dyn std::error::Error>> {
     println!("📊 Demo 1: Multiple Discount Qualification Paths\n");
 
-    let mut kb = KnowledgeBase::new("discount_system");
+    let kb = KnowledgeBase::new("discount_system");
 
     // Load discount rules from GRL file
     let rules_grl = include_str!("../rules/09-backward-chaining/discount_rules.grl");
     kb.add_rules_from_grl(rules_grl)?;
 
-    println!("📋 Loaded {} discount qualification rules:", kb.get_rules().len());
+    println!(
+        "📋 Loaded {} discount qualification rules:",
+        kb.get_rules().len()
+    );
     for rule in kb.get_rules() {
         println!("   • {}", rule.name);
     }
@@ -96,8 +99,10 @@ fn demo_multiple_discount_paths() -> Result<(), Box<dyn std::error::Error>> {
         println!("    {}. {:?}", i + 1, solution.path);
     }
 
-    println!("\n💡 This user qualifies for discount through {} different paths!",
-             result_all.solutions.len());
+    println!(
+        "\n💡 This user qualifies for discount through {} different paths!",
+        result_all.solutions.len()
+    );
 
     Ok(())
 }
@@ -106,7 +111,7 @@ fn demo_multiple_discount_paths() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_multiple_access_paths() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔐 Demo 2: Multiple Resource Access Paths\n");
 
-    let mut kb = KnowledgeBase::new("access_system");
+    let kb = KnowledgeBase::new("access_system");
 
     // Load access rules from GRL file
     let rules_grl = include_str!("../rules/09-backward-chaining/access_rules.grl");
@@ -120,10 +125,10 @@ fn demo_multiple_access_paths() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test with a user who has multiple access rights
     let mut facts = Facts::new();
-    facts.set("User.Role", Value::String("Admin".to_string()));  // ✅ Admin (Path 1)
-    facts.set("User.IsOwner", Value::Boolean(true));             // ✅ Owner (Path 2)
-    facts.set("User.IsCollaborator", Value::Boolean(false));     // ❌ Not collaborator
-    facts.set("Resource.IsPublic", Value::Boolean(false));       // ❌ Private resource
+    facts.set("User.Role", Value::String("Admin".to_string())); // ✅ Admin (Path 1)
+    facts.set("User.IsOwner", Value::Boolean(true)); // ✅ Owner (Path 2)
+    facts.set("User.IsCollaborator", Value::Boolean(false)); // ❌ Not collaborator
+    facts.set("Resource.IsPublic", Value::Boolean(false)); // ❌ Private resource
 
     println!("Access Check:");
     println!("  User Role: Admin");

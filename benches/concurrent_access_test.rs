@@ -1,7 +1,7 @@
-use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
+use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::types::{ActionType, Operator, Value};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -32,7 +32,7 @@ fn main() {
 
                 // Lock and execute
                 {
-                    let mut facts = Facts::new();
+                    let facts = Facts::new();
                     let mut data_props = HashMap::new();
                     data_props.insert("thread".to_string(), Value::Integer(thread_id as i64));
                     data_props.insert("fact".to_string(), Value::Integer(fact_id as i64));
@@ -70,8 +70,14 @@ fn main() {
     println!("- Facts per thread: {}", facts_per_thread);
     println!("- Total executions: {}", total_executions);
     println!("- Total time: {:.2} ms", total_duration.as_millis());
-    println!("- Average time per execution: {:.2} µs", avg_time_per_execution);
-    println!("- Throughput: {:.0} executions/second", total_executions as f64 / total_duration.as_secs_f64());
+    println!(
+        "- Average time per execution: {:.2} µs",
+        avg_time_per_execution
+    );
+    println!(
+        "- Throughput: {:.0} executions/second",
+        total_executions as f64 / total_duration.as_secs_f64()
+    );
 }
 
 fn create_rule_engine() -> RustRuleEngine {
@@ -103,11 +109,7 @@ fn create_rule_engine() -> RustRuleEngine {
         field: "data.processed".to_string(),
         value: Value::Boolean(true),
     };
-    let vip_rule = Rule::new(
-        "CheckThread".to_string(),
-        vip_condition,
-        vec![vip_action],
-    );
+    let vip_rule = Rule::new("CheckThread".to_string(), vip_condition, vec![vip_action]);
 
     let _ = kb.add_rule(adult_rule);
     let _ = kb.add_rule(vip_rule);

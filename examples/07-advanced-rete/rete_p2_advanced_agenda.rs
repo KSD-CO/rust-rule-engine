@@ -7,8 +7,7 @@
 /// - Auto-focus: Automatic agenda group switching
 /// - Lock-on-active: Prevent re-activation
 /// - Salience/Priority: Rule firing order
-
-use rust_rule_engine::rete::agenda::{AdvancedAgenda, Activation};
+use rust_rule_engine::rete::agenda::{Activation, AdvancedAgenda};
 
 fn main() {
     println!("\n🎯 Advanced Agenda Demo (Drools-style)");
@@ -28,7 +27,10 @@ fn main() {
     println!("Firing order (should be by priority):");
 
     while let Some(activation) = agenda.get_next_activation() {
-        println!("  🔥 {} (salience: {})", activation.rule_name, activation.salience);
+        println!(
+            "  🔥 {} (salience: {})",
+            activation.rule_name, activation.salience
+        );
         agenda.mark_rule_fired(&activation);
     }
 
@@ -41,15 +43,14 @@ fn main() {
 
     agenda2.add_activation(
         Activation::new("Rule1".to_string(), 10)
-            .with_activation_group("discount_group".to_string())
+            .with_activation_group("discount_group".to_string()),
     );
     agenda2.add_activation(
         Activation::new("Rule2".to_string(), 20)
-            .with_activation_group("discount_group".to_string())
+            .with_activation_group("discount_group".to_string()),
     );
     agenda2.add_activation(
-        Activation::new("Rule3".to_string(), 5)
-            .with_activation_group("discount_group".to_string())
+        Activation::new("Rule3".to_string(), 5).with_activation_group("discount_group".to_string()),
     );
 
     println!("Added 3 rules in 'discount_group' with salience 10, 20, 5");
@@ -57,13 +58,19 @@ fn main() {
 
     let mut fired_count = 0;
     while let Some(activation) = agenda2.get_next_activation() {
-        println!("  🔥 {} (salience: {})", activation.rule_name, activation.salience);
+        println!(
+            "  🔥 {} (salience: {})",
+            activation.rule_name, activation.salience
+        );
         agenda2.mark_rule_fired(&activation);
         fired_count += 1;
     }
 
     println!("\nTotal rules fired: {} (should be 1)", fired_count);
-    assert_eq!(fired_count, 1, "Only one rule in activation group should fire");
+    assert_eq!(
+        fired_count, 1,
+        "Only one rule in activation group should fire"
+    );
 
     // Example 3: Agenda Groups
     println!("\n📋 Example 3: Agenda Groups");
@@ -75,25 +82,21 @@ fn main() {
     // Add rules to different agenda groups
     agenda3.add_activation(
         Activation::new("InitRule1".to_string(), 10)
-            .with_agenda_group("initialization".to_string())
+            .with_agenda_group("initialization".to_string()),
     );
     agenda3.add_activation(
-        Activation::new("InitRule2".to_string(), 5)
-            .with_agenda_group("initialization".to_string())
-    );
-
-    agenda3.add_activation(
-        Activation::new("ProcessRule1".to_string(), 10)
-            .with_agenda_group("processing".to_string())
-    );
-    agenda3.add_activation(
-        Activation::new("ProcessRule2".to_string(), 5)
-            .with_agenda_group("processing".to_string())
+        Activation::new("InitRule2".to_string(), 5).with_agenda_group("initialization".to_string()),
     );
 
     agenda3.add_activation(
-        Activation::new("CleanupRule".to_string(), 10)
-            .with_agenda_group("cleanup".to_string())
+        Activation::new("ProcessRule1".to_string(), 10).with_agenda_group("processing".to_string()),
+    );
+    agenda3.add_activation(
+        Activation::new("ProcessRule2".to_string(), 5).with_agenda_group("processing".to_string()),
+    );
+
+    agenda3.add_activation(
+        Activation::new("CleanupRule".to_string(), 10).with_agenda_group("cleanup".to_string()),
     );
 
     println!("Current focus: {}", agenda3.get_focus());
@@ -105,7 +108,10 @@ fn main() {
 
     while let Some(activation) = agenda3.get_next_activation() {
         if activation.agenda_group == "initialization" {
-            println!("  🔥 {} (group: {})", activation.rule_name, activation.agenda_group);
+            println!(
+                "  🔥 {} (group: {})",
+                activation.rule_name, activation.agenda_group
+            );
             agenda3.mark_rule_fired(&activation);
         } else {
             break;
@@ -118,7 +124,10 @@ fn main() {
 
     while let Some(activation) = agenda3.get_next_activation() {
         if activation.agenda_group == "processing" {
-            println!("  🔥 {} (group: {})", activation.rule_name, activation.agenda_group);
+            println!(
+                "  🔥 {} (group: {})",
+                activation.rule_name, activation.agenda_group
+            );
             agenda3.mark_rule_fired(&activation);
         } else {
             break;
@@ -130,7 +139,10 @@ fn main() {
     agenda3.set_focus("cleanup".to_string());
 
     while let Some(activation) = agenda3.get_next_activation() {
-        println!("  🔥 {} (group: {})", activation.rule_name, activation.agenda_group);
+        println!(
+            "  🔥 {} (group: {})",
+            activation.rule_name, activation.agenda_group
+        );
         agenda3.mark_rule_fired(&activation);
     }
 
@@ -146,11 +158,14 @@ fn main() {
     agenda4.add_activation(
         Activation::new("UrgentRule".to_string(), 100)
             .with_agenda_group("urgent".to_string())
-            .with_auto_focus(true)
+            .with_auto_focus(true),
     );
 
     println!("Added rule with auto-focus to 'urgent' group");
-    println!("Current focus: {} (automatically switched!)", agenda4.get_focus());
+    println!(
+        "Current focus: {} (automatically switched!)",
+        agenda4.get_focus()
+    );
 
     if let Some(activation) = agenda4.get_next_activation() {
         println!("  🔥 {} fires immediately", activation.rule_name);
@@ -165,12 +180,15 @@ fn main() {
 
     agenda5.add_activation(
         Activation::new("ValidationRule".to_string(), 10)
-            .with_ruleflow_group("validation".to_string())
+            .with_ruleflow_group("validation".to_string()),
     );
 
     println!("Added rule to 'validation' ruleflow group");
     println!("Ruleflow group not active yet, so rule doesn't add to agenda");
-    println!("Activations in agenda: {}", agenda5.stats().total_activations);
+    println!(
+        "Activations in agenda: {}",
+        agenda5.stats().total_activations
+    );
 
     // Activate the ruleflow group
     agenda5.activate_ruleflow_group("validation".to_string());
@@ -178,11 +196,14 @@ fn main() {
 
     agenda5.add_activation(
         Activation::new("ValidationRule2".to_string(), 5)
-            .with_ruleflow_group("validation".to_string())
+            .with_ruleflow_group("validation".to_string()),
     );
 
     println!("Now the rule is added to agenda");
-    println!("Activations in agenda: {}", agenda5.stats().total_activations);
+    println!(
+        "Activations in agenda: {}",
+        agenda5.stats().total_activations
+    );
 
     // Example 6: Lock-on-Active
     println!("\n📋 Example 6: Lock-on-Active");
@@ -192,21 +213,21 @@ fn main() {
     let mut agenda6 = AdvancedAgenda::new();
 
     agenda6.add_activation(
-        Activation::new("ProcessingRule".to_string(), 10)
-            .with_lock_on_active(true)
+        Activation::new("ProcessingRule".to_string(), 10).with_lock_on_active(true),
     );
 
     if let Some(activation) = agenda6.get_next_activation() {
-        println!("  🔥 {} fires (lock-on-active = true)", activation.rule_name);
+        println!(
+            "  🔥 {} fires (lock-on-active = true)",
+            activation.rule_name
+        );
         agenda6.mark_rule_fired(&activation);
         println!("  Agenda group '{}' is now locked", activation.agenda_group);
     }
 
     // Try to add another activation to the same group
-    agenda6.add_activation(
-        Activation::new("AnotherRule".to_string(), 20)
-            .with_lock_on_active(true)
-    );
+    agenda6
+        .add_activation(Activation::new("AnotherRule".to_string(), 20).with_lock_on_active(true));
 
     println!("\nAdded another rule with lock-on-active");
     if agenda6.get_next_activation().is_none() {

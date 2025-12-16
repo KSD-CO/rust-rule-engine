@@ -6,7 +6,7 @@
 //! 3. Module validation tools
 
 use rust_rule_engine::engine::module::{
-    ModuleManager, ExportList, ImportType, ReExport, ExportItem, ItemType
+    ExportItem, ExportList, ImportType, ItemType, ModuleManager, ReExport,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -92,12 +92,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check what APPLICATION CANNOT see (validate-reading)
     let can_see_validate = manager.is_rule_visible("validate-reading", "APPLICATION")?;
-    println!("\n  APPLICATION can see 'validate-reading' (not re-exported): {}",
-             if can_see_validate { "❌ YES (unexpected)" } else { "✓ NO (correct)" });
+    println!(
+        "\n  APPLICATION can see 'validate-reading' (not re-exported): {}",
+        if can_see_validate {
+            "❌ YES (unexpected)"
+        } else {
+            "✓ NO (correct)"
+        }
+    );
 
     let can_see_sensor = manager.is_rule_visible("sensor-temperature", "APPLICATION")?;
-    println!("  APPLICATION can see 'sensor-temperature' (re-exported): {}",
-             if can_see_sensor { "✓ YES" } else { "❌ NO (unexpected)" });
+    println!(
+        "  APPLICATION can see 'sensor-temperature' (re-exported): {}",
+        if can_see_sensor {
+            "✓ YES"
+        } else {
+            "❌ NO (unexpected)"
+        }
+    );
 
     // =========================================================================
     // Part 2: Module-Level Salience
@@ -114,12 +126,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     manager.set_module_salience("STANDARD_PROCESSING", 0)?;
     manager.set_module_salience("BACKGROUND_TASKS", -500)?;
 
-    println!("  ✓ CRITICAL_ALERTS: salience = {}",
-             manager.get_module_salience("CRITICAL_ALERTS")?);
-    println!("  ✓ STANDARD_PROCESSING: salience = {}",
-             manager.get_module_salience("STANDARD_PROCESSING")?);
-    println!("  ✓ BACKGROUND_TASKS: salience = {}",
-             manager.get_module_salience("BACKGROUND_TASKS")?);
+    println!(
+        "  ✓ CRITICAL_ALERTS: salience = {}",
+        manager.get_module_salience("CRITICAL_ALERTS")?
+    );
+    println!(
+        "  ✓ STANDARD_PROCESSING: salience = {}",
+        manager.get_module_salience("STANDARD_PROCESSING")?
+    );
+    println!(
+        "  ✓ BACKGROUND_TASKS: salience = {}",
+        manager.get_module_salience("BACKGROUND_TASKS")?
+    );
 
     println!("\n  💡 Use case: Rules in CRITICAL_ALERTS will fire before others");
     println!("     when combined with rule-level salience:");
@@ -149,15 +167,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // MODULE_WITH_UNUSED_IMPORT imports but nothing matches
     {
         let source = manager.get_module_mut("VALID_MODULE")?;
-        source.set_exports(ExportList::Specific(vec![
-            ExportItem {
-                item_type: ItemType::Rule,
-                pattern: "rule1".to_string(),
-            }
-        ]));
+        source.set_exports(ExportList::Specific(vec![ExportItem {
+            item_type: ItemType::Rule,
+            pattern: "rule1".to_string(),
+        }]));
 
-        manager.import_from("MODULE_WITH_UNUSED_IMPORT", "VALID_MODULE",
-                           ImportType::AllRules, "nonexistent-*")?;
+        manager.import_from(
+            "MODULE_WITH_UNUSED_IMPORT",
+            "VALID_MODULE",
+            ImportType::AllRules,
+            "nonexistent-*",
+        )?;
     }
 
     println!("Validating individual modules:\n");
@@ -165,14 +185,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Validate VALID_MODULE
     let validation = manager.validate_module("VALID_MODULE")?;
     println!("  📋 VALID_MODULE:");
-    println!("     Valid: {}", if validation.is_valid { "✅ YES" } else { "❌ NO" });
+    println!(
+        "     Valid: {}",
+        if validation.is_valid {
+            "✅ YES"
+        } else {
+            "❌ NO"
+        }
+    );
     println!("     Errors: {}", validation.errors.len());
     println!("     Warnings: {}", validation.warnings.len());
 
     // Validate EMPTY_MODULE
     let validation = manager.validate_module("EMPTY_MODULE")?;
     println!("\n  📋 EMPTY_MODULE:");
-    println!("     Valid: {}", if validation.is_valid { "✅ YES" } else { "❌ NO" });
+    println!(
+        "     Valid: {}",
+        if validation.is_valid {
+            "✅ YES"
+        } else {
+            "❌ NO"
+        }
+    );
     println!("     Errors: {}", validation.errors.len());
     println!("     Warnings: {}", validation.warnings.len());
     if !validation.warnings.is_empty() {
@@ -184,7 +218,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Validate MODULE_WITH_UNUSED_IMPORT
     let validation = manager.validate_module("MODULE_WITH_UNUSED_IMPORT")?;
     println!("\n  📋 MODULE_WITH_UNUSED_IMPORT:");
-    println!("     Valid: {}", if validation.is_valid { "✅ YES" } else { "❌ NO" });
+    println!(
+        "     Valid: {}",
+        if validation.is_valid {
+            "✅ YES"
+        } else {
+            "❌ NO"
+        }
+    );
     println!("     Errors: {}", validation.errors.len());
     println!("     Warnings: {}", validation.warnings.len());
     if !validation.warnings.is_empty() {

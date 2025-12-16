@@ -6,9 +6,9 @@
 //! - Multiple rule chains
 //! - Variable bindings for loan parameters
 
-use rust_rule_engine::{Facts, KnowledgeBase};
-use rust_rule_engine::types::Value;
 use rust_rule_engine::backward::BackwardEngine;
+use rust_rule_engine::types::Value;
+use rust_rule_engine::{Facts, KnowledgeBase};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╔══════════════════════════════════════════════════════════════╗");
@@ -200,7 +200,7 @@ rule "RejectLoan_ExcessiveAmount" {
 }
     "#;
 
-    let mut kb = KnowledgeBase::new("LoanApprovalSystem");
+    let kb = KnowledgeBase::new("LoanApprovalSystem");
     for rule in rust_rule_engine::parser::grl::GRLParser::parse_rules(rules)? {
         kb.add_rule(rule)?;
     }
@@ -238,8 +238,10 @@ fn test_prime_customer() -> Result<(), Box<dyn std::error::Error>> {
             println!("    • Credit Tier: {:?}", tier);
         }
         if let Some(ratio) = facts.get("Customer.DebtToIncomeRatio") {
-            println!("    • Debt-to-Income Ratio: {:.2}",
-                if let Value::Number(n) = ratio { n } else { 0.0 });
+            println!(
+                "    • Debt-to-Income Ratio: {:.2}",
+                if let Value::Number(n) = ratio { n } else { 0.0 }
+            );
         }
         if let Some(status) = facts.get("Customer.DebtRatioStatus") {
             println!("    • Debt Ratio Status: {:?}", status);
@@ -248,8 +250,10 @@ fn test_prime_customer() -> Result<(), Box<dyn std::error::Error>> {
             println!("    • Risk Category: {:?}", risk);
         }
         if let Some(rate) = facts.get("Loan.InterestRate") {
-            println!("    • Interest Rate: {:.1}%",
-                if let Value::Number(n) = rate { n } else { 0.0 });
+            println!(
+                "    • Interest Rate: {:.1}%",
+                if let Value::Number(n) = rate { n } else { 0.0 }
+            );
         }
         if let Some(reason) = facts.get("Loan.ApprovalReason") {
             println!("    • Reason: {:?}", reason);
@@ -345,15 +349,19 @@ fn test_borderline_with_collateral() -> Result<(), Box<dyn std::error::Error>> {
             println!("    • Credit Tier: {:?}", tier);
         }
         if let Some(ratio) = facts.get("Customer.DebtToIncomeRatio") {
-            println!("    • Debt-to-Income Ratio: {:.2}",
-                if let Value::Number(n) = ratio { n } else { 0.0 });
+            println!(
+                "    • Debt-to-Income Ratio: {:.2}",
+                if let Value::Number(n) = ratio { n } else { 0.0 }
+            );
         }
         if let Some(risk) = facts.get("Loan.RiskCategory") {
             println!("    • Risk Category: {:?}", risk);
         }
         if let Some(rate) = facts.get("Loan.InterestRate") {
-            println!("    • Interest Rate: {:.1}%",
-                if let Value::Number(n) = rate { n } else { 0.0 });
+            println!(
+                "    • Interest Rate: {:.1}%",
+                if let Value::Number(n) = rate { n } else { 0.0 }
+            );
         }
         if let Some(reason) = facts.get("Loan.ApprovalReason") {
             println!("    • Approval Reason: {:?}", reason);

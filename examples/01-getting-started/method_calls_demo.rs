@@ -1,9 +1,9 @@
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
+use rust_rule_engine::expression;
 use rust_rule_engine::parser::grl::GRLParser;
 use rust_rule_engine::types::Value;
-use rust_rule_engine::expression;
 use std::collections::HashMap;
 use std::fs;
 
@@ -161,7 +161,10 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     engine.register_action_handler("TestCar.setSpeedUp", |params, facts| {
         if let Some(val) = params.get("0").cloned() {
             let _ = facts.set_nested("TestCar.SpeedUp", val);
-            println!("  ⚙️ Action Handler: TestCar.SpeedUp set to {:?}", params.get("0"));
+            println!(
+                "  ⚙️ Action Handler: TestCar.SpeedUp set to {:?}",
+                params.get("0")
+            );
         }
         Ok(())
     });
@@ -181,7 +184,10 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             };
 
             let _ = facts.set_nested("TestCar.Speed", resolved.clone());
-            println!("  ⚙️ Action Handler (short): TestCar.Speed set to {:?}", resolved);
+            println!(
+                "  ⚙️ Action Handler (short): TestCar.Speed set to {:?}",
+                resolved
+            );
         }
         Ok(())
     });
@@ -189,7 +195,10 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     engine.register_action_handler("setSpeedUp", |params, facts| {
         if let Some(val) = params.get("0").cloned() {
             let _ = facts.set_nested("TestCar.SpeedUp", val);
-            println!("  ⚙️ Action Handler (short): TestCar.SpeedUp set to {:?}", params.get("0"));
+            println!(
+                "  ⚙️ Action Handler (short): TestCar.SpeedUp set to {:?}",
+                params.get("0")
+            );
         }
         Ok(())
     });

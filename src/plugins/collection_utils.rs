@@ -1,3 +1,5 @@
+#![allow(clippy::collapsible_match)]
+
 use crate::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugin};
 use crate::engine::RustRuleEngine;
 use crate::errors::{Result, RuleEngineError};
@@ -7,6 +9,12 @@ use std::collections::HashMap;
 /// Built-in plugin for collection operations
 pub struct CollectionUtilsPlugin {
     metadata: PluginMetadata,
+}
+
+impl Default for CollectionUtilsPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CollectionUtilsPlugin {

@@ -12,6 +12,7 @@ use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
 use rust_rule_engine::types::{ActionType, LogicalOperator, Operator, Value};
 use rust_rule_engine::{Facts, KnowledgeBase};
 
+#[allow(unused_must_use)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔬 BACKWARD CHAINING EDGE CASES TEST");
     println!("====================================\n");
@@ -36,7 +37,7 @@ fn test_1_rollback_on_failure() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 1: Rollback on Failure");
     println!("------------------------------");
 
-    let mut kb = KnowledgeBase::new("rollback_test");
+    let kb = KnowledgeBase::new("rollback_test");
 
     // Rule 1: Will fail because condition is false
     kb.add_rule(Rule::new(
@@ -90,16 +91,14 @@ fn test_2_not_condition_evaluation() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 2: NOT Condition Evaluation");
     println!("-----------------------------------");
 
-    let mut kb = KnowledgeBase::new("not_test");
+    let kb = KnowledgeBase::new("not_test");
 
     // Rule with NOT condition
-    let not_condition = ConditionGroup::Not(Box::new(ConditionGroup::Single(
-        Condition::new(
-            "User.IsBanned".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        ),
-    )));
+    let not_condition = ConditionGroup::Not(Box::new(ConditionGroup::Single(Condition::new(
+        "User.IsBanned".to_string(),
+        Operator::Equal,
+        Value::Boolean(true),
+    ))));
 
     kb.add_rule(Rule::new(
         "AllowAccess".to_string(),
@@ -114,7 +113,7 @@ fn test_2_not_condition_evaluation() -> Result<(), Box<dyn std::error::Error>> {
     let config = BackwardConfig {
         strategy: SearchStrategy::DepthFirst,
         max_depth: 10,
-        enable_memoization: false,  // Disable caching!
+        enable_memoization: false, // Disable caching!
         max_solutions: 1,
     };
     let mut engine = BackwardEngine::with_config(kb, config);
@@ -124,7 +123,10 @@ fn test_2_not_condition_evaluation() -> Result<(), Box<dyn std::error::Error>> {
     facts1.set("User.IsBanned", Value::Boolean(false));
     let result1 = engine.query("Access.Granted == true", &mut facts1)?;
 
-    assert!(result1.provable, "✗ NOT condition should be TRUE when User.IsBanned = false");
+    assert!(
+        result1.provable,
+        "✗ NOT condition should be TRUE when User.IsBanned = false"
+    );
     println!("✓ NOT(IsBanned=false) = TRUE → Access granted");
 
     // Test Case 2: User IS banned (NOT condition should be FALSE)
@@ -134,9 +136,15 @@ fn test_2_not_condition_evaluation() -> Result<(), Box<dyn std::error::Error>> {
 
     // Debug output
     println!("  Debug: result2.provable = {}", result2.provable);
-    println!("  Debug: Access.Granted = {:?}", facts2.get("Access.Granted"));
+    println!(
+        "  Debug: Access.Granted = {:?}",
+        facts2.get("Access.Granted")
+    );
     println!("  Debug: goals_explored = {}", result2.stats.goals_explored);
-    println!("  Debug: rules_evaluated = {}", result2.stats.rules_evaluated);
+    println!(
+        "  Debug: rules_evaluated = {}",
+        result2.stats.rules_evaluated
+    );
 
     if result2.provable {
         eprintln!("❌ BUG DETECTED: NOT condition evaluated incorrectly!");
@@ -146,7 +154,10 @@ fn test_2_not_condition_evaluation() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("   This indicates the NOT condition is NOT being evaluated properly!");
     }
 
-    assert!(!result2.provable, "✗ NOT condition should be FALSE when User.IsBanned = true");
+    assert!(
+        !result2.provable,
+        "✗ NOT condition should be FALSE when User.IsBanned = true"
+    );
     println!("✓ NOT(IsBanned=true) = FALSE → Access DENIED");
     println!("✓ NOT condition evaluated correctly (not always true)\n");
 
@@ -158,7 +169,7 @@ fn test_3_backtracking_multiple_rules() -> Result<(), Box<dyn std::error::Error>
     println!("📝 Test 3: Backtracking Multiple Rules");
     println!("--------------------------------------");
 
-    let mut kb = KnowledgeBase::new("backtrack_test");
+    let kb = KnowledgeBase::new("backtrack_test");
 
     // Rule 1: Requires condition A (will fail)
     kb.add_rule(Rule::new(
@@ -212,7 +223,10 @@ fn test_3_backtracking_multiple_rules() -> Result<(), Box<dyn std::error::Error>
     let result = engine.query("Result == \"Path C\"", &mut facts)?;
 
     assert!(result.provable, "✗ Should find Path C after backtracking");
-    assert_eq!(facts.get("Result"), Some(Value::String("Path C".to_string())));
+    assert_eq!(
+        facts.get("Result"),
+        Some(Value::String("Path C".to_string()))
+    );
 
     println!("✓ Tried Path A → FAILED");
     println!("✓ Tried Path B → FAILED");
@@ -227,7 +241,7 @@ fn test_4_false_positive_prevention() -> Result<(), Box<dyn std::error::Error>> 
     println!("📝 Test 4: False Positive Prevention");
     println!("------------------------------------");
 
-    let mut kb = KnowledgeBase::new("false_positive_test");
+    let kb = KnowledgeBase::new("false_positive_test");
 
     // Rule requires BOTH conditions (AND)
     let and_condition = ConditionGroup::Compound {
@@ -287,10 +301,15 @@ fn test_4_false_positive_prevention() -> Result<(), Box<dyn std::error::Error>> 
     let result3 = engine.query("Approved == true", &mut facts3)?;
 
     // Debug
-    println!("  Debug Test 3: provable={}, Approved={:?}",
-             result3.provable, facts3.get("Approved"));
-    println!("  Debug: goals_explored={}, rules_evaluated={}",
-             result3.stats.goals_explored, result3.stats.rules_evaluated);
+    println!(
+        "  Debug Test 3: provable={}, Approved={:?}",
+        result3.provable,
+        facts3.get("Approved")
+    );
+    println!(
+        "  Debug: goals_explored={}, rules_evaluated={}",
+        result3.stats.goals_explored, result3.stats.rules_evaluated
+    );
 
     assert!(result3.provable, "✗ Should approve with both true");
     println!("✓ Approved: A=true, B=true (AND satisfied)");
@@ -304,7 +323,7 @@ fn test_5_speculative_changes_rollback() -> Result<(), Box<dyn std::error::Error
     println!("📝 Test 5: Speculative Changes Rollback");
     println!("---------------------------------------");
 
-    let mut kb = KnowledgeBase::new("speculative_test");
+    let kb = KnowledgeBase::new("speculative_test");
 
     // Rule that will partially succeed but ultimately fail
     kb.add_rule(Rule::new(
@@ -355,16 +374,15 @@ fn test_6_exists_condition() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 6: EXISTS Condition");
     println!("--------------------------");
 
-    let mut kb = KnowledgeBase::new("exists_test");
+    let kb = KnowledgeBase::new("exists_test");
 
     // Rule with EXISTS - at least one item must match
-    let exists_condition = ConditionGroup::Exists(Box::new(ConditionGroup::Single(
-        Condition::new(
+    let exists_condition =
+        ConditionGroup::Exists(Box::new(ConditionGroup::Single(Condition::new(
             "Items.Active".to_string(),
             Operator::Equal,
             Value::Boolean(true),
-        ),
-    )));
+        ))));
 
     kb.add_rule(Rule::new(
         "HasActiveItems".to_string(),
@@ -384,7 +402,14 @@ fn test_6_exists_condition() -> Result<(), Box<dyn std::error::Error>> {
 
     // Note: EXISTS might not be fully implemented, but should not always return true
     println!("✓ EXISTS condition: Items.Active = true");
-    println!("  Result: {}", if result1.provable { "Provable" } else { "Not provable" });
+    println!(
+        "  Result: {}",
+        if result1.provable {
+            "Provable"
+        } else {
+            "Not provable"
+        }
+    );
 
     // Test Case 2: EXISTS not satisfied (no active items)
     let mut facts2 = Facts::new();
@@ -392,7 +417,14 @@ fn test_6_exists_condition() -> Result<(), Box<dyn std::error::Error>> {
     let result2 = engine.query("Status.HasActive == true", &mut facts2)?;
 
     println!("✓ EXISTS condition: Items.Active = false");
-    println!("  Result: {}", if result2.provable { "Provable" } else { "Not provable" });
+    println!(
+        "  Result: {}",
+        if result2.provable {
+            "Provable"
+        } else {
+            "Not provable"
+        }
+    );
     println!("✓ EXISTS evaluated (implementation may vary)\n");
 
     Ok(())
@@ -403,16 +435,15 @@ fn test_7_forall_condition() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 7: FORALL Condition");
     println!("--------------------------");
 
-    let mut kb = KnowledgeBase::new("forall_test");
+    let kb = KnowledgeBase::new("forall_test");
 
     // Rule with FORALL - all items must match
-    let forall_condition = ConditionGroup::Forall(Box::new(ConditionGroup::Single(
-        Condition::new(
+    let forall_condition =
+        ConditionGroup::Forall(Box::new(ConditionGroup::Single(Condition::new(
             "Orders.Paid".to_string(),
             Operator::Equal,
             Value::Boolean(true),
-        ),
-    )));
+        ))));
 
     kb.add_rule(Rule::new(
         "AllOrdersPaid".to_string(),
@@ -431,7 +462,14 @@ fn test_7_forall_condition() -> Result<(), Box<dyn std::error::Error>> {
     let result = engine.query("Account.Clear == true", &mut facts)?;
 
     println!("✓ FORALL condition: Orders.Paid = true");
-    println!("  Result: {}", if result.provable { "Provable" } else { "Not provable" });
+    println!(
+        "  Result: {}",
+        if result.provable {
+            "Provable"
+        } else {
+            "Not provable"
+        }
+    );
     println!("✓ FORALL evaluated (implementation may vary)\n");
 
     Ok(())
@@ -442,7 +480,7 @@ fn test_8_nested_rollback() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 8: Nested Rollback");
     println!("-------------------------");
 
-    let mut kb = KnowledgeBase::new("nested_test");
+    let kb = KnowledgeBase::new("nested_test");
 
     // Level 1: A -> B
     kb.add_rule(Rule::new(

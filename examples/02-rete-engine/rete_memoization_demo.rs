@@ -2,11 +2,10 @@
 ///
 /// This example demonstrates how memoization can dramatically improve
 /// performance by caching evaluation results and avoiding redundant computations.
-
-use rust_rule_engine::rete::auto_network::{Rule, ConditionGroup, Condition};
-use rust_rule_engine::rete::network::{build_rete_ul_from_condition_group, ReteUlNode};
+use rust_rule_engine::rete::auto_network::{Condition, ConditionGroup, Rule};
 use rust_rule_engine::rete::facts::TypedFacts;
 use rust_rule_engine::rete::memoization::MemoizedEvaluator;
+use rust_rule_engine::rete::network::{build_rete_ul_from_condition_group, ReteUlNode};
 use std::time::Instant;
 
 fn main() {
@@ -74,7 +73,9 @@ fn main() {
     facts.set("email", "john@example.com");
 
     println!("📊 Scenario: Evaluating {} complex rules", rules.len());
-    println!("Facts: age=25, score=95.5, active=true, name=\"John Smith\", email=\"john@example.com\"\n");
+    println!(
+        "Facts: age=25, score=95.5, active=true, name=\"John Smith\", email=\"john@example.com\"\n"
+    );
 
     // Test 1: Without memoization
     println!("🐌 Test 1: WITHOUT Memoization");
@@ -94,7 +95,10 @@ fn main() {
     println!("Total evaluations: {}", iterations * nodes.len());
     println!("Time: {:?}", duration_without);
     let total_evals = (iterations as u128) * (nodes.len() as u128);
-    println!("Avg per evaluation: {:?}ns", duration_without.as_nanos() / total_evals);
+    println!(
+        "Avg per evaluation: {:?}ns",
+        duration_without.as_nanos() / total_evals
+    );
 
     // Test 2: With memoization
     println!("\n🚀 Test 2: WITH Memoization");
@@ -114,14 +118,21 @@ fn main() {
     println!("Iterations: {}", iterations);
     println!("Total evaluations: {}", iterations * nodes.len());
     println!("Time: {:?}", duration_with);
-    println!("Avg per evaluation: {:?}ns", duration_with.as_nanos() / total_evals);
+    println!(
+        "Avg per evaluation: {:?}ns",
+        duration_with.as_nanos() / total_evals
+    );
 
     // Show cache statistics
     let stats = evaluator.stats();
     println!("\n📈 Cache Statistics:");
     println!("   {}", stats);
     println!("   Cache entries: {}", stats.cache_size);
-    println!("   Cache hits: {} ({:.2}%)", stats.hits, stats.hit_rate * 100.0);
+    println!(
+        "   Cache hits: {} ({:.2}%)",
+        stats.hits,
+        stats.hit_rate * 100.0
+    );
     println!("   Cache misses: {}", stats.misses);
 
     // Performance comparison
@@ -146,7 +157,10 @@ fn main() {
     }
 
     // Verify correctness
-    assert_eq!(without_memo_results, with_memo_results, "Results should be identical!");
+    assert_eq!(
+        without_memo_results, with_memo_results,
+        "Results should be identical!"
+    );
     println!("\n✅ Correctness verified: Both methods produce identical results");
 
     // Test 3: Memoization with changing facts
@@ -168,13 +182,23 @@ fn main() {
     let stats2 = evaluator2.stats();
     println!("\nCache statistics:");
     println!("   {}", stats2);
-    println!("   Hit rate: {:.2}% (cache reused for repeated age values)", stats2.hit_rate * 100.0);
+    println!(
+        "   Hit rate: {:.2}% (cache reused for repeated age values)",
+        stats2.hit_rate * 100.0
+    );
 
     // Summary
     println!("\n✨ Memoization Summary");
     println!("=====================");
-    println!("✅ Cache hit rate: {:.2}% (excellent!)", stats.hit_rate * 100.0);
-    println!("✅ Memory efficient: Only {} cache entries for {} evaluations", stats.cache_size, iterations * nodes.len());
+    println!(
+        "✅ Cache hit rate: {:.2}% (excellent!)",
+        stats.hit_rate * 100.0
+    );
+    println!(
+        "✅ Memory efficient: Only {} cache entries for {} evaluations",
+        stats.cache_size,
+        iterations * nodes.len()
+    );
     println!("✅ Transparent: Same API, automatic caching");
     println!("✅ Correctness: Results are identical");
     println!("\n💡 Memoization works best when:");

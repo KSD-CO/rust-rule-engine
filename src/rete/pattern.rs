@@ -6,10 +6,10 @@
 //! - Join conditions between patterns
 //! - Field constraints with variables
 
-use std::collections::HashMap;
 use super::facts::{FactValue, TypedFacts};
-use super::working_memory::{WorkingMemory, FactHandle};
 use super::multifield::MultifieldOp;
+use super::working_memory::{FactHandle, WorkingMemory};
+use std::collections::HashMap;
 
 /// Variable name (e.g., "$name", "$age")
 pub type Variable = String;
@@ -24,10 +24,7 @@ pub enum PatternConstraint {
         value: FactValue,
     },
     /// Binding constraint: field = $var (binds value to variable)
-    Binding {
-        field: String,
-        variable: Variable,
-    },
+    Binding { field: String, variable: Variable },
     /// Variable constraint: field op $var (compare with bound variable)
     Variable {
         field: String,
@@ -42,16 +39,20 @@ pub enum PatternConstraint {
     /// - `Order.items count > 0` - Get array length (Count)
     MultiField {
         field: String,
-        variable: Option<Variable>,  // $?var for multi-field binding
+        variable: Option<Variable>, // $?var for multi-field binding
         operator: MultifieldOp,
-        value: Option<FactValue>,  // For operations like Contains
+        value: Option<FactValue>, // For operations like Contains
     },
 }
 
 impl PatternConstraint {
     /// Create simple constraint
     pub fn simple(field: String, operator: String, value: FactValue) -> Self {
-        Self::Simple { field, operator, value }
+        Self::Simple {
+            field,
+            operator,
+            value,
+        }
     }
 
     /// Create binding constraint
@@ -61,7 +62,11 @@ impl PatternConstraint {
 
     /// Create variable constraint
     pub fn variable(field: String, operator: String, variable: Variable) -> Self {
-        Self::Variable { field, operator, variable }
+        Self::Variable {
+            field,
+            operator,
+            variable,
+        }
     }
 
     /// Create multi-field constraint
@@ -71,7 +76,12 @@ impl PatternConstraint {
         variable: Option<Variable>,
         value: Option<FactValue>,
     ) -> Self {
-        Self::MultiField { field, operator, variable, value }
+        Self::MultiField {
+            field,
+            operator,
+            variable,
+            value,
+        }
     }
 
     /// Evaluate constraint against facts and bindings
@@ -81,7 +91,11 @@ impl PatternConstraint {
         bindings: &HashMap<Variable, FactValue>,
     ) -> Option<HashMap<Variable, FactValue>> {
         match self {
-            PatternConstraint::Simple { field, operator, value } => {
+            PatternConstraint::Simple {
+                field,
+                operator,
+                value,
+            } => {
                 if facts.evaluate_condition(field, operator, value) {
                     Some(HashMap::new())
                 } else {
@@ -97,7 +111,11 @@ impl PatternConstraint {
                     None
                 }
             }
-            PatternConstraint::Variable { field, operator, variable } => {
+            PatternConstraint::Variable {
+                field,
+                operator,
+                variable,
+            } => {
                 if let Some(bound_value) = bindings.get(variable) {
                     if facts.evaluate_condition(field, operator, bound_value) {
                         Some(HashMap::new())
@@ -108,7 +126,12 @@ impl PatternConstraint {
                     None // Variable not bound yet
                 }
             }
-            PatternConstraint::MultiField { field, operator, variable, value } => {
+            PatternConstraint::MultiField {
+                field,
+                operator,
+                variable,
+                value,
+            } => {
                 // Delegate to multifield evaluation helper
                 super::multifield::evaluate_multifield_pattern(
                     facts,
@@ -273,7 +296,12 @@ impl PatternBuilder {
     }
 
     /// Add simple constraint (field op value)
-    pub fn where_field(mut self, field: impl Into<String>, operator: impl Into<String>, value: FactValue) -> Self {
+    pub fn where_field(
+        mut self,
+        field: impl Into<String>,
+        operator: impl Into<String>,
+        value: FactValue,
+    ) -> Self {
         self.pattern.constraints.push(PatternConstraint::Simple {
             field: field.into(),
             operator: operator.into(),
@@ -292,7 +320,12 @@ impl PatternBuilder {
     }
 
     /// Compare field with variable ($var)
-    pub fn where_var(mut self, field: impl Into<String>, operator: impl Into<String>, variable: impl Into<String>) -> Self {
+    pub fn where_var(
+        mut self,
+        field: impl Into<String>,
+        operator: impl Into<String>,
+        variable: impl Into<String>,
+    ) -> Self {
         self.pattern.constraints.push(PatternConstraint::Variable {
             field: field.into(),
             operator: operator.into(),

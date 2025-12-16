@@ -3,9 +3,8 @@ use rust_rule_engine::{
     engine::{EngineConfig, RustRuleEngine},
     errors::Result,
     types::Value,
-    Facts, KnowledgeBase,
+    KnowledgeBase,
 };
-use std::collections::HashMap;
 
 fn main() -> Result<()> {
     println!("🔄 GRL No-Loop Parsing Demo");
@@ -99,11 +98,15 @@ fn test_no_loop_execution() -> Result<()> {
     let rules = engine.knowledge_base().get_rules().clone();
     let mut total_run = 0;
     for rule in &rules {
-        let test_facts_list = rust_rule_engine::engine::coverage::generate_test_facts_for_rule(rule);
+        let test_facts_list =
+            rust_rule_engine::engine::coverage::generate_test_facts_for_rule(rule);
         for (i, facts) in test_facts_list.iter().enumerate() {
-            let _ = engine.execute_with_callback(facts, |rule_name, _facts: &rust_rule_engine::Facts| {
-                coverage.record_hit(rule_name, &format!("{}_{}_auto", rule_name, i));
-            });
+            let _ = engine.execute_with_callback(
+                facts,
+                |rule_name, _facts: &rust_rule_engine::Facts| {
+                    coverage.record_hit(rule_name, &format!("{}_{}_auto", rule_name, i));
+                },
+            );
             total_run += 1;
         }
     }

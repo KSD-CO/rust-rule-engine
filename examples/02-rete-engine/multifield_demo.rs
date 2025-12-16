@@ -28,8 +28,7 @@
 //! Run with: `cargo run --example multifield_demo`
 
 use rust_rule_engine::rete::{
-    TemplateBuilder, FieldType, FactValue, TypedFacts,
-    PatternConstraint, Pattern, MultifieldOp,
+    FactValue, FieldType, MultifieldOp, Pattern, PatternConstraint, TemplateBuilder, TypedFacts,
 };
 use std::collections::HashMap;
 
@@ -63,7 +62,7 @@ fn demo_multislot_template() {
 
     let order_template = TemplateBuilder::new("Order")
         .required_string("order_id")
-        .multislot_field("items", FieldType::String)  // CLIPS-style
+        .multislot_field("items", FieldType::String) // CLIPS-style
         .float_field("total")
         .build();
 
@@ -72,11 +71,14 @@ fn demo_multislot_template() {
     // Create an instance
     let mut order = TypedFacts::new();
     order.set("order_id", FactValue::String("ORD-001".to_string()));
-    order.set("items", FactValue::Array(vec![
-        FactValue::String("ITEM-1".to_string()),
-        FactValue::String("ITEM-2".to_string()),
-        FactValue::String("ITEM-3".to_string()),
-    ]));
+    order.set(
+        "items",
+        FactValue::Array(vec![
+            FactValue::String("ITEM-1".to_string()),
+            FactValue::String("ITEM-2".to_string()),
+            FactValue::String("ITEM-3".to_string()),
+        ]),
+    );
     order.set("total", FactValue::Float(150.0));
 
     // Validate against template
@@ -93,11 +95,14 @@ fn demo_collect_operation() {
     println!("--- Demo 2: Collect Operation ($?var) ---");
 
     let mut facts = TypedFacts::new();
-    facts.set("items", FactValue::Array(vec![
-        FactValue::String("apple".to_string()),
-        FactValue::String("banana".to_string()),
-        FactValue::String("cherry".to_string()),
-    ]));
+    facts.set(
+        "items",
+        FactValue::Array(vec![
+            FactValue::String("apple".to_string()),
+            FactValue::String("banana".to_string()),
+            FactValue::String("cherry".to_string()),
+        ]),
+    );
 
     let op = MultifieldOp::Collect;
     let result = op.evaluate(&facts, "items", None);
@@ -118,11 +123,14 @@ fn demo_contains_operation() {
     println!("--- Demo 3: Contains Operation ---");
 
     let mut product = TypedFacts::new();
-    product.set("tags", FactValue::Array(vec![
-        FactValue::String("electronics".to_string()),
-        FactValue::String("gadgets".to_string()),
-        FactValue::String("sale".to_string()),
-    ]));
+    product.set(
+        "tags",
+        FactValue::Array(vec![
+            FactValue::String("electronics".to_string()),
+            FactValue::String("gadgets".to_string()),
+            FactValue::String("sale".to_string()),
+        ]),
+    );
 
     let op = MultifieldOp::Contains;
     let search = FactValue::String("electronics".to_string());
@@ -151,13 +159,16 @@ fn demo_count_operation() {
     println!("--- Demo 4: Count Operation ---");
 
     let mut order = TypedFacts::new();
-    order.set("items", FactValue::Array(vec![
-        FactValue::String("ITEM-1".to_string()),
-        FactValue::String("ITEM-2".to_string()),
-        FactValue::String("ITEM-3".to_string()),
-        FactValue::String("ITEM-4".to_string()),
-        FactValue::String("ITEM-5".to_string()),
-    ]));
+    order.set(
+        "items",
+        FactValue::Array(vec![
+            FactValue::String("ITEM-1".to_string()),
+            FactValue::String("ITEM-2".to_string()),
+            FactValue::String("ITEM-3".to_string()),
+            FactValue::String("ITEM-4".to_string()),
+            FactValue::String("ITEM-5".to_string()),
+        ]),
+    );
 
     let op = MultifieldOp::Count;
 
@@ -176,11 +187,14 @@ fn demo_first_last_operations() {
     println!("--- Demo 5: First/Last Operations ---");
 
     let mut queue = TypedFacts::new();
-    queue.set("tasks", FactValue::Array(vec![
-        FactValue::String("Task A".to_string()),
-        FactValue::String("Task B".to_string()),
-        FactValue::String("Task C".to_string()),
-    ]));
+    queue.set(
+        "tasks",
+        FactValue::Array(vec![
+            FactValue::String("Task A".to_string()),
+            FactValue::String("Task B".to_string()),
+            FactValue::String("Task C".to_string()),
+        ]),
+    );
 
     println!("Pattern: Queue.tasks first");
     if let Some(result) = MultifieldOp::First.evaluate(&queue, "tasks", None) {
@@ -201,10 +215,13 @@ fn demo_pattern_matching() {
 
     let mut order = TypedFacts::new();
     order.set("order_id", FactValue::String("ORD-001".to_string()));
-    order.set("items", FactValue::Array(vec![
-        FactValue::String("ITEM-1".to_string()),
-        FactValue::String("ITEM-2".to_string()),
-    ]));
+    order.set(
+        "items",
+        FactValue::Array(vec![
+            FactValue::String("ITEM-1".to_string()),
+            FactValue::String("ITEM-2".to_string()),
+        ]),
+    );
 
     // Create a pattern with multi-field constraint
     let pattern = Pattern::new("Order".to_string())

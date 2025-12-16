@@ -6,8 +6,8 @@
 
 use rust_rule_engine::backward::{BackwardEngine, GRLQuery};
 use rust_rule_engine::engine::facts::Facts;
-use rust_rule_engine::KnowledgeBase;
 use rust_rule_engine::types::Value;
+use rust_rule_engine::KnowledgeBase;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 GRL Negation Queries Demo");
@@ -71,16 +71,36 @@ fn demo_programmatic_negation() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("  Alice (is_banned=false):");
     let result = engine.query("NOT alice.is_banned == true", &mut facts)?;
-    println!("    Result: {} ✓", if result.provable { "NOT banned" } else { "IS banned" });
+    println!(
+        "    Result: {} ✓",
+        if result.provable {
+            "NOT banned"
+        } else {
+            "IS banned"
+        }
+    );
 
     println!("  Bob (is_banned=true):");
     let result = engine.query("NOT bob.is_banned == true", &mut facts)?;
-    println!("    Result: {} ✓", if result.provable { "NOT banned" } else { "IS banned" });
+    println!(
+        "    Result: {} ✓",
+        if result.provable {
+            "NOT banned"
+        } else {
+            "IS banned"
+        }
+    );
 
     println!("  Charlie (no field):");
     let result = engine.query("NOT charlie.is_banned == true", &mut facts)?;
-    println!("    Result: {} ✓ (closed-world assumption)",
-        if result.provable { "NOT banned" } else { "IS banned" });
+    println!(
+        "    Result: {} ✓ (closed-world assumption)",
+        if result.provable {
+            "NOT banned"
+        } else {
+            "IS banned"
+        }
+    );
 
     println!();
     Ok(())
@@ -118,22 +138,40 @@ fn demo_real_world_negation() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Query: {} - {}", auto_approved.name, auto_approved.goal);
     println!("  Order 1 (NOT requires_approval):");
     let result = engine.query("NOT order1.requires_approval == true", &mut facts)?;
-    println!("    → {} (can auto-process)",
-        if result.provable { "✅ Auto-approved" } else { "❌ Needs approval" });
+    println!(
+        "    → {} (can auto-process)",
+        if result.provable {
+            "✅ Auto-approved"
+        } else {
+            "❌ Needs approval"
+        }
+    );
 
     println!("  Order 2 (requires_approval=true):");
     let result = engine.query("NOT order2.requires_approval == true", &mut facts)?;
-    println!("    → {} (needs manual review)",
-        if result.provable { "✅ Auto-approved" } else { "❌ Needs approval" });
+    println!(
+        "    → {} (needs manual review)",
+        if result.provable {
+            "✅ Auto-approved"
+        } else {
+            "❌ Needs approval"
+        }
+    );
     println!();
 
     // Scenario 2: User access control
     println!("Scenario 2: User Access Control");
-    facts.set("user1.email", Value::String("user1@example.com".to_string()));
+    facts.set(
+        "user1.email",
+        Value::String("user1@example.com".to_string()),
+    );
     facts.set("user1.is_active", Value::Boolean(true));
     // No is_suspended field = not suspended
 
-    facts.set("user2.email", Value::String("user2@example.com".to_string()));
+    facts.set(
+        "user2.email",
+        Value::String("user2@example.com".to_string()),
+    );
     facts.set("user2.is_active", Value::Boolean(true));
     facts.set("user2.is_suspended", Value::Boolean(true));
 
@@ -152,16 +190,34 @@ fn demo_real_world_negation() -> Result<(), Box<dyn std::error::Error>> {
     println!("  User 1 (NOT suspended):");
     let active1 = engine.query("user1.is_active == true", &mut facts)?;
     let not_suspended1 = engine.query("NOT user1.is_suspended == true", &mut facts)?;
-    println!("    Active: {} | Not Suspended: {}", active1.provable, not_suspended1.provable);
-    println!("    → {} access",
-        if active1.provable && not_suspended1.provable { "✅ Allow" } else { "❌ Deny" });
+    println!(
+        "    Active: {} | Not Suspended: {}",
+        active1.provable, not_suspended1.provable
+    );
+    println!(
+        "    → {} access",
+        if active1.provable && not_suspended1.provable {
+            "✅ Allow"
+        } else {
+            "❌ Deny"
+        }
+    );
 
     println!("  User 2 (IS suspended):");
     let active2 = engine.query("user2.is_active == true", &mut facts)?;
     let not_suspended2 = engine.query("NOT user2.is_suspended == true", &mut facts)?;
-    println!("    Active: {} | Not Suspended: {}", active2.provable, not_suspended2.provable);
-    println!("    → {} access (suspended)",
-        if active2.provable && not_suspended2.provable { "✅ Allow" } else { "❌ Deny" });
+    println!(
+        "    Active: {} | Not Suspended: {}",
+        active2.provable, not_suspended2.provable
+    );
+    println!(
+        "    → {} access (suspended)",
+        if active2.provable && not_suspended2.provable {
+            "✅ Allow"
+        } else {
+            "❌ Deny"
+        }
+    );
     println!();
 
     // Scenario 3: Inventory availability
@@ -183,17 +239,32 @@ fn demo_real_world_negation() -> Result<(), Box<dyn std::error::Error>> {
         "NOT Item.Reserved == true".to_string(),
     );
 
-    println!("  Query: {} - {}", available_query.name, available_query.goal);
+    println!(
+        "  Query: {} - {}",
+        available_query.name, available_query.goal
+    );
 
     println!("  Item 1:");
     let result = engine.query("NOT item1.reserved == true", &mut facts)?;
-    println!("    → {} for sale",
-        if result.provable { "✅ Available" } else { "❌ Reserved" });
+    println!(
+        "    → {} for sale",
+        if result.provable {
+            "✅ Available"
+        } else {
+            "❌ Reserved"
+        }
+    );
 
     println!("  Item 2:");
     let result = engine.query("NOT item2.reserved == true", &mut facts)?;
-    println!("    → {} (reserved for customer)",
-        if result.provable { "✅ Available" } else { "❌ Reserved" });
+    println!(
+        "    → {} (reserved for customer)",
+        if result.provable {
+            "✅ Available"
+        } else {
+            "❌ Reserved"
+        }
+    );
     println!();
 
     Ok(())

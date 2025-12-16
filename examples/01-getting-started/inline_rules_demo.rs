@@ -120,7 +120,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Customer tier management
     engine.register_function("Customer.setTier", |args, facts| {
-        let new_tier = args.get(0).unwrap().to_string();
+        let new_tier = args.first().unwrap().to_string();
 
         // ACTUALLY UPDATE THE FACTS in memory
         facts
@@ -134,7 +134,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Loyalty bonus management
     engine.register_function("Customer.setLoyaltyBonusApplied", |args, facts| {
-        let applied = args.get(0).unwrap();
+        let applied = args.first().unwrap();
 
         // ACTUALLY UPDATE THE FACTS in memory
         facts
@@ -148,7 +148,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Email service
     engine.register_function("sendWelcomeEmail", |args, _facts| {
-        let email = args.get(0).unwrap().to_string();
+        let email = args.first().unwrap().to_string();
         let tier = args.get(1).unwrap().to_string();
 
         let result = format!("📧 Welcome email sent to {} for {} tier", email, tier);
@@ -158,7 +158,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Loyalty system
     engine.register_function("applyLoyaltyBonus", |args, _facts| {
-        let customer_id = args.get(0).unwrap().to_string();
+        let customer_id = args.first().unwrap().to_string();
         let bonus_amount = args.get(1).unwrap();
 
         let result = format!(
@@ -171,7 +171,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Security functions
     engine.register_function("flagForReview", |args, _facts| {
-        let transaction_id = args.get(0).unwrap().to_string();
+        let transaction_id = args.first().unwrap().to_string();
 
         let result = format!(
             "🚨 Transaction {} flagged for manual review",
@@ -182,7 +182,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     });
 
     engine.register_function("notifySecurityTeam", |args, _facts| {
-        let customer_id = args.get(0).unwrap().to_string();
+        let customer_id = args.first().unwrap().to_string();
         let amount = args.get(1).unwrap();
 
         let result = format!(
@@ -195,7 +195,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Customer status updates
     engine.register_function("Customer.setWelcomeEmailSent", |args, facts| {
-        let sent = args.get(0).unwrap();
+        let sent = args.first().unwrap();
 
         // ACTUALLY UPDATE THE FACTS in memory
         facts
@@ -209,7 +209,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Transaction status updates
     engine.register_function("Transaction.setRiskProcessed", |args, facts| {
-        let processed = args.get(0).unwrap();
+        let processed = args.first().unwrap();
 
         // ACTUALLY UPDATE THE FACTS in memory
         facts
@@ -236,10 +236,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // may map some 'then' calls to ActionType::Custom rather than function
     // calls. Registering both ensures both styles work in the demo.
     engine.register_action_handler("Customer.setTier", |params, facts| {
-        let new_tier = params
-            .get("0")
-            .map(|v| v.to_string())
-            .unwrap_or_default();
+        let new_tier = params.get("0").map(|v| v.to_string()).unwrap_or_default();
         let _ = facts.set_nested("Customer.Tier", Value::String(new_tier.clone()));
         println!("  📌 Action Handler: Customer.tier set to {}", new_tier);
         Ok(())
@@ -255,27 +252,39 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     engine.register_action_handler("sendWelcomeEmail", |params, _facts| {
         let email = params.get("0").map(|v| v.to_string()).unwrap_or_default();
         let tier = params.get("1").map(|v| v.to_string()).unwrap_or_default();
-        println!("  📧 Action Handler: Welcome email sent to {} for {} tier", email, tier);
+        println!(
+            "  📧 Action Handler: Welcome email sent to {} for {} tier",
+            email, tier
+        );
         Ok(())
     });
 
     engine.register_action_handler("applyLoyaltyBonus", |params, _facts| {
         let customer_id = params.get("0").map(|v| v.to_string()).unwrap_or_default();
         let bonus_amount = params.get("1").cloned().unwrap_or(Value::Number(0.0));
-        println!("  💰 Action Handler: Loyalty bonus of {:?} applied to {}", bonus_amount, customer_id);
+        println!(
+            "  💰 Action Handler: Loyalty bonus of {:?} applied to {}",
+            bonus_amount, customer_id
+        );
         Ok(())
     });
 
     engine.register_action_handler("flagForReview", |params, _facts| {
         let txn_id = params.get("0").map(|v| v.to_string()).unwrap_or_default();
-        println!("  🚨 Action Handler: Transaction {} flagged for review", txn_id);
+        println!(
+            "  🚨 Action Handler: Transaction {} flagged for review",
+            txn_id
+        );
         Ok(())
     });
 
     engine.register_action_handler("notifySecurityTeam", |params, _facts| {
         let customer_id = params.get("0").map(|v| v.to_string()).unwrap_or_default();
         let amount = params.get("1").cloned().unwrap_or(Value::Number(0.0));
-        println!("  🔒 Action Handler: notify security for {} - {:?}", customer_id, amount);
+        println!(
+            "  🔒 Action Handler: notify security for {} - {:?}",
+            customer_id, amount
+        );
         Ok(())
     });
 
@@ -289,7 +298,10 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     engine.register_action_handler("Transaction.setRiskProcessed", |params, facts| {
         let processed = params.get("0").cloned().unwrap_or(Value::Boolean(false));
         let _ = facts.set_nested("Transaction.RiskProcessed", processed.clone());
-        println!("  ✅ Action Handler: Transaction.RiskProcessed = {:?}", processed);
+        println!(
+            "  ✅ Action Handler: Transaction.RiskProcessed = {:?}",
+            processed
+        );
         Ok(())
     });
 
@@ -297,14 +309,20 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     engine.register_action_handler("setTier", |params, facts| {
         let new_tier = params.get("0").map(|v| v.to_string()).unwrap_or_default();
         let _ = facts.set_nested("Customer.Tier", Value::String(new_tier.clone()));
-        println!("  📌 Action Handler (short): Customer.tier set to {}", new_tier);
+        println!(
+            "  📌 Action Handler (short): Customer.tier set to {}",
+            new_tier
+        );
         Ok(())
     });
 
     engine.register_action_handler("setLoyaltyBonusApplied", |params, facts| {
         let applied = params.get("0").cloned().unwrap_or(Value::Boolean(false));
         let _ = facts.set_nested("Customer.LoyaltyBonusApplied", applied.clone());
-        println!("  🎯 Action Handler (short): Loyalty bonus applied = {:?}", applied);
+        println!(
+            "  🎯 Action Handler (short): Loyalty bonus applied = {:?}",
+            applied
+        );
         Ok(())
     });
 
@@ -318,7 +336,10 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     engine.register_action_handler("setRiskProcessed", |params, facts| {
         let processed = params.get("0").cloned().unwrap_or(Value::Boolean(false));
         let _ = facts.set_nested("Transaction.RiskProcessed", processed.clone());
-        println!("  ✅ Action Handler (short): Transaction.RiskProcessed = {:?}", processed);
+        println!(
+            "  ✅ Action Handler (short): Transaction.RiskProcessed = {:?}",
+            processed
+        );
         Ok(())
     });
 

@@ -1,14 +1,15 @@
 /// Demo: Complete MultiField Operations
 /// Shows all multifield operations working in native engine
-
 use rust_rule_engine::engine::{
-    rule::{Condition, ConditionExpression, ConditionGroup, Rule},
     knowledge_base::KnowledgeBase,
+    rule::{Condition, ConditionExpression, ConditionGroup, Rule},
     RustRuleEngine,
 };
 use rust_rule_engine::types::{ActionType, Operator, Value};
 use std::collections::HashMap;
 
+#[allow(deprecated)]
+#[allow(unused_variables)]
 fn main() {
     println!("🎯 MultiField Operations Demo\n");
     println!("Testing all multifield operations: empty, not_empty, count, first, last, contains, collect\n");
@@ -18,19 +19,25 @@ fn main() {
 
     // Test data
     let mut facts = HashMap::new();
-    facts.insert("Cart.items".to_string(), Value::Array(vec![
-        Value::String("apple".to_string()),
-        Value::String("banana".to_string()),
-        Value::String("orange".to_string()),
-    ]));
+    facts.insert(
+        "Cart.items".to_string(),
+        Value::Array(vec![
+            Value::String("apple".to_string()),
+            Value::String("banana".to_string()),
+            Value::String("orange".to_string()),
+        ]),
+    );
     facts.insert("EmptyList.items".to_string(), Value::Array(vec![]));
-    facts.insert("Numbers.values".to_string(), Value::Array(vec![
-        Value::Integer(1),
-        Value::Integer(2),
-        Value::Integer(3),
-        Value::Integer(4),
-        Value::Integer(5),
-    ]));
+    facts.insert(
+        "Numbers.values".to_string(),
+        Value::Array(vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(4),
+            Value::Integer(5),
+        ]),
+    );
 
     // Test 1: empty operation
     println!("📋 Test 1: empty operation");
@@ -50,7 +57,7 @@ fn main() {
             message: "✅ Empty list detected!".to_string(),
         }],
     );
-    
+
     if empty_rule.matches(&facts) {
         println!("   ✓ Empty operation works");
     }
@@ -73,7 +80,7 @@ fn main() {
             message: "✅ Cart has items!".to_string(),
         }],
     );
-    
+
     if not_empty_rule.matches(&facts) {
         println!("   ✓ Not empty operation works");
     }
@@ -96,7 +103,7 @@ fn main() {
             message: "✅ Cart has exactly 3 items!".to_string(),
         }],
     );
-    
+
     if count_rule.matches(&facts) {
         println!("   ✓ Count operation works (3 items)");
     }
@@ -119,7 +126,7 @@ fn main() {
             message: "✅ Numbers has more than 3 items!".to_string(),
         }],
     );
-    
+
     if count_gt_rule.matches(&facts) {
         println!("   ✓ Count > 3 works (5 items)");
     }
@@ -142,7 +149,7 @@ fn main() {
             message: "✅ First item is apple!".to_string(),
         }],
     );
-    
+
     if first_rule.matches(&facts) {
         println!("   ✓ First operation works (apple)");
     }
@@ -165,7 +172,7 @@ fn main() {
             message: "✅ Last item is orange!".to_string(),
         }],
     );
-    
+
     if last_rule.matches(&facts) {
         println!("   ✓ Last operation works (orange)");
     }
@@ -188,7 +195,7 @@ fn main() {
             message: "✅ Cart contains banana!".to_string(),
         }],
     );
-    
+
     if contains_rule.matches(&facts) {
         println!("   ✓ Contains operation works (banana found)");
     }
@@ -211,7 +218,7 @@ fn main() {
             message: "✅ Collected all items into variable!".to_string(),
         }],
     );
-    
+
     if collect_rule.matches(&facts) {
         println!("   ✓ Collect operation works");
     }
@@ -234,7 +241,7 @@ fn main() {
             message: "✅ First number is 1!".to_string(),
         }],
     );
-    
+
     if first_num_rule.matches(&facts) {
         println!("   ✓ First with numbers works");
     }
@@ -257,7 +264,7 @@ fn main() {
             message: "✅ Last number is 5!".to_string(),
         }],
     );
-    
+
     if last_num_rule.matches(&facts) {
         println!("   ✓ Last with numbers works");
     }

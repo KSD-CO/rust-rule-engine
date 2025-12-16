@@ -6,9 +6,9 @@
 //! - Type indexing for fast lookups
 //! - Change tracking for incremental updates
 
+use super::facts::TypedFacts;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
-use super::facts::TypedFacts;
 
 /// Unique handle for a fact in working memory (similar to Drools FactHandle)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -119,10 +119,7 @@ impl WorkingMemory {
         };
 
         self.facts.insert(handle, fact);
-        self.type_index
-            .entry(fact_type)
-            .or_insert_with(HashSet::new)
-            .insert(handle);
+        self.type_index.entry(fact_type).or_default().insert(handle);
         self.modified_handles.insert(handle);
 
         handle
@@ -157,7 +154,7 @@ impl WorkingMemory {
         self.facts.insert(handle, fact);
         self.type_index
             .entry(stream_name)
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(handle);
         self.modified_handles.insert(handle);
 
@@ -166,7 +163,9 @@ impl WorkingMemory {
 
     /// Update a fact in working memory
     pub fn update(&mut self, handle: FactHandle, data: TypedFacts) -> Result<(), String> {
-        let fact = self.facts.get_mut(&handle)
+        let fact = self
+            .facts
+            .get_mut(&handle)
             .ok_or_else(|| format!("FactHandle {} not found", handle))?;
 
         if fact.metadata.retracted {
@@ -183,7 +182,9 @@ impl WorkingMemory {
 
     /// Retract (delete) a fact from working memory
     pub fn retract(&mut self, handle: FactHandle) -> Result<(), String> {
-        let fact = self.facts.get_mut(&handle)
+        let fact = self
+            .facts
+            .get_mut(&handle)
             .ok_or_else(|| format!("FactHandle {} not found", handle))?;
 
         if fact.metadata.retracted {
@@ -254,7 +255,11 @@ impl WorkingMemory {
 
     /// Get statistics
     pub fn stats(&self) -> WorkingMemoryStats {
-        let active_facts = self.facts.values().filter(|f| !f.metadata.retracted).count();
+        let active_facts = self
+            .facts
+            .values()
+            .filter(|f| !f.metadata.retracted)
+            .count();
         let retracted_facts = self.facts.values().filter(|f| f.metadata.retracted).count();
 
         WorkingMemoryStats {
@@ -290,7 +295,7 @@ impl WorkingMemory {
             for (key, value) in fact.data.get_all() {
                 result.set(format!("{}.{}", fact.fact_type, key), value.clone());
             }
-            
+
             // Store handle for this fact type (last fact wins, but better than nothing)
             // Actions can use Type._handle to get the handle
             result.set_fact_handle(fact.fact_type.clone(), fact.handle);
@@ -322,8 +327,11 @@ impl std::fmt::Display for WorkingMemoryStats {
         write!(
             f,
             "WM Stats: {} active, {} retracted, {} types, {} modified, {} pending retraction",
-            self.active_facts, self.retracted_facts, self.types,
-            self.modified_pending, self.retracted_pending
+            self.active_facts,
+            self.retracted_facts,
+            self.types,
+            self.modified_pending,
+            self.retracted_pending
         )
     }
 }

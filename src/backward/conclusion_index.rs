@@ -62,11 +62,12 @@ impl ConclusionIndex {
         for conclusion in &conclusions {
             self.field_to_rules
                 .entry(conclusion.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(rule.name.clone());
         }
 
-        self.rule_to_conclusions.insert(rule.name.clone(), conclusions);
+        self.rule_to_conclusions
+            .insert(rule.name.clone(), conclusions);
         self.rule_count += 1;
     }
 
@@ -305,8 +306,14 @@ mod tests {
     fn test_extract_field_from_goal() {
         let index = ConclusionIndex::new();
 
-        assert_eq!(index.extract_field_from_goal("User.IsVIP == true"), "User.IsVIP");
-        assert_eq!(index.extract_field_from_goal("Order.Amount > 100"), "Order.Amount");
+        assert_eq!(
+            index.extract_field_from_goal("User.IsVIP == true"),
+            "User.IsVIP"
+        );
+        assert_eq!(
+            index.extract_field_from_goal("Order.Amount > 100"),
+            "Order.Amount"
+        );
         assert_eq!(index.extract_field_from_goal("User.Name"), "User.Name");
         assert_eq!(
             index.extract_field_from_goal("Customer.Email contains '@'"),

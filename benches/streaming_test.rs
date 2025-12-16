@@ -1,7 +1,7 @@
-use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
+use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::types::{ActionType, Operator, Value};
 use std::collections::HashMap;
 use std::time::Instant;
@@ -42,7 +42,10 @@ fn main() {
     println!("- Events processed: {}", processed_events);
     println!("- Total time: {:.2} ms", total_duration.as_millis());
     println!("- Average time per event: {:.2} µs", avg_time_per_event);
-    println!("- Throughput: {:.0} events/second", processed_events as f64 / total_duration.as_secs_f64());
+    println!(
+        "- Throughput: {:.0} events/second",
+        processed_events as f64 / total_duration.as_secs_f64()
+    );
 
     // Test burst processing
     println!("\nTesting burst processing (1000 events in rapid succession):");
@@ -61,7 +64,10 @@ fn main() {
 
     println!("- Burst time: {:.2} ms", burst_duration.as_millis());
     println!("- Burst average per event: {:.2} µs", burst_avg);
-    println!("- Burst throughput: {:.0} events/second", 1000.0 / burst_duration.as_secs_f64());
+    println!(
+        "- Burst throughput: {:.0} events/second",
+        1000.0 / burst_duration.as_secs_f64()
+    );
 }
 
 fn create_streaming_engine() -> RustRuleEngine {
@@ -118,12 +124,18 @@ fn create_streaming_engine() -> RustRuleEngine {
 }
 
 fn create_stream_event(event_id: usize) -> Facts {
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     let mut event_props = HashMap::new();
 
     event_props.insert("id".to_string(), Value::Integer(event_id as i64));
-    event_props.insert("price".to_string(), Value::Integer((50 + (event_id % 100)) as i64));
-    event_props.insert("volume".to_string(), Value::Integer((500 + (event_id % 1000)) as i64));
+    event_props.insert(
+        "price".to_string(),
+        Value::Integer((50 + (event_id % 100)) as i64),
+    );
+    event_props.insert(
+        "volume".to_string(),
+        Value::Integer((500 + (event_id % 1000)) as i64),
+    );
     event_props.insert("change".to_string(), Value::Number((event_id % 10) as f64));
 
     facts.set("event", Value::Object(event_props));
@@ -131,7 +143,7 @@ fn create_stream_event(event_id: usize) -> Facts {
 }
 
 fn create_burst_event(burst_id: usize) -> Facts {
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     let mut event_props = HashMap::new();
 
     event_props.insert("id".to_string(), Value::Integer(burst_id as i64));

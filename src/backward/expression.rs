@@ -86,8 +86,8 @@
 //! - Invalid operators
 //! - Unexpected tokens
 
-use crate::types::{Value, Operator};
 use crate::errors::{Result, RuleEngineError};
+use crate::types::{Operator, Value};
 use crate::Facts;
 
 /// Expression AST node
@@ -129,17 +129,20 @@ impl Expression {
     /// Evaluate expression against facts
     pub fn evaluate(&self, facts: &Facts) -> Result<Value> {
         match self {
-            Expression::Field(name) => {
-                facts.get(name)
-                    .or_else(|| facts.get_nested(name))
-                    .ok_or_else(|| RuleEngineError::ExecutionError(
-                        format!("Field not found: {}", name)
-                    ))
-            }
+            Expression::Field(name) => facts
+                .get(name)
+                .or_else(|| facts.get_nested(name))
+                .ok_or_else(|| {
+                    RuleEngineError::ExecutionError(format!("Field not found: {}", name))
+                }),
 
             Expression::Literal(value) => Ok(value.clone()),
 
-            Expression::Comparison { left, operator, right } => {
+            Expression::Comparison {
+                left,
+                operator,
+                right,
+            } => {
                 // Special handling for NotEqual when field doesn't exist
                 // If field doesn't exist, treat as Null
                 let left_val = left.evaluate(facts).unwrap_or(Value::Null);
@@ -172,19 +175,16 @@ impl Expression {
                 Ok(Value::Boolean(!value.to_bool()))
             }
 
-            Expression::Variable(var) => {
-                Err(RuleEngineError::ExecutionError(
-                    format!("Cannot evaluate unbound variable: {}", var)
-                ))
-            }
+            Expression::Variable(var) => Err(RuleEngineError::ExecutionError(format!(
+                "Cannot evaluate unbound variable: {}",
+                var
+            ))),
         }
     }
 
     /// Check if expression is satisfied (returns true/false)
     pub fn is_satisfied(&self, facts: &Facts) -> bool {
-        self.evaluate(facts)
-            .map(|v| v.to_bool())
-            .unwrap_or(false)
+        self.evaluate(facts).map(|v| v.to_bool()).unwrap_or(false)
     }
 
     /// Extract all field references from expression
@@ -217,11 +217,16 @@ impl Expression {
     }
 
     /// Convert to human-readable string
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         match self {
             Expression::Field(name) => name.clone(),
             Expression::Literal(val) => format!("{:?}", val),
-            Expression::Comparison { left, operator, right } => {
+            Expression::Comparison {
+                left,
+                operator,
+                right,
+            } => {
                 format!("{} {:?} {}", left.to_string(), operator, right.to_string())
             }
             Expression::And { left, right } => {
@@ -683,12 +688,10 @@ mod tests {
     fn test_parse_parentheses() {
         let expr = ExpressionParser::parse("(a == true || b == true) && c == true").unwrap();
         match expr {
-            Expression::And { left, .. } => {
-                match *left {
-                    Expression::Or { .. } => {}
-                    _ => panic!("Expected OR inside AND"),
-                }
-            }
+            Expression::And { left, .. } => match *left {
+                Expression::Or { .. } => {}
+                _ => panic!("Expected OR inside AND"),
+            },
             _ => panic!("Expected AND"),
         }
     }
@@ -697,21 +700,19 @@ mod tests {
     fn test_parse_variable() {
         let expr = ExpressionParser::parse("?X == true").unwrap();
         match expr {
-            Expression::Comparison { left, .. } => {
-                match *left {
-                    Expression::Variable(var) => {
-                        assert_eq!(var, "?X");
-                    }
-                    _ => panic!("Expected variable"),
+            Expression::Comparison { left, .. } => match *left {
+                Expression::Variable(var) => {
+                    assert_eq!(var, "?X");
                 }
-            }
+                _ => panic!("Expected variable"),
+            },
             _ => panic!("Expected comparison"),
         }
     }
 
     #[test]
     fn test_evaluate_simple() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.IsVIP", Value::Boolean(true));
 
         let expr = ExpressionParser::parse("User.IsVIP == true").unwrap();
@@ -722,7 +723,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_comparison() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("Order.Amount", Value::Number(1500.0));
 
         let expr = ExpressionParser::parse("Order.Amount > 1000").unwrap();
@@ -733,7 +734,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_logical_and() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.IsVIP", Value::Boolean(true));
         facts.set("Order.Amount", Value::Number(1500.0));
 
@@ -745,7 +746,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_logical_or() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("a", Value::Boolean(false));
         facts.set("b", Value::Boolean(true));
 
@@ -757,7 +758,7 @@ mod tests {
 
     #[test]
     fn test_is_satisfied() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.IsVIP", Value::Boolean(true));
 
         let expr = ExpressionParser::parse("User.IsVIP == true").unwrap();

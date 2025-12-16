@@ -1,7 +1,6 @@
 use rust_rule_engine::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::thread;
 use std::time::{Duration, Instant};
 
 /// 🌐 Advanced Distributed Rule Engine Demo
@@ -149,7 +148,7 @@ impl DistributedRuleEngine {
     }
 
     fn add_shared_fact(&self, key: &str, value: Value) -> std::result::Result<(), RuleEngineError> {
-        let mut facts = self.shared_facts.lock().unwrap();
+        let facts = self.shared_facts.lock().unwrap();
         facts.add_value(key, value)?;
         Ok(())
     }

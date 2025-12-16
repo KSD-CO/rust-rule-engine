@@ -32,7 +32,7 @@ pub struct QueryResult {
 pub struct ProofTrace {
     /// Root goal that was proven
     pub goal: String,
-    
+
     /// Steps taken to prove the goal
     pub steps: Vec<ProofStep>,
 }
@@ -42,13 +42,13 @@ pub struct ProofTrace {
 pub struct ProofStep {
     /// Rule that was applied
     pub rule_name: String,
-    
+
     /// Goal this step proved
     pub goal: String,
-    
+
     /// Sub-steps (for nested proofs)
     pub sub_steps: Vec<ProofStep>,
-    
+
     /// Depth in the proof tree
     pub depth: usize,
 }
@@ -58,13 +58,13 @@ pub struct ProofStep {
 pub struct QueryStats {
     /// Number of goals explored
     pub goals_explored: usize,
-    
+
     /// Number of rules evaluated
     pub rules_evaluated: usize,
-    
+
     /// Maximum depth reached
     pub max_depth: usize,
-    
+
     /// Time taken (if measured)
     pub duration_ms: Option<u64>,
 }
@@ -120,7 +120,7 @@ impl ProofTrace {
             steps: Vec::new(),
         }
     }
-    
+
     /// Create a new proof trace
     pub fn new(goal: String) -> Self {
         Self {
@@ -128,31 +128,33 @@ impl ProofTrace {
             steps: Vec::new(),
         }
     }
-    
+
     /// Add a step to the proof
     pub fn add_step(&mut self, step: ProofStep) {
         self.steps.push(step);
     }
-    
+
     /// Build trace from a goal tree
     pub fn from_goal(goal: &Goal) -> Self {
         let mut trace = Self::new(goal.pattern.clone());
-        
+
         for (i, rule_name) in goal.candidate_rules.iter().enumerate() {
             let step = ProofStep {
                 rule_name: rule_name.clone(),
                 goal: goal.pattern.clone(),
-                sub_steps: goal.sub_goals.iter()
+                sub_steps: goal
+                    .sub_goals
+                    .iter()
                     .map(|sg| ProofStep::from_goal(sg, i + 1))
                     .collect(),
                 depth: goal.depth,
             };
             trace.add_step(step);
         }
-        
+
         trace
     }
-    
+
     /// Print the proof trace in a readable format
     pub fn print(&self) {
         println!("Proof for goal: {}", self.goal);
@@ -166,17 +168,21 @@ impl ProofStep {
     /// Create from a goal
     fn from_goal(goal: &Goal, depth: usize) -> Self {
         Self {
-            rule_name: goal.candidate_rules.first()
+            rule_name: goal
+                .candidate_rules
+                .first()
                 .cloned()
                 .unwrap_or_else(|| "unknown".to_string()),
             goal: goal.pattern.clone(),
-            sub_steps: goal.sub_goals.iter()
+            sub_steps: goal
+                .sub_goals
+                .iter()
                 .map(|sg| Self::from_goal(sg, depth + 1))
                 .collect(),
             depth,
         }
     }
-    
+
     /// Print this step with indentation
     fn print(&self, indent: usize) {
         let prefix = "  ".repeat(indent);
@@ -208,8 +214,8 @@ impl QueryParser {
 
         // Check for NOT keyword at the beginning
         let trimmed = query.trim();
-        let (is_negated, actual_query) = if trimmed.starts_with("NOT ") {
-            (true, &trimmed[4..]) // Skip "NOT "
+        let (is_negated, actual_query) = if let Some(stripped) = trimmed.strip_prefix("NOT ") {
+            (true, stripped) // Skip "NOT "
         } else {
             (false, trimmed)
         };
@@ -223,9 +229,7 @@ impl QueryParser {
                     Ok(Goal::with_expression(query.to_string(), expr))
                 }
             }
-            Err(e) => {
-                Err(format!("Failed to parse query: {}", e))
-            }
+            Err(e) => Err(format!("Failed to parse query: {}", e)),
         }
     }
 
@@ -243,40 +247,36 @@ impl QueryParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_query_result_creation() {
         let stats = QueryStats::default();
-        
-        let success = QueryResult::success(
-            HashMap::new(),
-            ProofTrace::empty(),
-            stats.clone(),
-        );
+
+        let success = QueryResult::success(HashMap::new(), ProofTrace::empty(), stats.clone());
         assert!(success.provable);
-        
+
         let failure = QueryResult::failure(vec!["fact".to_string()], stats);
         assert!(!failure.provable);
         assert_eq!(failure.missing_facts.len(), 1);
     }
-    
+
     #[test]
     fn test_proof_trace() {
         let mut trace = ProofTrace::new("User.IsVIP == true".to_string());
         assert_eq!(trace.goal, "User.IsVIP == true");
         assert!(trace.steps.is_empty());
-        
+
         let step = ProofStep {
             rule_name: "VIPRule".to_string(),
             goal: "User.IsVIP == true".to_string(),
             sub_steps: Vec::new(),
             depth: 0,
         };
-        
+
         trace.add_step(step);
         assert_eq!(trace.steps.len(), 1);
     }
-    
+
     #[test]
     fn test_proof_step() {
         let step = ProofStep {
@@ -285,20 +285,20 @@ mod tests {
             sub_steps: Vec::new(),
             depth: 0,
         };
-        
+
         assert_eq!(step.rule_name, "TestRule");
         assert_eq!(step.depth, 0);
     }
-    
+
     #[test]
     fn test_query_parser() {
         let result = QueryParser::parse("User.IsVIP == true");
         assert!(result.is_ok());
-        
+
         let empty = QueryParser::parse("");
         assert!(empty.is_err());
     }
-    
+
     #[test]
     fn test_query_validation() {
         assert!(QueryParser::validate("User.Age > 18").is_ok());
@@ -308,7 +308,7 @@ mod tests {
         // Use empty string or malformed syntax for error cases
         assert!(QueryParser::validate("(unclosed").is_err());
     }
-    
+
     #[test]
     fn test_query_stats() {
         let stats = QueryStats {
@@ -342,16 +342,16 @@ mod tests {
 
         assert!(result.provable);
         assert_eq!(result.bindings.len(), 2);
-        assert_eq!(result.bindings.get("X"), Some(&Value::String("VIP".to_string())));
+        assert_eq!(
+            result.bindings.get("X"),
+            Some(&Value::String("VIP".to_string()))
+        );
         assert_eq!(result.bindings.get("Y"), Some(&Value::Number(1000.0)));
     }
 
     #[test]
     fn test_query_result_failure_with_missing_facts() {
-        let missing = vec![
-            "User.IsVIP".to_string(),
-            "Order.Total".to_string(),
-        ];
+        let missing = vec!["User.IsVIP".to_string(), "Order.Total".to_string()];
 
         let stats = QueryStats::default();
         let result = QueryResult::failure(missing, stats);

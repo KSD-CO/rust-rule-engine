@@ -212,7 +212,7 @@ fn create_test_facts() -> Facts {
 }
 
 fn create_performance_test_kb() -> Result<KnowledgeBase, Box<dyn std::error::Error>> {
-    let mut kb = KnowledgeBase::new("PerformanceTestKB");
+    let kb = KnowledgeBase::new("PerformanceTestKB");
 
     let rules = vec![
         r#"rule "AgeValidation" salience 10 {
@@ -257,7 +257,7 @@ fn create_performance_test_kb() -> Result<KnowledgeBase, Box<dyn std::error::Err
 }
 
 fn create_large_scale_kb(rule_count: usize) -> Result<KnowledgeBase, Box<dyn std::error::Error>> {
-    let mut kb = KnowledgeBase::new("LargeScaleKB");
+    let kb = KnowledgeBase::new("LargeScaleKB");
 
     for i in 0..rule_count {
         let salience = 10 - (i % 10) as i32; // Vary salience from 1-10
@@ -286,72 +286,102 @@ fn register_test_functions(engine: &mut RustRuleEngine) {
     });
 
     // Also register as an action handler in case the GRL emits a Custom action
-    engine.register_action_handler("validateAge", |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
-        if let Some(v) = params.get("0") {
-            match v {
-                Value::String(msg) => println!("     ✅ Age validation (action): {}", msg),
-                _ => println!("     ✅ Age validation (action) with non-string param: {:?}", v),
+    engine.register_action_handler(
+        "validateAge",
+        |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
+            if let Some(v) = params.get("0") {
+                match v {
+                    Value::String(msg) => println!("     ✅ Age validation (action): {}", msg),
+                    _ => println!(
+                        "     ✅ Age validation (action) with non-string param: {:?}",
+                        v
+                    ),
+                }
             }
-        }
-        Ok(())
-    });
+            Ok(())
+        },
+    );
 
     // Register other action handlers used by the performance KB rules
-    engine.register_action_handler("processCountry", |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
-        if let Some(Value::String(msg)) = params.get("0") {
-            println!("     🌎 Country processing (action): {}", msg);
-        }
-        Ok(())
-    });
+    engine.register_action_handler(
+        "processCountry",
+        |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
+            if let Some(Value::String(msg)) = params.get("0") {
+                println!("     🌎 Country processing (action): {}", msg);
+            }
+            Ok(())
+        },
+    );
 
-    engine.register_action_handler("analyzeSpending", |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
-        if let Some(Value::String(msg)) = params.get("0") {
-            println!("     💰 Spending analysis (action): {}", msg);
-        }
-        Ok(())
-    });
+    engine.register_action_handler(
+        "analyzeSpending",
+        |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
+            if let Some(Value::String(msg)) = params.get("0") {
+                println!("     💰 Spending analysis (action): {}", msg);
+            }
+            Ok(())
+        },
+    );
 
-    engine.register_action_handler("checkVIPStatus", |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
-        if let Some(Value::String(msg)) = params.get("0") {
-            println!("     ⭐ VIP check (action): {}", msg);
-        }
-        Ok(())
-    });
+    engine.register_action_handler(
+        "checkVIPStatus",
+        |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
+            if let Some(Value::String(msg)) = params.get("0") {
+                println!("     ⭐ VIP check (action): {}", msg);
+            }
+            Ok(())
+        },
+    );
 
-    engine.register_action_handler("processCategory", |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
-        if let Some(Value::String(msg)) = params.get("0") {
-            println!("     📂 Category processing (action): {}", msg);
-        }
-        Ok(())
-    });
+    engine.register_action_handler(
+        "processCategory",
+        |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
+            if let Some(Value::String(msg)) = params.get("0") {
+                println!("     📂 Category processing (action): {}", msg);
+            }
+            Ok(())
+        },
+    );
 
-    engine.register_action_handler("validateOrder", |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
-        if let Some(Value::String(msg)) = params.get("0") {
-            println!("     🛒 Order validation (action): {}", msg);
-        }
-        Ok(())
-    });
+    engine.register_action_handler(
+        "validateOrder",
+        |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
+            if let Some(Value::String(msg)) = params.get("0") {
+                println!("     🛒 Order validation (action): {}", msg);
+            }
+            Ok(())
+        },
+    );
 
-    engine.register_action_handler("checkItemCount", |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
-        if let Some(Value::String(msg)) = params.get("0") {
-            println!("     📦 Item count check (action): {}", msg);
-        }
-        Ok(())
-    });
+    engine.register_action_handler(
+        "checkItemCount",
+        |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
+            if let Some(Value::String(msg)) = params.get("0") {
+                println!("     📦 Item count check (action): {}", msg);
+            }
+            Ok(())
+        },
+    );
 
-    engine.register_action_handler("processElectronics", |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
-        if let Some(Value::String(msg)) = params.get("0") {
-            println!("     ⚡ Electronics processing (action): {}", msg);
-        }
-        Ok(())
-    });
+    engine.register_action_handler(
+        "processElectronics",
+        |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
+            if let Some(Value::String(msg)) = params.get("0") {
+                println!("     ⚡ Electronics processing (action): {}", msg);
+            }
+            Ok(())
+        },
+    );
 
-    engine.register_action_handler("processRule", |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
-        if let Some(Value::String(msg)) = params.get("0") {
-            println!("     🔧 {}", msg);
-        }
-        Ok(())
-    });
+    engine.register_action_handler(
+        "processRule",
+        |params: &std::collections::HashMap<String, Value>, _facts: &Facts| {
+            if let Some(Value::String(msg)) = params.get("0") {
+                println!("     🔧 {}", msg);
+            }
+            Ok(())
+        },
+    );
 
     engine.register_function("processCountry", |args: &[Value], _facts| {
         if let Some(Value::String(msg)) = args.first() {

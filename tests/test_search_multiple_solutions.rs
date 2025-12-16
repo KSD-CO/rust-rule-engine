@@ -1,13 +1,13 @@
 //! Direct test for SearchResult.solutions field
 
 #[cfg(feature = "backward-chaining")]
-use rust_rule_engine::backward::search::{DepthFirstSearch, SearchResult};
-#[cfg(feature = "backward-chaining")]
 use rust_rule_engine::backward::goal::Goal;
 #[cfg(feature = "backward-chaining")]
-use rust_rule_engine::{KnowledgeBase, Facts, Rule, Condition, ConditionGroup};
+use rust_rule_engine::backward::search::DepthFirstSearch;
 #[cfg(feature = "backward-chaining")]
-use rust_rule_engine::types::{Value, ActionType, Operator};
+use rust_rule_engine::types::{ActionType, Operator, Value};
+#[cfg(feature = "backward-chaining")]
+use rust_rule_engine::{Condition, ConditionGroup, Facts, KnowledgeBase, Rule};
 
 #[cfg(feature = "backward-chaining")]
 #[test]
@@ -15,7 +15,7 @@ fn test_dfs_finds_multiple_solutions() {
     println!("\n=== Testing DFS with max_solutions > 1 ===\n");
 
     // Create knowledge base with multiple rules that can prove same goal
-    let mut kb = KnowledgeBase::new("multi_solutions");
+    let kb = KnowledgeBase::new("multi_solutions");
 
     // Rule 1: User.Type == "Premium" -> User.Access = true
     kb.add_rule(Rule::new(
@@ -29,7 +29,8 @@ fn test_dfs_finds_multiple_solutions() {
             field: "User.Access".to_string(),
             value: Value::Boolean(true),
         }],
-    )).unwrap();
+    ))
+    .unwrap();
 
     // Rule 2: User.HasLicense == true -> User.Access = true
     kb.add_rule(Rule::new(
@@ -43,7 +44,8 @@ fn test_dfs_finds_multiple_solutions() {
             field: "User.Access".to_string(),
             value: Value::Boolean(true),
         }],
-    )).unwrap();
+    ))
+    .unwrap();
 
     // Create goal
     let mut goal = Goal::new("User.Access == true".to_string());
@@ -54,8 +56,7 @@ fn test_dfs_finds_multiple_solutions() {
 
     // Test with max_solutions = 1
     println!("Test 1: max_solutions = 1");
-    let mut dfs1 = DepthFirstSearch::new(10, kb.clone())
-        .with_max_solutions(1);
+    let mut dfs1 = DepthFirstSearch::new(10, kb.clone()).with_max_solutions(1);
 
     let mut facts1 = Facts::new();
     facts1.set("User.Type", Value::String("Premium".to_string()));
@@ -68,12 +69,14 @@ fn test_dfs_finds_multiple_solutions() {
     println!("  Path: {:?}", result1.path);
 
     assert!(result1.success, "Should find a solution");
-    assert!(result1.solutions.len() <= 1, "Should have at most 1 solution");
+    assert!(
+        result1.solutions.len() <= 1,
+        "Should have at most 1 solution"
+    );
 
     // Test with max_solutions = 5
     println!("\nTest 2: max_solutions = 5");
-    let mut dfs5 = DepthFirstSearch::new(10, kb.clone())
-        .with_max_solutions(5);
+    let mut dfs5 = DepthFirstSearch::new(10, kb.clone()).with_max_solutions(5);
 
     let mut facts5 = Facts::new();
     facts5.set("User.Type", Value::String("Premium".to_string()));
@@ -91,8 +94,12 @@ fn test_dfs_finds_multiple_solutions() {
 
     println!("\n  All solutions:");
     for (i, solution) in result5.solutions.iter().enumerate() {
-        println!("    Solution {}: path = {:?}, bindings = {:?}",
-            i + 1, solution.path, solution.bindings);
+        println!(
+            "    Solution {}: path = {:?}, bindings = {:?}",
+            i + 1,
+            solution.path,
+            solution.bindings
+        );
     }
 
     assert!(result5.success, "Should find solutions");
@@ -107,15 +114,24 @@ fn test_dfs_finds_multiple_solutions() {
         }
 
         println!("   Unique paths: {}", unique_paths.len());
-        assert!(unique_paths.len() > 1, "Solutions should use different rule paths");
+        assert!(
+            unique_paths.len() > 1,
+            "Solutions should use different rule paths"
+        );
         println!("✅ VERIFIED: Solutions use different rules\n");
     } else {
-        println!("\n❌ ISSUE: Only found {} solution(s)", result5.solutions.len());
+        println!(
+            "\n❌ ISSUE: Only found {} solution(s)",
+            result5.solutions.len()
+        );
         println!("   Expected multiple solutions because:");
         println!("   - Both PremiumRule and LicenseRule can prove the goal");
         println!("   - Both rules' conditions are satisfied in facts");
         println!("   - max_solutions = 5 > 1");
 
-        panic!("Expected multiple solutions but only found {}", result5.solutions.len());
+        panic!(
+            "Expected multiple solutions but only found {}",
+            result5.solutions.len()
+        );
     }
 }

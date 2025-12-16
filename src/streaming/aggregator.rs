@@ -77,17 +77,18 @@ impl AggregationResult {
 
 /// Aggregator for performing calculations on event streams
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Aggregator {
     /// Type of aggregation
     aggregation_type: AggregationType,
     /// Field to aggregate on (if applicable)
-    field: Option<String>,
+    _field: Option<String>,
 }
 
 impl Aggregator {
     /// Create a new aggregator
     pub fn new(aggregation_type: AggregationType) -> Self {
-        let field = match &aggregation_type {
+        let _field = match &aggregation_type {
             AggregationType::Sum { field }
             | AggregationType::Average { field }
             | AggregationType::Min { field }
@@ -101,7 +102,7 @@ impl Aggregator {
 
         Self {
             aggregation_type,
-            field,
+            _field,
         }
     }
 

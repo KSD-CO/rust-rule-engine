@@ -72,16 +72,19 @@ fn sliding_window_demo() {
 
         let mut data = HashMap::new();
         data.insert("temperature".to_string(), Value::Number(20.0 + i as f64));
-        data.insert("sensor_id".to_string(), Value::String(format!("sensor-{}", i)));
-
-        let event = StreamEvent::with_timestamp(
-            "TempReading",
-            data,
-            "sensors",
-            timestamp,
+        data.insert(
+            "sensor_id".to_string(),
+            Value::String(format!("sensor-{}", i)),
         );
 
-        println!("Event {} ({}ms ago): {}", i, i * 1000, node.process_event(&event));
+        let event = StreamEvent::with_timestamp("TempReading", data, "sensors", timestamp);
+
+        println!(
+            "Event {} ({}ms ago): {}",
+            i,
+            i * 1000,
+            node.process_event(&event)
+        );
     }
 
     let stats = node.window_stats();
@@ -111,7 +114,11 @@ fn tumbling_window_demo() {
     let window_duration_ms = 10_000u64;
     let window_start = (current_time / window_duration_ms) * window_duration_ms;
 
-    println!("Current window: {} - {}", window_start, window_start + window_duration_ms);
+    println!(
+        "Current window: {} - {}",
+        window_start,
+        window_start + window_duration_ms
+    );
 
     // Events in current window
     for i in 0..3 {
@@ -120,12 +127,7 @@ fn tumbling_window_demo() {
         let mut data = HashMap::new();
         data.insert("value".to_string(), Value::Number(i as f64));
 
-        let event = StreamEvent::with_timestamp(
-            "MetricEvent",
-            data,
-            "metrics",
-            timestamp,
-        );
+        let event = StreamEvent::with_timestamp("MetricEvent", data, "metrics", timestamp);
 
         println!("Event in current window: {}", node.process_event(&event));
     }
@@ -151,11 +153,7 @@ fn event_type_filtering_demo() {
     println!("🔍 Demo 4: Event Type Filtering");
     println!("--------------------------------");
 
-    let mut node = StreamAlphaNode::new(
-        "all-events",
-        Some("LoginEvent".to_string()),
-        None,
-    );
+    let mut node = StreamAlphaNode::new("all-events", Some("LoginEvent".to_string()), None);
 
     // Create different event types
     let mut login_data = HashMap::new();

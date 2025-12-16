@@ -3,13 +3,16 @@
 //! This module converts GRL (Grule Rule Language) rules into RETE-UL structures
 //! for efficient pattern matching and rule execution.
 
+#![allow(clippy::type_complexity)]
+#![allow(deprecated)]
+
 use crate::engine::rule::{Condition, ConditionGroup, Rule};
-use crate::parser::GRLParser;
-use crate::rete::{AlphaNode, ReteUlNode, TypedReteUlRule};
-use crate::rete::facts::{TypedFacts, FactValue};
-use crate::rete::propagation::IncrementalEngine;
-use crate::types::{Operator, Value};
 use crate::errors::{Result, RuleEngineError};
+use crate::parser::GRLParser;
+use crate::rete::facts::{FactValue, TypedFacts};
+use crate::rete::propagation::IncrementalEngine;
+use crate::rete::{AlphaNode, ReteUlNode, TypedReteUlRule};
+use crate::types::{Operator, Value};
 use std::fs;
 use std::path::Path;
 
@@ -23,20 +26,16 @@ impl GrlReteLoader {
         path: P,
         engine: &mut IncrementalEngine,
     ) -> Result<usize> {
-        let grl_text = fs::read_to_string(path.as_ref()).map_err(|e| {
-            RuleEngineError::ParseError {
+        let grl_text =
+            fs::read_to_string(path.as_ref()).map_err(|e| RuleEngineError::ParseError {
                 message: format!("Failed to read GRL file: {}", e),
-            }
-        })?;
+            })?;
 
         Self::load_from_string(&grl_text, engine)
     }
 
     /// Load rules from GRL string into RETE engine
-    pub fn load_from_string(
-        grl_text: &str,
-        engine: &mut IncrementalEngine,
-    ) -> Result<usize> {
+    pub fn load_from_string(grl_text: &str, engine: &mut IncrementalEngine) -> Result<usize> {
         // Parse GRL rules
         let rules = GRLParser::parse_rules(grl_text)?;
 
@@ -77,10 +76,12 @@ impl GrlReteLoader {
     /// Convert ConditionGroup to ReteUlNode
     fn convert_condition_group(group: &ConditionGroup) -> Result<ReteUlNode> {
         match group {
-            ConditionGroup::Single(condition) => {
-                Self::convert_condition(condition)
-            }
-            ConditionGroup::Compound { left, operator, right } => {
+            ConditionGroup::Single(condition) => Self::convert_condition(condition),
+            ConditionGroup::Compound {
+                left,
+                operator,
+                right,
+            } => {
                 let left_node = Self::convert_condition_group(left)?;
                 let right_node = Self::convert_condition_group(right)?;
 
@@ -116,16 +117,14 @@ impl GrlReteLoader {
                 source_conditions,
                 function,
                 function_arg,
-            } => {
-                Ok(ReteUlNode::UlAccumulate {
-                    result_var: result_var.clone(),
-                    source_pattern: source_pattern.clone(),
-                    extract_field: extract_field.clone(),
-                    source_conditions: source_conditions.clone(),
-                    function: function.clone(),
-                    function_arg: function_arg.clone(),
-                })
-            }
+            } => Ok(ReteUlNode::UlAccumulate {
+                result_var: result_var.clone(),
+                source_pattern: source_pattern.clone(),
+                extract_field: extract_field.clone(),
+                source_conditions: source_conditions.clone(),
+                function: function.clone(),
+                function_arg: function_arg.clone(),
+            }),
         }
     }
 
@@ -135,7 +134,11 @@ impl GrlReteLoader {
 
         // Check if this is a multifield condition
         match &condition.expression {
-            ConditionExpression::MultiField { field, operation, variable } => {
+            ConditionExpression::MultiField {
+                field,
+                operation,
+                variable: _,
+            } => {
                 // Convert to UlMultiField node
                 let operator_str = Self::operator_to_string(&condition.operator);
                 let value_str = if !matches!(condition.value, Value::Boolean(_)) {
@@ -156,7 +159,11 @@ impl GrlReteLoader {
                 Ok(ReteUlNode::UlMultiField {
                     field: field.clone(),
                     operation: operation.clone(),
-                    value: if operation == "contains" { cmp_val.clone() } else { None },
+                    value: if operation == "contains" {
+                        cmp_val.clone()
+                    } else {
+                        None
+                    },
                     operator: op,
                     compare_value: if operation == "count" { cmp_val } else { None },
                 })
@@ -204,9 +211,7 @@ impl GrlReteLoader {
             Value::Null => "null".to_string(),
             Value::Array(arr) => {
                 // Convert array to JSON-like string
-                let items: Vec<String> = arr.iter()
-                    .map(|v| Self::value_to_string(v))
-                    .collect();
+                let items: Vec<String> = arr.iter().map(Self::value_to_string).collect();
                 format!("[{}]", items.join(","))
             }
             Value::Object(_) => {
@@ -224,17 +229,19 @@ impl GrlReteLoader {
     fn create_action_closure(
         actions: Vec<crate::types::ActionType>,
     ) -> std::sync::Arc<dyn Fn(&mut TypedFacts, &mut super::ActionResults) + Send + Sync> {
-        std::sync::Arc::new(move |facts: &mut TypedFacts, results: &mut super::ActionResults| {
-            // Execute actions
-            for action in &actions {
-                Self::execute_action(action, facts, results);
-            }
-        })
+        std::sync::Arc::new(
+            move |facts: &mut TypedFacts, results: &mut super::ActionResults| {
+                // Execute actions
+                for action in &actions {
+                    Self::execute_action(action, facts, results);
+                }
+            },
+        )
     }
 
     /// Execute a single action
     fn execute_action(
-        action: &crate::types::ActionType, 
+        action: &crate::types::ActionType,
         facts: &mut TypedFacts,
         results: &mut super::ActionResults,
     ) {
@@ -245,7 +252,7 @@ impl GrlReteLoader {
                 // Assignment action (from "field = value" syntax in GRL)
                 // Note: Set() function syntax is NOT supported.
                 // Use: Player.score = Player.score + 10;
-                
+
                 // Check if value is an expression that needs evaluation
                 let evaluated_value = match value {
                     Value::Expression(expr) => {
@@ -262,11 +269,15 @@ impl GrlReteLoader {
             ActionType::Log { message } => {
                 println!("📝 LOG: {}", message);
             }
-            ActionType::MethodCall { object, method, args } => {
+            ActionType::MethodCall {
+                object,
+                method,
+                args,
+            } => {
                 // Method calls can be treated as function calls with object as first arg
                 let mut all_args = vec![object.clone()];
-                all_args.extend(args.iter().map(|v| Self::value_to_string(v)));
-                
+                all_args.extend(args.iter().map(Self::value_to_string));
+
                 results.add(super::ActionResult::CallFunction {
                     function_name: format!("{}.{}", object, method),
                     args: all_args,
@@ -276,7 +287,7 @@ impl GrlReteLoader {
             ActionType::Retract { object } => {
                 // Strip quotes from object name if present
                 let object_name = object.trim_matches('"');
-                
+
                 // Try to get the handle for this fact type from metadata
                 if let Some(handle) = facts.get_fact_handle(object_name) {
                     // Retract specific fact by handle
@@ -288,12 +299,13 @@ impl GrlReteLoader {
                     println!("🗑️ RETRACT: {} (by type, no handle found)", object_name);
                 }
             }
-            ActionType::Custom { action_type, params } => {
+            ActionType::Custom {
+                action_type,
+                params,
+            } => {
                 // Treat custom actions as function calls
-                let args: Vec<String> = params.values()
-                    .map(|v| Self::value_to_string(v))
-                    .collect();
-                
+                let args: Vec<String> = params.values().map(Self::value_to_string).collect();
+
                 results.add(super::ActionResult::CallFunction {
                     function_name: action_type.clone(),
                     args,
@@ -305,7 +317,10 @@ impl GrlReteLoader {
                 results.add(super::ActionResult::ActivateAgendaGroup(group.clone()));
                 println!("📋 ACTIVATE GROUP: {}", group);
             }
-            ActionType::ScheduleRule { rule_name, delay_ms } => {
+            ActionType::ScheduleRule {
+                rule_name,
+                delay_ms,
+            } => {
                 // Queue rule scheduling
                 results.add(super::ActionResult::ScheduleRule {
                     rule_name: rule_name.clone(),
@@ -317,10 +332,13 @@ impl GrlReteLoader {
                 // Mark workflow as completed by setting a fact
                 let completion_key = format!("workflow.{}.completed", workflow_name);
                 facts.set(&completion_key, FactValue::Boolean(true));
-                
+
                 let timestamp_key = format!("workflow.{}.completed_at", workflow_name);
-                facts.set(&timestamp_key, FactValue::Integer(chrono::Utc::now().timestamp()));
-                
+                facts.set(
+                    &timestamp_key,
+                    FactValue::Integer(chrono::Utc::now().timestamp()),
+                );
+
                 println!("✔️ WORKFLOW COMPLETED: {}", workflow_name);
             }
             ActionType::SetWorkflowData { key, value } => {
@@ -328,7 +346,7 @@ impl GrlReteLoader {
                 let data_key = format!("workflow.data.{}", key);
                 let fact_value = Self::value_to_fact_value(value);
                 facts.set(&data_key, fact_value);
-                
+
                 println!("📊 WORKFLOW DATA SET: {} = {:?}", key, value);
             }
         }
@@ -350,9 +368,7 @@ impl GrlReteLoader {
             Value::Boolean(b) => FactValue::Boolean(*b),
             Value::Null => FactValue::Null,
             Value::Array(arr) => {
-                let fact_arr: Vec<FactValue> = arr.iter()
-                    .map(Self::value_to_fact_value)
-                    .collect();
+                let fact_arr: Vec<FactValue> = arr.iter().map(Self::value_to_fact_value).collect();
                 FactValue::Array(fact_arr)
             }
             Value::Object(_) => {
@@ -419,7 +435,7 @@ impl GrlReteLoader {
         // Convert TypedFacts to Facts for expression evaluation
         use crate::engine::facts::Facts;
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
 
         // Copy all facts from TypedFacts to Facts
         // RETE stores facts as "quantity" while GRL uses "Order.quantity"
@@ -440,7 +456,7 @@ impl GrlReteLoader {
         // Evaluate expression
         match crate::expression::evaluate_expression(expr, &facts) {
             Ok(result) => result,
-            Err(e) => {
+            Err(_e) => {
                 // Silently fallback - this can happen with chained expressions in RETE
                 // due to working memory complexity
                 Value::String(expr.to_string())

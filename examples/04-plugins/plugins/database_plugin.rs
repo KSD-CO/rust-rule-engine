@@ -2,7 +2,6 @@ use rust_rule_engine::engine::engine::RustRuleEngine;
 use rust_rule_engine::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugin};
 use rust_rule_engine::errors::Result;
 use rust_rule_engine::types::Value;
-use std::collections::HashMap;
 
 /// Database Operations Plugin for SQL and NoSQL database interactions
 pub struct DatabasePlugin {
@@ -219,7 +218,7 @@ impl RulePlugin for DatabasePlugin {
         // SQL Query function
         engine.register_function("sqlQuery", |args, _facts| {
             let table = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("users".to_string());
             let columns = args
@@ -240,7 +239,7 @@ impl RulePlugin for DatabasePlugin {
         // Count Rows function
         engine.register_function("countRows", |args, _facts| {
             let table = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("users".to_string());
 
@@ -259,7 +258,7 @@ impl RulePlugin for DatabasePlugin {
 
         // Sanitize Input function
         engine.register_function("sanitizeInput", |args, _facts| {
-            let input = args.get(0).map(|v| v.to_string()).unwrap_or_default();
+            let input = args.first().map(|v| v.to_string()).unwrap_or_default();
 
             // Simulate SQL injection protection
             let sanitized = input.replace("'", "''").replace("--", "").replace(";", "");
@@ -272,7 +271,7 @@ impl RulePlugin for DatabasePlugin {
         // Build Where Clause function
         engine.register_function("buildWhereClause", |args, _facts| {
             let field = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("id".to_string());
             let operator = args
@@ -298,7 +297,7 @@ impl RulePlugin for DatabasePlugin {
         // Aggregate Data function
         engine.register_function("aggregateData", |args, _facts| {
             let function = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("COUNT".to_string());
             let column = args

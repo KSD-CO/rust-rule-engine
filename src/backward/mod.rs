@@ -22,35 +22,38 @@
 //! }
 //! ```
 
-pub mod goal;
-pub mod search;
-pub mod backward_engine;
-pub mod query;
-pub mod grl_query;
-pub mod expression;
-pub mod rule_executor;
-pub mod unification;
-pub mod conclusion_index;
 pub mod aggregation;
-pub mod proof_tree;
-pub mod explanation;
+pub mod backward_engine;
+pub mod conclusion_index;
 pub mod disjunction;
+pub mod explanation;
+pub mod expression;
+pub mod goal;
+pub mod grl_query;
 pub mod nested;
 pub mod optimizer;
+pub mod proof_tree;
+pub mod query;
+pub mod rule_executor;
+pub mod search;
+pub mod unification;
 
 // Re-export main types
-pub use goal::{Goal, GoalStatus, GoalManager};
-pub use search::{SearchStrategy, SearchResult, Solution};
-pub use backward_engine::{BackwardEngine, BackwardConfig};
-pub use query::{QueryResult, ProofTrace};
-pub use grl_query::{GRLQuery, GRLQueryParser, GRLQueryExecutor, GRLSearchStrategy, QueryAction};
-pub use expression::{Expression, ExpressionParser};
-pub use rule_executor::{RuleExecutor};
-pub use unification::{Bindings, Unifier};
+pub use aggregation::{apply_aggregate, parse_aggregate_query, AggregateFunction, AggregateQuery};
+pub use backward_engine::{BackwardConfig, BackwardEngine};
 pub use conclusion_index::{ConclusionIndex, IndexStats};
-pub use aggregation::{AggregateFunction, AggregateQuery, parse_aggregate_query, apply_aggregate};
-pub use proof_tree::{ProofNode, ProofTree, ProofNodeType, ProofStats};
-pub use explanation::{ExplanationBuilder, Explanation, ExplanationStep, StepResult};
-pub use disjunction::{Disjunction, DisjunctionResult, DisjunctionParser};
-pub use nested::{NestedQuery, Query, NestedQueryResult, NestedQueryParser, NestedQueryEvaluator, NestedQueryStats};
-pub use optimizer::{QueryOptimizer, OptimizerConfig, OptimizationStats, JoinOptimizer};
+pub use disjunction::{Disjunction, DisjunctionParser, DisjunctionResult};
+pub use explanation::{Explanation, ExplanationBuilder, ExplanationStep, StepResult};
+pub use expression::{Expression, ExpressionParser};
+pub use goal::{Goal, GoalManager, GoalStatus};
+pub use grl_query::{GRLQuery, GRLQueryExecutor, GRLQueryParser, GRLSearchStrategy, QueryAction};
+pub use nested::{
+    NestedQuery, NestedQueryEvaluator, NestedQueryParser, NestedQueryResult, NestedQueryStats,
+    Query,
+};
+pub use optimizer::{JoinOptimizer, OptimizationStats, OptimizerConfig, QueryOptimizer};
+pub use proof_tree::{ProofNode, ProofNodeType, ProofStats, ProofTree};
+pub use query::{ProofTrace, QueryResult};
+pub use rule_executor::RuleExecutor;
+pub use search::{SearchResult, SearchStrategy, Solution};
+pub use unification::{Bindings, Unifier};

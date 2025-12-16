@@ -1,14 +1,13 @@
+use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 ///! Accumulate Functions with GRL Rules Example
 ///!
 ///! This example demonstrates:
 ///! 1. Using accumulate functions to calculate metrics
 ///! 2. Loading business rules from .grl file
 ///! 3. Executing rules based on accumulated data
-
 use rust_rule_engine::rete::accumulate::*;
 use rust_rule_engine::rete::FactValue;
-use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
-use rust_rule_engine::{RustRuleEngine, Facts, Value};
+use rust_rule_engine::{Facts, RustRuleEngine, Value};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🎯 Accumulate + GRL Rules Demo");
@@ -80,8 +79,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for order in &orders {
-        println!("   {} | {:12} | ${:7.2} | {}",
-            order.id, order.category, order.amount, order.status);
+        println!(
+            "   {} | {:12} | ${:7.2} | {}",
+            order.id, order.category, order.amount, order.status
+        );
     }
     println!();
 
@@ -162,22 +163,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grl_path = "examples/rules/04-use-cases/sales_analytics.grl";
     println!("   Loading rules from: {}", grl_path);
 
-    let mut kb = KnowledgeBase::new("SalesAnalytics");
+    let kb = KnowledgeBase::new("SalesAnalytics");
 
     match std::fs::read_to_string(grl_path) {
-        Ok(grl_content) => {
-            match rust_rule_engine::GRLParser::parse_rules(&grl_content) {
-                Ok(rules) => {
-                    for rule in rules {
-                        kb.add_rule(rule)?;
-                    }
-                    println!("   ✅ Rules loaded successfully");
+        Ok(grl_content) => match rust_rule_engine::GRLParser::parse_rules(&grl_content) {
+            Ok(rules) => {
+                for rule in rules {
+                    kb.add_rule(rule)?;
                 }
-                Err(e) => {
-                    println!("   ⚠️  Could not parse GRL: {}", e);
-                }
+                println!("   ✅ Rules loaded successfully");
             }
-        }
+            Err(e) => {
+                println!("   ⚠️  Could not parse GRL: {}", e);
+            }
+        },
         Err(e) => {
             println!("   ⚠️  Could not read GRL file: {}", e);
             println!("   Continuing without rules...");
@@ -283,8 +282,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Demo Completed!");
     println!("\n📝 Summary:");
     println!("   ┌─ Processed {} orders", orders.len());
-    println!("   ├─ Completed: {} orders",
-        orders.iter().filter(|o| o.status == "completed").count());
+    println!(
+        "   ├─ Completed: {} orders",
+        orders.iter().filter(|o| o.status == "completed").count()
+    );
 
     if let FactValue::Float(revenue) = total_revenue.get_result() {
         println!("   ├─ Total Revenue: ${:.2}", revenue);

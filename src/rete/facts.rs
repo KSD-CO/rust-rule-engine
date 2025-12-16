@@ -262,12 +262,12 @@ impl TypedFacts {
             fact_handles: HashMap::new(),
         }
     }
-    
+
     /// Set metadata about which handle corresponds to which fact type
     pub fn set_fact_handle(&mut self, fact_type: String, handle: super::FactHandle) {
         self.fact_handles.insert(fact_type, handle);
     }
-    
+
     /// Get handle for a fact type (for retraction)
     pub fn get_fact_handle(&self, fact_type: &str) -> Option<super::FactHandle> {
         self.fact_handles.get(fact_type).copied()
@@ -383,12 +383,12 @@ mod tests {
     fn test_fact_value_types() {
         let s = FactValue::String("hello".to_string());
         let i = FactValue::Integer(42);
-        let f = FactValue::Float(3.14);
+        let f = FactValue::Float(std::f64::consts::PI);
         let b = FactValue::Boolean(true);
 
         assert_eq!(s.as_string(), "hello");
         assert_eq!(i.as_integer(), Some(42));
-        assert_eq!(f.as_float(), Some(3.14));
+        assert_eq!(f.as_float(), Some(std::f64::consts::PI));
         assert_eq!(b.as_boolean(), Some(true));
     }
 
@@ -460,7 +460,15 @@ mod tests {
 
         assert!(facts.evaluate_condition("age", ">", &FactValue::Integer(18)));
         assert!(facts.evaluate_condition("age", "<=", &FactValue::Integer(30)));
-        assert!(facts.evaluate_condition("name", "contains", &FactValue::String("Smith".to_string())));
-        assert!(facts.evaluate_condition("name", "startsWith", &FactValue::String("John".to_string())));
+        assert!(facts.evaluate_condition(
+            "name",
+            "contains",
+            &FactValue::String("Smith".to_string())
+        ));
+        assert!(facts.evaluate_condition(
+            "name",
+            "startsWith",
+            &FactValue::String("John".to_string())
+        ));
     }
 }

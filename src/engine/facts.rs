@@ -3,7 +3,6 @@ use crate::types::{Context, Value};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::collections::HashSet;
 
 /// Facts - represents the working memory of data objects
 /// Similar to Grule's DataContext concept
@@ -114,10 +113,10 @@ impl Facts {
             });
         }
 
-    // Record previous top-level key for undo semantics
-    self.record_undo_for_key(parts[0]);
+        // Record previous top-level key for undo semantics
+        self.record_undo_for_key(parts[0]);
 
-    let mut data = self.data.write().unwrap();
+        let mut data = self.data.write().unwrap();
 
         if parts.len() == 1 {
             data.insert(parts[0].to_string(), value);
@@ -325,13 +324,21 @@ impl Facts {
 
             for entry in frame.into_iter().rev() {
                 match entry.prev_value {
-                    Some(v) => { data.insert(entry.key.clone(), v); }
-                    None => { data.remove(&entry.key); }
+                    Some(v) => {
+                        data.insert(entry.key.clone(), v);
+                    }
+                    None => {
+                        data.remove(&entry.key);
+                    }
                 }
 
                 match entry.prev_type {
-                    Some(t) => { types.insert(entry.key.clone(), t); }
-                    None => { types.remove(&entry.key); }
+                    Some(t) => {
+                        types.insert(entry.key.clone(), t);
+                    }
+                    None => {
+                        types.remove(&entry.key);
+                    }
                 }
             }
         }

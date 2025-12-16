@@ -1,15 +1,16 @@
 //! Search strategies for backward chaining
 
+#![allow(deprecated)]
+
 use super::goal::{Goal, GoalStatus};
 use super::rule_executor::RuleExecutor;
-use std::sync::{Arc, Mutex};
-use crate::rete::propagation::IncrementalEngine;
-use crate::rete::working_memory::FactHandle;
-use crate::Facts;
-use crate::types::Value;
-use crate::KnowledgeBase;
 use crate::engine::rule::Rule;
+use crate::rete::propagation::IncrementalEngine;
+use crate::types::Value;
+use crate::Facts;
+use crate::KnowledgeBase;
 use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 
 /// Strategy for searching the goal space
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,11 +18,11 @@ pub enum SearchStrategy {
     /// Depth-first search (Prolog-style)
     /// Goes deep into one branch before backtracking
     DepthFirst,
-    
+
     /// Breadth-first search
     /// Explores all goals at one level before going deeper
     BreadthFirst,
-    
+
     /// Iterative deepening
     /// Combines benefits of depth-first and breadth-first
     Iterative,
@@ -125,13 +126,21 @@ impl DepthFirstSearch {
         // Build inserter closure if engine is provided
         let inserter = engine.map(|eng| {
             let eng = eng.clone();
-            std::sync::Arc::new(move |fact_type: String, data: crate::rete::TypedFacts, rule_name: String, premises: Vec<String>| {
-                if let Ok(mut e) = eng.lock() {
-                    // Resolve premise keys into FactHandles when possible
-                    let handles = e.resolve_premise_keys(premises);
-                    let _ = e.insert_logical(fact_type, data, rule_name, handles);
-                }
-            }) as std::sync::Arc<dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync>
+            std::sync::Arc::new(
+                move |fact_type: String,
+                      data: crate::rete::TypedFacts,
+                      rule_name: String,
+                      premises: Vec<String>| {
+                    if let Ok(mut e) = eng.lock() {
+                        // Resolve premise keys into FactHandles when possible
+                        let handles = e.resolve_premise_keys(premises);
+                        let _ = e.insert_logical(fact_type, data, rule_name, handles);
+                    }
+                },
+            )
+                as std::sync::Arc<
+                    dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync,
+                >
         });
 
         Self {
@@ -143,9 +152,14 @@ impl DepthFirstSearch {
             solutions: Vec::new(),
         }
     }
-    
+
     /// Search for a proof of the goal WITH rule execution
-    pub fn search_with_execution(&mut self, goal: &mut Goal, facts: &mut Facts, kb: &KnowledgeBase) -> SearchResult {
+    pub fn search_with_execution(
+        &mut self,
+        goal: &mut Goal,
+        facts: &mut Facts,
+        kb: &KnowledgeBase,
+    ) -> SearchResult {
         self.goals_explored = 0;
         self.path.clear();
         self.solutions.clear();
@@ -161,7 +175,7 @@ impl DepthFirstSearch {
             solutions: self.solutions.clone(),
         }
     }
-    
+
     /// Search for a proof of the goal (old method, kept for compatibility)
     pub fn search(&mut self, goal: &mut Goal, _facts: &Facts) -> SearchResult {
         self.goals_explored = 0;
@@ -178,14 +192,14 @@ impl DepthFirstSearch {
             solutions: Vec::new(),
         }
     }
-    
+
     /// NEW: Recursive search WITH rule execution
     fn search_recursive_with_execution(
         &mut self,
         goal: &mut Goal,
-        facts: &mut Facts,  // ✅ Made mutable to allow rule execution
+        facts: &mut Facts, // ✅ Made mutable to allow rule execution
         kb: &KnowledgeBase,
-        depth: usize
+        depth: usize,
     ) -> bool {
         self.goals_explored += 1;
 
@@ -249,7 +263,8 @@ impl DepthFirstSearch {
                             });
 
                             // If we only want one solution OR we've found enough, stop searching
-                            if self.max_solutions == 1 || self.solutions.len() >= self.max_solutions {
+                            if self.max_solutions == 1 || self.solutions.len() >= self.max_solutions
+                            {
                                 return true; // keep changes
                             }
 
@@ -277,7 +292,9 @@ impl DepthFirstSearch {
                                         });
 
                                         // If we only want one solution OR we've found enough, stop searching
-                                        if self.max_solutions == 1 || self.solutions.len() >= self.max_solutions {
+                                        if self.max_solutions == 1
+                                            || self.solutions.len() >= self.max_solutions
+                                        {
                                             return true; // keep changes
                                         }
 
@@ -338,14 +355,14 @@ impl DepthFirstSearch {
         if goal.is_negated {
             // For negated goals: if we couldn't prove it, then NOT succeeds (closed-world assumption)
             goal.status = GoalStatus::Proven;
-            return true;
+            true
         } else {
             // For normal goals: if we couldn't prove it, it's unprovable
             goal.status = GoalStatus::Unprovable;
-            return false;
+            false
         }
     }
-    
+
     /// Check if goal is already satisfied by facts
     ///
     /// This method now reuses ConditionEvaluator for proper evaluation
@@ -366,7 +383,9 @@ impl DepthFirstSearch {
         // Parse goal pattern into a Condition and use ConditionEvaluator
         if let Some(condition) = self.parse_goal_pattern(&goal.pattern) {
             // Use RuleExecutor's evaluator (which delegates to ConditionEvaluator)
-            self.executor.evaluate_condition(&condition, facts).unwrap_or(false)
+            self.executor
+                .evaluate_condition(&condition, facts)
+                .unwrap_or(false)
         } else {
             false
         }
@@ -437,7 +456,7 @@ impl DepthFirstSearch {
 
         // String (quoted)
         if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
-            return Value::String(s[1..s.len()-1].to_string());
+            return Value::String(s[1..s.len() - 1].to_string());
         }
 
         // Number (float)
@@ -482,7 +501,11 @@ impl DepthFirstSearch {
                 // Try to prove this single condition
                 self.try_prove_single_condition(condition, facts, kb, depth)
             }
-            ConditionGroup::Compound { left, operator, right } => {
+            ConditionGroup::Compound {
+                left,
+                operator,
+                right,
+            } => {
                 // Handle AND/OR/NOT logic
                 use crate::types::LogicalOperator;
                 match operator {
@@ -502,11 +525,16 @@ impl DepthFirstSearch {
                     }
                 }
             }
-            ConditionGroup::Not(_) | ConditionGroup::Exists(_) | ConditionGroup::Forall(_) | ConditionGroup::Accumulate { .. } => {
+            ConditionGroup::Not(_)
+            | ConditionGroup::Exists(_)
+            | ConditionGroup::Forall(_)
+            | ConditionGroup::Accumulate { .. } => {
                 // Complex conditions (Not, Exists, Forall, Accumulate) cannot be proven backward;
                 // they can only be evaluated against current facts.
                 // Use the executor's condition evaluator to check them.
-                self.executor.evaluate_conditions(group, facts).unwrap_or(false)
+                self.executor
+                    .evaluate_conditions(group, facts)
+                    .unwrap_or(false)
             }
         }
     }
@@ -606,44 +634,44 @@ impl DepthFirstSearch {
     /// OLD: Recursive search without execution
     fn search_recursive(&mut self, goal: &mut Goal, depth: usize) -> bool {
         self.goals_explored += 1;
-        
+
         // Check depth limit
         if depth > self.max_depth {
             goal.status = GoalStatus::Unprovable;
             return false;
         }
-        
+
         // Check for cycles (goal already in progress)
         if goal.status == GoalStatus::InProgress {
             goal.status = GoalStatus::Unprovable;
             return false;
         }
-        
+
         // Mark as in progress to detect cycles
         goal.status = GoalStatus::InProgress;
         goal.depth = depth;
-        
+
         // Try each candidate rule
-        for rule_name in goal.candidate_rules.clone() {
+        if let Some(rule_name) = goal.candidate_rules.clone().into_iter().next() {
             self.path.push(rule_name.clone());
-            
+
             // Get the rule from knowledge base (via goal's stored rules)
             // In a full implementation with KB access:
             // 1. Get rule conditions
             // 2. Check if conditions match current facts
             // 3. If match, execute rule actions to derive new facts
             // 4. Mark goal as proven
-            
+
             // For backward chaining, we check:
             // - Can this rule's conclusion prove our goal?
             // - Are all rule conditions satisfied (recursively)?
-            
+
             // Since we found a candidate rule, assume it can prove the goal
             // The rule was added as candidate because its conclusion matches the goal
             goal.status = GoalStatus::Proven;
             return true;
         }
-        
+
         // Try to prove sub-goals
         for sub_goal in &mut goal.sub_goals {
             if !self.search_recursive(sub_goal, depth + 1) {
@@ -651,13 +679,13 @@ impl DepthFirstSearch {
                 return false;
             }
         }
-        
+
         // If we have no sub-goals and no candidate rules, unprovable
         if goal.sub_goals.is_empty() && goal.candidate_rules.is_empty() {
             goal.status = GoalStatus::Unprovable;
             return false;
         }
-        
+
         goal.status = GoalStatus::Proven;
         true
     }
@@ -681,18 +709,37 @@ pub struct IterativeDeepeningSearch {
 impl IterativeDeepeningSearch {
     /// Create a new iterative deepening search
     pub fn new(max_depth: usize, kb: KnowledgeBase) -> Self {
-        Self { max_depth, goals_explored: 0, kb, engine: None }
+        Self {
+            max_depth,
+            goals_explored: 0,
+            kb,
+            engine: None,
+        }
     }
 
     /// Create with optional IncrementalEngine for TMS integration
-    pub fn new_with_engine(max_depth: usize, kb: KnowledgeBase, engine: Option<Arc<Mutex<IncrementalEngine>>>) -> Self {
+    pub fn new_with_engine(
+        max_depth: usize,
+        kb: KnowledgeBase,
+        engine: Option<Arc<Mutex<IncrementalEngine>>>,
+    ) -> Self {
         // Store the engine so we can pass it to DFS instances
-        Self { max_depth, goals_explored: 0, kb, engine }
+        Self {
+            max_depth,
+            goals_explored: 0,
+            kb,
+            engine,
+        }
     }
 
     /// Search with execution: probe with increasing depth using non-executing DFS,
     /// then run a final executing DFS at the discovered depth to mutate facts.
-    pub fn search_with_execution(&mut self, root_goal: &mut Goal, facts: &mut Facts, kb: &KnowledgeBase) -> SearchResult {
+    pub fn search_with_execution(
+        &mut self,
+        root_goal: &mut Goal,
+        facts: &mut Facts,
+        kb: &KnowledgeBase,
+    ) -> SearchResult {
         self.goals_explored = 0;
         let mut cumulative_goals = 0usize;
 
@@ -708,7 +755,8 @@ impl IterativeDeepeningSearch {
             if probe_result.success {
                 // Found a depth where a proof exists; execute for real at this depth
                 let exec_kb = self.kb.clone();
-                let mut exec_dfs = DepthFirstSearch::new_with_engine(depth_limit, exec_kb, self.engine.clone());
+                let mut exec_dfs =
+                    DepthFirstSearch::new_with_engine(depth_limit, exec_kb, self.engine.clone());
                 let exec_result = exec_dfs.search_with_execution(root_goal, facts, kb);
                 // Aggregate explored goals
                 let mut final_result = exec_result;
@@ -755,15 +803,27 @@ impl BreadthFirstSearch {
     }
 
     /// Create BFS with optional engine for TMS integration
-    pub fn new_with_engine(max_depth: usize, kb: KnowledgeBase, engine: Option<Arc<Mutex<IncrementalEngine>>>) -> Self {
+    pub fn new_with_engine(
+        max_depth: usize,
+        kb: KnowledgeBase,
+        engine: Option<Arc<Mutex<IncrementalEngine>>>,
+    ) -> Self {
         // If engine provided, create inserter closure
         let inserter = engine.map(|eng| {
             let eng = eng.clone();
-            std::sync::Arc::new(move |fact_type: String, data: crate::rete::TypedFacts, rule_name: String, _premises: Vec<String>| {
-                if let Ok(mut e) = eng.lock() {
-                    let _ = e.insert_logical(fact_type, data, rule_name, Vec::new());
-                }
-            }) as std::sync::Arc<dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync>
+            std::sync::Arc::new(
+                move |fact_type: String,
+                      data: crate::rete::TypedFacts,
+                      rule_name: String,
+                      _premises: Vec<String>| {
+                    if let Ok(mut e) = eng.lock() {
+                        let _ = e.insert_logical(fact_type, data, rule_name, Vec::new());
+                    }
+                },
+            )
+                as std::sync::Arc<
+                    dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync,
+                >
         });
 
         Self {
@@ -772,9 +832,14 @@ impl BreadthFirstSearch {
             executor: RuleExecutor::new_with_inserter(kb, inserter),
         }
     }
-    
+
     /// Search for a proof of the goal using BFS WITH rule execution
-    pub fn search_with_execution(&mut self, root_goal: &mut Goal, facts: &mut Facts, kb: &KnowledgeBase) -> SearchResult {
+    pub fn search_with_execution(
+        &mut self,
+        root_goal: &mut Goal,
+        facts: &mut Facts,
+        kb: &KnowledgeBase,
+    ) -> SearchResult {
         self.goals_explored = 0;
         let mut queue = VecDeque::new();
         let mut path = Vec::new();
@@ -844,7 +909,7 @@ impl BreadthFirstSearch {
             solutions: Vec::new(),
         }
     }
-    
+
     /// Check if goal is already satisfied by facts
     ///
     /// This method now reuses ConditionEvaluator for proper evaluation
@@ -865,7 +930,9 @@ impl BreadthFirstSearch {
         // Parse goal pattern into a Condition and use ConditionEvaluator
         if let Some(condition) = self.parse_goal_pattern(&goal.pattern) {
             // Use RuleExecutor's evaluator (which delegates to ConditionEvaluator)
-            self.executor.evaluate_condition(&condition, facts).unwrap_or(false)
+            self.executor
+                .evaluate_condition(&condition, facts)
+                .unwrap_or(false)
         } else {
             false
         }
@@ -936,7 +1003,7 @@ impl BreadthFirstSearch {
 
         // String (quoted)
         if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
-            return Value::String(s[1..s.len()-1].to_string());
+            return Value::String(s[1..s.len() - 1].to_string());
         }
 
         // Number (float)
@@ -952,45 +1019,45 @@ impl BreadthFirstSearch {
         // Default to string
         Value::String(s.to_string())
     }
-    
+
     /// Search for a proof of the goal using BFS (old method, kept for compatibility)
     pub fn search(&mut self, root_goal: &mut Goal, _facts: &Facts) -> SearchResult {
         self.goals_explored = 0;
         let mut queue = VecDeque::new();
         let mut path = Vec::new();
         let mut max_depth = 0;
-        
+
         queue.push_back((root_goal as *mut Goal, 0));
-        
+
         while let Some((goal_ptr, depth)) = queue.pop_front() {
             // Safety: We maintain ownership properly
             let goal = unsafe { &mut *goal_ptr };
-            
+
             self.goals_explored += 1;
             max_depth = max_depth.max(depth);
-            
+
             if depth > self.max_depth {
                 continue;
             }
-            
+
             goal.depth = depth;
-            
+
             // Process candidate rules
             for rule_name in &goal.candidate_rules {
                 path.push(rule_name.clone());
             }
-            
+
             // Add sub-goals to queue
             for sub_goal in &mut goal.sub_goals {
                 queue.push_back((sub_goal as *mut Goal, depth + 1));
             }
-            
+
             // Check if goal can be proven
             if !goal.candidate_rules.is_empty() || goal.all_subgoals_proven() {
                 goal.status = GoalStatus::Proven;
             }
         }
-        
+
         let success = root_goal.is_proven();
 
         SearchResult {
@@ -1014,19 +1081,19 @@ mod tests {
         assert_eq!(SearchStrategy::DepthFirst, SearchStrategy::DepthFirst);
         assert_ne!(SearchStrategy::DepthFirst, SearchStrategy::BreadthFirst);
     }
-    
+
     #[test]
     fn test_search_result_creation() {
         let success = SearchResult::success(vec!["Rule1".to_string()], 5, 3);
         assert!(success.success);
         assert_eq!(success.path.len(), 1);
         assert_eq!(success.goals_explored, 5);
-        
+
         let failure = SearchResult::failure(10, 5);
         assert!(!failure.success);
         assert!(failure.path.is_empty());
     }
-    
+
     #[test]
     fn test_depth_first_search_creation() {
         let kb = KnowledgeBase::new("test");
@@ -1034,7 +1101,7 @@ mod tests {
         assert_eq!(dfs.max_depth, 10);
         assert_eq!(dfs.goals_explored, 0);
     }
-    
+
     #[test]
     fn test_depth_first_search_simple() {
         let kb = KnowledgeBase::new("test");
@@ -1050,7 +1117,7 @@ mod tests {
         assert!(goal.is_proven());
         assert!(result.goals_explored > 0);
     }
-    
+
     #[test]
     fn test_breadth_first_search() {
         let kb = KnowledgeBase::new("test");
@@ -1074,7 +1141,7 @@ mod tests {
         root.add_candidate_rule("TestRule".to_string());
 
         // Facts empty; DFS probe should succeed because candidate rules mark provable
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         let res = ids.search(&mut root, &facts);
         assert!(res.success);
     }
@@ -1177,7 +1244,10 @@ mod tests {
         };
 
         assert_eq!(result.bindings.len(), 2);
-        assert_eq!(result.bindings.get("X"), Some(&Value::String("test".to_string())));
+        assert_eq!(
+            result.bindings.get("X"),
+            Some(&Value::String("test".to_string()))
+        );
     }
 
     #[test]
@@ -1243,7 +1313,7 @@ mod tests {
 
         // Search succeeded with candidate rules
         assert!(result.success);
-        // Goals explored count is tracked
-        assert!(result.goals_explored >= 0);
+        // Goals explored count is tracked (always >= 0 since it's usize)
+        assert!(result.goals_explored > 0);
     }
 }

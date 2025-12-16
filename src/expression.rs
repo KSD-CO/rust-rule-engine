@@ -1,11 +1,11 @@
-///! Expression Evaluator
-///!
-///! This module provides runtime evaluation of arithmetic expressions
-///! similar to CLIPS (bind ?total (* ?quantity ?price))
+//! Expression Evaluator
+//!
+//! This module provides runtime evaluation of arithmetic expressions
+//! similar to CLIPS (bind ?total (* ?quantity ?price))
 
-use crate::types::Value;
-use crate::errors::{Result, RuleEngineError};
 use crate::engine::facts::Facts;
+use crate::errors::{Result, RuleEngineError};
+use crate::types::Value;
 
 /// Evaluate an arithmetic expression with field references
 /// Example: "Order.quantity * Order.price" with facts containing Order.quantity=10, Order.price=100
@@ -22,8 +22,8 @@ pub fn evaluate_expression(expr: &str, facts: &Facts) -> Result<Value> {
     // First pass: look for + or - (lowest precedence)
     if let Some(pos) = find_operator(expr, &['+', '-']) {
         let left = &expr[..pos].trim();
-        let op = &expr[pos..pos+1];
-        let right = &expr[pos+1..].trim();
+        let op = &expr[pos..pos + 1];
+        let right = &expr[pos + 1..].trim();
 
         let left_val = evaluate_expression(left, facts)?;
         let right_val = evaluate_expression(right, facts)?;
@@ -34,8 +34,8 @@ pub fn evaluate_expression(expr: &str, facts: &Facts) -> Result<Value> {
     // Second pass: look for *, /, % (higher precedence)
     if let Some(pos) = find_operator(expr, &['*', '/', '%']) {
         let left = &expr[..pos].trim();
-        let op = &expr[pos..pos+1];
-        let right = &expr[pos+1..].trim();
+        let op = &expr[pos..pos + 1];
+        let right = &expr[pos + 1..].trim();
 
         let left_val = evaluate_expression(left, facts)?;
         let right_val = evaluate_expression(right, facts)?;
@@ -125,11 +125,11 @@ fn value_to_number(value: &Value) -> Result<f64> {
     match value {
         Value::Integer(i) => Ok(*i as f64),
         Value::Number(n) => Ok(*n),
-        Value::String(s) => {
-            s.parse::<f64>().map_err(|_| RuleEngineError::EvaluationError {
+        Value::String(s) => s
+            .parse::<f64>()
+            .map_err(|_| RuleEngineError::EvaluationError {
                 message: format!("Cannot convert '{}' to number", s),
-            })
-        }
+            }),
         _ => Err(RuleEngineError::EvaluationError {
             message: format!("Cannot convert {:?} to number", value),
         }),
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_field_references() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("Order.quantity", Value::Integer(10));
         facts.set("Order.price", Value::Integer(100));
 
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_mixed_operations() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("a", Value::Integer(10));
         facts.set("b", Value::Integer(5));
         facts.set("c", Value::Integer(2));

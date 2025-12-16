@@ -8,10 +8,7 @@
 //!
 //! Run with: cargo run --example optimizer_demo --features backward-chaining
 
-use rust_rule_engine::backward::{
-    QueryOptimizer, OptimizerConfig, JoinOptimizer,
-    Goal,
-};
+use rust_rule_engine::backward::{Goal, JoinOptimizer, OptimizerConfig, QueryOptimizer};
 
 fn main() {
     println!("{}", "=".repeat(80));
@@ -68,7 +65,12 @@ fn demo_goal_reordering() {
     println!("Optimized goal order (most selective first):");
     for (i, goal) in optimized.iter().enumerate() {
         let selectivity = optimizer.estimate_selectivity(goal);
-        println!("  {}. {} (selectivity: {:.2})", i + 1, goal.pattern, selectivity);
+        println!(
+            "  {}. {} (selectivity: {:.2})",
+            i + 1,
+            goal.pattern,
+            selectivity
+        );
     }
     println!();
 
@@ -211,7 +213,10 @@ fn demo_optimization_stats() {
     println!("  Index selections: {}", stats.index_selections);
     println!("  Memoization hits: {}", stats.memoization_hits);
     println!("  Memoization misses: {}", stats.memoization_misses);
-    println!("  Cache hit rate: {:.1}%", stats.memoization_hit_rate() * 100.0);
+    println!(
+        "  Cache hit rate: {:.1}%",
+        stats.memoization_hit_rate() * 100.0
+    );
     println!();
 
     println!("Summary: {}", stats.summary());

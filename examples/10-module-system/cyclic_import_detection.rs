@@ -17,7 +17,7 @@
 //! 4. Valid chains that don't cycle
 //! 5. Diamond dependencies (multiple paths, no cycle)
 
-use rust_rule_engine::engine::module::{ModuleManager, ImportType, ExportList};
+use rust_rule_engine::engine::module::{ImportType, ModuleManager};
 
 fn main() {
     println!("=== Cyclic Import Detection Demo ===\n");
@@ -92,10 +92,14 @@ fn example_3_complex_cycle() {
     manager.create_module("CODEGEN").unwrap();
 
     println!("Building valid chain: COMPILER -> OPTIMIZER -> CODEGEN");
-    manager.import_from("COMPILER", "OPTIMIZER", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("COMPILER", "OPTIMIZER", ImportType::AllRules, "*")
+        .unwrap();
     println!("  ✓ COMPILER imports from OPTIMIZER");
 
-    manager.import_from("OPTIMIZER", "CODEGEN", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("OPTIMIZER", "CODEGEN", ImportType::AllRules, "*")
+        .unwrap();
     println!("  ✓ OPTIMIZER imports from CODEGEN");
 
     println!("\nAttempting to close the loop: CODEGEN -> COMPILER");
@@ -124,11 +128,15 @@ fn example_4_valid_chains() {
     println!("Building valid chain: SENSORS -> PROCESSOR -> ACTUATORS");
 
     println!("  SENSORS imports from PROCESSOR");
-    manager.import_from("SENSORS", "PROCESSOR", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("SENSORS", "PROCESSOR", ImportType::AllRules, "*")
+        .unwrap();
     println!("    ✓ Success");
 
     println!("  PROCESSOR imports from ACTUATORS");
-    manager.import_from("PROCESSOR", "ACTUATORS", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("PROCESSOR", "ACTUATORS", ImportType::AllRules, "*")
+        .unwrap();
     println!("    ✓ Success");
 
     println!("\nAll imports successful (no cycles detected)!");
@@ -153,11 +161,15 @@ fn example_5_diamond_dependency() {
     println!("Building diamond: SERVICE_A -> CORE <- SERVICE_B\n");
 
     println!("  SERVICE_A imports from CORE");
-    manager.import_from("SERVICE_A", "CORE", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("SERVICE_A", "CORE", ImportType::AllRules, "*")
+        .unwrap();
     println!("    ✓ Success");
 
     println!("  SERVICE_B imports from CORE");
-    manager.import_from("SERVICE_B", "CORE", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("SERVICE_B", "CORE", ImportType::AllRules, "*")
+        .unwrap();
     println!("    ✓ Success");
 
     println!("\n  SERVICE_A imports from SERVICE_B (allowed, no cycle)");
@@ -198,27 +210,39 @@ fn example_6_real_world_system() {
 
     // Valid architecture
     println!("Layer 1: SENSORS imports from HARDWARE_DRIVERS");
-    manager.import_from("SENSORS", "HARDWARE_DRIVERS", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("SENSORS", "HARDWARE_DRIVERS", ImportType::AllRules, "*")
+        .unwrap();
     println!("  ✓ Success\n");
 
     println!("Layer 2: CONTROL_LOGIC imports from SENSORS");
-    manager.import_from("CONTROL_LOGIC", "SENSORS", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("CONTROL_LOGIC", "SENSORS", ImportType::AllRules, "*")
+        .unwrap();
     println!("  ✓ Success\n");
 
     println!("Layer 3: AUTOMATION imports from CONTROL_LOGIC");
-    manager.import_from("AUTOMATION", "CONTROL_LOGIC", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("AUTOMATION", "CONTROL_LOGIC", ImportType::AllRules, "*")
+        .unwrap();
     println!("  ✓ Success\n");
 
     println!("Layer 4: FEEDBACK imports from AUTOMATION");
-    manager.import_from("FEEDBACK", "AUTOMATION", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("FEEDBACK", "AUTOMATION", ImportType::AllRules, "*")
+        .unwrap();
     println!("  ✓ Success\n");
 
     println!("Utility: CONTROL_LOGIC also imports from UTILITIES");
-    manager.import_from("CONTROL_LOGIC", "UTILITIES", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("CONTROL_LOGIC", "UTILITIES", ImportType::AllRules, "*")
+        .unwrap();
     println!("  ✓ Success\n");
 
     println!("Utility: AUTOMATION also imports from UTILITIES");
-    manager.import_from("AUTOMATION", "UTILITIES", ImportType::AllRules, "*").unwrap();
+    manager
+        .import_from("AUTOMATION", "UTILITIES", ImportType::AllRules, "*")
+        .unwrap();
     println!("  ✓ Success\n");
 
     println!("Attempting invalid feedback loop: FEEDBACK -> SENSORS");
@@ -228,7 +252,7 @@ fn example_6_real_world_system() {
     }
 
     println!("Module import graph:");
-    println!("{}","─".repeat(60));
+    println!("{}", "─".repeat(60));
     let mut modules: Vec<_> = manager.get_import_graph_debug().into_iter().collect();
     modules.sort_by(|a, b| a.0.cmp(&b.0));
 

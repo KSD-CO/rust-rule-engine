@@ -8,8 +8,8 @@
 //! - Lock-on-active: Prevent re-activation during rule firing
 //! - Conflict Resolution Strategies: Multiple ordering strategies
 
-use std::collections::{HashMap, HashSet, BinaryHeap};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 /// Conflict Resolution Strategy
 ///
@@ -210,7 +210,9 @@ impl AdvancedAgenda {
             next_id: 0,
             strategy: ConflictResolutionStrategy::Salience, // Default strategy
         };
-        agenda.activations.insert("MAIN".to_string(), BinaryHeap::new());
+        agenda
+            .activations
+            .insert("MAIN".to_string(), BinaryHeap::new());
         agenda
     }
 
@@ -236,11 +238,9 @@ impl AdvancedAgenda {
         match strategy {
             ConflictResolutionStrategy::Salience => {
                 // Default: sort by salience (higher first), then by recency
-                activations.sort_by(|a, b| {
-                    match b.salience.cmp(&a.salience) {
-                        Ordering::Equal => b.created_at.cmp(&a.created_at),
-                        other => other,
-                    }
+                activations.sort_by(|a, b| match b.salience.cmp(&a.salience) {
+                    Ordering::Equal => b.created_at.cmp(&a.created_at),
+                    other => other,
                 });
             }
             ConflictResolutionStrategy::LEX => {
@@ -249,47 +249,37 @@ impl AdvancedAgenda {
             }
             ConflictResolutionStrategy::MEA => {
                 // Recency + Specificity: recent first, then more conditions
-                activations.sort_by(|a, b| {
-                    match b.created_at.cmp(&a.created_at) {
-                        Ordering::Equal => b.condition_count.cmp(&a.condition_count),
-                        other => other,
-                    }
+                activations.sort_by(|a, b| match b.created_at.cmp(&a.created_at) {
+                    Ordering::Equal => b.condition_count.cmp(&a.condition_count),
+                    other => other,
                 });
             }
             ConflictResolutionStrategy::Depth => {
                 // Depth-first: same as salience (handled in fire loop)
-                activations.sort_by(|a, b| {
-                    match b.salience.cmp(&a.salience) {
-                        Ordering::Equal => b.created_at.cmp(&a.created_at),
-                        other => other,
-                    }
+                activations.sort_by(|a, b| match b.salience.cmp(&a.salience) {
+                    Ordering::Equal => b.created_at.cmp(&a.created_at),
+                    other => other,
                 });
             }
             ConflictResolutionStrategy::Breadth => {
                 // Breadth-first: same as salience (default behavior)
-                activations.sort_by(|a, b| {
-                    match b.salience.cmp(&a.salience) {
-                        Ordering::Equal => b.created_at.cmp(&a.created_at),
-                        other => other,
-                    }
+                activations.sort_by(|a, b| match b.salience.cmp(&a.salience) {
+                    Ordering::Equal => b.created_at.cmp(&a.created_at),
+                    other => other,
                 });
             }
             ConflictResolutionStrategy::Simplicity => {
                 // Simpler rules (fewer conditions) first
-                activations.sort_by(|a, b| {
-                    match a.condition_count.cmp(&b.condition_count) {
-                        Ordering::Equal => b.created_at.cmp(&a.created_at),
-                        other => other,
-                    }
+                activations.sort_by(|a, b| match a.condition_count.cmp(&b.condition_count) {
+                    Ordering::Equal => b.created_at.cmp(&a.created_at),
+                    other => other,
                 });
             }
             ConflictResolutionStrategy::Complexity => {
                 // More complex rules (more conditions) first
-                activations.sort_by(|a, b| {
-                    match b.condition_count.cmp(&a.condition_count) {
-                        Ordering::Equal => b.created_at.cmp(&a.created_at),
-                        other => other,
-                    }
+                activations.sort_by(|a, b| match b.condition_count.cmp(&a.condition_count) {
+                    Ordering::Equal => b.created_at.cmp(&a.created_at),
+                    other => other,
                 });
             }
             ConflictResolutionStrategy::Random => {
@@ -327,7 +317,7 @@ impl AdvancedAgenda {
         // Add to appropriate agenda group
         self.activations
             .entry(activation.agenda_group.clone())
-            .or_insert_with(BinaryHeap::new)
+            .or_default()
             .push(activation);
     }
 
@@ -343,7 +333,9 @@ impl AdvancedAgenda {
                     }
 
                     // Check lock-on-active
-                    if activation.lock_on_active && self.locked_groups.contains(&activation.agenda_group) {
+                    if activation.lock_on_active
+                        && self.locked_groups.contains(&activation.agenda_group)
+                    {
                         continue;
                     }
 
@@ -403,7 +395,8 @@ impl AdvancedAgenda {
     /// Clear all agenda groups
     pub fn clear(&mut self) {
         self.activations.clear();
-        self.activations.insert("MAIN".to_string(), BinaryHeap::new());
+        self.activations
+            .insert("MAIN".to_string(), BinaryHeap::new());
         self.focus = "MAIN".to_string();
         self.focus_stack.clear();
         self.fired_rules.clear();
@@ -499,10 +492,10 @@ mod tests {
     fn test_activation_groups() {
         let mut agenda = AdvancedAgenda::new();
 
-        let act1 = Activation::new("Rule1".to_string(), 10)
-            .with_activation_group("group1".to_string());
-        let act2 = Activation::new("Rule2".to_string(), 20)
-            .with_activation_group("group1".to_string());
+        let act1 =
+            Activation::new("Rule1".to_string(), 10).with_activation_group("group1".to_string());
+        let act2 =
+            Activation::new("Rule2".to_string(), 20).with_activation_group("group1".to_string());
 
         agenda.add_activation(act1);
         agenda.add_activation(act2);
@@ -520,10 +513,10 @@ mod tests {
     fn test_agenda_groups() {
         let mut agenda = AdvancedAgenda::new();
 
-        let act1 = Activation::new("Rule1".to_string(), 10)
-            .with_agenda_group("group_a".to_string());
-        let act2 = Activation::new("Rule2".to_string(), 20)
-            .with_agenda_group("group_b".to_string());
+        let act1 =
+            Activation::new("Rule1".to_string(), 10).with_agenda_group("group_a".to_string());
+        let act2 =
+            Activation::new("Rule2".to_string(), 20).with_agenda_group("group_b".to_string());
 
         agenda.add_activation(act1);
         agenda.add_activation(act2);
@@ -555,8 +548,7 @@ mod tests {
     fn test_ruleflow_groups() {
         let mut agenda = AdvancedAgenda::new();
 
-        let act = Activation::new("Rule1".to_string(), 10)
-            .with_ruleflow_group("flow1".to_string());
+        let act = Activation::new("Rule1".to_string(), 10).with_ruleflow_group("flow1".to_string());
 
         // Without activating ruleflow group, activation is not added
         agenda.add_activation(act.clone());

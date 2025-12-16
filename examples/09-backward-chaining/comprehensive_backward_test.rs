@@ -16,11 +16,13 @@
 
 use rust_rule_engine::backward::*;
 use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
+use rust_rule_engine::rete::propagation::IncrementalEngine;
 use rust_rule_engine::types::{ActionType, LogicalOperator, Operator, Value};
 use rust_rule_engine::{Facts, KnowledgeBase};
-use rust_rule_engine::rete::propagation::IncrementalEngine;
 use std::sync::{Arc, Mutex};
 
+#[allow(unused_must_use)]
+#[allow(unused_variables)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🧪 COMPREHENSIVE BACKWARD CHAINING TEST");
     println!("======================================\n");
@@ -50,7 +52,7 @@ fn test_1_basic_goal_proving() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 1: Basic Goal Proving");
     println!("-----------------------------");
 
-    let mut kb = KnowledgeBase::new("test1");
+    let kb = KnowledgeBase::new("test1");
 
     // Rule: If User.Points > 1000, then User.IsVIP = true
     kb.add_rule(Rule::new(
@@ -74,8 +76,10 @@ fn test_1_basic_goal_proving() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(result.provable, "✗ Basic goal should be provable");
     println!("✓ Goal proven: User.IsVIP == true");
-    println!("✓ Stats: {} goals explored, {} rules evaluated\n",
-             result.stats.goals_explored, result.stats.rules_evaluated);
+    println!(
+        "✓ Stats: {} goals explored, {} rules evaluated\n",
+        result.stats.goals_explored, result.stats.rules_evaluated
+    );
 
     Ok(())
 }
@@ -85,7 +89,7 @@ fn test_2_search_strategies() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 2: Search Strategies (DFS, BFS, Iterative)");
     println!("--------------------------------------------------");
 
-    let mut kb = KnowledgeBase::new("test2");
+    let kb = KnowledgeBase::new("test2");
 
     // Chain of 3 rules
     kb.add_rule(Rule::new(
@@ -127,7 +131,7 @@ fn test_2_search_strategies() -> Result<(), Box<dyn std::error::Error>> {
         }],
     ));
 
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     facts.set("A", Value::Boolean(true));
 
     // Test Depth-First Search
@@ -140,7 +144,10 @@ fn test_2_search_strategies() -> Result<(), Box<dyn std::error::Error>> {
     let mut engine_dfs = BackwardEngine::with_config(kb.clone(), config_dfs);
     let result_dfs = engine_dfs.query("D == true", &mut facts.clone())?;
     assert!(result_dfs.provable, "✗ DFS should prove goal");
-    println!("✓ Depth-First Search: proven ({} goals explored)", result_dfs.stats.goals_explored);
+    println!(
+        "✓ Depth-First Search: proven ({} goals explored)",
+        result_dfs.stats.goals_explored
+    );
 
     // Test Breadth-First Search
     let config_bfs = BackwardConfig {
@@ -152,7 +159,10 @@ fn test_2_search_strategies() -> Result<(), Box<dyn std::error::Error>> {
     let mut engine_bfs = BackwardEngine::with_config(kb.clone(), config_bfs);
     let result_bfs = engine_bfs.query("D == true", &mut facts.clone())?;
     assert!(result_bfs.provable, "✗ BFS should prove goal");
-    println!("✓ Breadth-First Search: proven ({} goals explored)", result_bfs.stats.goals_explored);
+    println!(
+        "✓ Breadth-First Search: proven ({} goals explored)",
+        result_bfs.stats.goals_explored
+    );
 
     // Test Iterative Deepening
     let config_ids = BackwardConfig {
@@ -163,8 +173,14 @@ fn test_2_search_strategies() -> Result<(), Box<dyn std::error::Error>> {
     };
     let mut engine_ids = BackwardEngine::with_config(kb.clone(), config_ids);
     let result_ids = engine_ids.query("D == true", &mut facts.clone())?;
-    assert!(result_ids.provable, "✗ Iterative Deepening should prove goal");
-    println!("✓ Iterative Deepening: proven ({} goals explored)\n", result_ids.stats.goals_explored);
+    assert!(
+        result_ids.provable,
+        "✗ Iterative Deepening should prove goal"
+    );
+    println!(
+        "✓ Iterative Deepening: proven ({} goals explored)\n",
+        result_ids.stats.goals_explored
+    );
 
     Ok(())
 }
@@ -174,7 +190,7 @@ fn test_3_complex_conditions() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 3: Complex Conditions (AND, OR, NOT)");
     println!("--------------------------------------------");
 
-    let mut kb = KnowledgeBase::new("test3");
+    let kb = KnowledgeBase::new("test3");
 
     // Rule with AND condition
     let and_condition = ConditionGroup::Compound {
@@ -249,7 +265,7 @@ fn test_4_rule_chaining() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 4: Multi-Level Rule Chaining");
     println!("------------------------------------");
 
-    let mut kb = KnowledgeBase::new("test4");
+    let kb = KnowledgeBase::new("test4");
 
     // Level 1: Points -> Bronze
     kb.add_rule(Rule::new(
@@ -298,7 +314,10 @@ fn test_4_rule_chaining() -> Result<(), Box<dyn std::error::Error>> {
     facts.set("User.Points", Value::Number(150.0));
 
     let result = engine.query("User.HasSpecialOffer == true", &mut facts)?;
-    assert!(result.provable, "✗ Should prove goal through 3-level chaining");
+    assert!(
+        result.provable,
+        "✗ Should prove goal through 3-level chaining"
+    );
     println!("✓ 3-level rule chaining successful:");
     println!("  Points(150) -> Bronze -> Discount(10) -> SpecialOffer");
     println!("  Rules evaluated: {}\n", result.stats.rules_evaluated);
@@ -311,7 +330,7 @@ fn test_5_function_calls() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 5: Built-in Function Calls");
     println!("----------------------------------");
 
-    let mut kb = KnowledgeBase::new("test5");
+    let kb = KnowledgeBase::new("test5");
 
     // Function: len()
     kb.add_rule(Rule::new(
@@ -353,7 +372,10 @@ fn test_5_function_calls() -> Result<(), Box<dyn std::error::Error>> {
     println!("✓ len() function: 'Alexander'.len() = 9 > 5");
 
     // Test isEmpty()
-    facts.set("Product.Description", Value::String("Great product".to_string()));
+    facts.set(
+        "Product.Description",
+        Value::String("Great product".to_string()),
+    );
     let result = engine.query("Product.HasDescription == true", &mut facts)?;
     assert!(result.provable, "✗ isEmpty() function should work");
     println!("✓ isEmpty() function: Description is not empty\n");
@@ -366,7 +388,7 @@ fn test_6_grl_query_syntax() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 6: GRL Query Syntax");
     println!("--------------------------");
 
-    let mut kb = KnowledgeBase::new("test6");
+    let kb = KnowledgeBase::new("test6");
 
     kb.add_rule(Rule::new(
         "VIPCheck".to_string(),
@@ -438,8 +460,14 @@ fn test_7_action_handlers() -> Result<(), Box<dyn std::error::Error>> {
     let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
 
     assert!(!result.provable, "✗ Query should fail (no rules)");
-    assert!(!result.missing_facts.is_empty(), "✗ Should have missing facts");
-    assert_eq!(facts.get("Result.Status"), Some(Value::String("missing".to_string())));
+    assert!(
+        !result.missing_facts.is_empty(),
+        "✗ Should have missing facts"
+    );
+    assert_eq!(
+        facts.get("Result.Status"),
+        Some(Value::String("missing".to_string()))
+    );
     println!("✓ on-missing handler executed (goal unprovable, missing facts)");
     println!("✓ Missing: {:?}\n", result.missing_facts);
 
@@ -489,7 +517,7 @@ fn test_9_memoization() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 9: Memoization/Caching");
     println!("------------------------------");
 
-    let mut kb = KnowledgeBase::new("test9");
+    let kb = KnowledgeBase::new("test9");
 
     kb.add_rule(Rule::new(
         "SimpleRule".to_string(),
@@ -523,8 +551,14 @@ fn test_9_memoization() -> Result<(), Box<dyn std::error::Error>> {
     let result2 = engine.query("Y == true", &mut facts)?;
     let explored2 = result2.stats.goals_explored;
 
-    assert!(result1.provable && result2.provable, "✗ Both queries should succeed");
-    assert_eq!(explored2, 0, "✗ Second query should be cached (0 goals explored)");
+    assert!(
+        result1.provable && result2.provable,
+        "✗ Both queries should succeed"
+    );
+    assert_eq!(
+        explored2, 0,
+        "✗ Second query should be cached (0 goals explored)"
+    );
     println!("✓ First query: {} goals explored", explored1);
     println!("✓ Second query: {} goals explored (cached!)\n", explored2);
 
@@ -536,7 +570,7 @@ fn test_10_tms_integration() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 10: TMS Integration (Logical Facts)");
     println!("-------------------------------------------");
 
-    let mut kb = KnowledgeBase::new("test10");
+    let kb = KnowledgeBase::new("test10");
 
     kb.add_rule(Rule::new(
         "DeriveFact".to_string(),
@@ -577,7 +611,7 @@ fn test_11_missing_facts_detection() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 11: Missing Facts Detection");
     println!("-----------------------------------");
 
-    let mut kb = KnowledgeBase::new("test11");
+    let kb = KnowledgeBase::new("test11");
 
     // Rule that requires specific facts
     kb.add_rule(Rule::new(
@@ -608,8 +642,14 @@ fn test_11_missing_facts_detection() -> Result<(), Box<dyn std::error::Error>> {
 
     let result = engine.query("Output.Result == true", &mut facts)?;
 
-    assert!(!result.provable, "✗ Should not be provable (missing Input.B)");
-    assert!(!result.missing_facts.is_empty(), "✗ Should report missing facts");
+    assert!(
+        !result.provable,
+        "✗ Should not be provable (missing Input.B)"
+    );
+    assert!(
+        !result.missing_facts.is_empty(),
+        "✗ Should report missing facts"
+    );
     println!("✓ Detected missing facts:");
     for missing in &result.missing_facts {
         println!("  - {}", missing);
@@ -624,7 +664,7 @@ fn test_12_proof_traces() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Test 12: Proof Traces");
     println!("-----------------------");
 
-    let mut kb = KnowledgeBase::new("test12");
+    let kb = KnowledgeBase::new("test12");
 
     kb.add_rule(Rule::new(
         "Step1".to_string(),
@@ -661,7 +701,10 @@ fn test_12_proof_traces() -> Result<(), Box<dyn std::error::Error>> {
     assert!(result.provable, "✗ Should prove goal");
     println!("✓ Proof trace generated:");
     println!("  Goal: {}", result.proof_trace.goal);
-    println!("  Steps: {} reasoning steps", result.proof_trace.steps.len());
+    println!(
+        "  Steps: {} reasoning steps",
+        result.proof_trace.steps.len()
+    );
     for (i, step) in result.proof_trace.steps.iter().enumerate() {
         println!("    {}. {:?}", i + 1, step);
     }

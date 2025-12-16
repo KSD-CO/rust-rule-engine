@@ -1,13 +1,13 @@
 #![cfg(feature = "backward-chaining")]
 
-use rust_rule_engine::rete::propagation::IncrementalEngine;
-use rust_rule_engine::engine::rule::Rule;
+use rust_rule_engine::backward::BackwardEngine;
 use rust_rule_engine::engine::rule::Condition;
 use rust_rule_engine::engine::rule::ConditionGroup;
-use rust_rule_engine::types::{ActionType, Value, Operator};
-use rust_rule_engine::backward::BackwardEngine;
-use rust_rule_engine::KnowledgeBase;
+use rust_rule_engine::engine::rule::Rule;
+use rust_rule_engine::rete::propagation::IncrementalEngine;
+use rust_rule_engine::types::{ActionType, Operator, Value};
 use rust_rule_engine::Facts;
+use rust_rule_engine::KnowledgeBase;
 use std::sync::{Arc, Mutex};
 
 #[test]
@@ -18,18 +18,32 @@ fn backward_derives_logical_fact_and_cascade_retracts() {
     let mut rete = IncrementalEngine::new();
 
     // Rule A: MarkAdult
-    let cond_a = Condition::new("Person.age".to_string(), Operator::GreaterThanOrEqual, Value::Integer(18));
+    let cond_a = Condition::new(
+        "Person.age".to_string(),
+        Operator::GreaterThanOrEqual,
+        Value::Integer(18),
+    );
     let conditions_a = ConditionGroup::Single(cond_a);
-    let actions_a = vec![ActionType::Set { field: "Person.Adult".to_string(), value: Value::Boolean(true) }];
+    let actions_a = vec![ActionType::Set {
+        field: "Person.Adult".to_string(),
+        value: Value::Boolean(true),
+    }];
     let rule_a = Rule::new("MarkAdult".to_string(), conditions_a, actions_a);
 
     // Rule B: CanVote if Adult
-    let cond_b = Condition::new("Person.Adult".to_string(), Operator::Equal, Value::Boolean(true));
+    let cond_b = Condition::new(
+        "Person.Adult".to_string(),
+        Operator::Equal,
+        Value::Boolean(true),
+    );
     let conditions_b = ConditionGroup::Single(cond_b);
-    let actions_b = vec![ActionType::Set { field: "Person.CanVote".to_string(), value: Value::Boolean(true) }];
+    let actions_b = vec![ActionType::Set {
+        field: "Person.CanVote".to_string(),
+        value: Value::Boolean(true),
+    }];
     let rule_b = Rule::new("MarkCanVote".to_string(), conditions_b, actions_b);
 
-    let mut kb = KnowledgeBase::new("test_kb");
+    let kb = KnowledgeBase::new("test_kb");
     let _ = kb.add_rule(rule_a);
     let _ = kb.add_rule(rule_b);
 
@@ -49,34 +63,53 @@ fn backward_derives_logical_fact_and_cascade_retracts() {
     // Log working memory before query
     {
         let r = rete_arc.lock().unwrap();
-        println!("[TEST LOG] Working memory before backward query: {:#?}", r.working_memory().stats());
+        println!(
+            "[TEST LOG] Working memory before backward query: {:#?}",
+            r.working_memory().stats()
+        );
     }
 
     // Run backward query for Person.CanVote == true (should chain through MarkAdult -> MarkCanVote)
     println!("[TEST LOG] Running backward query for Person.CanVote == true");
-    let result = back.query_with_rete_engine("Person.CanVote == true", &mut facts, Some(rete_arc.clone()));
+    let result =
+        back.query_with_rete_engine("Person.CanVote == true", &mut facts, Some(rete_arc.clone()));
     assert!(result.is_ok());
     let qr = result.unwrap();
-    assert!(qr.provable, "Backward query should be provable and insert logical facts");
+    assert!(
+        qr.provable,
+        "Backward query should be provable and insert logical facts"
+    );
 
     // Log working memory after query (logical facts should be present)
     {
         let r = rete_arc.lock().unwrap();
-        println!("[TEST LOG] Working memory after backward query: {:#?}", r.working_memory().stats());
+        println!(
+            "[TEST LOG] Working memory after backward query: {:#?}",
+            r.working_memory().stats()
+        );
         // Show all Person facts and their fields
         let facts_of_type = r.working_memory().get_by_type("Person");
         println!("[TEST LOG] Person facts in working memory (post-insert):");
         for f in &facts_of_type {
-            println!("  Handle: {:?}, data: {:?}, retracted: {}", f.handle, f.data, f.metadata.retracted);
+            println!(
+                "  Handle: {:?}, data: {:?}, retracted: {}",
+                f.handle, f.data, f.metadata.retracted
+            );
         }
     }
 
     // Now retract the explicit premise; the logical derived facts should cascade out
-    println!("[TEST LOG] Retracting the explicit premise handle: {:?}", premise_handle);
+    println!(
+        "[TEST LOG] Retracting the explicit premise handle: {:?}",
+        premise_handle
+    );
     {
         let mut r = rete_arc.lock().unwrap();
         let _ = r.retract(premise_handle);
-        println!("[TEST LOG] Retracted premise. Working memory now: {:#?}", r.working_memory().stats());
+        println!(
+            "[TEST LOG] Retracted premise. Working memory now: {:#?}",
+            r.working_memory().stats()
+        );
     }
 
     // After retract, logical facts should be gone. Check working memory for any Person.CanVote true
@@ -93,7 +126,10 @@ fn backward_derives_logical_fact_and_cascade_retracts() {
         }
     }
 
-    assert!(!found_canvote, "Logical derived fact Person.CanVote should have been retracted after premise removed");
+    assert!(
+        !found_canvote,
+        "Logical derived fact Person.CanVote should have been retracted after premise removed"
+    );
 }
 
 #[test]
@@ -103,31 +139,56 @@ fn backward_complex_multi_level_reasoning() {
 
     // Level 1: Basic fact
     // Level 2: If User.Points > 100 then User.HasPoints = true
-    let cond1 = Condition::new("User.Points".to_string(), Operator::GreaterThan, Value::Number(100.0));
+    let cond1 = Condition::new(
+        "User.Points".to_string(),
+        Operator::GreaterThan,
+        Value::Number(100.0),
+    );
     let rule1 = Rule::new(
         "HasPointsRule".to_string(),
         ConditionGroup::Single(cond1),
-        vec![ActionType::Set { field: "User.HasPoints".to_string(), value: Value::Boolean(true) }]
+        vec![ActionType::Set {
+            field: "User.HasPoints".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
 
     // Level 3: If User.HasPoints == true && User.Active == true then User.Eligible = true
-    let cond2a = Condition::new("User.HasPoints".to_string(), Operator::Equal, Value::Boolean(true));
-    let cond2b = Condition::new("User.Active".to_string(), Operator::Equal, Value::Boolean(true));
+    let cond2a = Condition::new(
+        "User.HasPoints".to_string(),
+        Operator::Equal,
+        Value::Boolean(true),
+    );
+    let cond2b = Condition::new(
+        "User.Active".to_string(),
+        Operator::Equal,
+        Value::Boolean(true),
+    );
     let rule2 = Rule::new(
         "EligibleRule".to_string(),
         ConditionGroup::and(
             ConditionGroup::Single(cond2a),
             ConditionGroup::Single(cond2b),
         ),
-        vec![ActionType::Set { field: "User.Eligible".to_string(), value: Value::Boolean(true) }]
+        vec![ActionType::Set {
+            field: "User.Eligible".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
 
     // Level 4: If User.Eligible == true then User.IsVIP = true
-    let cond3 = Condition::new("User.Eligible".to_string(), Operator::Equal, Value::Boolean(true));
+    let cond3 = Condition::new(
+        "User.Eligible".to_string(),
+        Operator::Equal,
+        Value::Boolean(true),
+    );
     let rule3 = Rule::new(
         "VIPRule".to_string(),
         ConditionGroup::Single(cond3),
-        vec![ActionType::Set { field: "User.IsVIP".to_string(), value: Value::Boolean(true) }]
+        vec![ActionType::Set {
+            field: "User.IsVIP".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
 
     let _ = kb.add_rule(rule1);
@@ -143,7 +204,10 @@ fn backward_complex_multi_level_reasoning() {
     let result = engine.query("User.IsVIP == true", &mut facts);
     assert!(result.is_ok());
     let qr = result.unwrap();
-    assert!(qr.provable, "Should prove User.IsVIP through multi-level reasoning");
+    assert!(
+        qr.provable,
+        "Should prove User.IsVIP through multi-level reasoning"
+    );
 }
 
 #[test]
@@ -152,15 +216,23 @@ fn backward_with_multiple_or_conditions() {
     let kb = KnowledgeBase::new("or_kb");
 
     // Rule: If (User.Premium == true OR User.Points > 500) then User.SpecialAccess = true
-    let cond1 = Condition::new("User.Premium".to_string(), Operator::Equal, Value::Boolean(true));
-    let cond2 = Condition::new("User.Points".to_string(), Operator::GreaterThan, Value::Number(500.0));
+    let cond1 = Condition::new(
+        "User.Premium".to_string(),
+        Operator::Equal,
+        Value::Boolean(true),
+    );
+    let cond2 = Condition::new(
+        "User.Points".to_string(),
+        Operator::GreaterThan,
+        Value::Number(500.0),
+    );
     let rule = Rule::new(
         "SpecialAccessRule".to_string(),
-        ConditionGroup::or(
-            ConditionGroup::Single(cond1),
-            ConditionGroup::Single(cond2),
-        ),
-        vec![ActionType::Set { field: "User.SpecialAccess".to_string(), value: Value::Boolean(true) }]
+        ConditionGroup::or(ConditionGroup::Single(cond1), ConditionGroup::Single(cond2)),
+        vec![ActionType::Set {
+            field: "User.SpecialAccess".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
 
     let _ = kb.add_rule(rule);
@@ -173,7 +245,10 @@ fn backward_with_multiple_or_conditions() {
 
     let result1 = engine.query("User.SpecialAccess == true", &mut facts1);
     assert!(result1.is_ok());
-    assert!(result1.unwrap().provable, "Premium user should have special access");
+    assert!(
+        result1.unwrap().provable,
+        "Premium user should have special access"
+    );
 
     // Test scenario 2: High points user
     let mut facts2 = Facts::new();
@@ -182,7 +257,10 @@ fn backward_with_multiple_or_conditions() {
 
     let result2 = engine.query("User.SpecialAccess == true", &mut facts2);
     assert!(result2.is_ok());
-    assert!(result2.unwrap().provable, "High points user should have special access");
+    assert!(
+        result2.unwrap().provable,
+        "High points user should have special access"
+    );
 }
 
 #[test]
@@ -191,15 +269,23 @@ fn backward_missing_facts_detection() {
     let kb = KnowledgeBase::new("missing_kb");
 
     // Rule needs User.Age and User.Country
-    let cond1 = Condition::new("User.Age".to_string(), Operator::GreaterThanOrEqual, Value::Integer(18));
-    let cond2 = Condition::new("User.Country".to_string(), Operator::Equal, Value::String("US".to_string()));
+    let cond1 = Condition::new(
+        "User.Age".to_string(),
+        Operator::GreaterThanOrEqual,
+        Value::Integer(18),
+    );
+    let cond2 = Condition::new(
+        "User.Country".to_string(),
+        Operator::Equal,
+        Value::String("US".to_string()),
+    );
     let rule = Rule::new(
         "CanRegisterRule".to_string(),
-        ConditionGroup::and(
-            ConditionGroup::Single(cond1),
-            ConditionGroup::Single(cond2),
-        ),
-        vec![ActionType::Set { field: "User.CanRegister".to_string(), value: Value::Boolean(true) }]
+        ConditionGroup::and(ConditionGroup::Single(cond1), ConditionGroup::Single(cond2)),
+        vec![ActionType::Set {
+            field: "User.CanRegister".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
 
     let _ = kb.add_rule(rule);
@@ -214,8 +300,10 @@ fn backward_missing_facts_detection() {
     let qr = result.unwrap();
 
     // Should not be provable due to missing facts
-    assert!(!qr.provable || !qr.missing_facts.is_empty(),
-        "Should identify missing facts or fail to prove");
+    assert!(
+        !qr.provable || !qr.missing_facts.is_empty(),
+        "Should identify missing facts or fail to prove"
+    );
 }
 
 #[test]
@@ -224,15 +312,23 @@ fn backward_with_numeric_comparisons() {
     let kb = KnowledgeBase::new("numeric_kb");
 
     // Rule: If Order.Total >= 100 && Order.Items < 10 then Order.QualifiesForDiscount = true
-    let cond1 = Condition::new("Order.Total".to_string(), Operator::GreaterThanOrEqual, Value::Number(100.0));
-    let cond2 = Condition::new("Order.Items".to_string(), Operator::LessThan, Value::Integer(10));
+    let cond1 = Condition::new(
+        "Order.Total".to_string(),
+        Operator::GreaterThanOrEqual,
+        Value::Number(100.0),
+    );
+    let cond2 = Condition::new(
+        "Order.Items".to_string(),
+        Operator::LessThan,
+        Value::Integer(10),
+    );
     let rule = Rule::new(
         "DiscountRule".to_string(),
-        ConditionGroup::and(
-            ConditionGroup::Single(cond1),
-            ConditionGroup::Single(cond2),
-        ),
-        vec![ActionType::Set { field: "Order.QualifiesForDiscount".to_string(), value: Value::Boolean(true) }]
+        ConditionGroup::and(ConditionGroup::Single(cond1), ConditionGroup::Single(cond2)),
+        vec![ActionType::Set {
+            field: "Order.QualifiesForDiscount".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
 
     let _ = kb.add_rule(rule);
@@ -245,7 +341,10 @@ fn backward_with_numeric_comparisons() {
 
     let result1 = engine.query("Order.QualifiesForDiscount == true", &mut facts1);
     assert!(result1.is_ok());
-    assert!(result1.unwrap().provable, "Order should qualify for discount");
+    assert!(
+        result1.unwrap().provable,
+        "Order should qualify for discount"
+    );
 
     // Test failing case (too many items)
     let mut facts2 = Facts::new();
@@ -263,11 +362,18 @@ fn backward_proof_trace_generation() {
     // Test that proof traces are generated correctly
     let kb = KnowledgeBase::new("trace_kb");
 
-    let cond = Condition::new("User.Verified".to_string(), Operator::Equal, Value::Boolean(true));
+    let cond = Condition::new(
+        "User.Verified".to_string(),
+        Operator::Equal,
+        Value::Boolean(true),
+    );
     let rule = Rule::new(
         "VerifiedUserRule".to_string(),
         ConditionGroup::Single(cond),
-        vec![ActionType::Set { field: "User.Trusted".to_string(), value: Value::Boolean(true) }]
+        vec![ActionType::Set {
+            field: "User.Trusted".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
 
     let _ = kb.add_rule(rule);
@@ -282,7 +388,10 @@ fn backward_proof_trace_generation() {
 
     assert!(qr.provable);
     // Verify proof trace is not empty
-    assert!(!qr.proof_trace.goal.is_empty(), "Proof trace should have a goal");
+    assert!(
+        !qr.proof_trace.goal.is_empty(),
+        "Proof trace should have a goal"
+    );
 }
 
 #[test]
@@ -293,15 +402,29 @@ fn backward_with_multiple_solution_paths() {
     // Path 1: If User.Age >= 21 then User.CanDrink = true
     let rule1 = Rule::new(
         "AgeRule".to_string(),
-        ConditionGroup::Single(Condition::new("User.Age".to_string(), Operator::GreaterThanOrEqual, Value::Integer(21))),
-        vec![ActionType::Set { field: "User.CanDrink".to_string(), value: Value::Boolean(true) }]
+        ConditionGroup::Single(Condition::new(
+            "User.Age".to_string(),
+            Operator::GreaterThanOrEqual,
+            Value::Integer(21),
+        )),
+        vec![ActionType::Set {
+            field: "User.CanDrink".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
 
     // Path 2: If User.HasSpecialLicense == true then User.CanDrink = true
     let rule2 = Rule::new(
         "LicenseRule".to_string(),
-        ConditionGroup::Single(Condition::new("User.HasSpecialLicense".to_string(), Operator::Equal, Value::Boolean(true))),
-        vec![ActionType::Set { field: "User.CanDrink".to_string(), value: Value::Boolean(true) }]
+        ConditionGroup::Single(Condition::new(
+            "User.HasSpecialLicense".to_string(),
+            Operator::Equal,
+            Value::Boolean(true),
+        )),
+        vec![ActionType::Set {
+            field: "User.CanDrink".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
 
     let _ = kb.add_rule(rule1);

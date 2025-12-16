@@ -6,9 +6,9 @@
 //! - Complex authorization rules
 //! - Multi-level access control
 
-use rust_rule_engine::{Facts, KnowledgeBase};
-use rust_rule_engine::types::Value;
 use rust_rule_engine::backward::BackwardEngine;
+use rust_rule_engine::types::Value;
+use rust_rule_engine::{Facts, KnowledgeBase};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╔══════════════════════════════════════════════════════════════╗");
@@ -235,7 +235,7 @@ rule "ApproveAccess_Final" {
 }
     "#;
 
-    let mut kb = KnowledgeBase::new("AccessControlSystem");
+    let kb = KnowledgeBase::new("AccessControlSystem");
     for rule in rust_rule_engine::parser::grl::GRLParser::parse_rules(rules)? {
         kb.add_rule(rule)?;
     }
@@ -271,12 +271,26 @@ fn test_admin_access() -> Result<(), Box<dyn std::error::Error>> {
     // Check admin role
     println!("\n🔍 Query 1: Is user an admin?");
     let admin_result = bc_engine.query("User.IsAdmin == true", &mut facts)?;
-    println!("  Result: {}", if admin_result.provable { "✓ YES" } else { "✗ NO" });
+    println!(
+        "  Result: {}",
+        if admin_result.provable {
+            "✓ YES"
+        } else {
+            "✗ NO"
+        }
+    );
 
     // Check permissions
     println!("\n🔍 Query 2: Does user have delete permission?");
     let delete_result = bc_engine.query("User.CanDelete == true", &mut facts)?;
-    println!("  Result: {}", if delete_result.provable { "✓ YES" } else { "✗ NO" });
+    println!(
+        "  Result: {}",
+        if delete_result.provable {
+            "✓ YES"
+        } else {
+            "✗ NO"
+        }
+    );
 
     // Check full access
     println!("\n🔍 Query 3: Does user have full access?");
@@ -301,8 +315,14 @@ fn test_admin_access() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         println!("\n  Statistics:");
-        println!("    {} goals explored", full_access_result.stats.goals_explored);
-        println!("    {} rules evaluated", full_access_result.stats.rules_evaluated);
+        println!(
+            "    {} goals explored",
+            full_access_result.stats.goals_explored
+        );
+        println!(
+            "    {} rules evaluated",
+            full_access_result.stats.rules_evaluated
+        );
     } else {
         println!("  ✗ Access denied");
     }
@@ -320,7 +340,10 @@ fn test_manager_access() -> Result<(), Box<dyn std::error::Error>> {
     facts.set("User.Role", Value::String("Manager".to_string()));
     facts.set("User.Department", Value::String("Engineering".to_string()));
 
-    facts.set("Resource.Department", Value::String("Engineering".to_string()));
+    facts.set(
+        "Resource.Department",
+        Value::String("Engineering".to_string()),
+    );
     facts.set("Resource.RequiresRead", Value::Boolean(true));
     facts.set("Resource.RequiresWrite", Value::Boolean(true));
 
@@ -336,12 +359,26 @@ fn test_manager_access() -> Result<(), Box<dyn std::error::Error>> {
     // Check manager role
     println!("\n🔍 Query 1: Is user a manager?");
     let manager_result = bc_engine.query("User.IsManager == true", &mut facts)?;
-    println!("  Result: {}", if manager_result.provable { "✓ YES" } else { "✗ NO" });
+    println!(
+        "  Result: {}",
+        if manager_result.provable {
+            "✓ YES"
+        } else {
+            "✗ NO"
+        }
+    );
 
     // Check department access
     println!("\n🔍 Query 2: Can access department resources?");
     let dept_result = bc_engine.query("Access.DepartmentAccessGranted == true", &mut facts)?;
-    println!("  Result: {}", if dept_result.provable { "✓ YES" } else { "✗ NO" });
+    println!(
+        "  Result: {}",
+        if dept_result.provable {
+            "✓ YES"
+        } else {
+            "✗ NO"
+        }
+    );
 
     // Check write access
     println!("\n🔍 Query 3: Can write to resource?");
@@ -394,17 +431,38 @@ fn test_user_access() -> Result<(), Box<dyn std::error::Error>> {
     // Check user role
     println!("\n🔍 Query 1: Is regular user?");
     let user_result = bc_engine.query("User.IsRegularUser == true", &mut facts)?;
-    println!("  Result: {}", if user_result.provable { "✓ YES" } else { "✗ NO" });
+    println!(
+        "  Result: {}",
+        if user_result.provable {
+            "✓ YES"
+        } else {
+            "✗ NO"
+        }
+    );
 
     // Check read access
     println!("\n🔍 Query 2: Can read resource?");
     let read_result = bc_engine.query("Access.ReadGranted == true", &mut facts)?;
-    println!("  Result: {}", if read_result.provable { "✓ YES" } else { "✗ NO" });
+    println!(
+        "  Result: {}",
+        if read_result.provable {
+            "✓ YES"
+        } else {
+            "✗ NO"
+        }
+    );
 
     // Check delete access
     println!("\n🔍 Query 3: Can delete resource?");
     let delete_result = bc_engine.query("Access.DeleteGranted == true", &mut facts)?;
-    println!("  Result: {}", if delete_result.provable { "✓ YES" } else { "✗ NO (Expected)" });
+    println!(
+        "  Result: {}",
+        if delete_result.provable {
+            "✓ YES"
+        } else {
+            "✗ NO (Expected)"
+        }
+    );
 
     if read_result.provable {
         println!("\n  Regular User Permissions:");
@@ -445,7 +503,14 @@ fn test_resource_ownership() -> Result<(), Box<dyn std::error::Error>> {
     // Check ownership
     println!("\n🔍 Query 1: Is user the resource owner?");
     let owner_result = bc_engine.query("Access.IsOwner == true", &mut facts)?;
-    println!("  Result: {}", if owner_result.provable { "✓ YES" } else { "✗ NO" });
+    println!(
+        "  Result: {}",
+        if owner_result.provable {
+            "✓ YES"
+        } else {
+            "✗ NO"
+        }
+    );
 
     // Check delete access via ownership
     println!("\n🔍 Query 2: Can delete own resource?");

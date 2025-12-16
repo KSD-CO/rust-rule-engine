@@ -6,9 +6,9 @@
 //! - Complex relationship inference
 //! - Multiple proof paths
 
-use rust_rule_engine::{Facts, KnowledgeBase};
-use rust_rule_engine::types::Value;
 use rust_rule_engine::backward::BackwardEngine;
+use rust_rule_engine::types::Value;
+use rust_rule_engine::{Facts, KnowledgeBase};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╔══════════════════════════════════════════════════════════════╗");
@@ -174,7 +174,7 @@ rule "CalculateFamilySize_Large" {
 }
     "#;
 
-    let mut kb = KnowledgeBase::new("FamilyRelationshipSystem");
+    let kb = KnowledgeBase::new("FamilyRelationshipSystem");
     for rule in rust_rule_engine::parser::grl::GRLParser::parse_rules(rules)? {
         kb.add_rule(rule)?;
     }
@@ -238,8 +238,14 @@ fn test_grandparent_relationship() -> Result<(), Box<dyn std::error::Error>> {
         println!("    5. Person.IsGrandparentOf == true (derived)");
 
         println!("\n  Statistics:");
-        println!("    {} goals explored", grandparent_result.stats.goals_explored);
-        println!("    {} rules evaluated", grandparent_result.stats.rules_evaluated);
+        println!(
+            "    {} goals explored",
+            grandparent_result.stats.goals_explored
+        );
+        println!(
+            "    {} rules evaluated",
+            grandparent_result.stats.rules_evaluated
+        );
         println!("    Max depth: {}", grandparent_result.stats.max_depth);
     } else {
         println!("  ✗ Could not establish grandparent relationship");

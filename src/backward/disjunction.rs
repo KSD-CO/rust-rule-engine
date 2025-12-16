@@ -36,7 +36,10 @@ pub struct Disjunction {
 impl Disjunction {
     /// Create a new disjunction from a list of goals
     pub fn new(branches: Vec<Goal>, pattern: String) -> Self {
-        assert!(!branches.is_empty(), "Disjunction must have at least one branch");
+        assert!(
+            !branches.is_empty(),
+            "Disjunction must have at least one branch"
+        );
         Self { branches, pattern }
     }
 
@@ -159,7 +162,7 @@ impl DisjunctionParser {
         }
 
         // Remove outer parentheses
-        let inner = &pattern[1..pattern.len()-1];
+        let inner = &pattern[1..pattern.len() - 1];
 
         // Split by OR (naive implementation - TODO: handle nested parens)
         if !inner.contains(" OR ") {

@@ -37,8 +37,14 @@ mod grl_parser_tests {
         let query = GRLQueryParser::parse(query_str).expect("Should parse");
 
         assert_eq!(query.name, "GrandparentQuery");
-        assert!(query.goal.contains("WHERE"), "Goal should contain WHERE clause");
-        assert!(query.goal.contains("AND"), "Goal should contain AND operator");
+        assert!(
+            query.goal.contains("WHERE"),
+            "Goal should contain WHERE clause"
+        );
+        assert!(
+            query.goal.contains("AND"),
+            "Goal should contain AND operator"
+        );
         assert!(query.enable_optimization);
         assert_eq!(query.max_depth, 15);
     }
@@ -80,7 +86,10 @@ mod grl_parser_tests {
         let query = GRLQueryParser::parse(query_str).expect("Should parse");
 
         assert_eq!(query.name, "NoOptimization");
-        assert!(!query.enable_optimization, "Optimization should be disabled");
+        assert!(
+            !query.enable_optimization,
+            "Optimization should be disabled"
+        );
     }
 
     #[test]
@@ -150,7 +159,10 @@ mod grl_parser_tests {
         let query = GRLQueryParser::parse(query_str).expect("Should parse");
 
         // Optimization should be enabled by default
-        assert!(query.enable_optimization, "Optimization should be enabled by default");
+        assert!(
+            query.enable_optimization,
+            "Optimization should be enabled by default"
+        );
     }
 
     #[test]

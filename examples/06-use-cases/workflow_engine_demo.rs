@@ -5,8 +5,12 @@ use rust_rule_engine::types::Value;
 use rust_rule_engine::Facts;
 
 // Helper: convert parser ConditionGroup to auto_network ConditionGroup
-fn convert_condition_group(src: &rust_rule_engine::ConditionGroup) -> rust_rule_engine::rete::auto_network::ConditionGroup {
-    use rust_rule_engine::rete::auto_network::{ConditionGroup as AutoGroup, Condition as AutoCond};
+fn convert_condition_group(
+    src: &rust_rule_engine::ConditionGroup,
+) -> rust_rule_engine::rete::auto_network::ConditionGroup {
+    use rust_rule_engine::rete::auto_network::{
+        Condition as AutoCond, ConditionGroup as AutoGroup,
+    };
     match src {
         rust_rule_engine::ConditionGroup::Single(cond) => {
             // Map operator enum to RETE-UL string
@@ -33,7 +37,11 @@ fn convert_condition_group(src: &rust_rule_engine::ConditionGroup) -> rust_rule_
                 value: val_str,
             })
         }
-        rust_rule_engine::ConditionGroup::Compound { left, operator, right } => {
+        rust_rule_engine::ConditionGroup::Compound {
+            left,
+            operator,
+            right,
+        } => {
             let op_str = match format!("{:?}", operator).as_str() {
                 "And" => "AND",
                 "Or" => "OR",
@@ -79,7 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut engine = RustRuleEngine::with_config(KnowledgeBase::new("WorkflowDemo"), config);
 
     // Create facts for order processing workflow
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     facts.set("Order.ID", Value::String("ORD-12345".to_string()));
     facts.set("Order.Amount", Value::Number(250.0));
     facts.set("Order.Status", Value::String("pending".to_string()));
@@ -191,7 +199,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let auto_rule = rust_rule_engine::rete::auto_network::Rule {
                     name: rule.name.clone(),
                     conditions: convert_condition_group(&rule.conditions),
-                    action: rule.actions.get(0).map(|a| format!("{:?}", a)).unwrap_or_default(),
+                    action: rule
+                        .actions
+                        .first()
+                        .map(|a| format!("{:?}", a))
+                        .unwrap_or_default(),
                 };
                 rete_rules.push(auto_rule);
             }
@@ -220,7 +232,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // --- Chạy với RETE-UL node ---
     use rust_rule_engine::rete::auto_network::build_rete_ul_from_rule;
     use rust_rule_engine::rete::evaluate_rete_ul_node;
-    use std::collections::HashMap;
+
     println!("\n🔬 So sánh với RETE-UL node:");
     let mut facts_map = std::collections::HashMap::new();
     for (k, v) in facts.get_all_facts().iter() {
@@ -232,10 +244,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let rete_node = build_rete_ul_from_rule(rule);
         let matched = evaluate_rete_ul_node(&rete_node, &facts_map);
         println!("  Rule: {:<25} | RETE match: {}", rule.name, matched);
-        if matched { rete_fired += 1; }
+        if matched {
+            rete_fired += 1;
+        }
     }
     let duration_rete = start_rete.elapsed();
-    println!("\n📊 RETE-UL: Số rule match: {} / {}", rete_fired, rete_rules.len());
+    println!(
+        "\n📊 RETE-UL: Số rule match: {} / {}",
+        rete_fired,
+        rete_rules.len()
+    );
     println!("\n⏱️ So sánh tốc độ:");
     println!("  Engine gốc:   {:?}", duration_engine);
     println!("  RETE-UL node: {:?}", duration_rete);
@@ -261,9 +279,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Verify workflow state was saved
     println!("\n🔍 Workflow State Verification:");
-    println!("  workflow.order-process.completed = {:?}", facts.get("workflow.order-process.completed"));
-    println!("  workflow.order-process.completed_at = {:?}", facts.get("workflow.order-process.completed_at"));
-    println!("  workflow.data.status = {:?}", facts.get("workflow.data.status"));
+    println!(
+        "  workflow.order-process.completed = {:?}",
+        facts.get("workflow.order-process.completed")
+    );
+    println!(
+        "  workflow.order-process.completed_at = {:?}",
+        facts.get("workflow.order-process.completed_at")
+    );
+    println!(
+        "  workflow.data.status = {:?}",
+        facts.get("workflow.data.status")
+    );
 
     // Process any scheduled tasks
     println!("\n⏰ Processing scheduled tasks...");

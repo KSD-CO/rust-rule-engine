@@ -3,8 +3,8 @@ use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::parallel::{ParallelConfig, ParallelRuleEngine};
 use rust_rule_engine::engine::rule::{Condition, ConditionGroup};
-use rust_rule_engine::types::{ActionType, Operator, Value};
 use rust_rule_engine::errors::Result;
+use rust_rule_engine::types::{ActionType, Operator, Value};
 
 fn main() -> Result<()> {
     println!("🧪 Testing Parallel Executor with Complex Conditions");
@@ -34,8 +34,8 @@ fn main() -> Result<()> {
 
 fn test_simple_condition() -> Result<()> {
     println!("📋 Test 1: Simple Field Comparison");
-    
-    let mut kb = KnowledgeBase::new("SimpleTest");
+
+    let kb = KnowledgeBase::new("SimpleTest");
     let rule = rust_rule_engine::engine::rule::Rule::new(
         "AgeCheck".to_string(),
         ConditionGroup::Single(Condition::new(
@@ -63,9 +63,9 @@ fn test_simple_condition() -> Result<()> {
 
 fn test_and_condition() -> Result<()> {
     println!("📋 Test 2: AND Condition");
-    
-    let mut kb = KnowledgeBase::new("AndTest");
-    
+
+    let kb = KnowledgeBase::new("AndTest");
+
     // User.age >= 18 AND User.verified == true
     let condition = ConditionGroup::Compound {
         left: Box::new(ConditionGroup::Single(Condition::new(
@@ -105,7 +105,10 @@ fn test_and_condition() -> Result<()> {
     facts2.set("User.age", Value::Integer(25));
     facts2.set("User.verified", Value::Boolean(false));
     let result2 = engine.execute_parallel(&kb, &facts2, false)?;
-    assert_eq!(result2.total_rules_fired, 0, "AND: One false should not fire");
+    assert_eq!(
+        result2.total_rules_fired, 0,
+        "AND: One false should not fire"
+    );
 
     println!("   ✅ AND condition works correctly\n");
     Ok(())
@@ -113,9 +116,9 @@ fn test_and_condition() -> Result<()> {
 
 fn test_or_condition() -> Result<()> {
     println!("📋 Test 3: OR Condition");
-    
-    let mut kb = KnowledgeBase::new("OrTest");
-    
+
+    let kb = KnowledgeBase::new("OrTest");
+
     // User.isAdmin == true OR User.isModerator == true
     let condition = ConditionGroup::Compound {
         left: Box::new(ConditionGroup::Single(Condition::new(
@@ -162,7 +165,10 @@ fn test_or_condition() -> Result<()> {
     facts3.set("User.isAdmin", Value::Boolean(false));
     facts3.set("User.isModerator", Value::Boolean(false));
     let result3 = engine.execute_parallel(&kb, &facts3, false)?;
-    assert_eq!(result3.total_rules_fired, 0, "OR: Both false should not fire");
+    assert_eq!(
+        result3.total_rules_fired, 0,
+        "OR: Both false should not fire"
+    );
 
     println!("   ✅ OR condition works correctly\n");
     Ok(())
@@ -170,9 +176,9 @@ fn test_or_condition() -> Result<()> {
 
 fn test_not_condition() -> Result<()> {
     println!("📋 Test 4: NOT Condition");
-    
-    let mut kb = KnowledgeBase::new("NotTest");
-    
+
+    let kb = KnowledgeBase::new("NotTest");
+
     // NOT (User.banned == true)
     let condition = ConditionGroup::Not(Box::new(ConditionGroup::Single(Condition::new(
         "User.banned".to_string(),
@@ -210,9 +216,9 @@ fn test_not_condition() -> Result<()> {
 
 fn test_nested_condition() -> Result<()> {
     println!("📋 Test 5: Nested Conditions (AND + OR)");
-    
-    let mut kb = KnowledgeBase::new("NestedTest");
-    
+
+    let kb = KnowledgeBase::new("NestedTest");
+
     // (User.age >= 18 AND User.verified == true) OR User.isAdmin == true
     let left_and = ConditionGroup::Compound {
         left: Box::new(ConditionGroup::Single(Condition::new(
@@ -264,7 +270,10 @@ fn test_nested_condition() -> Result<()> {
     facts2.set("User.verified", Value::Boolean(true));
     facts2.set("User.isAdmin", Value::Boolean(false));
     let result2 = engine.execute_parallel(&kb, &facts2, false)?;
-    assert_eq!(result2.total_rules_fired, 1, "Nested: Verified adult should pass");
+    assert_eq!(
+        result2.total_rules_fired, 1,
+        "Nested: Verified adult should pass"
+    );
 
     // Test case 3: Fail all conditions
     let facts3 = Facts::new();
@@ -272,7 +281,10 @@ fn test_nested_condition() -> Result<()> {
     facts3.set("User.verified", Value::Boolean(false));
     facts3.set("User.isAdmin", Value::Boolean(false));
     let result3 = engine.execute_parallel(&kb, &facts3, false)?;
-    assert_eq!(result3.total_rules_fired, 0, "Nested: All false should not fire");
+    assert_eq!(
+        result3.total_rules_fired, 0,
+        "Nested: All false should not fire"
+    );
 
     println!("   ✅ Nested conditions work correctly\n");
     Ok(())
@@ -280,9 +292,9 @@ fn test_nested_condition() -> Result<()> {
 
 fn test_expression_evaluation() -> Result<()> {
     println!("📋 Test 6: Expression Evaluation");
-    
-    let mut kb = KnowledgeBase::new("ExpressionTest");
-    
+
+    let kb = KnowledgeBase::new("ExpressionTest");
+
     // Compare two fact values: Order.amount > Order.limit
     let condition = ConditionGroup::Single(Condition::new(
         "Order.amount".to_string(),
@@ -307,14 +319,20 @@ fn test_expression_evaluation() -> Result<()> {
     facts1.set("Order.amount", Value::Number(1500.0));
     facts1.set("Order.limit", Value::Number(1000.0));
     let result1 = engine.execute_parallel(&kb, &facts1, false)?;
-    assert_eq!(result1.total_rules_fired, 1, "Expression: 1500 > 1000 should fire");
+    assert_eq!(
+        result1.total_rules_fired, 1,
+        "Expression: 1500 > 1000 should fire"
+    );
 
     // Test case 2: Amount within limit
     let facts2 = Facts::new();
     facts2.set("Order.amount", Value::Number(500.0));
     facts2.set("Order.limit", Value::Number(1000.0));
     let result2 = engine.execute_parallel(&kb, &facts2, false)?;
-    assert_eq!(result2.total_rules_fired, 0, "Expression: 500 > 1000 should not fire");
+    assert_eq!(
+        result2.total_rules_fired, 0,
+        "Expression: 500 > 1000 should not fire"
+    );
 
     println!("   ✅ Expression evaluation works correctly\n");
     Ok(())

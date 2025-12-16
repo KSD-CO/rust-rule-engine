@@ -1,4 +1,4 @@
-use rust_rule_engine::rete::{ReteUlEngine};
+use rust_rule_engine::rete::ReteUlEngine;
 
 #[test]
 fn test_rete_ul_engine_basic() {

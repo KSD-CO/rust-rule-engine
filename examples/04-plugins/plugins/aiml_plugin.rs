@@ -2,7 +2,6 @@ use rust_rule_engine::engine::engine::RustRuleEngine;
 use rust_rule_engine::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugin};
 use rust_rule_engine::errors::Result;
 use rust_rule_engine::types::Value;
-use std::collections::HashMap;
 
 /// AI/ML Integration Plugin for machine learning and AI operations
 pub struct AIMLPlugin {
@@ -292,7 +291,7 @@ impl RulePlugin for AIMLPlugin {
     fn register_functions(&self, engine: &mut RustRuleEngine) -> Result<()> {
         // Calculate Similarity function
         engine.register_function("calculateSimilarity", |args, _facts| {
-            let text1 = args.get(0).map(|v| v.to_string()).unwrap_or_default();
+            let text1 = args.first().map(|v| v.to_string()).unwrap_or_default();
             let text2 = args.get(1).map(|v| v.to_string()).unwrap_or_default();
 
             // Simulate cosine similarity calculation
@@ -316,9 +315,9 @@ impl RulePlugin for AIMLPlugin {
 
         // Extract Keywords function
         engine.register_function("extractKeywords", |args, _facts| {
-            let text = args.get(0).map(|v| v.to_string()).unwrap_or_default();
+            let text = args.first().map(|v| v.to_string()).unwrap_or_default();
             let max_keywords = args.get(1).map(|v| v.to_string()).unwrap_or("5".to_string());
-            
+
             // Simulate keyword extraction
             let keywords = if text.to_lowercase().contains("ai") || text.contains("machine learning") {
                 "artificial intelligence, machine learning, neural networks, deep learning, automation"
@@ -329,15 +328,15 @@ impl RulePlugin for AIMLPlugin {
             } else {
                 "general, content, text, analysis, processing"
             };
-            
+
             println!("🏷️  Keywords extracted ({}): {}", max_keywords, keywords);
-            
+
             Ok(Value::String(keywords.to_string()))
         });
 
         // Tokenize Text function
         engine.register_function("tokenizeText", |args, _facts| {
-            let text = args.get(0).map(|v| v.to_string()).unwrap_or_default();
+            let text = args.first().map(|v| v.to_string()).unwrap_or_default();
 
             // Simulate tokenization
             let word_count = text.split_whitespace().count();
@@ -362,7 +361,7 @@ impl RulePlugin for AIMLPlugin {
         // Normalize Score function
         engine.register_function("normalizeScore", |args, _facts| {
             let score = args
-                .get(0)
+                .first()
                 .and_then(|v| v.to_string().parse::<f64>().ok())
                 .unwrap_or(0.0);
             let min_val = args
@@ -391,7 +390,7 @@ impl RulePlugin for AIMLPlugin {
         // Evaluate Model function
         engine.register_function("evaluateModel", |args, _facts| {
             let model_name = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("model".to_string());
             let metric = args

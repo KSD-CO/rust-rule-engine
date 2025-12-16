@@ -115,6 +115,48 @@ misc:
 	cargo run --example rule_dependency_analysis
 	cargo run --example rule_file_functions_demo
 
+# CI checks (same as GitHub Actions)
+ci: fmt-check clippy test
+	@echo "✅ All CI checks passed!"
+
+# Check everything
+check: fmt clippy test
+	@echo "✅ All checks passed!"
+
+# Format code
+fmt:
+	@echo "🔧 Formatting code..."
+	@cargo fmt
+
+# Check formatting
+fmt-check:
+	@echo "🔍 Checking code formatting..."
+	@cargo fmt -- --check
+
+# Run clippy
+clippy:
+	@echo "🔍 Running clippy..."
+	@cargo clippy --all-targets --all-features -- -D warnings \
+		-A clippy::collapsible-match \
+		-A clippy::unnecessary-mut-passed \
+		-A clippy::suspicious-doc-comments \
+		-A clippy::unnecessary-get-then-check \
+		-A clippy::unnecessary-to-owned \
+		-A clippy::assertions-on-constants \
+		-A clippy::format-in-format-args \
+		-A clippy::manual-clamp \
+		-A clippy::if-same-then-else \
+		-A clippy::useless-vec \
+		-A unused-variables \
+		-A unused-must-use \
+		-A deprecated \
+		-A dead-code
+
+# Run tests
+test:
+	@echo "🧪 Running tests..."
+	@cargo test --all-features
+
 # Backward Chaining Examples (09-backward-chaining)
 backward-chaining:
 	@echo "=== Running Backward Chaining Examples ==="

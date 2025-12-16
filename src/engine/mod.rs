@@ -2,6 +2,9 @@
 pub mod agenda;
 /// Advanced analytics and performance monitoring
 pub mod analytics;
+/// Shared condition evaluation logic for both forward and backward chaining
+pub mod condition_evaluator;
+pub mod coverage; // Adding coverage module
 /// Dependency analysis for safe parallel execution
 pub mod dependency;
 /// Main rule execution engine
@@ -11,6 +14,8 @@ pub mod engine;
 pub mod facts;
 /// Knowledge base for rule storage and management
 pub mod knowledge_base;
+/// Module system for namespace isolation (CLIPS-inspired defmodule)
+pub mod module;
 /// Parallel rule execution engine
 pub mod parallel;
 /// Pattern matching for complex conditions
@@ -23,11 +28,6 @@ pub mod rule;
 pub mod template;
 /// Workflow engine for rule chaining and sequential execution
 pub mod workflow;
-pub mod coverage; // Adding coverage module
-/// Shared condition evaluation logic for both forward and backward chaining
-pub mod condition_evaluator;
-/// Module system for namespace isolation (CLIPS-inspired defmodule)
-pub mod module;
 
 // Re-export main components for easy access
 pub use agenda::{ActivationGroupManager, AgendaManager};

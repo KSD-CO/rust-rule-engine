@@ -10,8 +10,8 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use rust_rule_engine::backward::{BackwardEngine, ConclusionIndex};
 use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
-use rust_rule_engine::{Facts, KnowledgeBase};
 use rust_rule_engine::types::{ActionType, Operator, Value};
+use rust_rule_engine::{Facts, KnowledgeBase};
 
 /// Create a knowledge base with N rules
 fn create_kb_with_rules(num_rules: usize) -> KnowledgeBase {
@@ -75,16 +75,12 @@ fn bench_candidate_lookup(c: &mut Criterion) {
         let target_field = format!("Field{}", num_rules / 2);
         let query = format!("{} == true", target_field);
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(num_rules),
-            num_rules,
-            |b, _| {
-                b.iter(|| {
-                    let candidates = index.find_candidates(&query);
-                    black_box(candidates);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(num_rules), num_rules, |b, _| {
+            b.iter(|| {
+                let candidates = index.find_candidates(&query);
+                black_box(candidates);
+            });
+        });
     }
 
     group.finish();

@@ -3,6 +3,9 @@
 //! This module provides proper condition evaluation and action execution for backward
 //! chaining queries. It integrates with the Truth Maintenance System (TMS) to support
 //! logical fact insertion and justification-based retraction.
+
+#![allow(deprecated)]
+#![allow(clippy::type_complexity)]
 //!
 //! # Features
 //!
@@ -111,11 +114,11 @@
 //! - `exists(field)` - Check if field exists
 //! - `count(field)` - Count array elements
 
-use crate::engine::rule::{Condition, ConditionGroup, Rule};
 use crate::engine::condition_evaluator::ConditionEvaluator;
+use crate::engine::rule::{Condition, ConditionGroup, Rule};
+use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Value};
 use crate::{Facts, KnowledgeBase};
-use crate::errors::{Result, RuleEngineError};
 
 /// Rule executor for backward chaining
 pub struct RuleExecutor {
@@ -123,7 +126,9 @@ pub struct RuleExecutor {
     /// Optional TMS inserter callback: (fact_type, typed_data, source_rule, premise_keys)
     /// premise_keys are strings in the format: "Type.field=value" which the inserter
     /// can use to resolve to working-memory FactHandles.
-    tms_inserter: Option<std::sync::Arc<dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync>>,
+    tms_inserter: Option<
+        std::sync::Arc<dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync>,
+    >,
 }
 
 impl RuleExecutor {
@@ -141,7 +146,11 @@ impl RuleExecutor {
     /// Rule evaluation is done through the ConditionEvaluator.
     pub fn new_with_inserter(
         _knowledge_base: KnowledgeBase,
-        inserter: Option<std::sync::Arc<dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync>>,
+        inserter: Option<
+            std::sync::Arc<
+                dyn Fn(String, crate::rete::TypedFacts, String, Vec<String>) + Send + Sync,
+            >,
+        >,
     ) -> Self {
         Self {
             evaluator: ConditionEvaluator::with_builtin_functions(),
@@ -155,11 +164,7 @@ impl RuleExecutor {
     /// - Ok(true) if rule executed successfully
     /// - Ok(false) if conditions not satisfied
     /// - Err if execution failed
-    pub fn try_execute_rule(
-        &self,
-        rule: &Rule,
-        facts: &mut Facts,
-    ) -> Result<bool> {
+    pub fn try_execute_rule(&self, rule: &Rule, facts: &mut Facts) -> Result<bool> {
         // Check if all conditions are satisfied
         if !self.evaluate_conditions(&rule.conditions, facts)? {
             return Ok(false);
@@ -172,11 +177,7 @@ impl RuleExecutor {
     }
 
     /// Evaluate condition group
-    pub fn evaluate_conditions(
-        &self,
-        group: &ConditionGroup,
-        facts: &Facts,
-    ) -> Result<bool> {
+    pub fn evaluate_conditions(&self, group: &ConditionGroup, facts: &Facts) -> Result<bool> {
         // Delegate to shared evaluator
         self.evaluator.evaluate_conditions(group, facts)
     }
@@ -197,7 +198,12 @@ impl RuleExecutor {
     }
 
     /// Execute a single action (has access to rule for TMS justifications)
-    fn execute_action(&self, rule: Option<&Rule>, action: &ActionType, facts: &mut Facts) -> Result<()> {
+    fn execute_action(
+        &self,
+        rule: Option<&Rule>,
+        action: &ActionType,
+        facts: &mut Facts,
+    ) -> Result<()> {
         match action {
             ActionType::Set { field, value } => {
                 // Evaluate value expression if needed
@@ -214,7 +220,9 @@ impl RuleExecutor {
                         let mut typed = crate::rete::TypedFacts::new();
                         // Map crate::types::Value -> rete::FactValue
                         let fv = match &evaluated_value {
-                            crate::types::Value::String(s) => crate::rete::FactValue::String(s.clone()),
+                            crate::types::Value::String(s) => {
+                                crate::rete::FactValue::String(s.clone())
+                            }
                             crate::types::Value::Integer(i) => crate::rete::FactValue::Integer(*i),
                             crate::types::Value::Number(n) => crate::rete::FactValue::Float(*n),
                             crate::types::Value::Boolean(b) => crate::rete::FactValue::Boolean(*b),
@@ -231,7 +239,9 @@ impl RuleExecutor {
                         };
 
                         // Call inserter with rule name (string-based premises)
-                        let source_name = rule.map(|r| r.name.clone()).unwrap_or_else(|| "<unknown>".to_string());
+                        let source_name = rule
+                            .map(|r| r.name.clone())
+                            .unwrap_or_else(|| "<unknown>".to_string());
                         (inserter)(fact_type, typed, source_name, premises);
                         // Also apply to local Facts representation so backward search sees it
                         facts.set(field, evaluated_value);
@@ -244,7 +254,11 @@ impl RuleExecutor {
                 Ok(())
             }
 
-            ActionType::MethodCall { object, method, args } => {
+            ActionType::MethodCall {
+                object,
+                method,
+                args,
+            } => {
                 // Execute method call
                 if let Some(obj_value) = facts.get(object) {
                     let mut obj_value = obj_value.clone();
@@ -256,8 +270,9 @@ impl RuleExecutor {
                     }
 
                     // Call method
-                    let result = obj_value.call_method(method, arg_values)
-                        .map_err(|e| RuleEngineError::ExecutionError(e))?;
+                    let result = obj_value
+                        .call_method(method, arg_values)
+                        .map_err(RuleEngineError::ExecutionError)?;
 
                     // Update object
                     facts.set(object, obj_value);
@@ -269,9 +284,10 @@ impl RuleExecutor {
 
                     Ok(())
                 } else {
-                    Err(RuleEngineError::ExecutionError(
-                        format!("Object not found: {}", object)
-                    ))
+                    Err(RuleEngineError::ExecutionError(format!(
+                        "Object not found: {}",
+                        object
+                    )))
                 }
             }
 
@@ -320,7 +336,7 @@ impl RuleExecutor {
     /// intentionally conservative: only field-based conditions with a dotted
     /// "Type.field" expression are collected.
     fn collect_premise_keys_from_rule(&self, rule: &Rule, facts: &Facts) -> Vec<String> {
-        use crate::engine::rule::{ConditionGroup, ConditionExpression};
+        use crate::engine::rule::{ConditionExpression, ConditionGroup};
 
         let mut keys = Vec::new();
 
@@ -492,7 +508,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Age", Value::Number(25.0));
 
         let condition = Condition::new(
@@ -510,7 +526,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Name", Value::String("John".to_string()));
 
         let condition = Condition::with_function(
@@ -546,7 +562,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Age", Value::Number(25.0));
         facts.set("User.Country", Value::String("US".to_string()));
 
@@ -573,7 +589,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Age", Value::Number(15.0));
         facts.set("User.HasParentalConsent", Value::Boolean(true));
 
@@ -600,16 +616,14 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.IsBanned", Value::Boolean(false));
 
-        let conditions = ConditionGroup::Not(Box::new(ConditionGroup::Single(
-            Condition::new(
-                "User.IsBanned".to_string(),
-                Operator::Equal,
-                Value::Boolean(true),
-            )
-        )));
+        let conditions = ConditionGroup::Not(Box::new(ConditionGroup::Single(Condition::new(
+            "User.IsBanned".to_string(),
+            Operator::Equal,
+            Value::Boolean(true),
+        ))));
 
         let result = executor.evaluate_conditions(&conditions, &facts).unwrap();
         assert!(result); // True because NOT banned
@@ -620,7 +634,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Description", Value::String("".to_string()));
 
         let condition = Condition::with_function(
@@ -639,7 +653,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Email", Value::String("user@example.com".to_string()));
 
         let condition = Condition {
@@ -728,7 +742,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Email", Value::String("user@example.com".to_string()));
 
         // Test Contains
@@ -761,7 +775,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("Order.Amount", Value::Number(1500.0));
 
         // Test GreaterThanOrEqual
@@ -847,10 +861,13 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Email", Value::String("user@example.com".to_string()));
         facts.set("File.Name", Value::String("document.pdf".to_string()));
-        facts.set("Domain.URL", Value::String("https://api.example.org".to_string()));
+        facts.set(
+            "Domain.URL",
+            Value::String("https://api.example.org".to_string()),
+        );
 
         // Test EndsWith with .com suffix
         let condition = Condition::new(
@@ -898,7 +915,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("Empty.String", Value::String("".to_string()));
         facts.set("Single.Char", Value::String("a".to_string()));
         facts.set("Number.Value", Value::Number(123.0));
@@ -936,7 +953,7 @@ mod tests {
         assert!(!executor.evaluate_condition(&condition, &facts).unwrap());
 
         // Test case sensitivity
-        let mut facts2 = Facts::new();
+        let facts2 = Facts::new();
         facts2.set("Text.Value", Value::String("HelloWorld".to_string()));
 
         let condition = Condition::new(
@@ -959,10 +976,16 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("User.Email", Value::String("user@example.com".to_string()));
-        facts.set("Product.Name", Value::String("Premium Laptop Model X".to_string()));
-        facts.set("Log.Message", Value::String("Error: Connection timeout".to_string()));
+        facts.set(
+            "Product.Name",
+            Value::String("Premium Laptop Model X".to_string()),
+        );
+        facts.set(
+            "Log.Message",
+            Value::String("Error: Connection timeout".to_string()),
+        );
 
         // Test Matches with pattern "example"
         let condition = Condition::new(
@@ -1018,7 +1041,7 @@ mod tests {
         let kb = KnowledgeBase::new("test");
         let executor = RuleExecutor::new(kb);
 
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("Empty.String", Value::String("".to_string()));
         facts.set("Single.Char", Value::String("x".to_string()));
         facts.set("Number.Value", Value::Number(456.0));
@@ -1065,7 +1088,7 @@ mod tests {
         assert!(executor.evaluate_condition(&condition, &facts).unwrap());
 
         // Test case sensitivity
-        let mut facts2 = Facts::new();
+        let facts2 = Facts::new();
         facts2.set("Text.Value", Value::String("HelloWorld".to_string()));
 
         let condition = Condition::new(
@@ -1127,7 +1150,10 @@ mod tests {
 
         // Test scenario 1: Student email
         let mut facts1 = Facts::new();
-        facts1.set("User.Email", Value::String("student@university.edu".to_string()));
+        facts1.set(
+            "User.Email",
+            Value::String("student@university.edu".to_string()),
+        );
 
         let executed = executor.try_execute_rule(&rule1, &mut facts1).unwrap();
         assert!(executed);
@@ -1135,7 +1161,10 @@ mod tests {
 
         // Test scenario 2: Premium product
         let mut facts2 = Facts::new();
-        facts2.set("Product.Name", Value::String("Premium Laptop X1".to_string()));
+        facts2.set(
+            "Product.Name",
+            Value::String("Premium Laptop X1".to_string()),
+        );
 
         let executed = executor.try_execute_rule(&rule2, &mut facts2).unwrap();
         assert!(executed);

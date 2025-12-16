@@ -1,8 +1,8 @@
-use std::time::{Duration, Instant};
 use rust_rule_engine::rete::{
+    auto_network::{Condition, ConditionGroup, Rule},
     ReteUlEngine,
-    auto_network::{Rule, ConditionGroup, Condition},
 };
+use std::time::{Duration, Instant};
 
 fn main() {
     println!("🚀 Starting 1,000,000 Rules Benchmark for RETE-UL");
@@ -39,7 +39,7 @@ fn main() {
             action: format!("log('Rule{} fired')", i),
         };
 
-        engine.add_rule_from_definition(&rule, (1_000_000 - i) as i32, false);
+        engine.add_rule_from_definition(&rule, 1_000_000 - i, false);
     }
 
     let create_time = start_create.elapsed();
@@ -63,25 +63,40 @@ fn main() {
     println!("📈 Single execution results:");
     println!("   Time: {:?}", exec_time);
     println!("   Rules fired: {}", result.len());
-    println!("   Latency per rule: {:.2} µs", exec_time.as_micros() as f64 / 1_000_000.0);
-    println!("   Rules/second: {:.2}", 1_000_000.0 / exec_time.as_secs_f64());
+    println!(
+        "   Latency per rule: {:.2} µs",
+        exec_time.as_micros() as f64 / 1_000_000.0
+    );
+    println!(
+        "   Rules/second: {:.2}",
+        1_000_000.0 / exec_time.as_secs_f64()
+    );
 
     let mem_after = get_memory_usage();
     println!("🧠 Memory after: {} KB", mem_after);
-    println!("📊 Memory delta: {} KB", mem_after as i64 - mem_before as i64);
+    println!(
+        "📊 Memory delta: {} KB",
+        mem_after as i64 - mem_before as i64
+    );
 
     // Test multiple executions (reduced for 1M rules)
     println!("🔄 Testing multiple executions...");
     let mut total_fired = 0;
     let mut times = Vec::new();
 
-    for run in 0..3 { // Reduced to 3 runs for 1M rules
+    for run in 0..3 {
+        // Reduced to 3 runs for 1M rules
         let start = Instant::now();
         let result = engine.fire_all();
         let elapsed = start.elapsed();
         total_fired += result.len();
         times.push(elapsed);
-        println!("   Run {}: {:?} ({} rules fired)", run + 1, elapsed, result.len());
+        println!(
+            "   Run {}: {:?} ({} rules fired)",
+            run + 1,
+            elapsed,
+            result.len()
+        );
     }
 
     let avg_time = times.iter().sum::<Duration>() / times.len() as u32;
@@ -92,11 +107,16 @@ fn main() {
     // Performance analysis
     let rules_per_second = 1_000_000.0 / avg_time.as_secs_f64();
     println!("🚀 Performance: {:.2} rules/second", rules_per_second);
-    println!("⚡ Latency: {:.2} µs per rule", avg_time.as_micros() as f64 / 1_000_000.0);
+    println!(
+        "⚡ Latency: {:.2} µs per rule",
+        avg_time.as_micros() as f64 / 1_000_000.0
+    );
 
     // Scalability check
     if avg_time > Duration::from_secs(10) {
-        println!("🚨 CRITICAL: Average execution took > 10 seconds - not suitable for real-time use");
+        println!(
+            "🚨 CRITICAL: Average execution took > 10 seconds - not suitable for real-time use"
+        );
     } else if avg_time > Duration::from_secs(1) {
         println!("⚠️  WARNING: Average execution took > 1 second - may not be suitable for interactive applications");
     } else if avg_time > Duration::from_millis(100) {
@@ -105,10 +125,18 @@ fn main() {
         println!("✅ Good performance for batch processing applications");
     }
 
-    if mem_after > 1024 * 1024 { // 1GB
-        println!("🚨 CRITICAL: Very high memory usage ({} MB) - monitor for memory leaks", mem_after / 1024);
-    } else if mem_after > 100 * 1024 { // 100MB
-        println!("⚠️  WARNING: High memory usage ({} MB) - consider memory optimization", mem_after / 1024);
+    if mem_after > 1024 * 1024 {
+        // 1GB
+        println!(
+            "🚨 CRITICAL: Very high memory usage ({} MB) - monitor for memory leaks",
+            mem_after / 1024
+        );
+    } else if mem_after > 100 * 1024 {
+        // 100MB
+        println!(
+            "⚠️  WARNING: High memory usage ({} MB) - consider memory optimization",
+            mem_after / 1024
+        );
     } else {
         println!("✅ Reasonable memory usage ({} MB)", mem_after / 1024);
     }

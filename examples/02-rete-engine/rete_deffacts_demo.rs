@@ -7,10 +7,10 @@
 //!
 //! Run: cargo run --example rete_deffacts_demo
 
-use rust_rule_engine::rete::{
-    IncrementalEngine, GrlReteLoader, DeffactsBuilder, TemplateBuilder, FactValue, TypedFacts,
-};
 use rust_rule_engine::errors::Result;
+use rust_rule_engine::rete::{
+    DeffactsBuilder, FactValue, GrlReteLoader, IncrementalEngine, TemplateBuilder, TypedFacts,
+};
 
 fn main() -> Result<()> {
     println!("=== RETE Deffacts System Demo ===\n");
@@ -94,8 +94,14 @@ fn demo_deffacts_basic() -> Result<()> {
     // Register deffacts
     engine.deffacts_mut().register(initial_people)?;
 
-    println!("\n   Registered deffacts sets: {:?}", engine.deffacts().list_deffacts());
-    println!("   Total facts across all deffacts: {}", engine.deffacts().total_fact_count());
+    println!(
+        "\n   Registered deffacts sets: {:?}",
+        engine.deffacts().list_deffacts()
+    );
+    println!(
+        "   Total facts across all deffacts: {}",
+        engine.deffacts().total_fact_count()
+    );
 
     // Load deffacts into working memory
     let handles = engine.load_deffacts();
@@ -104,7 +110,12 @@ fn demo_deffacts_basic() -> Result<()> {
     // Verify facts in working memory
     for (i, handle) in handles.iter().enumerate() {
         if let Some(fact) = engine.working_memory().get(handle) {
-            println!("   Fact {}: type={}, data={:?}", i + 1, fact.fact_type, fact.data);
+            println!(
+                "   Fact {}: type={}, data={:?}",
+                i + 1,
+                fact.fact_type,
+                fact.data
+            );
         }
     }
 
@@ -210,7 +221,10 @@ fn demo_deffacts_with_templates() -> Result<()> {
     // Load deffacts (will validate against template)
     let handles = engine.load_deffacts();
 
-    println!("\n   ✅ Loaded {} customers (validated against template)", handles.len());
+    println!(
+        "\n   ✅ Loaded {} customers (validated against template)",
+        handles.len()
+    );
 
     for handle in &handles {
         if let Some(fact) = engine.working_memory().get(handle) {
@@ -284,7 +298,10 @@ fn demo_deffacts_with_rules() -> Result<()> {
     GrlReteLoader::load_from_string(rules, &mut engine)?;
 
     println!("   Loaded 2 business rules");
-    println!("   Registered deffacts with {} orders", engine.deffacts().total_fact_count());
+    println!(
+        "   Registered deffacts with {} orders",
+        engine.deffacts().total_fact_count()
+    );
 
     // Load deffacts
     let handles = engine.load_deffacts();
@@ -478,7 +495,10 @@ fn demo_ecommerce_system() -> Result<()> {
 
     println!("   System Configuration:");
     println!("   - Templates: 2 (Product, Customer)");
-    println!("   - Deffacts: 2 sets ({} total facts)", engine.deffacts().total_fact_count());
+    println!(
+        "   - Deffacts: 2 sets ({} total facts)",
+        engine.deffacts().total_fact_count()
+    );
     println!("   - Rules: 3 business rules");
 
     // Initialize system by loading deffacts

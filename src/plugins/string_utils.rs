@@ -8,6 +8,12 @@ pub struct StringUtilsPlugin {
     metadata: PluginMetadata,
 }
 
+impl Default for StringUtilsPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StringUtilsPlugin {
     pub fn new() -> Self {
         Self {

@@ -3,8 +3,8 @@
 //! Provides type-safe structured facts with schema validation.
 //! Similar to CLIPS deftemplate and Drools declared types.
 
-use crate::rete::facts::{FactValue, TypedFacts};
 use crate::errors::{Result, RuleEngineError};
+use crate::rete::facts::{FactValue, TypedFacts};
 use std::collections::HashMap;
 
 /// Field definition in a template
@@ -119,7 +119,9 @@ impl Template {
         let mut facts = TypedFacts::new();
 
         for field in &self.fields {
-            let value = field.default_value.clone()
+            let value = field
+                .default_value
+                .clone()
                 .unwrap_or_else(|| field.field_type.default_value());
             facts.set(&field.name, value);
         }
@@ -129,7 +131,9 @@ impl Template {
 
     /// Get field definition by name
     pub fn get_field(&self, name: &str) -> Option<&FieldDef> {
-        self.field_map.get(name).and_then(|idx| self.fields.get(*idx))
+        self.field_map
+            .get(name)
+            .and_then(|idx| self.fields.get(*idx))
     }
 }
 
@@ -253,7 +257,11 @@ impl TemplateBuilder {
     }
 
     /// Add a required array field
-    pub fn required_array_field(mut self, name: impl Into<String>, element_type: FieldType) -> Self {
+    pub fn required_array_field(
+        mut self,
+        name: impl Into<String>,
+        element_type: FieldType,
+    ) -> Self {
         self.template.add_field(FieldDef {
             name: name.into(),
             field_type: FieldType::Array(Box::new(element_type)),
@@ -264,7 +272,11 @@ impl TemplateBuilder {
     }
 
     /// Add a required multislot field (CLIPS-style)
-    pub fn required_multislot_field(self, name: impl Into<String>, element_type: FieldType) -> Self {
+    pub fn required_multislot_field(
+        self,
+        name: impl Into<String>,
+        element_type: FieldType,
+    ) -> Self {
         self.required_array_field(name, element_type)
     }
 
@@ -299,22 +311,22 @@ impl TemplateRegistry {
 
     /// Create an instance from a template
     pub fn create_instance(&self, template_name: &str) -> Result<TypedFacts> {
-        let template = self.get(template_name).ok_or_else(|| {
-            RuleEngineError::EvaluationError {
+        let template = self
+            .get(template_name)
+            .ok_or_else(|| RuleEngineError::EvaluationError {
                 message: format!("Template '{}' not found", template_name),
-            }
-        })?;
+            })?;
 
         Ok(template.create_instance())
     }
 
     /// Validate facts against a template
     pub fn validate(&self, template_name: &str, facts: &TypedFacts) -> Result<()> {
-        let template = self.get(template_name).ok_or_else(|| {
-            RuleEngineError::EvaluationError {
+        let template = self
+            .get(template_name)
+            .ok_or_else(|| RuleEngineError::EvaluationError {
                 message: format!("Template '{}' not found", template_name),
-            }
-        })?;
+            })?;
 
         template.validate(facts)
     }
@@ -356,7 +368,10 @@ mod tests {
             .build();
 
         let instance = template.create_instance();
-        assert_eq!(instance.get("name"), Some(&FactValue::String(String::new())));
+        assert_eq!(
+            instance.get("name"),
+            Some(&FactValue::String(String::new()))
+        );
         assert_eq!(instance.get("age"), Some(&FactValue::Integer(0)));
     }
 
@@ -424,10 +439,13 @@ mod tests {
             .build();
 
         let mut facts = TypedFacts::new();
-        facts.set("items", FactValue::Array(vec![
-            FactValue::String("item1".to_string()),
-            FactValue::String("item2".to_string()),
-        ]));
+        facts.set(
+            "items",
+            FactValue::Array(vec![
+                FactValue::String("item1".to_string()),
+                FactValue::String("item2".to_string()),
+            ]),
+        );
 
         assert!(template.validate(&facts).is_ok());
     }
@@ -435,11 +453,7 @@ mod tests {
     #[test]
     fn test_field_with_default() {
         let template = TemplateBuilder::new("Config")
-            .field_with_default(
-                "timeout",
-                FieldType::Integer,
-                FactValue::Integer(30),
-            )
+            .field_with_default("timeout", FieldType::Integer, FactValue::Integer(30))
             .build();
 
         let instance = template.create_instance();

@@ -5,7 +5,6 @@
 ///!
 ///! ⚠️ NOTE: For production rules with GRL files, use AUTO accumulate instead!
 ///! See `test_auto_accumulate.rs` for the recommended approach.
-
 use rust_rule_engine::rete::accumulate::*;
 use rust_rule_engine::rete::FactValue;
 

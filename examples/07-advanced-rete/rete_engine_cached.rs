@@ -1,8 +1,7 @@
 /// Demo: ReteUlEngine with cached nodes (Performance optimized!)
 /// This example shows the difference between rebuilding nodes vs caching them
-
-use rust_rule_engine::rete::auto_network::{Rule, ConditionGroup, Condition};
-use rust_rule_engine::rete::network::{ReteUlEngine, build_rete_ul_from_condition_group};
+use rust_rule_engine::rete::auto_network::{Condition, ConditionGroup, Rule};
+use rust_rule_engine::rete::network::{build_rete_ul_from_condition_group, ReteUlEngine};
 use std::time::Instant;
 
 fn main() {
@@ -76,7 +75,7 @@ fn main() {
         engine.add_rule_with_action(
             rule.name.clone(),
             node,
-            0, // priority
+            0,    // priority
             true, // no_loop
             move |facts| {
                 println!("   ✅ Rule fired: {}", rule_name);
@@ -151,7 +150,10 @@ fn main() {
 
     // Empty set - should match (vacuous truth)
     let matching_empty = engine2.get_matching_rules();
-    println!("   FORALL on empty set: {:?} (should be ['AllOrdersExpensive'])", matching_empty);
+    println!(
+        "   FORALL on empty set: {:?} (should be ['AllOrdersExpensive'])",
+        matching_empty
+    );
 
     // Add one order that matches
     engine2.set_fact("order1.amount".to_string(), "150".to_string());
@@ -161,7 +163,10 @@ fn main() {
     // Add one order that doesn't match
     engine2.set_fact("order2.amount".to_string(), "50".to_string());
     let matching_mixed = engine2.get_matching_rules();
-    println!("   FORALL with mixed orders: {:?} (should be empty)", matching_mixed);
+    println!(
+        "   FORALL with mixed orders: {:?} (should be empty)",
+        matching_mixed
+    );
 
     println!("\n✨ Demo complete!");
 }

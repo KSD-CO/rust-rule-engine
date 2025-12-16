@@ -3,9 +3,11 @@
 //! This example demonstrates OR patterns in backward chaining queries.
 //! Shows how multiple rules can lead to the same conclusion (implicit OR).
 
-use rust_rule_engine::{Facts, KnowledgeBase};
+use rust_rule_engine::backward::{
+    BackwardEngine, Disjunction, DisjunctionParser, DisjunctionResult, Goal,
+};
 use rust_rule_engine::types::Value;
-use rust_rule_engine::backward::{BackwardEngine, Disjunction, DisjunctionParser, DisjunctionResult, Goal};
+use rust_rule_engine::{Facts, KnowledgeBase};
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -103,7 +105,7 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     // Load rules from GRL file
     let grl_content = include_str!("disjunction_rules.grl");
-    let mut kb = KnowledgeBase::new("disjunction_demo");
+    let kb = KnowledgeBase::new("disjunction_demo");
     kb.add_rules_from_grl(grl_content)?;
 
     println!("\n📋 Loaded rules from disjunction_rules.grl");
@@ -123,7 +125,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
     let result = engine.query("Employee.IsEligible == true", &mut facts)?;
 
     println!("   Scenario: Manager");
-    println!("   Result: {}", if result.provable { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     // Test case: Senior
     facts = Facts::new();
@@ -133,7 +142,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     let result = engine.query("Employee.IsEligible == true", &mut facts)?;
     println!("   Scenario: Senior");
-    println!("   Result: {}", if result.provable { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     // Test case: Director
     facts = Facts::new();
@@ -143,7 +159,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     let result = engine.query("Employee.IsEligible == true", &mut facts)?;
     println!("   Scenario: Director");
-    println!("   Result: {}", if result.provable { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     // Test case: None (should fail)
     facts = Facts::new();
@@ -153,7 +176,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     let result = engine.query("Employee.IsEligible == true", &mut facts)?;
     println!("   Scenario: Regular employee");
-    println!("   Result: {}", if result.provable { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     // Demo 3.2: Discount eligibility (VIP OR high spender)
     println!("\n2️⃣ Test: Discount Eligibility (VIP OR High Spender)");
@@ -166,7 +196,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     let result = engine.query("Customer.GetsDiscount == true", &mut facts)?;
     println!("   Scenario: VIP with $5,000 spent");
-    println!("   Result: {}", if result.provable { "✅ DISCOUNT" } else { "❌ NO DISCOUNT" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ DISCOUNT"
+        } else {
+            "❌ NO DISCOUNT"
+        }
+    );
 
     // Test case: High spender (not VIP)
     facts = Facts::new();
@@ -175,7 +212,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     let result = engine.query("Customer.GetsDiscount == true", &mut facts)?;
     println!("   Scenario: Non-VIP with $15,000 spent");
-    println!("   Result: {}", if result.provable { "✅ DISCOUNT" } else { "❌ NO DISCOUNT" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ DISCOUNT"
+        } else {
+            "❌ NO DISCOUNT"
+        }
+    );
 
     // Test case: Neither
     facts = Facts::new();
@@ -184,7 +228,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     let result = engine.query("Customer.GetsDiscount == true", &mut facts)?;
     println!("   Scenario: Non-VIP with $5,000 spent");
-    println!("   Result: {}", if result.provable { "✅ DISCOUNT" } else { "❌ NO DISCOUNT" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ DISCOUNT"
+        } else {
+            "❌ NO DISCOUNT"
+        }
+    );
 
     // Demo 3.3: Access control (Employee OR Contractor with badge)
     println!("\n3️⃣ Test: Access Control (Employee OR Contractor with Active Badge)");
@@ -198,7 +249,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     let result = engine.query("Person.HasAccess == true", &mut facts)?;
     println!("   Scenario: Employee with active badge");
-    println!("   Result: {}", if result.provable { "✅ ACCESS GRANTED" } else { "❌ ACCESS DENIED" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ACCESS GRANTED"
+        } else {
+            "❌ ACCESS DENIED"
+        }
+    );
 
     // Test case: Contractor with badge
     facts = Facts::new();
@@ -208,7 +266,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     let result = engine.query("Person.HasAccess == true", &mut facts)?;
     println!("   Scenario: Contractor with active badge");
-    println!("   Result: {}", if result.provable { "✅ ACCESS GRANTED" } else { "❌ ACCESS DENIED" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ACCESS GRANTED"
+        } else {
+            "❌ ACCESS DENIED"
+        }
+    );
 
     // Test case: Employee without badge
     facts = Facts::new();
@@ -218,7 +283,14 @@ fn demo_3_implicit_or_from_grl() -> Result<(), Box<dyn Error>> {
 
     let result = engine.query("Person.HasAccess == true", &mut facts)?;
     println!("   Scenario: Employee without badge");
-    println!("   Result: {}", if result.provable { "✅ ACCESS GRANTED" } else { "❌ ACCESS DENIED" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ACCESS GRANTED"
+        } else {
+            "❌ ACCESS DENIED"
+        }
+    );
 
     Ok(())
 }
@@ -231,16 +303,17 @@ fn demo_4_result_merging() -> Result<(), Box<dyn Error>> {
     let mut result = DisjunctionResult::new();
 
     println!("\n1️⃣ Adding solutions from multiple branches:");
-    result.add_branch_solutions(0, vec![
-        rust_rule_engine::backward::Bindings::new(),
-        rust_rule_engine::backward::Bindings::new(),
-    ]);
+    result.add_branch_solutions(
+        0,
+        vec![
+            rust_rule_engine::backward::Bindings::new(),
+            rust_rule_engine::backward::Bindings::new(),
+        ],
+    );
     println!("   Branch 0: 2 solutions added");
     println!("   Total: {} solutions", result.solution_count());
 
-    result.add_branch_solutions(2, vec![
-        rust_rule_engine::backward::Bindings::new(),
-    ]);
+    result.add_branch_solutions(2, vec![rust_rule_engine::backward::Bindings::new()]);
     println!("   Branch 2: 1 solution added");
     println!("   Total: {} solutions", result.solution_count());
     println!("   Successful branches: {:?}", result.successful_branches);
@@ -248,11 +321,10 @@ fn demo_4_result_merging() -> Result<(), Box<dyn Error>> {
     println!("\n2️⃣ Testing deduplication:");
     let mut dup_result = DisjunctionResult::new();
     let dup_bindings = rust_rule_engine::backward::Bindings::new();
-    dup_result.add_branch_solutions(0, vec![
-        dup_bindings.clone(),
-        dup_bindings.clone(),
-        dup_bindings,
-    ]);
+    dup_result.add_branch_solutions(
+        0,
+        vec![dup_bindings.clone(), dup_bindings.clone(), dup_bindings],
+    );
 
     println!("   Before: {} solutions", dup_result.solution_count());
     dup_result.deduplicate();

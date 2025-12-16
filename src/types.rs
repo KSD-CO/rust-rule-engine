@@ -265,11 +265,11 @@ impl Operator {
                 // "null" string should be treated as Value::Null
                 if matches!(left, Value::Null) || matches!(right, Value::Null) {
                     // Convert "null" string to Value::Null for comparison
-                    let left_is_null = matches!(left, Value::Null) 
+                    let left_is_null = matches!(left, Value::Null)
                         || (matches!(left, Value::String(s) if s == "null"));
                     let right_is_null = matches!(right, Value::Null)
                         || (matches!(right, Value::String(s) if s == "null"));
-                    
+
                     left_is_null == right_is_null
                 } else {
                     left == right
@@ -282,7 +282,7 @@ impl Operator {
                         || (matches!(left, Value::String(s) if s == "null"));
                     let right_is_null = matches!(right, Value::Null)
                         || (matches!(right, Value::String(s) if s == "null"));
-                    
+
                     left_is_null != right_is_null
                 } else {
                     left != right

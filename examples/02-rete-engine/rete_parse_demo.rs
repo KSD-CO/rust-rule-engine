@@ -1,6 +1,7 @@
-
 //! Demo: Tự động phân tích rule thành mạng RETE (API mới)
-use rust_rule_engine::rete::auto_network::{Rule, ConditionGroup, Condition, build_rete_ul_from_rule};
+use rust_rule_engine::rete::auto_network::{
+    build_rete_ul_from_rule, Condition, ConditionGroup, Rule,
+};
 use rust_rule_engine::rete::network::evaluate_rete_ul_node;
 use std::collections::HashMap;
 

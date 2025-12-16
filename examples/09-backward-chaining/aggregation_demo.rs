@@ -5,11 +5,11 @@
 //!
 //! Run: cargo run --example aggregation_demo --features backward-chaining
 
-use rust_rule_engine::backward::{BackwardEngine, BackwardConfig};
+use rust_rule_engine::backward::{BackwardConfig, BackwardEngine};
 use rust_rule_engine::engine::facts::Facts;
+use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
+use rust_rule_engine::types::{ActionType, Operator, Value};
 use rust_rule_engine::KnowledgeBase;
-use rust_rule_engine::engine::rule::{Rule, Condition, ConditionGroup};
-use rust_rule_engine::types::{Value, Operator, ActionType};
 use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -40,8 +40,8 @@ fn demo_salary_analysis() -> Result<(), Box<dyn std::error::Error>> {
     println!("📊 Demo 1: Employee Salary Analysis");
     println!("{}", "-".repeat(80));
 
-    let mut kb = KnowledgeBase::new("SalaryAnalysis");
-    let mut facts = Facts::new();
+    let kb = KnowledgeBase::new("SalaryAnalysis");
+    let facts = Facts::new();
 
     // Add employee salary facts
     let employees = vec![
@@ -67,21 +67,22 @@ fn demo_salary_analysis() -> Result<(), Box<dyn std::error::Error>> {
             Operator::GreaterThan,
             Value::Integer(0),
         )),
-        vec![
-            ActionType::Set {
-                field: "derived_fact".to_string(),
-                value: Value::Boolean(true),
-            },
-        ],
+        vec![ActionType::Set {
+            field: "derived_fact".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
     kb.add_rule(salary_rule)?;
 
-    let mut engine = BackwardEngine::with_config(kb, BackwardConfig {
-        max_depth: 10,
-        enable_memoization: true,
-        max_solutions: usize::MAX,
-        ..Default::default()
-    });
+    let engine = BackwardEngine::with_config(
+        kb,
+        BackwardConfig {
+            max_depth: 10,
+            enable_memoization: true,
+            max_solutions: usize::MAX,
+            ..Default::default()
+        },
+    );
 
     println!("Employees:");
     for (name, salary) in &employees {
@@ -93,10 +94,22 @@ fn demo_salary_analysis() -> Result<(), Box<dyn std::error::Error>> {
     // This demo shows the aggregation API
     println!("Aggregation Summary:");
     println!("  Total Employees: {}", employees.len());
-    println!("  Total Payroll: ${}", employees.iter().map(|(_, s)| s).sum::<i64>());
-    println!("  Average Salary: ${}", employees.iter().map(|(_, s)| *s as f64).sum::<f64>() / employees.len() as f64);
-    println!("  Min Salary: ${}", employees.iter().map(|(_, s)| s).min().unwrap());
-    println!("  Max Salary: ${}", employees.iter().map(|(_, s)| s).max().unwrap());
+    println!(
+        "  Total Payroll: ${}",
+        employees.iter().map(|(_, s)| s).sum::<i64>()
+    );
+    println!(
+        "  Average Salary: ${}",
+        employees.iter().map(|(_, s)| *s as f64).sum::<f64>() / employees.len() as f64
+    );
+    println!(
+        "  Min Salary: ${}",
+        employees.iter().map(|(_, s)| s).min().unwrap()
+    );
+    println!(
+        "  Max Salary: ${}",
+        employees.iter().map(|(_, s)| s).max().unwrap()
+    );
 
     println!();
     Ok(())
@@ -107,8 +120,8 @@ fn demo_inventory_analysis() -> Result<(), Box<dyn std::error::Error>> {
     println!("📦 Demo 2: Product Inventory Analysis");
     println!("{}", "-".repeat(80));
 
-    let mut kb = KnowledgeBase::new("InventoryAnalysis");
-    let mut facts = Facts::new();
+    let kb = KnowledgeBase::new("InventoryAnalysis");
+    let facts = Facts::new();
 
     // Add product inventory facts
     let products = vec![
@@ -127,7 +140,7 @@ fn demo_inventory_analysis() -> Result<(), Box<dyn std::error::Error>> {
         facts.add_value(&format!("product_{}", name), Value::Object(prod_data))?;
     }
 
-    let mut engine = BackwardEngine::new(kb);
+    let engine = BackwardEngine::new(kb);
 
     println!("Products:");
     for (name, price, quantity) in &products {
@@ -155,8 +168,8 @@ fn demo_score_analysis() -> Result<(), Box<dyn std::error::Error>> {
     println!("🎓 Demo 3: Student Score Analysis");
     println!("{}", "-".repeat(80));
 
-    let mut kb = KnowledgeBase::new("ScoreAnalysis");
-    let mut facts = Facts::new();
+    let kb = KnowledgeBase::new("ScoreAnalysis");
+    let facts = Facts::new();
 
     // Add student score facts
     let students = vec![
@@ -183,16 +196,14 @@ fn demo_score_analysis() -> Result<(), Box<dyn std::error::Error>> {
             Operator::GreaterThanOrEqual,
             Value::Integer(90),
         )),
-        vec![
-            ActionType::Set {
-                field: "honors".to_string(),
-                value: Value::Boolean(true),
-            },
-        ],
+        vec![ActionType::Set {
+            field: "honors".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
     kb.add_rule(honors_rule)?;
 
-    let mut engine = BackwardEngine::new(kb);
+    let engine = BackwardEngine::new(kb);
 
     println!("Students:");
     for (name, score) in &students {
@@ -220,9 +231,12 @@ fn demo_score_analysis() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Average Score: {:.1}", avg_score);
     println!("  Min Score: {}", min_score);
     println!("  Max Score: {}", max_score);
-    println!("  Passing Rate: {}/{} ({:.1}%)",
-        passing_count, students.len(),
-        (passing_count as f64 / students.len() as f64) * 100.0);
+    println!(
+        "  Passing Rate: {}/{} ({:.1}%)",
+        passing_count,
+        students.len(),
+        (passing_count as f64 / students.len() as f64) * 100.0
+    );
     println!("  Honors Students (90+): {}", honors_count);
 
     println!();
@@ -234,8 +248,8 @@ fn demo_sales_analysis() -> Result<(), Box<dyn std::error::Error>> {
     println!("💰 Demo 4: Sales Performance Analysis");
     println!("{}", "-".repeat(80));
 
-    let mut kb = KnowledgeBase::new("SalesAnalysis");
-    let mut facts = Facts::new();
+    let kb = KnowledgeBase::new("SalesAnalysis");
+    let facts = Facts::new();
 
     // Add sales transaction facts
     let sales = vec![
@@ -265,16 +279,14 @@ fn demo_sales_analysis() -> Result<(), Box<dyn std::error::Error>> {
             Operator::GreaterThan,
             Value::Number(120000.0),
         )),
-        vec![
-            ActionType::Set {
-                field: "high_performer".to_string(),
-                value: Value::Boolean(true),
-            },
-        ],
+        vec![ActionType::Set {
+            field: "high_performer".to_string(),
+            value: Value::Boolean(true),
+        }],
     );
     kb.add_rule(high_performer)?;
 
-    let mut engine = BackwardEngine::new(kb);
+    let engine = BackwardEngine::new(kb);
 
     println!("Sales Transactions:");
     for (quarter, region, amount) in &sales {
@@ -301,8 +313,14 @@ fn demo_sales_analysis() -> Result<(), Box<dyn std::error::Error>> {
 
     let total_sales: f64 = sales.iter().map(|(_, _, a)| a).sum();
     let avg_sale: f64 = total_sales / sales.len() as f64;
-    let max_sale = sales.iter().map(|(_, _, a)| a).fold(0.0_f64, |a, b| a.max(*b));
-    let min_sale = sales.iter().map(|(_, _, a)| a).fold(f64::MAX, |a, b| a.min(*b));
+    let max_sale = sales
+        .iter()
+        .map(|(_, _, a)| a)
+        .fold(0.0_f64, |a, b| a.max(*b));
+    let min_sale = sales
+        .iter()
+        .map(|(_, _, a)| a)
+        .fold(f64::MAX, |a, b| a.min(*b));
 
     println!("Sales Analysis:");
     println!("  Total Sales: ${:.2}", total_sales);
@@ -314,7 +332,10 @@ fn demo_sales_analysis() -> Result<(), Box<dyn std::error::Error>> {
     println!("By Quarter:");
     println!("  Q1 Total: ${:.2}", q1_total);
     println!("  Q2 Total: ${:.2}", q2_total);
-    println!("  Growth: {:.1}%", ((q2_total - q1_total) / q1_total) * 100.0);
+    println!(
+        "  Growth: {:.1}%",
+        ((q2_total - q1_total) / q1_total) * 100.0
+    );
     println!();
 
     println!("By Region:");

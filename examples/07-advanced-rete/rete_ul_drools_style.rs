@@ -1,6 +1,6 @@
-use rust_rule_engine::rete::auto_network::{Rule, build_rete_ul_from_rule};
-use rust_rule_engine::rete::network::{ReteUlEngine, build_rete_ul_from_condition_group};
+use rust_rule_engine::rete::auto_network::{build_rete_ul_from_rule, Rule};
 use rust_rule_engine::rete::evaluate_rete_ul_node;
+use rust_rule_engine::rete::network::{build_rete_ul_from_condition_group, ReteUlEngine};
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -24,7 +24,9 @@ fn rete_ul_fire_all_rules_slow(rules: &[Rule], facts: &mut HashMap<String, Strin
             }
         }
         loop_count += 1;
-        if !any_fired || loop_count > 20 { break; }
+        if !any_fired || loop_count > 20 {
+            break;
+        }
     }
     fired_rules
 }
@@ -37,15 +39,9 @@ fn rete_ul_fire_all_rules_fast(rules: &[Rule], facts: &mut HashMap<String, Strin
     for rule in rules {
         let node = build_rete_ul_from_condition_group(&rule.conditions);
         let rule_name = rule.name.clone();
-        engine.add_rule_with_action(
-            rule.name.clone(),
-            node,
-            0,
-            true,
-            move |_facts| {
-                println!("RETE-UL fired: {}", rule_name);
-            },
-        );
+        engine.add_rule_with_action(rule.name.clone(), node, 0, true, move |_facts| {
+            println!("RETE-UL fired: {}", rule_name);
+        });
     }
 
     // Set facts
@@ -77,7 +73,7 @@ fn main() {
                     field: "age".to_string(),
                     operator: ">=".to_string(),
                     value: "18".to_string(),
-                }
+                },
             ),
             action: "set is_adult_fired".to_string(),
         },
@@ -88,7 +84,7 @@ fn main() {
                     field: "status".to_string(),
                     operator: "==".to_string(),
                     value: "active".to_string(),
-                }
+                },
             ),
             action: "set is_active_fired".to_string(),
         },
@@ -99,7 +95,7 @@ fn main() {
                     field: "score".to_string(),
                     operator: ">".to_string(),
                     value: "80".to_string(),
-                }
+                },
             ),
             action: "set high_score_fired".to_string(),
         },

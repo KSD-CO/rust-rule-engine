@@ -1,3 +1,5 @@
+#![allow(clippy::collapsible_match)]
+
 use crate::engine::{facts::Facts, knowledge_base::KnowledgeBase, rule::Rule};
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Value};
@@ -140,13 +142,10 @@ impl ParallelRuleEngine {
 
     /// Group rules by their salience level
     fn group_rules_by_salience(&self, rules: &[Rule]) -> HashMap<i32, Vec<Rule>> {
-        let mut groups = HashMap::new();
+        let mut groups: HashMap<i32, Vec<Rule>> = HashMap::new();
         for rule in rules {
             if rule.enabled {
-                groups
-                    .entry(rule.salience)
-                    .or_insert_with(Vec::new)
-                    .push(rule.clone());
+                groups.entry(rule.salience).or_default().push(rule.clone());
             }
         }
         groups
@@ -190,7 +189,8 @@ impl ParallelRuleEngine {
                     for rule in chunk {
                         let start = Instant::now();
                         // Pass functions to evaluator
-                        let fired = Self::evaluate_rule_conditions(&rule, &facts_clone, &functions_clone);
+                        let fired =
+                            Self::evaluate_rule_conditions(&rule, &facts_clone, &functions_clone);
 
                         if fired {
                             if debug_mode {
@@ -279,7 +279,7 @@ impl ParallelRuleEngine {
     }
 
     /// Evaluate rule conditions for parallel execution - FULL FEATURED
-    /// 
+    ///
     /// ✅ FULLY SUPPORTS:
     /// - Simple field comparisons (User.age > 18)
     /// - Complex condition groups (AND/OR/NOT)
@@ -289,24 +289,25 @@ impl ParallelRuleEngine {
     /// - Pattern matching (exists, forall)
     /// - Accumulate operations
     /// - MultiField operations
-    /// 
+    ///
     /// This is now a complete condition evaluator for parallel execution!
     fn evaluate_rule_conditions(
-        rule: &Rule, 
+        rule: &Rule,
         facts: &Facts,
         functions: &Arc<RwLock<CustomFunctionMap>>,
     ) -> bool {
-        use crate::engine::rule::{ConditionExpression, ConditionGroup};
         use crate::engine::pattern_matcher::PatternMatcher;
-        
+        use crate::engine::rule::ConditionGroup;
+
         match &rule.conditions {
             ConditionGroup::Single(condition) => {
                 Self::evaluate_single_condition(condition, facts, functions)
             }
-            ConditionGroup::Single(condition) => {
-                Self::evaluate_single_condition(condition, facts, functions)
-            }
-            ConditionGroup::Compound { left, operator, right } => {
+            ConditionGroup::Compound {
+                left,
+                operator,
+                right,
+            } => {
                 // Create temporary rules to evaluate sub-conditions
                 let left_rule = Rule {
                     name: rule.name.clone(),
@@ -336,10 +337,10 @@ impl ParallelRuleEngine {
                     date_effective: rule.date_effective,
                     date_expires: rule.date_expires,
                 };
-                
+
                 let left_result = Self::evaluate_rule_conditions(&left_rule, facts, functions);
                 let right_result = Self::evaluate_rule_conditions(&right_rule, facts, functions);
-                
+
                 match operator {
                     crate::types::LogicalOperator::And => left_result && right_result,
                     crate::types::LogicalOperator::Or => left_result || right_result,
@@ -364,12 +365,8 @@ impl ParallelRuleEngine {
                 !Self::evaluate_rule_conditions(&temp_rule, facts, functions)
             }
             // Pattern matching - now supported!
-            ConditionGroup::Exists(condition) => {
-                PatternMatcher::evaluate_exists(condition, facts)
-            }
-            ConditionGroup::Forall(condition) => {
-                PatternMatcher::evaluate_forall(condition, facts)
-            }
+            ConditionGroup::Exists(condition) => PatternMatcher::evaluate_exists(condition, facts),
+            ConditionGroup::Forall(condition) => PatternMatcher::evaluate_forall(condition, facts),
             // Accumulate - now supported!
             ConditionGroup::Accumulate {
                 result_var,
@@ -380,7 +377,7 @@ impl ParallelRuleEngine {
                 function_arg,
             } => {
                 // Evaluate and inject result
-                if let Ok(_) = Self::evaluate_accumulate_parallel(
+                Self::evaluate_accumulate_parallel(
                     result_var,
                     source_pattern,
                     extract_field,
@@ -388,11 +385,8 @@ impl ParallelRuleEngine {
                     function,
                     function_arg,
                     facts,
-                ) {
-                    true
-                } else {
-                    false
-                }
+                )
+                .is_ok()
             }
         }
     }
@@ -408,12 +402,16 @@ impl ParallelRuleEngine {
         match &condition.expression {
             ConditionExpression::Field(field_name) => {
                 // Try nested lookup first, then flat lookup
-                if let Some(value) = facts.get_nested(field_name).or_else(|| facts.get(field_name)) {
+                if let Some(value) = facts
+                    .get_nested(field_name)
+                    .or_else(|| facts.get(field_name))
+                {
                     // Handle Value comparisons including expressions
                     let rhs = match &condition.value {
                         Value::String(s) => {
                             // Try to resolve as variable reference
-                            facts.get_nested(s)
+                            facts
+                                .get_nested(s)
                                 .or_else(|| facts.get(s))
                                 .unwrap_or(condition.value.clone())
                         }
@@ -421,7 +419,8 @@ impl ParallelRuleEngine {
                             // Try to evaluate or lookup expression
                             match crate::expression::evaluate_expression(expr, facts) {
                                 Ok(evaluated) => evaluated,
-                                Err(_) => facts.get_nested(expr)
+                                Err(_) => facts
+                                    .get_nested(expr)
                                     .or_else(|| facts.get(expr))
                                     .unwrap_or(condition.value.clone()),
                             }
@@ -441,7 +440,8 @@ impl ParallelRuleEngine {
                     let arg_values: Vec<Value> = args
                         .iter()
                         .map(|arg| {
-                            facts.get_nested(arg)
+                            facts
+                                .get_nested(arg)
                                 .or_else(|| facts.get(arg))
                                 .unwrap_or(Value::String(arg.clone()))
                         })
@@ -465,7 +465,8 @@ impl ParallelRuleEngine {
                     let arg_values: Vec<Value> = args
                         .iter()
                         .map(|arg| {
-                            facts.get_nested(arg)
+                            facts
+                                .get_nested(arg)
                                 .or_else(|| facts.get(arg))
                                 .unwrap_or(Value::String(arg.clone()))
                         })
@@ -488,7 +489,11 @@ impl ParallelRuleEngine {
                     false
                 }
             }
-            ConditionExpression::MultiField { field, operation, variable: _ } => {
+            ConditionExpression::MultiField {
+                field,
+                operation,
+                variable: _,
+            } => {
                 // MultiField operations - now supported!
                 Self::evaluate_multifield(field, operation, condition, facts)
             }
@@ -526,11 +531,9 @@ impl ParallelRuleEngine {
                                 false
                             }
                         }
-                        "contains" => {
-                            items.iter().any(|item| {
-                                condition.operator.evaluate(item, &condition.value)
-                            })
-                        }
+                        "contains" => items
+                            .iter()
+                            .any(|item| condition.operator.evaluate(item, &condition.value)),
                         "collect" => {
                             // Collect operation - bind variable to array
                             true
@@ -552,7 +555,7 @@ impl ParallelRuleEngine {
         extract_field: &str,
         source_conditions: &[String],
         function: &str,
-        function_arg: &str,
+        _function_arg: &str,
         facts: &Facts,
     ) -> Result<()> {
         // Collect all facts matching the source pattern
@@ -566,7 +569,11 @@ impl ParallelRuleEngine {
 
         for (key, value) in &all_facts {
             if key.starts_with(&pattern_prefix) {
-                let parts: Vec<&str> = key.strip_prefix(&pattern_prefix).unwrap().split('.').collect();
+                let parts: Vec<&str> = key
+                    .strip_prefix(&pattern_prefix)
+                    .unwrap()
+                    .split('.')
+                    .collect();
 
                 if parts.len() >= 2 {
                     let instance_id = parts[0];
@@ -574,12 +581,12 @@ impl ParallelRuleEngine {
 
                     instances
                         .entry(instance_id.to_string())
-                        .or_insert_with(HashMap::new)
+                        .or_default()
                         .insert(field_name, value.clone());
                 } else if parts.len() == 1 {
                     instances
                         .entry("default".to_string())
-                        .or_insert_with(HashMap::new)
+                        .or_default()
                         .insert(parts[0].to_string(), value.clone());
                 }
             }
@@ -588,7 +595,7 @@ impl ParallelRuleEngine {
         // Filter instances by conditions and extract values
         for (_instance_id, fields) in instances {
             let matches_conditions = source_conditions.is_empty() || {
-                source_conditions.iter().all(|cond| {
+                source_conditions.iter().all(|_cond| {
                     // Simple condition evaluation
                     true // Simplified for parallel
                 })
@@ -604,19 +611,25 @@ impl ParallelRuleEngine {
         // Apply accumulate function
         let result: Value = match function {
             "sum" => {
-                let sum: f64 = matching_values.iter().filter_map(|v| match v {
-                    Value::Integer(i) => Some(*i as f64),
-                    Value::Number(n) => Some(*n),
-                    _ => None,
-                }).sum();
+                let sum: f64 = matching_values
+                    .iter()
+                    .filter_map(|v| match v {
+                        Value::Integer(i) => Some(*i as f64),
+                        Value::Number(n) => Some(*n),
+                        _ => None,
+                    })
+                    .sum();
                 Value::Number(sum)
             }
             "average" | "avg" => {
-                let values: Vec<f64> = matching_values.iter().filter_map(|v| match v {
-                    Value::Integer(i) => Some(*i as f64),
-                    Value::Number(n) => Some(*n),
-                    _ => None,
-                }).collect();
+                let values: Vec<f64> = matching_values
+                    .iter()
+                    .filter_map(|v| match v {
+                        Value::Integer(i) => Some(*i as f64),
+                        Value::Number(n) => Some(*n),
+                        _ => None,
+                    })
+                    .collect();
                 if values.is_empty() {
                     Value::Number(0.0)
                 } else {
@@ -624,27 +637,29 @@ impl ParallelRuleEngine {
                 }
             }
             "min" => {
-                let min = matching_values.iter().filter_map(|v| match v {
-                    Value::Integer(i) => Some(*i as f64),
-                    Value::Number(n) => Some(*n),
-                    _ => None,
-                }).fold(f64::INFINITY, f64::min);
+                let min = matching_values
+                    .iter()
+                    .filter_map(|v| match v {
+                        Value::Integer(i) => Some(*i as f64),
+                        Value::Number(n) => Some(*n),
+                        _ => None,
+                    })
+                    .fold(f64::INFINITY, f64::min);
                 Value::Number(min)
             }
             "max" => {
-                let max = matching_values.iter().filter_map(|v| match v {
-                    Value::Integer(i) => Some(*i as f64),
-                    Value::Number(n) => Some(*n),
-                    _ => None,
-                }).fold(f64::NEG_INFINITY, f64::max);
+                let max = matching_values
+                    .iter()
+                    .filter_map(|v| match v {
+                        Value::Integer(i) => Some(*i as f64),
+                        Value::Number(n) => Some(*n),
+                        _ => None,
+                    })
+                    .fold(f64::NEG_INFINITY, f64::max);
                 Value::Number(max)
             }
-            "count" => {
-                Value::Integer(matching_values.len() as i64)
-            }
-            "collect" => {
-                Value::Array(matching_values.clone())
-            }
+            "count" => Value::Integer(matching_values.len() as i64),
+            "collect" => Value::Array(matching_values.clone()),
             _ => Value::Integer(0),
         };
 
@@ -683,10 +698,6 @@ impl ParallelRuleEngine {
             }
             ActionType::Retract { .. } => {
                 // Simplified retract handling
-                Ok(())
-            }
-            ActionType::Custom { .. } => {
-                // Simplified custom action handling
                 Ok(())
             }
             ActionType::ActivateAgendaGroup { .. } => {

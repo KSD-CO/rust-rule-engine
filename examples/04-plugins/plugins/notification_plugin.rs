@@ -2,7 +2,6 @@ use rust_rule_engine::engine::engine::RustRuleEngine;
 use rust_rule_engine::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugin};
 use rust_rule_engine::errors::Result;
 use rust_rule_engine::types::Value;
-use std::collections::HashMap;
 
 /// Notification Plugin for sending alerts, emails, SMS, and push notifications
 pub struct NotificationPlugin {
@@ -357,7 +356,7 @@ impl RulePlugin for NotificationPlugin {
         // Format Message function
         engine.register_function("formatMessage", |args, _facts| {
             let template = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("default".to_string());
             let data = args
@@ -382,7 +381,7 @@ impl RulePlugin for NotificationPlugin {
 
         // Validate Email function
         engine.register_function("validateEmail", |args, _facts| {
-            let email = args.get(0).map(|v| v.to_string()).unwrap_or_default();
+            let email = args.first().map(|v| v.to_string()).unwrap_or_default();
 
             // Simple email validation
             let is_valid = email.contains("@")
@@ -402,7 +401,7 @@ impl RulePlugin for NotificationPlugin {
 
         // Validate Phone Number function
         engine.register_function("validatePhoneNumber", |args, _facts| {
-            let phone = args.get(0).map(|v| v.to_string()).unwrap_or_default();
+            let phone = args.first().map(|v| v.to_string()).unwrap_or_default();
 
             // Simple phone validation
             let cleaned = phone
@@ -423,7 +422,7 @@ impl RulePlugin for NotificationPlugin {
         // Calculate Delivery Time function
         engine.register_function("calculateDeliveryTime", |args, _facts| {
             let notification_type = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("email".to_string());
             let priority = args
@@ -453,7 +452,7 @@ impl RulePlugin for NotificationPlugin {
 
         // Get Delivery Status function
         engine.register_function("getDeliveryStatus", |args, _facts| {
-            let message_id = args.get(0).map(|v| v.to_string()).unwrap_or_default();
+            let message_id = args.first().map(|v| v.to_string()).unwrap_or_default();
 
             // Simulate status check
             let status = if message_id.contains("email") {
@@ -474,7 +473,7 @@ impl RulePlugin for NotificationPlugin {
         // Create Notification ID function
         engine.register_function("createNotificationId", |args, _facts| {
             let notification_type = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("notification".to_string());
 

@@ -1,19 +1,14 @@
 /// GRL Query Syntax Demo
-/// 
+///
 /// Demonstrates how to define and execute backward chaining queries
 /// using GRL (Grule Rule Language) syntax instead of code.
-/// 
+///
 /// This shows how queries can be defined in declarative .grl files
 /// and loaded at runtime, similar to how forward rules are defined.
-
-use rust_rule_engine::{
-    Facts, Value, KnowledgeBase, GRLParser,
-};
+use rust_rule_engine::{Facts, GRLParser, KnowledgeBase, Value};
 
 #[cfg(feature = "backward-chaining")]
-use rust_rule_engine::backward::{
-    BackwardEngine, GRLQueryParser, GRLQueryExecutor,
-};
+use rust_rule_engine::backward::{BackwardEngine, GRLQueryExecutor, GRLQueryParser};
 
 fn main() {
     #[cfg(not(feature = "backward-chaining"))]
@@ -49,7 +44,7 @@ fn demo_1_simple_query() {
     }
     "#;
 
-    let mut kb = KnowledgeBase::new("demo1");
+    let kb = KnowledgeBase::new("demo1");
     let rules = GRLParser::parse_rules(grl_rules).unwrap();
     for rule in rules {
         kb.add_rule(rule);
@@ -101,7 +96,7 @@ fn demo_2_query_with_actions() {
     }
     "#;
 
-    let mut kb = KnowledgeBase::new("demo2");
+    let kb = KnowledgeBase::new("demo2");
     let rules = GRLParser::parse_rules(grl_rules).unwrap();
     for rule in rules {
         kb.add_rule(rule);
@@ -137,7 +132,7 @@ fn demo_2_query_with_actions() {
 
     println!("✅ Query executed: {}", query.name);
     println!("   Provable: {}", result.provable);
-    
+
     if result.provable {
         println!("   ✓ On-success actions executed");
         if let Some(discount) = facts.get("Customer.DiscountRate") {
@@ -181,7 +176,7 @@ fn demo_3_medical_diagnosis_grl() {
     }
     "#;
 
-    let mut kb = KnowledgeBase::new("demo3");
+    let kb = KnowledgeBase::new("demo3");
     let rules = GRLParser::parse_rules(grl_rules).unwrap();
     for rule in rules {
         kb.add_rule(rule);
@@ -225,7 +220,14 @@ fn demo_3_medical_diagnosis_grl() {
 
     println!("🏥 Medical Query: {}", query.name);
     println!("   Goal: Check for Influenza");
-    println!("   Result: {}", if result.provable { "✅ POSITIVE" } else { "❌ NEGATIVE" });
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ POSITIVE"
+        } else {
+            "❌ NEGATIVE"
+        }
+    );
 
     if result.provable {
         println!("\n📊 Diagnosis Details:");
@@ -274,7 +276,7 @@ fn demo_4_multiple_queries() {
     }
     "#;
 
-    let mut kb = KnowledgeBase::new("demo4");
+    let kb = KnowledgeBase::new("demo4");
     let rules = GRLParser::parse_rules(grl_rules).unwrap();
     for rule in rules {
         kb.add_rule(rule);
@@ -313,7 +315,11 @@ fn demo_4_multiple_queries() {
 
     println!("\n📊 Query Results:");
     for (query, result) in queries.iter().zip(results.iter()) {
-        let status = if result.provable { "✅ PASS" } else { "❌ FAIL" };
+        let status = if result.provable {
+            "✅ PASS"
+        } else {
+            "❌ FAIL"
+        };
         println!("   {} - {}: {}", status, query.name, query.goal);
     }
 

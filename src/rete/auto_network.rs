@@ -1,5 +1,5 @@
 //! Auto RETE network: Rule struct and converter
-use crate::rete::network::{ReteUlNode, build_rete_ul_from_condition_group};
+use crate::rete::network::{build_rete_ul_from_condition_group, ReteUlNode};
 
 #[derive(Debug, Clone)]
 pub struct Rule {
@@ -21,7 +21,6 @@ pub enum ConditionGroup {
     Forall(Box<ConditionGroup>),
 }
 
-
 #[derive(Debug, Clone)]
 pub struct Condition {
     pub field: String,
@@ -32,7 +31,10 @@ pub struct Condition {
 /// Convert Rule to RETE-UL node network (auto)
 pub fn build_rete_ul_from_rule(rule: &Rule) -> ReteUlNode {
     let cond_node = build_rete_ul_from_condition_group(&rule.conditions);
-    ReteUlNode::UlAnd(Box::new(cond_node), Box::new(ReteUlNode::UlTerminal(rule.name.clone())))
+    ReteUlNode::UlAnd(
+        Box::new(cond_node),
+        Box::new(ReteUlNode::UlTerminal(rule.name.clone())),
+    )
 }
 
 // Đã chuyển sang build_rete_ul_from_condition_group trong network.rs
@@ -40,8 +42,8 @@ pub fn build_rete_ul_from_rule(rule: &Rule) -> ReteUlNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use crate::rete::network::evaluate_rete_ul_node;
+    use std::collections::HashMap;
 
     #[test]
     fn test_auto_rete_conversion() {
@@ -62,11 +64,11 @@ mod tests {
             },
             action: "notify".to_string(),
         };
-    let rete_node = build_rete_ul_from_rule(&rule);
+        let rete_node = build_rete_ul_from_rule(&rule);
         let mut facts = HashMap::new();
         facts.insert("status".to_string(), "active".to_string());
         facts.insert("age".to_string(), "20".to_string());
-    let result = evaluate_rete_ul_node(&rete_node, &facts);
+        let result = evaluate_rete_ul_node(&rete_node, &facts);
         assert!(result);
 
         // Test OR logic
@@ -88,23 +90,23 @@ mod tests {
             conditions: or_group,
             action: "notify".to_string(),
         };
-    let or_node = build_rete_ul_from_rule(&or_rule);
+        let or_node = build_rete_ul_from_rule(&or_rule);
         let mut facts2 = HashMap::new();
         facts2.insert("user.status".to_string(), "inactive".to_string());
         facts2.insert("user.age".to_string(), "20".to_string());
-    let result_or = evaluate_rete_ul_node(&or_node, &facts2);
+        let result_or = evaluate_rete_ul_node(&or_node, &facts2);
         assert!(result_or);
 
         let mut facts3 = HashMap::new();
         facts3.insert("user.status".to_string(), "active".to_string());
         facts3.insert("user.age".to_string(), "15".to_string());
-    let result_or2 = evaluate_rete_ul_node(&or_node, &facts3);
+        let result_or2 = evaluate_rete_ul_node(&or_node, &facts3);
         assert!(result_or2);
 
         let mut facts4 = HashMap::new();
         facts4.insert("user.status".to_string(), "inactive".to_string());
         facts4.insert("user.age".to_string(), "15".to_string());
-    let result_or3 = evaluate_rete_ul_node(&or_node, &facts4);
+        let result_or3 = evaluate_rete_ul_node(&or_node, &facts4);
         assert!(!result_or3);
     }
 
@@ -121,12 +123,12 @@ mod tests {
             conditions: exists_group,
             action: "notify".to_string(),
         };
-    let exists_node = build_rete_ul_from_rule(&exists_rule);
+        let exists_node = build_rete_ul_from_rule(&exists_rule);
         let mut facts = HashMap::new();
         facts.insert("user1.age".to_string(), "15".to_string());
         facts.insert("user2.age".to_string(), "22".to_string());
         facts.insert("user3.age".to_string(), "17".to_string());
-    let result_exists = evaluate_rete_ul_node(&exists_node, &facts);
+        let result_exists = evaluate_rete_ul_node(&exists_node, &facts);
         assert!(result_exists);
 
         // FORALL: tất cả order.amount > 100
@@ -140,12 +142,12 @@ mod tests {
             conditions: forall_group,
             action: "notify".to_string(),
         };
-    let forall_node = build_rete_ul_from_rule(&forall_rule);
+        let forall_node = build_rete_ul_from_rule(&forall_rule);
         let mut facts2 = HashMap::new();
         facts2.insert("order1.amount".to_string(), "120".to_string());
         facts2.insert("order2.amount".to_string(), "150".to_string());
         facts2.insert("order3.amount".to_string(), "101".to_string());
-    let result_forall = evaluate_rete_ul_node(&forall_node, &facts2);
+        let result_forall = evaluate_rete_ul_node(&forall_node, &facts2);
         assert!(result_forall);
 
         // FORALL: một order không đủ
@@ -153,7 +155,7 @@ mod tests {
         facts3.insert("order1.amount".to_string(), "120".to_string());
         facts3.insert("order2.amount".to_string(), "99".to_string());
         facts3.insert("order3.amount".to_string(), "101".to_string());
-    let result_forall2 = evaluate_rete_ul_node(&forall_node, &facts3);
+        let result_forall2 = evaluate_rete_ul_node(&forall_node, &facts3);
         assert!(!result_forall2);
 
         // Kiểu bool: user.active == true
@@ -167,13 +169,13 @@ mod tests {
             conditions: bool_group,
             action: "notify".to_string(),
         };
-    let bool_node = build_rete_ul_from_rule(&bool_rule);
+        let bool_node = build_rete_ul_from_rule(&bool_rule);
         let mut facts4 = HashMap::new();
         facts4.insert("user.active".to_string(), "true".to_string());
-    let result_bool = evaluate_rete_ul_node(&bool_node, &facts4);
+        let result_bool = evaluate_rete_ul_node(&bool_node, &facts4);
         assert!(result_bool);
         facts4.insert("user.active".to_string(), "false".to_string());
-    let result_bool2 = evaluate_rete_ul_node(&bool_node, &facts4);
+        let result_bool2 = evaluate_rete_ul_node(&bool_node, &facts4);
         assert!(!result_bool2);
     }
 }

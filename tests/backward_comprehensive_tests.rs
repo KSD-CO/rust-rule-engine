@@ -5,8 +5,8 @@
 #[cfg(feature = "backward-chaining")]
 mod expression_parser {
     use rust_rule_engine::backward::expression::{Expression, ExpressionParser};
-    use rust_rule_engine::types::Value;
     use rust_rule_engine::engine::facts::Facts;
+    use rust_rule_engine::types::Value;
 
     #[test]
     fn test_parse_simple_field() {
@@ -183,17 +183,14 @@ mod expression_parser {
 #[cfg(feature = "backward-chaining")]
 mod conclusion_index {
     use rust_rule_engine::backward::conclusion_index::ConclusionIndex;
-    use rust_rule_engine::engine::rule::{Rule, Condition};
-    use rust_rule_engine::types::{ActionType, Value, Operator};
+    use rust_rule_engine::engine::rule::{Condition, Rule};
+    use rust_rule_engine::types::{ActionType, Operator, Value};
     use rust_rule_engine::ConditionGroup;
 
     fn create_test_rule(name: &str, sets_field: &str) -> Rule {
         // Create a simple dummy condition (always true)
-        let dummy_condition = Condition::new(
-            "dummy".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        );
+        let dummy_condition =
+            Condition::new("dummy".to_string(), Operator::Equal, Value::Boolean(true));
 
         Rule::new(
             name.to_string(),
@@ -286,7 +283,10 @@ mod conclusion_index {
 
         // Add 100 rules
         for i in 0..100 {
-            index.add_rule(&create_test_rule(&format!("Rule{}", i), &format!("Field{}", i)));
+            index.add_rule(&create_test_rule(
+                &format!("Rule{}", i),
+                &format!("Field{}", i),
+            ));
         }
 
         use std::time::Instant;
@@ -315,8 +315,8 @@ mod conclusion_index {
         let candidates1 = index.find_candidates("User.IsVIP == true");
         let candidates2 = index.find_candidates("User.Points == 1000");
 
-        assert!(candidates1.len() > 0);
-        assert!(candidates2.len() > 0);
+        assert!(!candidates1.is_empty());
+        assert!(!candidates2.is_empty());
     }
 
     #[test]
@@ -426,15 +426,15 @@ mod unification {
 
 #[cfg(feature = "backward-chaining")]
 mod multiple_solutions {
-    use rust_rule_engine::backward::{BackwardEngine, BackwardConfig};
     use rust_rule_engine::backward::search::SearchStrategy;
-    use rust_rule_engine::{KnowledgeBase, Facts, Rule, Condition, ConditionGroup};
-    use rust_rule_engine::types::{Value, ActionType, Operator};
+    use rust_rule_engine::backward::{BackwardConfig, BackwardEngine};
+    use rust_rule_engine::types::{ActionType, Operator, Value};
+    use rust_rule_engine::{Condition, ConditionGroup, Facts, KnowledgeBase, Rule};
 
     #[test]
     fn test_multiple_solutions_single_rule() {
         // Test finding multiple solutions with max_solutions > 1
-        let mut kb = KnowledgeBase::new("multi_solutions");
+        let kb = KnowledgeBase::new("multi_solutions");
 
         // Rule: If User.Type == "Premium" then User.Discount = 0.2
         kb.add_rule(Rule::new(
@@ -448,7 +448,8 @@ mod multiple_solutions {
                 field: "User.Discount".to_string(),
                 value: Value::Number(0.2),
             }],
-        )).unwrap();
+        ))
+        .unwrap();
 
         let config = BackwardConfig {
             max_depth: 10,
@@ -471,7 +472,7 @@ mod multiple_solutions {
     #[test]
     fn test_multiple_solutions_multiple_paths() {
         // Test case where goal can be proven through multiple rule chains
-        let mut kb = KnowledgeBase::new("multi_paths");
+        let kb = KnowledgeBase::new("multi_paths");
 
         // Path 1: User.Age >= 18 -> User.IsAdult = true
         kb.add_rule(Rule::new(
@@ -485,7 +486,8 @@ mod multiple_solutions {
                 field: "User.IsAdult".to_string(),
                 value: Value::Boolean(true),
             }],
-        )).unwrap();
+        ))
+        .unwrap();
 
         // Path 2: User.HasLicense == true -> User.IsAdult = true
         kb.add_rule(Rule::new(
@@ -499,7 +501,8 @@ mod multiple_solutions {
                 field: "User.IsAdult".to_string(),
                 value: Value::Boolean(true),
             }],
-        )).unwrap();
+        ))
+        .unwrap();
 
         let config = BackwardConfig {
             max_depth: 10,
@@ -515,13 +518,16 @@ mod multiple_solutions {
 
         let result = engine.query("User.IsAdult == true", &mut facts).unwrap();
 
-        assert!(result.provable, "Goal should be provable through multiple paths");
+        assert!(
+            result.provable,
+            "Goal should be provable through multiple paths"
+        );
     }
 
     #[test]
     fn test_max_solutions_limit() {
         // Test that engine respects max_solutions limit
-        let mut kb = KnowledgeBase::new("solution_limit");
+        let kb = KnowledgeBase::new("solution_limit");
 
         // Simple rule
         kb.add_rule(Rule::new(
@@ -535,7 +541,8 @@ mod multiple_solutions {
                 field: "Output.Value".to_string(),
                 value: Value::Number(42.0),
             }],
-        )).unwrap();
+        ))
+        .unwrap();
 
         // Test with max_solutions = 1
         let config1 = BackwardConfig {
@@ -567,7 +574,7 @@ mod multiple_solutions {
     #[test]
     fn test_multiple_solutions_with_different_strategies() {
         // Test multiple solutions with different search strategies
-        let mut kb = KnowledgeBase::new("multi_strategy");
+        let kb = KnowledgeBase::new("multi_strategy");
 
         kb.add_rule(Rule::new(
             "Rule1".to_string(),
@@ -580,7 +587,8 @@ mod multiple_solutions {
                 field: "Y".to_string(),
                 value: Value::Boolean(true),
             }],
-        )).unwrap();
+        ))
+        .unwrap();
 
         // Test with DFS
         let config_dfs = BackwardConfig {
@@ -614,7 +622,7 @@ mod multiple_solutions {
     #[test]
     fn test_multiple_solutions_complex_chain() {
         // Test multiple solutions with complex rule chains
-        let mut kb = KnowledgeBase::new("complex_chain");
+        let kb = KnowledgeBase::new("complex_chain");
 
         // Chain: A -> B -> C
         kb.add_rule(Rule::new(
@@ -628,7 +636,8 @@ mod multiple_solutions {
                 field: "B".to_string(),
                 value: Value::Boolean(true),
             }],
-        )).unwrap();
+        ))
+        .unwrap();
 
         kb.add_rule(Rule::new(
             "BtoC".to_string(),
@@ -641,7 +650,8 @@ mod multiple_solutions {
                 field: "C".to_string(),
                 value: Value::Boolean(true),
             }],
-        )).unwrap();
+        ))
+        .unwrap();
 
         let config = BackwardConfig {
             max_depth: 20,

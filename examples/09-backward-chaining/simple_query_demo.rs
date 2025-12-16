@@ -9,10 +9,9 @@
 
 #![cfg(feature = "backward-chaining")]
 
-use rust_rule_engine::backward::{BackwardEngine, BackwardConfig};
-use rust_rule_engine::{Facts, KnowledgeBase};
-use rust_rule_engine::parser::GRLParser;
+use rust_rule_engine::backward::{BackwardConfig, BackwardEngine};
 use rust_rule_engine::types::Value;
+use rust_rule_engine::{Facts, KnowledgeBase};
 use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -32,8 +31,8 @@ fn demo_basic_query() -> Result<(), Box<dyn std::error::Error>> {
     println!("---------------------");
 
     // Create knowledge base with rules
-    let mut kb = KnowledgeBase::new("BasicQuery");
-    
+    let kb = KnowledgeBase::new("BasicQuery");
+
     let rules = r#"
     rule "VIPStatus" salience 100 {
         when
@@ -49,7 +48,7 @@ fn demo_basic_query() -> Result<(), Box<dyn std::error::Error>> {
             User.Score = 85;
     }
     "#;
-    
+
     kb.add_rules_from_grl(rules)?;
 
     println!("📋 Rules loaded:");
@@ -66,7 +65,10 @@ fn demo_basic_query() -> Result<(), Box<dyn std::error::Error>> {
     facts.set("User.SpendingTotal", Value::Number(1500.0));
 
     println!("\n💾 Initial Facts:");
-    println!("   User.SpendingTotal: {:?}", facts.get("User.SpendingTotal"));
+    println!(
+        "   User.SpendingTotal: {:?}",
+        facts.get("User.SpendingTotal")
+    );
     println!("   User.Score: {:?}", facts.get("User.Score"));
     println!("   User.IsVIP: {:?}", facts.get("User.IsVIP"));
 
@@ -92,8 +94,8 @@ fn demo_proof_trace() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n\n📝 Demo 2: Proof Trace");
     println!("---------------------");
 
-    let mut kb = KnowledgeBase::new("ProofTrace");
-    
+    let kb = KnowledgeBase::new("ProofTrace");
+
     let rules = r#"
     rule "ApplyDiscount" {
         when
@@ -109,7 +111,7 @@ fn demo_proof_trace() -> Result<(), Box<dyn std::error::Error>> {
             User.IsVIP = true;
     }
     "#;
-    
+
     kb.add_rules_from_grl(rules)?;
 
     let mut bc_engine = BackwardEngine::new(kb);
@@ -128,8 +130,8 @@ fn demo_missing_facts() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n\n📝 Demo 3: Missing Facts Detection");
     println!("----------------------------------");
 
-    let mut kb = KnowledgeBase::new("MissingFacts");
-    
+    let kb = KnowledgeBase::new("MissingFacts");
+
     let rules = r#"
     rule "ApproveCredit" {
         when
@@ -138,18 +140,21 @@ fn demo_missing_facts() -> Result<(), Box<dyn std::error::Error>> {
             Application.Approved = true;
     }
     "#;
-    
+
     kb.add_rules_from_grl(rules)?;
 
     let mut bc_engine = BackwardEngine::new(kb);
     let mut facts = Facts::new();
 
     // Only set CreditScore, not Income
-    facts.set("Applicant", Value::Object({
-        let mut applicant = HashMap::new();
-        applicant.insert("CreditScore".to_string(), Value::Number(750.0));
-        applicant
-    }));
+    facts.set(
+        "Applicant",
+        Value::Object({
+            let mut applicant = HashMap::new();
+            applicant.insert("CreditScore".to_string(), Value::Number(750.0));
+            applicant
+        }),
+    );
 
     println!("🔍 Query: 'Application.Approved == true'");
     let result = bc_engine.query("Application.Approved == true", &mut facts)?;
@@ -170,13 +175,13 @@ fn demo_memoization() -> Result<(), Box<dyn std::error::Error>> {
     println!("--------------------------------");
 
     let kb = KnowledgeBase::new("Memoization");
-    
+
     let config = BackwardConfig {
         enable_memoization: true,
         max_depth: 10,
         ..Default::default()
     };
-    
+
     let mut bc_engine = BackwardEngine::with_config(kb, config);
     let mut facts = Facts::new();
 

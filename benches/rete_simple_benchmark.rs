@@ -3,11 +3,11 @@ use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::parser::grl::GRLParser;
-use rust_rule_engine::types::Value;
 use rust_rule_engine::rete::{
+    auto_network::{Condition, ConditionGroup, Rule},
     ReteUlEngine,
-    auto_network::{Rule, ConditionGroup, Condition},
 };
+use rust_rule_engine::types::Value;
 use std::collections::HashMap;
 
 // ============================================================================
@@ -185,7 +185,11 @@ fn bench_scaling(c: &mut Criterion) {
                         log("Rule {} fired");
                 }}
                 "#,
-                i, 100 - i, 20 + (i % 10), 500.0 + (i as f64 * 100.0), i
+                i,
+                100 - i,
+                20 + (i % 10),
+                500.0 + (i as f64 * 100.0),
+                i
             ));
         }
 
@@ -203,15 +207,11 @@ fn bench_scaling(c: &mut Criterion) {
         let mut trad_engine = RustRuleEngine::with_config(kb, config);
         let trad_facts = create_traditional_facts();
 
-        group.bench_with_input(
-            BenchmarkId::new("traditional", count),
-            &count,
-            |b, _| {
-                b.iter(|| {
-                    black_box(trad_engine.execute(&trad_facts).unwrap());
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("traditional", count), &count, |b, _| {
+            b.iter(|| {
+                black_box(trad_engine.execute(&trad_facts).unwrap());
+            })
+        });
 
         // RETE
         let mut rete_engine = ReteUlEngine::new();
@@ -233,7 +233,7 @@ fn bench_scaling(c: &mut Criterion) {
                 },
                 action: format!("log('Rule {} fired')", i),
             };
-            rete_engine.add_rule_from_definition(&rule, (100 - i) as i32, false);
+            rete_engine.add_rule_from_definition(&rule, 100 - i, false);
         }
 
         let facts = create_rete_facts();
@@ -241,15 +241,11 @@ fn bench_scaling(c: &mut Criterion) {
             rete_engine.set_fact(key, value);
         }
 
-        group.bench_with_input(
-            BenchmarkId::new("rete", count),
-            &count,
-            |b, _| {
-                b.iter(|| {
-                    black_box(rete_engine.fire_all());
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("rete", count), &count, |b, _| {
+            b.iter(|| {
+                black_box(rete_engine.fire_all());
+            })
+        });
     }
 
     group.finish();

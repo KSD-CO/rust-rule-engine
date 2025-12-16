@@ -6,10 +6,11 @@
 //! - Product matching based on multiple criteria
 //! - Recommendation scoring and ranking
 
-use rust_rule_engine::{Facts, KnowledgeBase};
-use rust_rule_engine::types::Value;
 use rust_rule_engine::backward::BackwardEngine;
+use rust_rule_engine::types::Value;
+use rust_rule_engine::{Facts, KnowledgeBase};
 
+#[allow(clippy::collapsible_match)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╔══════════════════════════════════════════════════════════════╗");
     println!("║     Product Recommendation - Backward Chaining              ║");
@@ -291,7 +292,7 @@ rule "FinalizeRecommendation" {
 }
     "#;
 
-    let mut kb = KnowledgeBase::new("ProductRecommendationSystem");
+    let kb = KnowledgeBase::new("ProductRecommendationSystem");
     for rule in rust_rule_engine::parser::grl::GRLParser::parse_rules(rules)? {
         kb.add_rule(rule)?;
     }
@@ -308,7 +309,10 @@ fn test_premium_tech_enthusiast() -> Result<(), Box<dyn std::error::Error>> {
     facts.set("Customer.LoyaltyPoints", Value::Number(15000.0));
     facts.set("Customer.AverageOrderValue", Value::Number(1500.0));
     facts.set("Customer.OrdersPerMonth", Value::Number(5.0));
-    facts.set("Customer.Category", Value::String("Electronics".to_string()));
+    facts.set(
+        "Customer.Category",
+        Value::String("Electronics".to_string()),
+    );
 
     println!("Customer Profile:");
     println!("  Name: Alex Tech");

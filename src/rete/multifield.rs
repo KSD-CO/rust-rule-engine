@@ -176,6 +176,7 @@ impl MultifieldOp {
     }
 
     /// Get a string representation of the operation
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         match self {
             MultifieldOp::Collect => "collect".to_string(),
@@ -261,11 +262,7 @@ pub fn evaluate_multifield_pattern(
 /// Returns `Some(variable_name)` if it's a multi-field variable, `None` otherwise
 pub fn parse_multifield_variable(input: &str) -> Option<String> {
     let trimmed = input.trim();
-    if trimmed.starts_with("$?") {
-        Some(trimmed[2..].to_string())
-    } else {
-        None
-    }
+    trimmed.strip_prefix("$?").map(|s| s.to_string())
 }
 
 /// Check if a string is a multi-field variable
@@ -279,15 +276,21 @@ mod tests {
 
     fn create_test_facts_with_array() -> TypedFacts {
         let mut facts = TypedFacts::new();
-        facts.set("items", FactValue::Array(vec![
-            FactValue::String("item1".to_string()),
-            FactValue::String("item2".to_string()),
-            FactValue::String("item3".to_string()),
-        ]));
-        facts.set("tags", FactValue::Array(vec![
-            FactValue::String("electronics".to_string()),
-            FactValue::String("gadgets".to_string()),
-        ]));
+        facts.set(
+            "items",
+            FactValue::Array(vec![
+                FactValue::String("item1".to_string()),
+                FactValue::String("item2".to_string()),
+                FactValue::String("item3".to_string()),
+            ]),
+        );
+        facts.set(
+            "tags",
+            FactValue::Array(vec![
+                FactValue::String("electronics".to_string()),
+                FactValue::String("gadgets".to_string()),
+            ]),
+        );
         facts
     }
 
@@ -373,7 +376,10 @@ mod tests {
 
     #[test]
     fn test_parse_multifield_variable() {
-        assert_eq!(parse_multifield_variable("$?items"), Some("items".to_string()));
+        assert_eq!(
+            parse_multifield_variable("$?items"),
+            Some("items".to_string())
+        );
         assert_eq!(parse_multifield_variable("$?all"), Some("all".to_string()));
         assert_eq!(parse_multifield_variable("$single"), None);
         assert_eq!(parse_multifield_variable("items"), None);

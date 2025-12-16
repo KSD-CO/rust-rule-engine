@@ -1,11 +1,13 @@
 //! Backward chaining engine implementation
 
-use super::goal::{Goal, GoalManager, GoalStatus};
-use super::search::{DepthFirstSearch, BreadthFirstSearch, IterativeDeepeningSearch, SearchStrategy, SearchResult};
-use super::query::{QueryParser, QueryResult, QueryStats, ProofTrace};
 use super::conclusion_index::ConclusionIndex;
-use crate::{Facts, KnowledgeBase};
+use super::goal::{Goal, GoalManager, GoalStatus};
+use super::query::{ProofTrace, QueryParser, QueryResult, QueryStats};
+use super::search::{
+    BreadthFirstSearch, DepthFirstSearch, IterativeDeepeningSearch, SearchStrategy,
+};
 use crate::errors::Result;
+use crate::{Facts, KnowledgeBase};
 use std::sync::Arc;
 
 /// Configuration for backward chaining engine
@@ -13,13 +15,13 @@ use std::sync::Arc;
 pub struct BackwardConfig {
     /// Maximum depth for goal search
     pub max_depth: usize,
-    
+
     /// Search strategy to use
     pub strategy: SearchStrategy,
-    
+
     /// Enable memoization of proven goals
     pub enable_memoization: bool,
-    
+
     /// Maximum number of solutions to find
     pub max_solutions: usize,
 }
@@ -70,13 +72,13 @@ impl BackwardEngine {
             conclusion_index,
         }
     }
-    
+
     /// Update configuration
     pub fn set_config(&mut self, config: BackwardConfig) {
         self.goal_manager = GoalManager::new(config.max_depth);
         self.config = config;
     }
-    
+
     /// Query whether a goal can be proven
     ///
     /// # Example
@@ -99,7 +101,9 @@ impl BackwardEngine {
         &mut self,
         query_str: &str,
         facts: &mut Facts,
-        rete_engine: Option<std::sync::Arc<std::sync::Mutex<crate::rete::propagation::IncrementalEngine>>>,
+        rete_engine: Option<
+            std::sync::Arc<std::sync::Mutex<crate::rete::propagation::IncrementalEngine>>,
+        >,
     ) -> Result<QueryResult> {
         // Parse query into goal
         let mut goal = QueryParser::parse(query_str)
@@ -126,23 +130,36 @@ impl BackwardEngine {
         // Execute search strategy with optional rete_engine
         let search_result = match self.config.strategy {
             SearchStrategy::DepthFirst => {
-                let mut dfs = DepthFirstSearch::new_with_engine(self.config.max_depth, (*self.knowledge_base).clone(), rete_engine.clone())
-                    .with_max_solutions(self.config.max_solutions);
+                let mut dfs = DepthFirstSearch::new_with_engine(
+                    self.config.max_depth,
+                    (*self.knowledge_base).clone(),
+                    rete_engine.clone(),
+                )
+                .with_max_solutions(self.config.max_solutions);
                 dfs.search_with_execution(&mut goal, facts, &self.knowledge_base)
             }
             SearchStrategy::BreadthFirst => {
-                let mut bfs = BreadthFirstSearch::new_with_engine(self.config.max_depth, (*self.knowledge_base).clone(), rete_engine.clone());
+                let mut bfs = BreadthFirstSearch::new_with_engine(
+                    self.config.max_depth,
+                    (*self.knowledge_base).clone(),
+                    rete_engine.clone(),
+                );
                 bfs.search_with_execution(&mut goal, facts, &self.knowledge_base)
             }
             SearchStrategy::Iterative => {
-                let mut ids = IterativeDeepeningSearch::new_with_engine(self.config.max_depth, (*self.knowledge_base).clone(), rete_engine.clone());
+                let mut ids = IterativeDeepeningSearch::new_with_engine(
+                    self.config.max_depth,
+                    (*self.knowledge_base).clone(),
+                    rete_engine.clone(),
+                );
                 ids.search_with_execution(&mut goal, facts, &self.knowledge_base)
             }
         };
 
         // Cache result if enabled
         if self.config.enable_memoization {
-            self.goal_manager.cache_result(query_str.to_string(), search_result.success);
+            self.goal_manager
+                .cache_result(query_str.to_string(), search_result.success);
         }
 
         // Build query result
@@ -165,7 +182,7 @@ impl BackwardEngine {
             QueryResult::failure(self.find_missing_facts(&goal), stats)
         })
     }
-    
+
     /// Find all candidate rules that could prove a goal
     ///
     /// This uses the RETE-style conclusion index for O(1) lookup
@@ -191,7 +208,7 @@ impl BackwardEngine {
 
         Ok(())
     }
-    
+
     /// Check if a rule could potentially prove a goal
     fn rule_could_prove_goal(&self, rule: &crate::engine::rule::Rule, goal: &Goal) -> bool {
         // Simple heuristic: check if goal pattern appears in rule actions
@@ -225,23 +242,23 @@ impl BackwardEngine {
     /// Find what facts are missing to prove a goal
     fn find_missing_facts(&self, goal: &Goal) -> Vec<String> {
         let mut missing = Vec::new();
-        
+
         // Collect unprovable sub-goals
-        self.collect_missing_recursive(goal, &mut missing);
-        
+        Self::collect_missing_recursive(goal, &mut missing);
+
         missing
     }
-    
-    fn collect_missing_recursive(&self, goal: &Goal, missing: &mut Vec<String>) {
+
+    fn collect_missing_recursive(goal: &Goal, missing: &mut Vec<String>) {
         if goal.status == GoalStatus::Unprovable {
             missing.push(goal.pattern.clone());
         }
-        
+
         for sub_goal in &goal.sub_goals {
-            self.collect_missing_recursive(sub_goal, missing);
+            Self::collect_missing_recursive(sub_goal, missing);
         }
     }
-    
+
     /// Explain why a goal was proven (or not)
     pub fn explain_why(&mut self, query_str: &str, facts: &mut Facts) -> Result<String> {
         let result = self.query(query_str, facts)?;
@@ -258,12 +275,12 @@ impl BackwardEngine {
             ))
         }
     }
-    
+
     /// Get the configuration
     pub fn config(&self) -> &BackwardConfig {
         &self.config
     }
-    
+
     /// Get the knowledge base
     pub fn knowledge_base(&self) -> &KnowledgeBase {
         &self.knowledge_base
@@ -310,7 +327,7 @@ impl BackwardEngine {
         query: &str,
         facts: &mut Facts,
     ) -> Result<crate::types::Value> {
-        use super::aggregation::{parse_aggregate_query, apply_aggregate};
+        use super::aggregation::{apply_aggregate, parse_aggregate_query};
 
         // Parse the aggregate query
         let agg_query = parse_aggregate_query(query)?;
@@ -333,20 +350,21 @@ impl BackwardEngine {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
-    use crate::KnowledgeBase;
     use crate::types::Value;
-    
+    use crate::KnowledgeBase;
+
     #[test]
     fn test_engine_creation() {
         let kb = KnowledgeBase::new("test");
         let engine = BackwardEngine::new(kb);
-        
+
         assert_eq!(engine.config.max_depth, 10);
         assert_eq!(engine.config.strategy, SearchStrategy::DepthFirst);
     }
-    
+
     #[test]
     fn test_config_customization() {
         let kb = KnowledgeBase::new("test");
@@ -356,13 +374,13 @@ mod tests {
             enable_memoization: false,
             max_solutions: 10,
         };
-        
+
         let engine = BackwardEngine::with_config(kb, config);
         assert_eq!(engine.config.max_depth, 5);
         assert_eq!(engine.config.strategy, SearchStrategy::BreadthFirst);
         assert!(!engine.config.enable_memoization);
     }
-    
+
     #[test]
     fn test_query_simple() {
         let kb = KnowledgeBase::new("test");
@@ -376,27 +394,25 @@ mod tests {
 
     #[test]
     fn test_function_call_condition_len() {
-        use crate::engine::rule::{Rule, Condition, ConditionGroup};
-        use crate::types::{Operator, ActionType};
+        use crate::engine::rule::{Condition, ConditionGroup, Rule};
+        use crate::types::{ActionType, Operator};
 
-        let mut kb = KnowledgeBase::new("test");
+        let kb = KnowledgeBase::new("test");
 
         // Rule: If User.Name length > 3, then User.HasLongName = true
-        let conditions = ConditionGroup::Single(
-            Condition::with_function(
-                "len".to_string(),
-                vec!["User.Name".to_string()],
-                Operator::GreaterThan,
-                Value::Number(3.0),
-            )
-        );
+        let conditions = ConditionGroup::Single(Condition::with_function(
+            "len".to_string(),
+            vec!["User.Name".to_string()],
+            Operator::GreaterThan,
+            Value::Number(3.0),
+        ));
         let actions = vec![ActionType::Set {
             field: "User.HasLongName".to_string(),
             value: Value::Boolean(true),
         }];
 
         let rule = Rule::new("CheckNameLength".to_string(), conditions, actions);
-        kb.add_rule(rule);
+        let _ = kb.add_rule(rule);
 
         let mut engine = BackwardEngine::new(kb);
         let mut facts = Facts::new();
@@ -408,55 +424,62 @@ mod tests {
         let query_result = result.unwrap();
 
         // Should be provable because "John".len() = 4 > 3
-        assert!(query_result.provable, "Query should be provable with len() function");
+        assert!(
+            query_result.provable,
+            "Query should be provable with len() function"
+        );
     }
 
     #[test]
     fn test_function_call_condition_isempty() {
-        use crate::engine::rule::{Rule, Condition, ConditionGroup};
-        use crate::types::{Operator, ActionType};
+        use crate::engine::rule::{Condition, ConditionGroup, Rule};
+        use crate::types::{ActionType, Operator};
 
-        let mut kb = KnowledgeBase::new("test");
+        let kb = KnowledgeBase::new("test");
 
         // Rule: If User.Description is NOT empty, then User.HasDescription = true
-        let conditions = ConditionGroup::Single(
-            Condition::with_function(
-                "isEmpty".to_string(),
-                vec!["User.Description".to_string()],
-                Operator::Equal,
-                Value::Boolean(false),
-            )
-        );
+        let conditions = ConditionGroup::Single(Condition::with_function(
+            "isEmpty".to_string(),
+            vec!["User.Description".to_string()],
+            Operator::Equal,
+            Value::Boolean(false),
+        ));
         let actions = vec![ActionType::Set {
             field: "User.HasDescription".to_string(),
             value: Value::Boolean(true),
         }];
 
         let rule = Rule::new("CheckDescription".to_string(), conditions, actions);
-        kb.add_rule(rule);
+        let _ = kb.add_rule(rule);
 
         let mut engine = BackwardEngine::new(kb);
         let mut facts = Facts::new();
-        facts.set("User.Description", Value::String("A great user".to_string()));
+        facts.set(
+            "User.Description",
+            Value::String("A great user".to_string()),
+        );
 
         let result = engine.query("User.HasDescription == true", &mut facts);
         assert!(result.is_ok());
         let query_result = result.unwrap();
 
         // Should be provable because description is not empty
-        assert!(query_result.provable, "Query should be provable with isEmpty() function");
+        assert!(
+            query_result.provable,
+            "Query should be provable with isEmpty() function"
+        );
     }
 
     #[test]
     fn test_test_expression_exists() {
-        use crate::engine::rule::{Rule, Condition, ConditionGroup, ConditionExpression};
-        use crate::types::{Operator, ActionType};
+        use crate::engine::rule::{Condition, ConditionExpression, ConditionGroup, Rule};
+        use crate::types::{ActionType, Operator};
 
-        let mut kb = KnowledgeBase::new("test");
+        let kb = KnowledgeBase::new("test");
 
         // Rule: If User.Email exists, then User.HasEmail = true
         let condition = Condition {
-            field: "User.Email".to_string(),  // Required field
+            field: "User.Email".to_string(), // Required field
             expression: ConditionExpression::Test {
                 name: "exists".to_string(),
                 args: vec!["User.Email".to_string()],
@@ -471,7 +494,7 @@ mod tests {
         }];
 
         let rule = Rule::new("CheckEmail".to_string(), conditions, actions);
-        kb.add_rule(rule);
+        let _ = kb.add_rule(rule);
 
         let mut engine = BackwardEngine::new(kb);
         let mut facts = Facts::new();
@@ -482,19 +505,22 @@ mod tests {
         let query_result = result.unwrap();
 
         // Should be provable because User.Email exists
-        assert!(query_result.provable, "Query should be provable with exists test");
+        assert!(
+            query_result.provable,
+            "Query should be provable with exists test"
+        );
     }
 
     #[test]
     fn test_multifield_count_operation() {
-        use crate::engine::rule::{Rule, Condition, ConditionGroup, ConditionExpression};
-        use crate::types::{Operator, ActionType};
+        use crate::engine::rule::{Condition, ConditionExpression, ConditionGroup, Rule};
+        use crate::types::{ActionType, Operator};
 
-        let mut kb = KnowledgeBase::new("test");
+        let kb = KnowledgeBase::new("test");
 
         // Rule: If User.Orders count > 5, then User.IsFrequentBuyer = true
         let condition = Condition {
-            field: "User.Orders".to_string(),  // Required field
+            field: "User.Orders".to_string(), // Required field
             expression: ConditionExpression::MultiField {
                 field: "User.Orders".to_string(),
                 operation: "count".to_string(),
@@ -510,7 +536,7 @@ mod tests {
         }];
 
         let rule = Rule::new("CheckFrequentBuyer".to_string(), conditions, actions);
-        kb.add_rule(rule);
+        let _ = kb.add_rule(rule);
 
         let mut engine = BackwardEngine::new(kb);
         let mut facts = Facts::new();
@@ -531,31 +557,32 @@ mod tests {
         let query_result = result.unwrap();
 
         // Should be provable because orders.count() = 6 > 5
-        assert!(query_result.provable, "Query should be provable with count multifield operation");
+        assert!(
+            query_result.provable,
+            "Query should be provable with count multifield operation"
+        );
     }
 
     #[test]
     fn test_fact_derivation_basic() {
-        use crate::engine::rule::{Rule, Condition, ConditionGroup};
-        use crate::types::{Operator, ActionType};
+        use crate::engine::rule::{Condition, ConditionGroup, Rule};
+        use crate::types::{ActionType, Operator};
 
-        let mut kb = KnowledgeBase::new("test");
+        let kb = KnowledgeBase::new("test");
 
         // Rule: If User.Age > 18, then User.IsAdult = true
-        let conditions = ConditionGroup::Single(
-            Condition::new(
-                "User.Age".to_string(),
-                Operator::GreaterThan,
-                Value::Number(18.0),
-            )
-        );
+        let conditions = ConditionGroup::Single(Condition::new(
+            "User.Age".to_string(),
+            Operator::GreaterThan,
+            Value::Number(18.0),
+        ));
         let actions = vec![ActionType::Set {
             field: "User.IsAdult".to_string(),
             value: Value::Boolean(true),
         }];
 
         let rule = Rule::new("DetermineAdult".to_string(), conditions, actions);
-        kb.add_rule(rule);
+        let _ = kb.add_rule(rule);
 
         let mut engine = BackwardEngine::new(kb);
         let mut facts = Facts::new();
@@ -566,24 +593,25 @@ mod tests {
         assert!(result.is_ok());
         let query_result = result.unwrap();
 
-        assert!(query_result.provable, "Fact should be derived by rule action");
+        assert!(
+            query_result.provable,
+            "Fact should be derived by rule action"
+        );
     }
 
     #[test]
     fn test_rule_chaining_two_levels() {
-        use crate::engine::rule::{Rule, Condition, ConditionGroup};
-        use crate::types::{Operator, ActionType, LogicalOperator};
+        use crate::engine::rule::{Condition, ConditionGroup, Rule};
+        use crate::types::{ActionType, LogicalOperator, Operator};
 
-        let mut kb = KnowledgeBase::new("test");
+        let kb = KnowledgeBase::new("test");
 
         // Rule 1: If User.LoyaltyPoints > 100, then User.IsVIP = true
-        let conditions1 = ConditionGroup::Single(
-            Condition::new(
-                "User.LoyaltyPoints".to_string(),
-                Operator::GreaterThan,
-                Value::Number(100.0),
-            )
-        );
+        let conditions1 = ConditionGroup::Single(Condition::new(
+            "User.LoyaltyPoints".to_string(),
+            Operator::GreaterThan,
+            Value::Number(100.0),
+        ));
         let actions1 = vec![ActionType::Set {
             field: "User.IsVIP".to_string(),
             value: Value::Boolean(true),
@@ -592,21 +620,17 @@ mod tests {
 
         // Rule 2: If User.IsVIP == true AND Order.Amount < 10000, then Order.AutoApproved = true
         let conditions2 = ConditionGroup::Compound {
-            left: Box::new(ConditionGroup::Single(
-                Condition::new(
-                    "User.IsVIP".to_string(),
-                    Operator::Equal,
-                    Value::Boolean(true),
-                )
-            )),
+            left: Box::new(ConditionGroup::Single(Condition::new(
+                "User.IsVIP".to_string(),
+                Operator::Equal,
+                Value::Boolean(true),
+            ))),
             operator: LogicalOperator::And,
-            right: Box::new(ConditionGroup::Single(
-                Condition::new(
-                    "Order.Amount".to_string(),
-                    Operator::LessThan,
-                    Value::Number(10000.0),
-                )
-            )),
+            right: Box::new(ConditionGroup::Single(Condition::new(
+                "Order.Amount".to_string(),
+                Operator::LessThan,
+                Value::Number(10000.0),
+            ))),
         };
         let actions2 = vec![ActionType::Set {
             field: "Order.AutoApproved".to_string(),
@@ -614,8 +638,8 @@ mod tests {
         }];
         let rule2 = Rule::new("AutoApproveVIP".to_string(), conditions2, actions2);
 
-        kb.add_rule(rule1);
-        kb.add_rule(rule2);
+        let _ = kb.add_rule(rule1);
+        let _ = kb.add_rule(rule2);
 
         let mut engine = BackwardEngine::new(kb);
         let mut facts = Facts::new();
@@ -633,24 +657,25 @@ mod tests {
         assert!(result.is_ok());
         let query_result = result.unwrap();
 
-        assert!(query_result.provable, "Query should be provable through 2-level rule chaining");
+        assert!(
+            query_result.provable,
+            "Query should be provable through 2-level rule chaining"
+        );
     }
 
     #[test]
     fn test_fact_derivation_with_log_action() {
-        use crate::engine::rule::{Rule, Condition, ConditionGroup};
-        use crate::types::{Operator, ActionType};
+        use crate::engine::rule::{Condition, ConditionGroup, Rule};
+        use crate::types::{ActionType, Operator};
 
-        let mut kb = KnowledgeBase::new("test");
+        let kb = KnowledgeBase::new("test");
 
         // Rule: If User.Score > 90, log message and set HighScore
-        let conditions = ConditionGroup::Single(
-            Condition::new(
-                "User.Score".to_string(),
-                Operator::GreaterThan,
-                Value::Number(90.0),
-            )
-        );
+        let conditions = ConditionGroup::Single(Condition::new(
+            "User.Score".to_string(),
+            Operator::GreaterThan,
+            Value::Number(90.0),
+        ));
         let actions = vec![
             ActionType::Log {
                 message: "High score achieved!".to_string(),
@@ -658,11 +683,11 @@ mod tests {
             ActionType::Set {
                 field: "User.HasHighScore".to_string(),
                 value: Value::Boolean(true),
-            }
+            },
         ];
 
         let rule = Rule::new("HighScoreRule".to_string(), conditions, actions);
-        kb.add_rule(rule);
+        let _ = kb.add_rule(rule);
 
         let mut engine = BackwardEngine::new(kb);
         let mut facts = Facts::new();
@@ -673,6 +698,9 @@ mod tests {
         let query_result = result.unwrap();
 
         // Should be provable and log action should have been executed
-        assert!(query_result.provable, "Query should be provable with log action");
+        assert!(
+            query_result.provable,
+            "Query should be provable with log action"
+        );
     }
 }

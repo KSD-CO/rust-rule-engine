@@ -180,7 +180,8 @@ impl QueryOptimizer {
 
     /// Set selectivity estimate for a predicate
     pub fn set_selectivity(&mut self, predicate: String, selectivity: f64) {
-        self.selectivity_map.insert(predicate, selectivity.clamp(0.0, 1.0));
+        self.selectivity_map
+            .insert(predicate, selectivity.clamp(0.0, 1.0));
     }
 
     /// Get optimization statistics
@@ -287,6 +288,7 @@ impl OptimizationStats {
 
 /// Join ordering optimizer
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct JoinOptimizer {
     /// Cost estimates for different join strategies
     cost_model: HashMap<String, f64>,

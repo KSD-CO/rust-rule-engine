@@ -174,7 +174,7 @@ fn bench_complex_rule_execution(c: &mut Criterion) {
 }
 
 fn bench_rule_parsing(c: &mut Criterion) {
-    let rules_to_parse = vec![
+    let rules_to_parse = [
         r#"
         rule "Simple" salience 10 {
             when
@@ -239,14 +239,13 @@ fn bench_facts_operations(c: &mut Criterion) {
     // Benchmark fact setting
     group.bench_function("set_nested_fact", |b| {
         b.iter(|| {
-            black_box(
-                facts
-                    .set_nested(
-                        "Customer.LastLogin",
-                        Value::String("2024-10-01".to_string()),
-                    )
-                    .unwrap(),
-            );
+            facts
+                .set_nested(
+                    "Customer.LastLogin",
+                    Value::String("2024-10-01".to_string()),
+                )
+                .unwrap();
+            black_box(());
         })
     });
 

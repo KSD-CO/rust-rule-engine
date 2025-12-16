@@ -1,3 +1,4 @@
+use rust_rule_engine::rete::action_result::ActionResults;
 /// Demo: TypedReteUlEngine with Typed Facts and Advanced Operators
 ///
 /// This example demonstrates the new typed facts system with:
@@ -5,11 +6,9 @@
 /// - Advanced operators (contains, startsWith, endsWith, matches, in)
 /// - Type-safe comparisons
 /// - Performance improvements
-
-use rust_rule_engine::rete::auto_network::{Rule, ConditionGroup, Condition};
-use rust_rule_engine::rete::network::{TypedReteUlEngine, build_rete_ul_from_condition_group};
+use rust_rule_engine::rete::auto_network::{Condition, ConditionGroup, Rule};
 use rust_rule_engine::rete::facts::FactValue;
-use rust_rule_engine::rete::action_result::ActionResults;
+use rust_rule_engine::rete::network::{build_rete_ul_from_condition_group, TypedReteUlEngine};
 use std::time::Instant;
 
 fn main() {
@@ -189,11 +188,14 @@ fn main() {
 
     let mut engine4 = TypedReteUlEngine::new();
     engine4.set_fact("role", "admin");
-    engine4.set_fact("allowed_roles", FactValue::Array(vec![
-        FactValue::String("admin".to_string()),
-        FactValue::String("moderator".to_string()),
-        FactValue::String("editor".to_string()),
-    ]));
+    engine4.set_fact(
+        "allowed_roles",
+        FactValue::Array(vec![
+            FactValue::String("admin".to_string()),
+            FactValue::String("moderator".to_string()),
+            FactValue::String("editor".to_string()),
+        ]),
+    );
 
     let array_rule = Rule {
         name: "HasPermission".to_string(),

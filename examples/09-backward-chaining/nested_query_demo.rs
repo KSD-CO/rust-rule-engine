@@ -6,10 +6,7 @@
 //!
 //! Run with: cargo run --example nested_query_demo --features backward-chaining
 
-use rust_rule_engine::backward::{
-    NestedQuery, Query, NestedQueryParser, NestedQueryStats,
-    Goal,
-};
+use rust_rule_engine::backward::{Goal, NestedQuery, NestedQueryParser, NestedQueryStats, Query};
 
 fn main() {
     println!("{}", "=".repeat(80));
@@ -39,7 +36,8 @@ fn demo_nested_query_parsing() {
     println!("📝 Demo 1: Nested Query Parsing");
     println!("{}", "-".repeat(80));
 
-    let query1 = "grandparent(?x, ?z) WHERE parent(?x, ?y) AND (parent(?y, ?z) WHERE child(?z, ?y))";
+    let query1 =
+        "grandparent(?x, ?z) WHERE parent(?x, ?y) AND (parent(?y, ?z) WHERE child(?z, ?y))";
     println!("Query: {}", query1);
     println!("Has nested: {}", NestedQueryParser::has_nested(query1));
     println!();
@@ -143,9 +141,15 @@ fn demo_nested_stats() {
     println!();
     println!("Statistics:");
     println!("  Total nested queries: {}", stats.total_nested);
-    println!("  Total subquery evaluations: {}", stats.total_subquery_evals);
+    println!(
+        "  Total subquery evaluations: {}",
+        stats.total_subquery_evals
+    );
     println!("  Maximum depth: {}", stats.max_depth);
-    println!("  Average solutions per subquery: {:.2}", stats.avg_subquery_solutions);
+    println!(
+        "  Average solutions per subquery: {:.2}",
+        stats.avg_subquery_solutions
+    );
     println!();
 
     println!("Summary: {}", stats.summary());

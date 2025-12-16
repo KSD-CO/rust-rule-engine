@@ -5,9 +5,7 @@
 /// - Automatic conversion from GRL syntax to RETE-UL structures
 /// - Incremental propagation with GRL rules
 /// - Working with typed facts
-
 use rust_rule_engine::rete::{GrlReteLoader, IncrementalEngine, TypedFacts};
-use std::path::Path;
 
 fn main() {
     println!("\n📄 RETE Engine with GRL File Loading Demo");
@@ -223,7 +221,11 @@ fn main() {
                     Data.processed{} = true;
             }}
             "#,
-            i, i, i, i * 10, i
+            i,
+            i,
+            i,
+            i * 10,
+            i
         ));
     }
 

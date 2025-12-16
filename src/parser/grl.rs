@@ -1,10 +1,10 @@
+use crate::engine::module::{ExportItem, ExportList, ImportType, ItemType, ModuleManager};
 use crate::engine::rule::{Condition, ConditionGroup, Rule};
-use crate::engine::module::{Module, ModuleManager, ExportList, ExportItem, ItemType, ImportDecl, ImportType};
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Operator, Value};
 use chrono::{DateTime, Utc};
-use regex::Regex;
 use once_cell::sync::Lazy;
+use regex::Regex;
 use std::collections::HashMap;
 
 // Stream syntax parser module
@@ -24,8 +24,7 @@ static RULE_SPLIT_REGEX: Lazy<Regex> = Lazy::new(|| {
 
 // Module directives regex
 static DEFMODULE_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"defmodule\s+([A-Z_]\w*)\s*\{([^}]*)\}"#)
-        .expect("Invalid defmodule regex pattern")
+    Regex::new(r#"defmodule\s+([A-Z_]\w*)\s*\{([^}]*)\}"#).expect("Invalid defmodule regex pattern")
 });
 
 static DEFMODULE_SPLIT_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -34,14 +33,11 @@ static DEFMODULE_SPLIT_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static WHEN_THEN_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"when\s+(.+?)\s+then\s+(.+)")
-        .expect("Invalid when-then regex pattern")
+    Regex::new(r"when\s+(.+?)\s+then\s+(.+)").expect("Invalid when-then regex pattern")
 });
 
-static SALIENCE_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"salience\s+(\d+)")
-        .expect("Invalid salience regex pattern")
-});
+static SALIENCE_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"salience\s+(\d+)").expect("Invalid salience regex pattern"));
 
 static TEST_CONDITION_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"^test\s*\(\s*([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*\)$"#)
@@ -63,14 +59,11 @@ static CONDITION_REGEX: Lazy<Regex> = Lazy::new(|| {
         .expect("Invalid condition regex")
 });
 
-static METHOD_CALL_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"\$(\w+)\.(\w+)\s*\(([^)]*)\)"#)
-        .expect("Invalid method call regex")
-});
+static METHOD_CALL_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"\$(\w+)\.(\w+)\s*\(([^)]*)\)"#).expect("Invalid method call regex"));
 
 static FUNCTION_BINDING_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(\w+)\s*\(\s*(.+?)?\s*\)"#)
-        .expect("Invalid function binding regex")
+    Regex::new(r#"(\w+)\s*\(\s*(.+?)?\s*\)"#).expect("Invalid function binding regex")
 });
 
 // Cached multifield patterns - called frequently during condition parsing
@@ -95,8 +88,7 @@ static MULTIFIELD_LAST_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static MULTIFIELD_EMPTY_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+empty$"#)
-        .expect("Invalid multifield empty regex")
+    Regex::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+empty$"#).expect("Invalid multifield empty regex")
 });
 
 static MULTIFIELD_NOT_EMPTY_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -105,8 +97,7 @@ static MULTIFIELD_NOT_EMPTY_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static SIMPLE_CONDITION_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(\w+)\s*(>=|<=|==|!=|>|<)\s*(.+)"#)
-        .expect("Invalid simple condition regex")
+    Regex::new(r#"(\w+)\s*(>=|<=|==|!=|>|<)\s*(.+)"#).expect("Invalid simple condition regex")
 });
 
 /// GRL (Grule Rule Language) Parser
@@ -133,6 +124,12 @@ pub struct ParsedGRL {
     pub module_manager: ModuleManager,
     /// Map of rule name to module name
     pub rule_modules: HashMap<String, String>,
+}
+
+impl Default for ParsedGRL {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ParsedGRL {
@@ -205,24 +202,30 @@ impl GRLParser {
 
         // Then parse all rules from cleaned text
         let rules = self.parse_multiple_rules(&rules_text)?;
-        
+
         // Try to assign rules to modules based on comments
         for rule in rules {
             let module_name = self.extract_module_from_context(grl_text, &rule.name);
-            result.rule_modules.insert(rule.name.clone(), module_name.clone());
-            
+            result
+                .rule_modules
+                .insert(rule.name.clone(), module_name.clone());
+
             // Add rule to module in manager
             if let Ok(module) = result.module_manager.get_module_mut(&module_name) {
                 module.add_rule(&rule.name);
             }
-            
+
             result.rules.push(rule);
         }
 
         Ok(result)
     }
 
-    fn parse_and_register_module(&self, module_def: &str, manager: &mut ModuleManager) -> Result<()> {
+    fn parse_and_register_module(
+        &self,
+        module_def: &str,
+        manager: &mut ModuleManager,
+    ) -> Result<()> {
         // Parse: defmodule MODULE_NAME { export: all/none, import: ... }
         if let Some(captures) = DEFMODULE_REGEX.captures(module_def) {
             let module_name = captures.get(1).unwrap().as_str().to_string();
@@ -240,12 +243,10 @@ impl GRLParser {
                     ExportList::None
                 } else {
                     // Parse pattern-based exports
-                    ExportList::Specific(vec![
-                        ExportItem {
-                            item_type: ItemType::All,
-                            pattern: export_type.trim().to_string(),
-                        }
-                    ])
+                    ExportList::Specific(vec![ExportItem {
+                        item_type: ItemType::All,
+                        pattern: export_type.trim().to_string(),
+                    }])
                 };
                 module.set_exports(exports);
             }
@@ -270,7 +271,7 @@ impl GRLParser {
     fn extract_directive(&self, text: &str, directive: &str) -> Option<String> {
         if let Some(pos) = text.find(directive) {
             let after_directive = &text[pos + directive.len()..];
-            
+
             // Find the end of the directive (next directive, or end of block)
             let end = after_directive
                 .find("import:")
@@ -283,7 +284,12 @@ impl GRLParser {
         }
     }
 
-    fn parse_import_spec(&self, importing_module: &str, spec: &str, manager: &mut ModuleManager) -> Result<()> {
+    fn parse_import_spec(
+        &self,
+        importing_module: &str,
+        spec: &str,
+        manager: &mut ModuleManager,
+    ) -> Result<()> {
         // Parse: "SENSORS (rules * (templates temperature))"
         let parts: Vec<&str> = spec.splitn(2, '(').collect();
         if parts.is_empty() {
@@ -295,12 +301,7 @@ impl GRLParser {
 
         // Check if we're importing rules or templates
         if rest.contains("rules") {
-            manager.import_from(
-                importing_module,
-                &source_module,
-                ImportType::AllRules,
-                "*",
-            )?;
+            manager.import_from(importing_module, &source_module, ImportType::AllRules, "*")?;
         }
 
         if rest.contains("templates") {
@@ -317,7 +318,8 @@ impl GRLParser {
 
     fn extract_module_from_context(&self, grl_text: &str, rule_name: &str) -> String {
         // Look backward from rule to find the module comment
-        if let Some(rule_pos) = grl_text.find(&format!("rule \"{}\"", rule_name))
+        if let Some(rule_pos) = grl_text
+            .find(&format!("rule \"{}\"", rule_name))
             .or_else(|| grl_text.find(&format!("rule {}", rule_name)))
         {
             // Look backward for ;; MODULE: comment
@@ -337,7 +339,6 @@ impl GRLParser {
         // Default to MAIN
         "MAIN".to_string()
     }
-
 
     fn parse_single_rule(&mut self, grl_text: &str) -> Result<Rule> {
         let cleaned = self.clean_text(grl_text);
@@ -437,18 +438,19 @@ impl GRLParser {
         // This ensures we don't match keywords inside description strings
         // Strategy: Find all quoted strings and remove them, then check for attributes
         let mut attrs_section = rule_header.to_string();
-        
+
         // Remove all quoted strings (descriptions) to avoid false matches
         let quoted_regex = Regex::new(r#""[^"]*""#).map_err(|e| RuleEngineError::ParseError {
             message: format!("Invalid quoted string regex: {}", e),
         })?;
         attrs_section = quoted_regex.replace_all(&attrs_section, "").to_string();
-        
+
         // Also remove the "rule" keyword and rule name (if unquoted)
         if let Some(rule_pos) = attrs_section.find("rule") {
             // Find the next space or attribute keyword after "rule"
             let after_rule = &attrs_section[rule_pos + 4..];
-            if let Some(first_keyword) = after_rule.find("salience")
+            if let Some(first_keyword) = after_rule
+                .find("salience")
                 .or_else(|| after_rule.find("no-loop"))
                 .or_else(|| after_rule.find("lock-on-active"))
                 .or_else(|| after_rule.find("agenda-group"))
@@ -459,15 +461,17 @@ impl GRLParser {
                 attrs_section = after_rule[first_keyword..].to_string();
             }
         }
-        
+
         // Now check for boolean attributes using word boundaries
-        let no_loop_regex = Regex::new(r"\bno-loop\b").map_err(|e| RuleEngineError::ParseError {
-            message: format!("Invalid no-loop regex: {}", e),
-        })?;
-        let lock_on_active_regex = Regex::new(r"\block-on-active\b").map_err(|e| RuleEngineError::ParseError {
-            message: format!("Invalid lock-on-active regex: {}", e),
-        })?;
-        
+        let no_loop_regex =
+            Regex::new(r"\bno-loop\b").map_err(|e| RuleEngineError::ParseError {
+                message: format!("Invalid no-loop regex: {}", e),
+            })?;
+        let lock_on_active_regex =
+            Regex::new(r"\block-on-active\b").map_err(|e| RuleEngineError::ParseError {
+                message: format!("Invalid lock-on-active regex: {}", e),
+            })?;
+
         if no_loop_regex.is_match(&attrs_section) {
             attributes.no_loop = true;
         }
@@ -764,7 +768,8 @@ impl GRLParser {
         let clause = clause.trim_start();
         if !clause.starts_with("accumulate(") || !clause.ends_with(")") {
             return Err(RuleEngineError::ParseError {
-                message: "Invalid accumulate syntax. Expected: accumulate(pattern, function)".to_string(),
+                message: "Invalid accumulate syntax. Expected: accumulate(pattern, function)"
+                    .to_string(),
             });
         }
 
@@ -850,9 +855,11 @@ impl GRLParser {
         let pattern = pattern.trim();
 
         // Find the opening parenthesis to get the pattern type
-        let paren_pos = pattern.find('(').ok_or_else(|| RuleEngineError::ParseError {
-            message: format!("Invalid accumulate pattern: missing '(' in '{}'", pattern),
-        })?;
+        let paren_pos = pattern
+            .find('(')
+            .ok_or_else(|| RuleEngineError::ParseError {
+                message: format!("Invalid accumulate pattern: missing '(' in '{}'", pattern),
+            })?;
 
         let source_pattern = pattern[..paren_pos].trim().to_string();
 
@@ -880,9 +887,13 @@ impl GRLParser {
                 let _var_name = part[..colon_pos].trim();
                 let field_name = part[colon_pos + 1..].trim();
                 extract_field = field_name.to_string();
-            } else if part.contains("==") || part.contains("!=") ||
-                      part.contains(">=") || part.contains("<=") ||
-                      part.contains('>') || part.contains('<') {
+            } else if part.contains("==")
+                || part.contains("!=")
+                || part.contains(">=")
+                || part.contains("<=")
+                || part.contains('>')
+                || part.contains('<')
+            {
                 // This is a condition
                 source_conditions.push(part.to_string());
             }
@@ -939,15 +950,23 @@ impl GRLParser {
 
         let function_str = function_str.trim();
 
-        let paren_pos = function_str.find('(').ok_or_else(|| RuleEngineError::ParseError {
-            message: format!("Invalid accumulate function: missing '(' in '{}'", function_str),
-        })?;
+        let paren_pos = function_str
+            .find('(')
+            .ok_or_else(|| RuleEngineError::ParseError {
+                message: format!(
+                    "Invalid accumulate function: missing '(' in '{}'",
+                    function_str
+                ),
+            })?;
 
         let function_name = function_str[..paren_pos].trim().to_string();
 
         if !function_str.ends_with(')') {
             return Err(RuleEngineError::ParseError {
-                message: format!("Invalid accumulate function: missing ')' in '{}'", function_str),
+                message: format!(
+                    "Invalid accumulate function: missing ')' in '{}'",
+                    function_str
+                ),
             });
         }
 
@@ -993,10 +1012,11 @@ impl GRLParser {
             let operator_str = captures.get(2).unwrap().as_str();
             let value_str = captures.get(3).unwrap().as_str().trim();
 
-            let operator = Operator::from_str(operator_str)
-                .ok_or_else(|| RuleEngineError::InvalidOperator {
+            let operator = Operator::from_str(operator_str).ok_or_else(|| {
+                RuleEngineError::InvalidOperator {
                     operator: operator_str.to_string(),
-                })?;
+                }
+            })?;
 
             let value = self.parse_value(value_str)?;
 
@@ -1091,10 +1111,11 @@ impl GRLParser {
                     .collect()
             };
 
-            let operator =
-                Operator::from_str(operator_str).ok_or_else(|| RuleEngineError::InvalidOperator {
+            let operator = Operator::from_str(operator_str).ok_or_else(|| {
+                RuleEngineError::InvalidOperator {
                     operator: operator_str.to_string(),
-                })?;
+                }
+            })?;
 
             let value = self.parse_value(value_str)?;
 
@@ -1123,8 +1144,12 @@ impl GRLParser {
         let value = self.parse_value(value_str)?;
 
         // Check if left_side contains arithmetic operators - if yes, it's an expression
-        if left_side.contains('+') || left_side.contains('-') || left_side.contains('*') 
-            || left_side.contains('/') || left_side.contains('%') {
+        if left_side.contains('+')
+            || left_side.contains('-')
+            || left_side.contains('*')
+            || left_side.contains('/')
+            || left_side.contains('%')
+        {
             // This is an arithmetic expression - use Test CE
             // Format: test(left_side operator value)
             let test_expr = format!("{} {} {}", left_side, operator_str, value_str);
@@ -1263,7 +1288,11 @@ impl GRLParser {
     /// Check if a string is an arithmetic expression
     fn is_expression(&self, s: &str) -> bool {
         // Check for arithmetic operators
-        let has_operator = s.contains('+') || s.contains('-') || s.contains('*') || s.contains('/') || s.contains('%');
+        let has_operator = s.contains('+')
+            || s.contains('-')
+            || s.contains('*')
+            || s.contains('/')
+            || s.contains('%');
 
         // Check for field references (contains .)
         let has_field_ref = s.contains('.');

@@ -2,7 +2,6 @@ use rust_rule_engine::engine::engine::RustRuleEngine;
 use rust_rule_engine::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugin};
 use rust_rule_engine::errors::Result;
 use rust_rule_engine::types::Value;
-use std::collections::HashMap;
 
 /// HTTP Client Plugin for making REST API calls from rules
 pub struct HttpClientPlugin {
@@ -136,7 +135,7 @@ impl RulePlugin for HttpClientPlugin {
         // API Call function
         engine.register_function("apiCall", |args, _facts| {
             let method = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("GET".to_string());
             let url = args.get(1).map(|v| v.to_string()).unwrap_or_default();
@@ -159,7 +158,7 @@ impl RulePlugin for HttpClientPlugin {
 
         // Get Status Code function
         engine.register_function("getStatusCode", |args, _facts| {
-            let response = args.get(0).map(|v| v.to_string()).unwrap_or_default();
+            let response = args.first().map(|v| v.to_string()).unwrap_or_default();
 
             // Simulate status code extraction
             if response.contains("error") {
@@ -174,7 +173,7 @@ impl RulePlugin for HttpClientPlugin {
         // Parse JSON function
         engine.register_function("parseJson", |args, _facts| {
             let json_str = args
-                .get(0)
+                .first()
                 .map(|v| v.to_string())
                 .unwrap_or("{}".to_string());
             let key = args

@@ -3,9 +3,9 @@
 //! This example demonstrates explicit OR syntax in GRL query goals.
 //! Shows how to use `||` operator directly in query goals instead of implicit OR through multiple rules.
 
-use rust_rule_engine::{Facts, KnowledgeBase};
+use rust_rule_engine::backward::{BackwardEngine, GRLQueryExecutor, GRLQueryParser};
 use rust_rule_engine::types::Value;
-use rust_rule_engine::backward::{BackwardEngine, GRLQueryParser, GRLQueryExecutor};
+use rust_rule_engine::{Facts, KnowledgeBase};
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -57,7 +57,7 @@ fn demo_1_simple_or() -> Result<(), Box<dyn Error>> {
         }
     "#;
 
-    let mut kb = KnowledgeBase::new("demo1");
+    let kb = KnowledgeBase::new("demo1");
     kb.add_rules_from_grl(grl_content)?;
 
     // Parse query
@@ -74,8 +74,15 @@ fn demo_1_simple_or() -> Result<(), Box<dyn Error>> {
     facts.set("Employee.IsSenior", Value::Boolean(false));
 
     let mut engine = BackwardEngine::new(kb.clone());
-    let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
-    println!("   Result: {}", if result.provable { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    let result = GRLQueryExecutor::execute(query, &mut engine, &mut facts)?;
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     // Test case 2: Senior (second branch succeeds)
     println!("\n2️⃣ Test: Senior (second OR branch)");
@@ -83,8 +90,15 @@ fn demo_1_simple_or() -> Result<(), Box<dyn Error>> {
     facts.set("Employee.IsManager", Value::Boolean(false));
     facts.set("Employee.IsSenior", Value::Boolean(true));
 
-    let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
-    println!("   Result: {}", if result.provable { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    let result = GRLQueryExecutor::execute(query, &mut engine, &mut facts)?;
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     // Test case 3: Neither (both branches fail)
     println!("\n3️⃣ Test: Regular employee (no OR branch succeeds)");
@@ -92,8 +106,15 @@ fn demo_1_simple_or() -> Result<(), Box<dyn Error>> {
     facts.set("Employee.IsManager", Value::Boolean(false));
     facts.set("Employee.IsSenior", Value::Boolean(false));
 
-    let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
-    println!("   Result: {}", if result.provable { "✅ ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    let result = GRLQueryExecutor::execute(query, &mut engine, &mut facts)?;
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     Ok(())
 }
@@ -133,7 +154,7 @@ fn demo_2_multiple_or() -> Result<(), Box<dyn Error>> {
         }
     "#;
 
-    let mut kb = KnowledgeBase::new("demo2");
+    let kb = KnowledgeBase::new("demo2");
     kb.add_rules_from_grl(grl_content)?;
 
     let queries = GRLQueryParser::parse_queries(grl_content)?;
@@ -153,8 +174,15 @@ fn demo_2_multiple_or() -> Result<(), Box<dyn Error>> {
     facts.set("Customer.LoyaltyYears", Value::Number(2.0));
 
     let mut engine = BackwardEngine::new(kb.clone());
-    let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
-    println!("   Result: {}", if result.provable { "✅ DISCOUNT" } else { "❌ NO DISCOUNT" });
+    let result = GRLQueryExecutor::execute(query, &mut engine, &mut facts)?;
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ DISCOUNT"
+        } else {
+            "❌ NO DISCOUNT"
+        }
+    );
 
     // Test: Loyalty member (last branch)
     println!("\n2️⃣ Test: Loyalty member (last branch succeeds)");
@@ -163,8 +191,15 @@ fn demo_2_multiple_or() -> Result<(), Box<dyn Error>> {
     facts.set("Customer.TotalSpent", Value::Number(5000.0));
     facts.set("Customer.LoyaltyYears", Value::Number(7.0));
 
-    let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
-    println!("   Result: {}", if result.provable { "✅ DISCOUNT" } else { "❌ NO DISCOUNT" });
+    let result = GRLQueryExecutor::execute(query, &mut engine, &mut facts)?;
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ DISCOUNT"
+        } else {
+            "❌ NO DISCOUNT"
+        }
+    );
 
     Ok(())
 }
@@ -202,7 +237,7 @@ fn demo_3_complex_and_or() -> Result<(), Box<dyn Error>> {
         }
     "#;
 
-    let mut kb = KnowledgeBase::new("demo3");
+    let kb = KnowledgeBase::new("demo3");
     kb.add_rules_from_grl(rules_content)?;
 
     let queries = GRLQueryParser::parse_queries(query_content)?;
@@ -220,8 +255,15 @@ fn demo_3_complex_and_or() -> Result<(), Box<dyn Error>> {
     facts.set("Employee.YearsExperience", Value::Number(2.0));
 
     let mut engine = BackwardEngine::new(kb.clone());
-    let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
-    println!("   Result: {}", if result.provable { "✅ BONUS ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    let result = GRLQueryExecutor::execute(query, &mut engine, &mut facts)?;
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ BONUS ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     // Test case 2: Experienced senior (second AND succeeds)
     println!("\n2️⃣ Test: Experienced senior (second AND group succeeds)");
@@ -231,8 +273,15 @@ fn demo_3_complex_and_or() -> Result<(), Box<dyn Error>> {
     facts.set("Employee.IsSenior", Value::Boolean(true));
     facts.set("Employee.YearsExperience", Value::Number(8.0));
 
-    let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
-    println!("   Result: {}", if result.provable { "✅ BONUS ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    let result = GRLQueryExecutor::execute(query, &mut engine, &mut facts)?;
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ BONUS ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     // Test case 3: Inactive manager (first AND fails, second AND fails)
     println!("\n3️⃣ Test: Inactive manager (both AND groups fail)");
@@ -242,8 +291,15 @@ fn demo_3_complex_and_or() -> Result<(), Box<dyn Error>> {
     facts.set("Employee.IsSenior", Value::Boolean(false));
     facts.set("Employee.YearsExperience", Value::Number(2.0));
 
-    let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
-    println!("   Result: {}", if result.provable { "✅ BONUS ELIGIBLE" } else { "❌ NOT ELIGIBLE" });
+    let result = GRLQueryExecutor::execute(query, &mut engine, &mut facts)?;
+    println!(
+        "   Result: {}",
+        if result.provable {
+            "✅ BONUS ELIGIBLE"
+        } else {
+            "❌ NOT ELIGIBLE"
+        }
+    );
 
     Ok(())
 }

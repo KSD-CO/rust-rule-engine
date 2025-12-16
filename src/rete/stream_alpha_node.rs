@@ -3,8 +3,10 @@
 //! This module implements a specialized alpha node for stream sources in the RETE network.
 //! It connects stream sources to the rule engine, managing windows and filtering events.
 
+#![allow(missing_docs)]
+
 use crate::streaming::event::StreamEvent;
-use crate::streaming::window::{TimeWindow, WindowType};
+use crate::streaming::window::WindowType;
 use std::collections::VecDeque;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -278,20 +280,14 @@ mod tests {
     use crate::types::Value;
     use std::collections::HashMap;
 
-    fn create_test_event(
-        stream_name: &str,
-        event_type: &str,
-        timestamp: u64,
-    ) -> StreamEvent {
+    fn create_test_event(stream_name: &str, event_type: &str, timestamp: u64) -> StreamEvent {
         let mut data = HashMap::new();
-        data.insert("test_field".to_string(), Value::String("test_value".to_string()));
+        data.insert(
+            "test_field".to_string(),
+            Value::String("test_value".to_string()),
+        );
 
-        StreamEvent::with_timestamp(
-            event_type,
-            data,
-            stream_name,
-            timestamp,
-        )
+        StreamEvent::with_timestamp(event_type, data, stream_name, timestamp)
     }
 
     #[test]
@@ -317,11 +313,7 @@ mod tests {
 
     #[test]
     fn test_event_type_filtering() {
-        let mut node = StreamAlphaNode::new(
-            "user-events",
-            Some("LoginEvent".to_string()),
-            None,
-        );
+        let mut node = StreamAlphaNode::new("user-events", Some("LoginEvent".to_string()), None);
 
         let matching_event = create_test_event("user-events", "LoginEvent", 1000);
         let non_matching_event = create_test_event("user-events", "LogoutEvent", 1000);
@@ -401,7 +393,11 @@ mod tests {
         std::thread::sleep(Duration::from_millis(150));
 
         // Process new event, which should trigger eviction
-        let event2 = create_test_event("test-stream", "TestEvent", StreamAlphaNode::current_time_ms());
+        let event2 = create_test_event(
+            "test-stream",
+            "TestEvent",
+            StreamAlphaNode::current_time_ms(),
+        );
         node.process_event(&event2);
 
         // Old event should be evicted
@@ -410,8 +406,7 @@ mod tests {
 
     #[test]
     fn test_max_events_limit() {
-        let mut node = StreamAlphaNode::new("test-stream", None, None)
-            .with_max_events(5);
+        let mut node = StreamAlphaNode::new("test-stream", None, None).with_max_events(5);
 
         let current_time = StreamAlphaNode::current_time_ms();
 

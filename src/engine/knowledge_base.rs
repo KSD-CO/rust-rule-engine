@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::engine::rule::Rule;
 use crate::errors::{Result, RuleEngineError};
 use crate::parser::grl::GRLParser;

@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::engine::rule::Rule;
 use std::collections::{HashMap, HashSet};
 

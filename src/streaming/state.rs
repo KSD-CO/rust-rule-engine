@@ -32,12 +32,12 @@ use crate::RuleEngineError;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[cfg(feature = "streaming-redis")]
-use redis::{Commands, Client, Connection};
+use redis::{Client, Commands};
 
 /// Result type for state operations
 pub type StateResult<T> = Result<T, RuleEngineError>;
@@ -213,11 +213,12 @@ impl StateStore {
 
             if let Some(ttl) = ttl {
                 let ttl_secs = ttl.as_secs();
-                conn.set_ex(&redis_key, json, ttl_secs).map_err(|e| {
-                    RuleEngineError::ExecutionError(format!("Redis SET error: {}", e))
-                })?;
+                conn.set_ex::<_, _, ()>(&redis_key, json, ttl_secs)
+                    .map_err(|e| {
+                        RuleEngineError::ExecutionError(format!("Redis SET error: {}", e))
+                    })?;
             } else {
-                conn.set(&redis_key, json).map_err(|e| {
+                conn.set::<_, _, ()>(&redis_key, json).map_err(|e| {
                     RuleEngineError::ExecutionError(format!("Redis SET error: {}", e))
                 })?;
             }
@@ -239,9 +240,9 @@ impl StateStore {
             })?;
 
             let redis_key = self.get_redis_key(key);
-            let result: Option<String> = conn.get(&redis_key).map_err(|e| {
-                RuleEngineError::ExecutionError(format!("Redis GET error: {}", e))
-            })?;
+            let result: Option<String> = conn
+                .get(&redis_key)
+                .map_err(|e| RuleEngineError::ExecutionError(format!("Redis GET error: {}", e)))?;
 
             if let Some(json) = result {
                 let value: Value = serde_json::from_str(&json).map_err(|e| {
@@ -267,9 +268,8 @@ impl StateStore {
             })?;
 
             let redis_key = self.get_redis_key(key);
-            conn.del(&redis_key).map_err(|e| {
-                RuleEngineError::ExecutionError(format!("Redis DEL error: {}", e))
-            })?;
+            conn.del::<_, ()>(&redis_key)
+                .map_err(|e| RuleEngineError::ExecutionError(format!("Redis DEL error: {}", e)))?;
 
             Ok(())
         } else {
@@ -288,16 +288,14 @@ impl StateStore {
             })?;
 
             let pattern = self.get_redis_key("*");
-            let keys: Vec<String> = conn.keys(&pattern).map_err(|e| {
-                RuleEngineError::ExecutionError(format!("Redis KEYS error: {}", e))
-            })?;
+            let keys: Vec<String> = conn
+                .keys(&pattern)
+                .map_err(|e| RuleEngineError::ExecutionError(format!("Redis KEYS error: {}", e)))?;
 
             // Remove prefix from keys
             if let StateBackend::Redis { key_prefix, .. } = &self.config.backend {
                 let prefix_len = key_prefix.len() + 1; // +1 for ':'
-                Ok(keys.iter()
-                    .map(|k| k[prefix_len..].to_string())
-                    .collect())
+                Ok(keys.iter().map(|k| k[prefix_len..].to_string()).collect())
             } else {
                 Ok(keys)
             }
@@ -453,7 +451,10 @@ impl StateStore {
     /// Get the number of entries in state
     pub fn len(&self) -> usize {
         let state = self.state.read().unwrap();
-        state.iter().filter(|(_, entry)| !entry.is_expired()).count()
+        state
+            .iter()
+            .filter(|(_, entry)| !entry.is_expired())
+            .count()
     }
 
     /// Check if state is empty
@@ -521,7 +522,10 @@ impl StateStore {
                 // Serialize and save to file
                 let checkpoint_path = path.join(&checkpoint_id);
                 fs::create_dir_all(&checkpoint_path).map_err(|e| {
-                    RuleEngineError::ExecutionError(format!("Failed to create checkpoint dir: {}", e))
+                    RuleEngineError::ExecutionError(format!(
+                        "Failed to create checkpoint dir: {}",
+                        e
+                    ))
                 })?;
 
                 let data_path = checkpoint_path.join("state.json");
@@ -530,7 +534,10 @@ impl StateStore {
                 })?;
 
                 let mut file = fs::File::create(&data_path).map_err(|e| {
-                    RuleEngineError::ExecutionError(format!("Failed to create checkpoint file: {}", e))
+                    RuleEngineError::ExecutionError(format!(
+                        "Failed to create checkpoint file: {}",
+                        e
+                    ))
                 })?;
 
                 file.write_all(json.as_bytes()).map_err(|e| {
@@ -599,11 +606,9 @@ impl StateStore {
     /// Restore state from a checkpoint
     pub fn restore(&mut self, checkpoint_id: &str) -> StateResult<()> {
         match &self.config.backend {
-            StateBackend::Memory => {
-                Err(RuleEngineError::ExecutionError(
-                    "Cannot restore from memory backend (checkpoints not persisted)".to_string(),
-                ))
-            }
+            StateBackend::Memory => Err(RuleEngineError::ExecutionError(
+                "Cannot restore from memory backend (checkpoints not persisted)".to_string(),
+            )),
             StateBackend::File { path } => {
                 let checkpoint_path = path.join(checkpoint_id);
                 let data_path = checkpoint_path.join("state.json");
@@ -616,7 +621,10 @@ impl StateStore {
                 }
 
                 let mut file = fs::File::open(&data_path).map_err(|e| {
-                    RuleEngineError::ExecutionError(format!("Failed to open checkpoint file: {}", e))
+                    RuleEngineError::ExecutionError(format!(
+                        "Failed to open checkpoint file: {}",
+                        e
+                    ))
                 })?;
 
                 let mut json = String::new();
@@ -624,9 +632,13 @@ impl StateStore {
                     RuleEngineError::ExecutionError(format!("Failed to read checkpoint: {}", e))
                 })?;
 
-                let snapshot: HashMap<String, Value> = serde_json::from_str(&json).map_err(|e| {
-                    RuleEngineError::ExecutionError(format!("Failed to deserialize checkpoint: {}", e))
-                })?;
+                let snapshot: HashMap<String, Value> =
+                    serde_json::from_str(&json).map_err(|e| {
+                        RuleEngineError::ExecutionError(format!(
+                            "Failed to deserialize checkpoint: {}",
+                            e
+                        ))
+                    })?;
 
                 // Clear current state and restore
                 let mut state = self.state.write().unwrap();
@@ -645,11 +657,9 @@ impl StateStore {
                 // State is already in Redis, no restore needed
                 Ok(())
             }
-            StateBackend::Custom { .. } => {
-                Err(RuleEngineError::ExecutionError(
-                    "Custom backend restore not implemented".to_string(),
-                ))
-            }
+            StateBackend::Custom { .. } => Err(RuleEngineError::ExecutionError(
+                "Custom backend restore not implemented".to_string(),
+            )),
         }
     }
 
@@ -795,13 +805,17 @@ mod tests {
 
     #[test]
     fn test_state_ttl() {
-        let mut config = StateConfig::default();
-        config.enable_ttl = true;
-        config.default_ttl = Duration::from_millis(100);
+        let config = StateConfig {
+            enable_ttl: true,
+            default_ttl: Duration::from_millis(100),
+            ..Default::default()
+        };
 
         let mut store = StateStore::with_config(config);
 
-        store.put("temp", Value::String("expires".to_string())).unwrap();
+        store
+            .put("temp", Value::String("expires".to_string()))
+            .unwrap();
         assert!(store.contains("temp"));
 
         // Wait for TTL
@@ -862,9 +876,11 @@ mod tests {
 
     #[test]
     fn test_cleanup_expired() {
-        let mut config = StateConfig::default();
-        config.enable_ttl = true;
-        config.default_ttl = Duration::from_millis(50);
+        let config = StateConfig {
+            enable_ttl: true,
+            default_ttl: Duration::from_millis(50),
+            ..Default::default()
+        };
 
         let mut store = StateStore::with_config(config);
 

@@ -3,8 +3,8 @@
 //! Provides pre-defined fact sets that are automatically loaded into working memory.
 //! Similar to CLIPS deffacts and Drools declared facts.
 
-use crate::rete::facts::TypedFacts;
 use crate::errors::{Result, RuleEngineError};
+use crate::rete::facts::TypedFacts;
 use std::collections::HashMap;
 
 /// A single fact instance with its type
@@ -120,11 +120,11 @@ impl DeffactsRegistry {
 
     /// Remove a deffacts set
     pub fn remove(&mut self, name: &str) -> Result<Deffacts> {
-        self.deffacts.remove(name).ok_or_else(|| {
-            RuleEngineError::EvaluationError {
+        self.deffacts
+            .remove(name)
+            .ok_or_else(|| RuleEngineError::EvaluationError {
                 message: format!("Deffacts '{}' not found", name),
-            }
-        })
+            })
     }
 
     /// List all deffacts names
@@ -199,7 +199,8 @@ impl DeffactsBuilder {
     pub fn add_facts(mut self, fact_type: impl Into<String>, facts: Vec<TypedFacts>) -> Self {
         let fact_type_str = fact_type.into();
         for data in facts {
-            self.facts.push(FactInstance::new(fact_type_str.clone(), data));
+            self.facts
+                .push(FactInstance::new(fact_type_str.clone(), data));
         }
         self
     }
@@ -233,7 +234,10 @@ mod tests {
 
         let fact = FactInstance::new("Person", data);
         assert_eq!(fact.fact_type, "Person");
-        assert_eq!(fact.data.get("name"), Some(&FactValue::String("John".to_string())));
+        assert_eq!(
+            fact.data.get("name"),
+            Some(&FactValue::String("John".to_string()))
+        );
     }
 
     #[test]
@@ -249,7 +253,10 @@ mod tests {
         assert_eq!(deffacts.name, "initial-data");
         assert_eq!(deffacts.fact_count(), 1);
         assert!(!deffacts.is_empty());
-        assert_eq!(deffacts.description, Some("Initial person data".to_string()));
+        assert_eq!(
+            deffacts.description,
+            Some("Initial person data".to_string())
+        );
     }
 
     #[test]
@@ -387,7 +394,10 @@ mod tests {
 
         assert_eq!(deffacts.name, "people");
         assert_eq!(deffacts.fact_count(), 1);
-        assert_eq!(deffacts.description, Some("Initial people data".to_string()));
+        assert_eq!(
+            deffacts.description,
+            Some("Initial people data".to_string())
+        );
     }
 
     #[test]
@@ -455,6 +465,9 @@ mod tests {
         assert!(registry.exists("system-startup"));
         let retrieved = registry.get("system-startup").unwrap();
         assert_eq!(retrieved.fact_count(), 2);
-        assert_eq!(retrieved.description, Some("System initialization facts".to_string()));
+        assert_eq!(
+            retrieved.description,
+            Some("System initialization facts".to_string())
+        );
     }
 }

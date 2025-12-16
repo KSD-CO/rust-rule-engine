@@ -276,7 +276,7 @@ impl NestedQueryParser {
                 'W' if in_parens && paren_depth > 0 => {
                     // Check if this starts "WHERE"
                     if i + 5 < chars.len() {
-                        let substr: String = chars[i..i+5].iter().collect();
+                        let substr: String = chars[i..i + 5].iter().collect();
                         if substr == "WHERE" {
                             return true;
                         }
@@ -301,10 +301,7 @@ impl NestedQueryEvaluator {
     /// 2. For each subquery result, bind variables in outer goal
     /// 3. Evaluate outer goal with those bindings
     /// 4. Collect and merge all solutions
-    pub fn evaluate(
-        nested: &NestedQuery,
-        initial_bindings: &Bindings,
-    ) -> NestedQueryResult {
+    pub fn evaluate(_nested: &NestedQuery, _initial_bindings: &Bindings) -> NestedQueryResult {
         // This is a placeholder - actual implementation would recursively
         // call the backward chaining engine
 
@@ -313,6 +310,7 @@ impl NestedQueryEvaluator {
     }
 
     /// Merge bindings from subquery into outer goal
+    #[allow(dead_code)]
     fn merge_bindings(
         outer_bindings: &Bindings,
         subquery_bindings: &Bindings,
@@ -361,8 +359,7 @@ impl NestedQueryStats {
         self.max_depth = self.max_depth.max(depth);
 
         // Update average
-        self.avg_subquery_solutions =
-            self.total_subquery_evals as f64 / self.total_nested as f64;
+        self.avg_subquery_solutions = self.total_subquery_evals as f64 / self.total_nested as f64;
     }
 
     /// Get a summary string

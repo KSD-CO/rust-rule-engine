@@ -7,18 +7,13 @@
 //!
 //! Run with: cargo run --example streaming_with_rules_demo --features streaming
 
-use rust_rule_engine::streaming::*;
-use rust_rule_engine::types::{ActionType, Operator, Value};
-use rust_rule_engine::engine::{
-    RustRuleEngine, EngineConfig,
-    rule::{Rule, Condition, ConditionGroup},
-    knowledge_base::KnowledgeBase,
-    facts::Facts,
-};
+use rust_rule_engine::engine::{facts::Facts, knowledge_base::KnowledgeBase, RustRuleEngine};
 use rust_rule_engine::parser::grl::GRLParser;
+use rust_rule_engine::streaming::*;
+use rust_rule_engine::types::Value;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::fs;
+use std::sync::{Arc, Mutex};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔄 Streaming + Rule Engine Integration Demo");
@@ -40,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🎯 This is the CORRECT way to use Rule Engine with Streaming!");
     println!("\n📚 Advanced features like state management & watermarks");
     println!("   are available in the streaming module (state.rs, watermark.rs)");
-    
+
     Ok(())
 }
 
@@ -50,9 +45,10 @@ fn demo1_fraud_detection_with_rules() -> Result<(), Box<dyn std::error::Error>> 
     println!("{}", "-".repeat(80));
 
     // Load rules from GRL file instead of hardcoding
-    let grl_content = fs::read_to_string("examples/03-advanced-features/streaming_fraud_detection.grl")?;
+    let grl_content =
+        fs::read_to_string("examples/03-advanced-features/streaming_fraud_detection.grl")?;
     let rules = GRLParser::parse_rules(&grl_content)?;
-    
+
     let kb = KnowledgeBase::new("FraudDetection");
     for rule in rules {
         kb.add_rule(rule)?;
@@ -72,7 +68,7 @@ fn demo1_fraud_detection_with_rules() -> Result<(), Box<dyn std::error::Error>> 
         .map(move |e| {
             // Convert StreamEvent to Facts for rule engine
             let facts = Facts::new();
-            
+
             // Add transaction data
             let mut tx_data = HashMap::new();
             if let Some(amount) = e.get_numeric("Transaction.Amount") {
@@ -82,14 +78,17 @@ fn demo1_fraud_detection_with_rules() -> Result<(), Box<dyn std::error::Error>> 
                 tx_data.insert("Type".to_string(), Value::String(tx_type.to_string()));
             }
             if let Some(merchant) = e.get_string("Transaction.MerchantCategory") {
-                tx_data.insert("MerchantCategory".to_string(), Value::String(merchant.to_string()));
+                tx_data.insert(
+                    "MerchantCategory".to_string(),
+                    Value::String(merchant.to_string()),
+                );
             }
             tx_data.insert("Status".to_string(), Value::String("APPROVED".to_string()));
-            
+
             // Initialize risk and alert
             let mut risk_data = HashMap::new();
             risk_data.insert("Score".to_string(), Value::Number(0.0));
-            
+
             let mut alert_data = HashMap::new();
             alert_data.insert("Type".to_string(), Value::String("NONE".to_string()));
             alert_data.insert("RequiresReview".to_string(), Value::Boolean(false));
@@ -125,8 +124,8 @@ fn demo1_fraud_detection_with_rules() -> Result<(), Box<dyn std::error::Error>> 
         })
         .filter(|e| {
             // Show only flagged transactions
-            e.get_string("AlertType").unwrap_or("") != "NONE" || 
-            e.get_string("Status").unwrap_or("") == "BLOCKED"
+            e.get_string("AlertType").unwrap_or("") != "NONE"
+                || e.get_string("Status").unwrap_or("") == "BLOCKED"
         })
         .for_each(|e| {
             let tx_id = e.get_string("Transaction.ID").unwrap_or("");
@@ -135,9 +134,15 @@ fn demo1_fraud_detection_with_rules() -> Result<(), Box<dyn std::error::Error>> 
             let risk = e.get_numeric("RiskScore").unwrap_or(0.0);
             let alert = e.get_string("AlertType").unwrap_or("NONE");
 
-            let icon = if status == "BLOCKED" { "🚫" } else { "⚠️ " };
-            println!("{} TX-{} | ${:.2} | {} | Risk: {:.0} | Alert: {}",
-                     icon, tx_id, amount, status, risk, alert);
+            let icon = if status == "BLOCKED" {
+                "🚫"
+            } else {
+                "⚠️ "
+            };
+            println!(
+                "{} TX-{} | ${:.2} | {} | Risk: {:.0} | Alert: {}",
+                icon, tx_id, amount, status, risk, alert
+            );
         });
 
     println!("\n✅ Fraud detection completed using Rule Engine");
@@ -152,7 +157,7 @@ fn demo2_dynamic_pricing_with_rules() -> Result<(), Box<dyn std::error::Error>> 
     // Load pricing rules from GRL file
     let grl_content = fs::read_to_string("examples/03-advanced-features/streaming_pricing.grl")?;
     let rules = GRLParser::parse_rules(&grl_content)?;
-    
+
     let kb = KnowledgeBase::new("DynamicPricing");
     for rule in rules {
         kb.add_rule(rule)?;
@@ -184,7 +189,7 @@ fn demo2_dynamic_pricing_with_rules() -> Result<(), Box<dyn std::error::Error>> 
     stream
         .map(move |e| {
             let facts = Facts::new();
-            
+
             let mut product_data = HashMap::new();
             if let Some(name) = e.get_string("Product.Name") {
                 product_data.insert("Name".to_string(), Value::String(name.to_string()));
@@ -230,8 +235,10 @@ fn demo2_dynamic_pricing_with_rules() -> Result<(), Box<dyn std::error::Error>> 
             let final_price = base * multiplier;
 
             let icon = if multiplier > 1.0 { "📈" } else { "➡️ " };
-            println!("{} {} | Base: ${:.2} | Multiplier: {:.1}x | Final: ${:.2} | Reason: {}",
-                     icon, name, base, multiplier, final_price, reason);
+            println!(
+                "{} {} | Base: ${:.2} | Multiplier: {:.1}x | Final: ${:.2} | Reason: {}",
+                icon, name, base, multiplier, final_price, reason
+            );
         });
 
     println!("\n✅ Dynamic pricing completed using Rule Engine");
@@ -246,7 +253,7 @@ fn demo3_compliance_with_rules() -> Result<(), Box<dyn std::error::Error>> {
     // Load compliance rules from GRL file
     let grl_content = fs::read_to_string("examples/03-advanced-features/streaming_compliance.grl")?;
     let rules = GRLParser::parse_rules(&grl_content)?;
-    
+
     let kb = KnowledgeBase::new("Compliance");
     for rule in rules {
         kb.add_rule(rule)?;
@@ -268,8 +275,14 @@ fn demo3_compliance_with_rules() -> Result<(), Box<dyn std::error::Error>> {
         let mut data = HashMap::new();
         data.insert("Transaction.ID".to_string(), Value::String(id.to_string()));
         data.insert("Transaction.Amount".to_string(), Value::Number(amount));
-        data.insert("Transaction.Country".to_string(), Value::String(country.to_string()));
-        data.insert("Transaction.Counterparty".to_string(), Value::String(counterparty.to_string()));
+        data.insert(
+            "Transaction.Country".to_string(),
+            Value::String(country.to_string()),
+        );
+        data.insert(
+            "Transaction.Counterparty".to_string(),
+            Value::String(counterparty.to_string()),
+        );
         events.push(StreamEvent::new("Transaction", data, "payment"));
     }
 
@@ -290,7 +303,10 @@ fn demo3_compliance_with_rules() -> Result<(), Box<dyn std::error::Error>> {
                 tx_data.insert("Country".to_string(), Value::String(country.to_string()));
             }
             if let Some(counterparty) = e.get_string("Transaction.Counterparty") {
-                tx_data.insert("Counterparty".to_string(), Value::String(counterparty.to_string()));
+                tx_data.insert(
+                    "Counterparty".to_string(),
+                    Value::String(counterparty.to_string()),
+                );
             }
 
             let mut compliance_data = HashMap::new();
@@ -322,9 +338,14 @@ fn demo3_compliance_with_rules() -> Result<(), Box<dyn std::error::Error>> {
             let status = e.get_string("Compliance.Status").unwrap_or("APPROVED");
             let flag = e.get_string("Compliance.Flag").unwrap_or("OK");
 
-            let icon = if status == "BLOCKED" { "🚫" } else if flag != "OK" { "⚠️ " } else { "✅" };
-            println!("{} {} | ${:.2} | {} | {}",
-                     icon, id, amount, status, flag);
+            let icon = if status == "BLOCKED" {
+                "🚫"
+            } else if flag != "OK" {
+                "⚠️ "
+            } else {
+                "✅"
+            };
+            println!("{} {} | ${:.2} | {} | {}", icon, id, amount, status, flag);
         });
 
     println!("\n✅ Compliance checking completed using Rule Engine");
@@ -334,16 +355,25 @@ fn demo3_compliance_with_rules() -> Result<(), Box<dyn std::error::Error>> {
 // Helper: Generate sample payment transactions
 fn generate_payment_stream() -> Vec<StreamEvent> {
     let mut events = Vec::new();
-    let categories = vec!["retail", "gambling", "electronics", "crypto", "retail"];
+    let categories = ["retail", "gambling", "electronics", "crypto", "retail"];
 
     for i in 0..10 {
         let mut data = HashMap::new();
         let amount = 2000.0 + (i as f64 * 2000.0);
-        
-        data.insert("Transaction.ID".to_string(), Value::String(format!("{:03}", i)));
+
+        data.insert(
+            "Transaction.ID".to_string(),
+            Value::String(format!("{:03}", i)),
+        );
         data.insert("Transaction.Amount".to_string(), Value::Number(amount));
-        data.insert("Transaction.Type".to_string(), Value::String("credit_card".to_string()));
-        data.insert("Transaction.MerchantCategory".to_string(), Value::String(categories[i % 5].to_string()));
+        data.insert(
+            "Transaction.Type".to_string(),
+            Value::String("credit_card".to_string()),
+        );
+        data.insert(
+            "Transaction.MerchantCategory".to_string(),
+            Value::String(categories[i % 5].to_string()),
+        );
 
         events.push(StreamEvent::new("Payment", data, "payment-gateway"));
     }

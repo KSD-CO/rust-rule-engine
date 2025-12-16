@@ -35,11 +35,7 @@ fn demo_1_simple_proof_tree() -> Result<(), Box<dyn Error>> {
     println!("{}", "-".repeat(80));
 
     // Create a simple proof tree manually
-    let mut root = ProofNode::rule(
-        "user.is_vip == true".to_string(),
-        "vip_rule".to_string(),
-        0,
-    );
+    let mut root = ProofNode::rule("user.is_vip == true".to_string(), "vip_rule".to_string(), 0);
 
     let mut child1 = ProofNode::rule(
         "user.purchase_total > 1000".to_string(),
@@ -113,10 +109,7 @@ fn demo_2_complex_reasoning() -> Result<(), Box<dyn Error>> {
     tree.print();
 
     // Create full explanation
-    let explanation = Explanation::new(
-        "Is Alice's loan approved?".to_string(),
-        tree,
-    );
+    let explanation = Explanation::new("Is Alice's loan approved?".to_string(), tree);
 
     println!("\n📝 Full Explanation:");
     explanation.print();
@@ -178,10 +171,7 @@ fn demo_4_export_formats() -> Result<(), Box<dyn Error>> {
     let purchase_fact = ProofNode::fact("order.total = 500".to_string(), 1);
     root.add_child(purchase_fact);
 
-    let tree = ProofTree::new(
-        root,
-        "Is customer eligible for discount?".to_string(),
-    );
+    let tree = ProofTree::new(root, "Is customer eligible for discount?".to_string());
 
     // Export to JSON
     println!("\n1️⃣ JSON Export:");

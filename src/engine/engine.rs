@@ -72,9 +72,14 @@ pub struct RustRuleEngine {
     plugin_manager: PluginManager,
 }
 
+#[allow(dead_code)]
 impl RustRuleEngine {
     /// Execute all rules and call callback when a rule is fired
-    pub fn execute_with_callback<F>(&mut self, facts: &Facts, mut on_rule_fired: F) -> Result<GruleExecutionResult>
+    pub fn execute_with_callback<F>(
+        &mut self,
+        facts: &Facts,
+        mut on_rule_fired: F,
+    ) -> Result<GruleExecutionResult>
     where
         F: FnMut(&str, &Facts),
     {
@@ -531,7 +536,10 @@ impl RustRuleEngine {
                 let rule_start = Instant::now();
 
                 if self.config.debug_mode {
-                    println!("📝 Evaluating rule: {} (no_loop={})", rule.name, rule.no_loop);
+                    println!(
+                        "📝 Evaluating rule: {} (no_loop={})",
+                        rule.name, rule.no_loop
+                    );
                 }
 
                 // Evaluate rule conditions
@@ -680,14 +688,15 @@ impl RustRuleEngine {
     }
 
     /// Evaluate accumulate condition and inject result into facts
+    #[allow(clippy::too_many_arguments)]
     fn evaluate_accumulate(
         &self,
-        result_var: &str,
+        _result_var: &str,
         source_pattern: &str,
         extract_field: &str,
         source_conditions: &[String],
         function: &str,
-        function_arg: &str,
+        _function_arg: &str,
         facts: &Facts,
     ) -> Result<()> {
         use crate::rete::accumulate::*;
@@ -705,7 +714,11 @@ impl RustRuleEngine {
         for (key, value) in &all_facts {
             if key.starts_with(&pattern_prefix) {
                 // Extract instance ID if present (e.g., "Order.1.amount" -> "1")
-                let parts: Vec<&str> = key.strip_prefix(&pattern_prefix).unwrap().split('.').collect();
+                let parts: Vec<&str> = key
+                    .strip_prefix(&pattern_prefix)
+                    .unwrap()
+                    .split('.')
+                    .collect();
 
                 if parts.len() >= 2 {
                     // Has instance ID: Order.1.amount
@@ -714,13 +727,13 @@ impl RustRuleEngine {
 
                     instances
                         .entry(instance_id.to_string())
-                        .or_insert_with(HashMap::new)
+                        .or_default()
                         .insert(field_name, value.clone());
                 } else if parts.len() == 1 {
                     // No instance ID: Order.amount (single instance)
                     instances
                         .entry("default".to_string())
-                        .or_insert_with(HashMap::new)
+                        .or_default()
                         .insert(parts[0].to_string(), value.clone());
                 }
             }
@@ -798,7 +811,11 @@ impl RustRuleEngine {
         facts.set(&result_key, result);
 
         if self.config.debug_mode {
-            println!("    🧮 Accumulate result: {} = {:?}", result_key, facts.get(&result_key));
+            println!(
+                "    🧮 Accumulate result: {} = {:?}",
+                result_key,
+                facts.get(&result_key)
+            );
         }
 
         Ok(())
@@ -840,7 +857,8 @@ impl RustRuleEngine {
         for op in &operators {
             if let Some(pos) = condition.find(op) {
                 let field = condition[..pos].trim();
-                let value_str = condition[pos + op.len()..].trim()
+                let value_str = condition[pos + op.len()..]
+                    .trim()
                     .trim_matches('"')
                     .trim_matches('\'');
 
@@ -858,13 +876,11 @@ impl RustRuleEngine {
     /// Helper: Compare values
     fn compare_values(&self, field_value: &Value, operator: &str, value_str: &str) -> bool {
         match field_value {
-            Value::String(s) => {
-                match operator {
-                    "==" => s == value_str,
-                    "!=" => s != value_str,
-                    _ => false,
-                }
-            }
+            Value::String(s) => match operator {
+                "==" => s == value_str,
+                "!=" => s != value_str,
+                _ => false,
+            },
             Value::Integer(i) => {
                 if let Ok(num) = value_str.parse::<i64>() {
                     match operator {
@@ -1093,9 +1109,12 @@ impl RustRuleEngine {
                     // Not a custom function - try to evaluate as arithmetic expression
                     // Format: "User.Age % 3 == 0" where name is the full expression
                     if self.config.debug_mode {
-                        println!("      Trying to evaluate '{}' as arithmetic expression", name);
+                        println!(
+                            "      Trying to evaluate '{}' as arithmetic expression",
+                            name
+                        );
                     }
-                    
+
                     // Try to parse and evaluate the expression
                     match self.evaluate_arithmetic_condition(name, facts) {
                         Ok(result) => {
@@ -1114,7 +1133,11 @@ impl RustRuleEngine {
                     }
                 }
             }
-            ConditionExpression::MultiField { field, operation, variable: _ } => {
+            ConditionExpression::MultiField {
+                field,
+                operation,
+                variable: _,
+            } => {
                 // Multi-field operation condition
                 if self.config.debug_mode {
                     println!("    📦 Evaluating multi-field: {}.{}", field, operation);
@@ -1147,7 +1170,10 @@ impl RustRuleEngine {
                             // Other operations (collect, first, last) not fully supported yet
                             // Return true to not block rule evaluation
                             if self.config.debug_mode {
-                                println!("      ⚠️ Operation '{}' not fully implemented yet", operation);
+                                println!(
+                                    "      ⚠️ Operation '{}' not fully implemented yet",
+                                    operation
+                                );
                             }
                             true
                         }
@@ -1179,7 +1205,7 @@ impl RustRuleEngine {
                 };
 
                 // Try nested first, then fall back to flat key setting
-                if let Err(_) = facts.set_nested(field, evaluated_value.clone()) {
+                if facts.set_nested(field, evaluated_value.clone()).is_err() {
                     // If nested fails, use flat key
                     facts.set(field, evaluated_value.clone());
                 }
@@ -1287,11 +1313,11 @@ impl RustRuleEngine {
     fn evaluate_arithmetic_condition(&self, expr: &str, facts: &Facts) -> Result<bool> {
         // Parse expression format: "left_expr operator right_value"
         // e.g., "User.Age % 3 == 0" or "User.Price * 2 > 100"
-        
+
         let operators = [">=", "<=", "==", "!=", ">", "<"];
         let mut split_pos = None;
         let mut found_op = "";
-        
+
         for op in &operators {
             if let Some(pos) = expr.rfind(op) {
                 split_pos = Some(pos);
@@ -1299,20 +1325,20 @@ impl RustRuleEngine {
                 break;
             }
         }
-        
+
         if split_pos.is_none() {
             return Err(RuleEngineError::EvaluationError {
                 message: format!("No comparison operator found in expression: {}", expr),
             });
         }
-        
+
         let pos = split_pos.unwrap();
         let left_expr = expr[..pos].trim();
         let right_value = expr[pos + found_op.len()..].trim();
-        
+
         // Evaluate left side arithmetic expression
         let left_result = crate::expression::evaluate_expression(left_expr, facts)?;
-        
+
         // Parse right value
         let right_val = if let Ok(i) = right_value.parse::<i64>() {
             Value::Integer(i)
@@ -1325,14 +1351,13 @@ impl RustRuleEngine {
                 Err(_) => Value::String(right_value.to_string()),
             }
         };
-        
+
         // Compare values
-        let operator = Operator::from_str(found_op).ok_or_else(|| {
-            RuleEngineError::InvalidOperator {
+        let operator =
+            Operator::from_str(found_op).ok_or_else(|| RuleEngineError::InvalidOperator {
                 operator: found_op.to_string(),
-            }
-        })?;
-        
+            })?;
+
         Ok(operator.evaluate(&left_result, &right_val))
     }
 

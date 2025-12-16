@@ -69,7 +69,10 @@ fn test_parsing_performance(rules_content: &str) -> Result<(), Box<dyn std::erro
     println!("   Min time: {:?}", min);
     println!("   Max time: {:?}", max);
     println!("   Total time: {:?}", total);
-    println!("   Throughput: {:.2} parses/sec", iterations as f64 / total.as_secs_f64());
+    println!(
+        "   Throughput: {:.2} parses/sec",
+        iterations as f64 / total.as_secs_f64()
+    );
 
     Ok(())
 }
@@ -138,11 +141,12 @@ fn test_multiple_executions(
 
     for i in 0..iterations {
         let mut engine = RustRuleEngine::with_config(kb.clone(), config.clone());
-        
+
         // Vary the facts for each iteration
         let required = 100 + (i * 10) as i64;
         let available = 50 - (i % 30) as i64;
-        let facts = create_purchasing_facts(required, available, 1000, 10.0 + (i as f64 * 0.5), true);
+        let facts =
+            create_purchasing_facts(required, available, 1000, 10.0 + (i as f64 * 0.5), true);
 
         let start = Instant::now();
         let result = engine.execute(&facts)?;
@@ -161,8 +165,14 @@ fn test_multiple_executions(
     println!("   Max time: {:?}", max);
     println!("   Total time: {:?}", total);
     println!("   Total rules executed: {}", total_rules_executed);
-    println!("   Avg rules per execution: {:.2}", total_rules_executed as f64 / iterations as f64);
-    println!("   Throughput: {:.2} executions/sec", iterations as f64 / total.as_secs_f64());
+    println!(
+        "   Avg rules per execution: {:.2}",
+        total_rules_executed as f64 / iterations as f64
+    );
+    println!(
+        "   Throughput: {:.2} executions/sec",
+        iterations as f64 / total.as_secs_f64()
+    );
 
     Ok(())
 }
@@ -212,10 +222,19 @@ fn test_combined_performance(
 
     println!("   Iterations: {}", iterations);
     println!("   Avg parse time: {:?}", total_parse / iterations as u32);
-    println!("   Avg execution time: {:?}", total_exec / iterations as u32);
+    println!(
+        "   Avg execution time: {:?}",
+        total_exec / iterations as u32
+    );
     println!("   Avg total time: {:?}", total_all / iterations as u32);
-    println!("   Parse overhead: {:.1}%", (total_parse.as_nanos() as f64 / total_all.as_nanos() as f64) * 100.0);
-    println!("   Exec overhead: {:.1}%", (total_exec.as_nanos() as f64 / total_all.as_nanos() as f64) * 100.0);
+    println!(
+        "   Parse overhead: {:.1}%",
+        (total_parse.as_nanos() as f64 / total_all.as_nanos() as f64) * 100.0
+    );
+    println!(
+        "   Exec overhead: {:.1}%",
+        (total_exec.as_nanos() as f64 / total_all.as_nanos() as f64) * 100.0
+    );
 
     Ok(())
 }
@@ -229,28 +248,54 @@ fn create_purchasing_facts(
 ) -> Facts {
     let facts = Facts::new();
 
-    facts.add_value("required_qty", Value::Integer(required_qty)).unwrap();
-    facts.add_value("available_qty", Value::Integer(available_qty)).unwrap();
+    facts
+        .add_value("required_qty", Value::Integer(required_qty))
+        .unwrap();
+    facts
+        .add_value("available_qty", Value::Integer(available_qty))
+        .unwrap();
     facts.add_value("moq", Value::Integer(moq)).unwrap();
-    facts.add_value("unit_price", Value::Number(unit_price)).unwrap();
-    facts.add_value("is_active", Value::Boolean(is_active)).unwrap();
-    
+    facts
+        .add_value("unit_price", Value::Number(unit_price))
+        .unwrap();
+    facts
+        .add_value("is_active", Value::Boolean(is_active))
+        .unwrap();
+
     // Initialize output variables
     facts.add_value("shortage", Value::Integer(0)).unwrap();
     facts.add_value("order_qty", Value::Integer(0)).unwrap();
     facts.add_value("total_amount", Value::Number(0.0)).unwrap();
-    facts.add_value("need_reorder", Value::Boolean(false)).unwrap();
-    facts.add_value("requires_approval", Value::Boolean(false)).unwrap();
-    facts.add_value("approval_status", Value::String("".to_string())).unwrap();
-    facts.add_value("discount_amount", Value::Number(0.0)).unwrap();
+    facts
+        .add_value("need_reorder", Value::Boolean(false))
+        .unwrap();
+    facts
+        .add_value("requires_approval", Value::Boolean(false))
+        .unwrap();
+    facts
+        .add_value("approval_status", Value::String("".to_string()))
+        .unwrap();
+    facts
+        .add_value("discount_amount", Value::Number(0.0))
+        .unwrap();
     facts.add_value("final_amount", Value::Number(0.0)).unwrap();
     facts.add_value("tax_amount", Value::Number(0.0)).unwrap();
     facts.add_value("grand_total", Value::Number(0.0)).unwrap();
-    facts.add_value("should_create_po", Value::Boolean(false)).unwrap();
-    facts.add_value("po_status", Value::String("".to_string())).unwrap();
-    facts.add_value("should_send_po", Value::Boolean(false)).unwrap();
-    facts.add_value("send_method", Value::String("".to_string())).unwrap();
-    facts.add_value("supplier_error", Value::String("".to_string())).unwrap();
+    facts
+        .add_value("should_create_po", Value::Boolean(false))
+        .unwrap();
+    facts
+        .add_value("po_status", Value::String("".to_string()))
+        .unwrap();
+    facts
+        .add_value("should_send_po", Value::Boolean(false))
+        .unwrap();
+    facts
+        .add_value("send_method", Value::String("".to_string()))
+        .unwrap();
+    facts
+        .add_value("supplier_error", Value::String("".to_string()))
+        .unwrap();
 
     facts
 }

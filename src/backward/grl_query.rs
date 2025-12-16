@@ -83,27 +83,21 @@
 //! - `Print(message)` - Print output
 //! - `Debug(message)` - Print debug output to stderr
 
+use super::backward_engine::{BackwardConfig, BackwardEngine};
+use super::query::{ProofTrace, QueryResult, QueryStats};
+use super::search::SearchStrategy;
 use crate::errors::RuleEngineError;
 use crate::{Facts, Value};
-use super::backward_engine::{BackwardEngine, BackwardConfig};
-use super::search::SearchStrategy;
-use super::query::{QueryResult, QueryStats, ProofTrace};
-use super::optimizer::QueryOptimizer;
 
 use std::collections::HashMap;
 
 /// Search strategy option for queries
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum GRLSearchStrategy {
+    #[default]
     DepthFirst,
     BreadthFirst,
     Iterative,
-}
-
-impl Default for GRLSearchStrategy {
-    fn default() -> Self {
-        GRLSearchStrategy::DepthFirst
-    }
 }
 
 /// Action to execute based on query result
@@ -113,6 +107,12 @@ pub struct QueryAction {
     pub assignments: Vec<(String, String)>,
     /// Function/method calls
     pub calls: Vec<String>,
+}
+
+impl Default for QueryAction {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl QueryAction {
@@ -139,7 +139,7 @@ impl QueryAction {
                 let cleaned = value_str.trim_matches('"');
                 Value::String(cleaned.to_string())
             };
-            
+
             facts.set(var_name, value);
         }
 
@@ -186,7 +186,10 @@ impl QueryAction {
                     }
                     other => {
                         // Unknown function - log warning but don't fail
-                        eprintln!("[WARNING] Unknown function call in query action: {}({})", other, args_str);
+                        eprintln!(
+                            "[WARNING] Unknown function call in query action: {}({})",
+                            other, args_str
+                        );
                     }
                 }
             } else {
@@ -389,7 +392,7 @@ pub struct GRLQueryParser;
 
 impl GRLQueryParser {
     /// Parse a query from string
-    /// 
+    ///
     /// # Example
     /// ```
     /// let query_str = r#"
@@ -507,7 +510,10 @@ impl GRLQueryParser {
                 ')' if !in_string => {
                     if paren_depth == 0 {
                         return Err(RuleEngineError::ParseError {
-                            message: format!("Parse error: Unexpected closing parenthesis at position {}", i),
+                            message: format!(
+                                "Parse error: Unexpected closing parenthesis at position {}",
+                                i
+                            ),
                         });
                     }
                     paren_depth -= 1;
@@ -535,47 +541,39 @@ impl GRLQueryParser {
 
     fn extract_strategy(input: &str) -> Option<GRLSearchStrategy> {
         let re = regex::Regex::new(r"strategy:\s*([a-z-]+)").unwrap();
-        re.captures(input).and_then(|caps| {
-            match caps[1].trim() {
-                "depth-first" => Some(GRLSearchStrategy::DepthFirst),
-                "breadth-first" => Some(GRLSearchStrategy::BreadthFirst),
-                "iterative" => Some(GRLSearchStrategy::Iterative),
-                _ => None,
-            }
+        re.captures(input).and_then(|caps| match caps[1].trim() {
+            "depth-first" => Some(GRLSearchStrategy::DepthFirst),
+            "breadth-first" => Some(GRLSearchStrategy::BreadthFirst),
+            "iterative" => Some(GRLSearchStrategy::Iterative),
+            _ => None,
         })
     }
 
     fn extract_max_depth(input: &str) -> Option<usize> {
         let re = regex::Regex::new(r"max-depth:\s*(\d+)").unwrap();
-        re.captures(input)
-            .and_then(|caps| caps[1].parse().ok())
+        re.captures(input).and_then(|caps| caps[1].parse().ok())
     }
 
     fn extract_max_solutions(input: &str) -> Option<usize> {
         let re = regex::Regex::new(r"max-solutions:\s*(\d+)").unwrap();
-        re.captures(input)
-            .and_then(|caps| caps[1].parse().ok())
+        re.captures(input).and_then(|caps| caps[1].parse().ok())
     }
 
     fn extract_memoization(input: &str) -> Option<bool> {
         let re = regex::Regex::new(r"enable-memoization:\s*(true|false)").unwrap();
-        re.captures(input).and_then(|caps| {
-            match caps[1].trim() {
-                "true" => Some(true),
-                "false" => Some(false),
-                _ => None,
-            }
+        re.captures(input).and_then(|caps| match caps[1].trim() {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
         })
     }
 
     fn extract_optimization(input: &str) -> Option<bool> {
         let re = regex::Regex::new(r"enable-optimization:\s*(true|false)").unwrap();
-        re.captures(input).and_then(|caps| {
-            match caps[1].trim() {
-                "true" => Some(true),
-                "false" => Some(false),
-                _ => None,
-            }
+        re.captures(input).and_then(|caps| match caps[1].trim() {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
         })
     }
 
@@ -591,10 +589,13 @@ impl GRLQueryParser {
         Self::extract_action_block(input, "on-missing")
     }
 
-    fn extract_action_block(input: &str, action_name: &str) -> Result<Option<QueryAction>, RuleEngineError> {
+    fn extract_action_block(
+        input: &str,
+        action_name: &str,
+    ) -> Result<Option<QueryAction>, RuleEngineError> {
         let pattern = format!(r"{}:\s*\{{([^}}]+)\}}", action_name);
         let re = regex::Regex::new(&pattern).unwrap();
-        
+
         if let Some(caps) = re.captures(input) {
             let block = caps[1].trim();
             let mut action = QueryAction::new();
@@ -632,12 +633,13 @@ impl GRLQueryParser {
     /// Parse multiple queries from a file
     pub fn parse_queries(input: &str) -> Result<Vec<GRLQuery>, RuleEngineError> {
         let mut queries = Vec::new();
-        
+
         // Find all query blocks - use simpler approach
         // Split by "query" keyword and process each block
         let parts: Vec<&str> = input.split("query").collect();
-        
-        for part in parts.iter().skip(1) { // Skip first empty part
+
+        for part in parts.iter().skip(1) {
+            // Skip first empty part
             let query_str = format!("query{}", part);
             // Find the matching closing brace
             if let Some(end_idx) = find_matching_brace(&query_str) {
@@ -657,13 +659,13 @@ fn find_matching_brace(input: &str) -> Option<usize> {
     let mut depth = 0;
     let mut in_string = false;
     let mut escape_next = false;
-    
+
     for (i, ch) in input.chars().enumerate() {
         if escape_next {
             escape_next = false;
             continue;
         }
-        
+
         match ch {
             '\\' => escape_next = true,
             '"' => in_string = !in_string,
@@ -677,7 +679,7 @@ fn find_matching_brace(input: &str) -> Option<usize> {
             _ => {}
         }
     }
-    
+
     None
 }
 
@@ -696,7 +698,10 @@ impl GRLQueryExecutor {
             return Ok(QueryResult {
                 provable: false,
                 bindings: HashMap::new(),
-                proof_trace: ProofTrace { goal: String::new(), steps: Vec::new() },
+                proof_trace: ProofTrace {
+                    goal: String::new(),
+                    steps: Vec::new(),
+                },
                 missing_facts: Vec::new(),
                 stats: QueryStats::default(),
                 solutions: Vec::new(),
@@ -743,11 +748,11 @@ impl GRLQueryExecutor {
         let sub_goals: Vec<&str> = goal_expr.split("&&").map(|s| s.trim()).collect();
 
         let mut all_provable = true;
-        let mut combined_bindings = HashMap::new();
-        let mut all_missing = Vec::new();
-        let mut combined_stats = QueryStats::default();
+        let combined_bindings = HashMap::new();
+        let all_missing = Vec::new();
+        let combined_stats = QueryStats::default();
 
-        for (i, sub_goal) in sub_goals.iter().enumerate() {
+        for sub_goal in sub_goals.iter() {
             // Handle != by using expression parser directly
             let goal_satisfied = if sub_goal.contains("!=") {
                 // Parse and evaluate the expression directly
@@ -776,7 +781,7 @@ impl GRLQueryExecutor {
             bindings: combined_bindings,
             proof_trace: ProofTrace {
                 goal: goal_expr.to_string(),
-                steps: Vec::new()
+                steps: Vec::new(),
             },
             missing_facts: all_missing,
             stats: combined_stats,
@@ -825,7 +830,8 @@ impl GRLQueryExecutor {
                     combined_stats.goals_explored += result.stats.goals_explored;
                     combined_stats.rules_evaluated += result.stats.rules_evaluated;
                     if let Some(dur) = result.stats.duration_ms {
-                        combined_stats.duration_ms = Some(combined_stats.duration_ms.unwrap_or(0) + dur);
+                        combined_stats.duration_ms =
+                            Some(combined_stats.duration_ms.unwrap_or(0) + dur);
                     }
                     all_solutions.extend(result.solutions);
                 }
@@ -837,7 +843,7 @@ impl GRLQueryExecutor {
             bindings: combined_bindings,
             proof_trace: ProofTrace {
                 goal: goal_expr.to_string(),
-                steps: Vec::new()
+                steps: Vec::new(),
             },
             missing_facts: all_missing,
             stats: combined_stats,
@@ -850,7 +856,7 @@ impl GRLQueryExecutor {
         let trimmed = expr.trim();
         if trimmed.starts_with('(') && trimmed.ends_with(')') {
             // Check if these are matching outer parens
-            let inner = &trimmed[1..trimmed.len()-1];
+            let inner = &trimmed[1..trimmed.len() - 1];
             let mut depth = 0;
             for ch in inner.chars() {
                 match ch {
@@ -911,7 +917,8 @@ impl GRLQueryExecutor {
                 combined_stats.goals_explored += result.stats.goals_explored;
                 combined_stats.rules_evaluated += result.stats.rules_evaluated;
                 if let Some(dur) = result.stats.duration_ms {
-                    combined_stats.duration_ms = Some(combined_stats.duration_ms.unwrap_or(0) + dur);
+                    combined_stats.duration_ms =
+                        Some(combined_stats.duration_ms.unwrap_or(0) + dur);
                 }
                 all_solutions.extend(result.solutions);
             }
@@ -922,7 +929,7 @@ impl GRLQueryExecutor {
             bindings: combined_bindings,
             proof_trace: ProofTrace {
                 goal: goal_expr.to_string(),
-                steps: Vec::new()
+                steps: Vec::new(),
             },
             missing_facts: all_missing,
             stats: combined_stats,
@@ -994,7 +1001,7 @@ mod tests {
 
         let query = GRLQueryParser::parse(input).unwrap();
         assert!(query.on_success.is_some());
-        
+
         let action = query.on_success.unwrap();
         assert_eq!(action.assignments.len(), 1);
         assert_eq!(action.calls.len(), 1);
@@ -1034,17 +1041,14 @@ mod tests {
 
     #[test]
     fn test_query_config_conversion() {
-        let query = GRLQuery::new(
-            "Test".to_string(),
-            "X == true".to_string(),
-        )
-        .with_strategy(GRLSearchStrategy::BreadthFirst)
-        .with_max_depth(15)
-        .with_memoization(false);
+        let query = GRLQuery::new("Test".to_string(), "X == true".to_string())
+            .with_strategy(GRLSearchStrategy::BreadthFirst)
+            .with_max_depth(15)
+            .with_memoization(false);
 
         let config = query.to_config();
         assert_eq!(config.max_depth, 15);
-        assert_eq!(config.enable_memoization, false);
+        assert!(!config.enable_memoization);
     }
 
     #[test]
@@ -1052,10 +1056,9 @@ mod tests {
         let mut facts = Facts::new();
 
         let mut action = QueryAction::new();
-        action.assignments.push((
-            "User.DiscountRate".to_string(),
-            "0.2".to_string(),
-        ));
+        action
+            .assignments
+            .push(("User.DiscountRate".to_string(), "0.2".to_string()));
 
         action.execute(&mut facts).unwrap();
 
@@ -1075,7 +1078,7 @@ mod tests {
 
     #[test]
     fn test_should_execute_condition_true() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("Environment.Mode", Value::String("Production".to_string()));
 
         let query = GRLQuery::new("Q".to_string(), "X == true".to_string())
@@ -1087,7 +1090,7 @@ mod tests {
 
     #[test]
     fn test_should_execute_condition_false() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.set("Environment.Mode", Value::String("Development".to_string()));
 
         let query = GRLQuery::new("Q".to_string(), "X == true".to_string())

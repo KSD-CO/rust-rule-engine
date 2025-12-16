@@ -12,11 +12,10 @@
 //!
 //! Run: cargo run --example conflict_resolution_demo
 
-use rust_rule_engine::rete::{
-    IncrementalEngine, ConflictResolutionStrategy,
-    Activation, GrlReteLoader, TypedFacts, FactValue,
-};
 use rust_rule_engine::errors::Result;
+use rust_rule_engine::rete::{
+    Activation, ConflictResolutionStrategy, FactValue, GrlReteLoader, IncrementalEngine, TypedFacts,
+};
 
 fn main() -> Result<()> {
     println!("╔═══════════════════════════════════════════════════════════════╗");
@@ -85,20 +84,17 @@ fn demo_salience() {
     engine.set_conflict_resolution_strategy(ConflictResolutionStrategy::Salience);
 
     // Add 3 activations with different salience
-    engine.agenda_mut().add_activation(
-        Activation::new("LowPriority".to_string(), 5)
-            .with_condition_count(2)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("LowPriority".to_string(), 5).with_condition_count(2));
 
-    engine.agenda_mut().add_activation(
-        Activation::new("HighPriority".to_string(), 20)
-            .with_condition_count(2)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("HighPriority".to_string(), 20).with_condition_count(2));
 
-    engine.agenda_mut().add_activation(
-        Activation::new("MediumPriority".to_string(), 10)
-            .with_condition_count(2)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("MediumPriority".to_string(), 10).with_condition_count(2));
 
     println!("   Added activations:");
     println!("     • LowPriority    (salience: 5)");
@@ -116,24 +112,21 @@ fn demo_lex() {
     engine.set_conflict_resolution_strategy(ConflictResolutionStrategy::LEX);
 
     // Add activations with small delays to show recency
-    engine.agenda_mut().add_activation(
-        Activation::new("First".to_string(), 10)
-            .with_condition_count(2)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("First".to_string(), 10).with_condition_count(2));
 
     std::thread::sleep(std::time::Duration::from_millis(1));
 
-    engine.agenda_mut().add_activation(
-        Activation::new("Second".to_string(), 10)
-            .with_condition_count(2)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("Second".to_string(), 10).with_condition_count(2));
 
     std::thread::sleep(std::time::Duration::from_millis(1));
 
-    engine.agenda_mut().add_activation(
-        Activation::new("Third".to_string(), 10)
-            .with_condition_count(2)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("Third".to_string(), 10).with_condition_count(2));
 
     println!("   Added activations with delays:");
     println!("     • First  (oldest)");
@@ -151,20 +144,17 @@ fn demo_mea() {
     engine.set_conflict_resolution_strategy(ConflictResolutionStrategy::MEA);
 
     // Add rules with same timestamp but different complexity
-    engine.agenda_mut().add_activation(
-        Activation::new("SimpleRule".to_string(), 10)
-            .with_condition_count(1)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("SimpleRule".to_string(), 10).with_condition_count(1));
 
-    engine.agenda_mut().add_activation(
-        Activation::new("ComplexRule".to_string(), 10)
-            .with_condition_count(5)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("ComplexRule".to_string(), 10).with_condition_count(5));
 
-    engine.agenda_mut().add_activation(
-        Activation::new("MediumRule".to_string(), 10)
-            .with_condition_count(3)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("MediumRule".to_string(), 10).with_condition_count(3));
 
     println!("   Added activations:");
     println!("     • SimpleRule  (1 condition)");
@@ -182,19 +172,16 @@ fn demo_simplicity() {
     engine.set_conflict_resolution_strategy(ConflictResolutionStrategy::Simplicity);
 
     engine.agenda_mut().add_activation(
-        Activation::new("VeryComplexRule".to_string(), 10)
-            .with_condition_count(10)
+        Activation::new("VeryComplexRule".to_string(), 10).with_condition_count(10),
     );
 
-    engine.agenda_mut().add_activation(
-        Activation::new("SimpleRule".to_string(), 10)
-            .with_condition_count(1)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("SimpleRule".to_string(), 10).with_condition_count(1));
 
-    engine.agenda_mut().add_activation(
-        Activation::new("ModerateRule".to_string(), 10)
-            .with_condition_count(5)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("ModerateRule".to_string(), 10).with_condition_count(5));
 
     println!("   Added activations:");
     println!("     • VeryComplexRule (10 conditions)");
@@ -211,20 +198,17 @@ fn demo_complexity() {
     let mut engine = IncrementalEngine::new();
     engine.set_conflict_resolution_strategy(ConflictResolutionStrategy::Complexity);
 
-    engine.agenda_mut().add_activation(
-        Activation::new("SimpleRule".to_string(), 10)
-            .with_condition_count(2)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("SimpleRule".to_string(), 10).with_condition_count(2));
 
-    engine.agenda_mut().add_activation(
-        Activation::new("ComplexRule".to_string(), 10)
-            .with_condition_count(8)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("ComplexRule".to_string(), 10).with_condition_count(8));
 
-    engine.agenda_mut().add_activation(
-        Activation::new("ModerateRule".to_string(), 10)
-            .with_condition_count(5)
-    );
+    engine
+        .agenda_mut()
+        .add_activation(Activation::new("ModerateRule".to_string(), 10).with_condition_count(5));
 
     println!("   Added activations:");
     println!("     • SimpleRule   (2 conditions)");

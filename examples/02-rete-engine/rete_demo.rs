@@ -1,7 +1,7 @@
-
-
 //! Demo: Complex RETE-UL network with multiple rules and advanced node types (API mới)
-use rust_rule_engine::rete::auto_network::{Rule, ConditionGroup, Condition, build_rete_ul_from_rule};
+use rust_rule_engine::rete::auto_network::{
+    build_rete_ul_from_rule, Condition, ConditionGroup, Rule,
+};
 use rust_rule_engine::rete::network::evaluate_rete_ul_node;
 use std::collections::HashMap;
 
@@ -87,9 +87,24 @@ fn main() {
     let node4 = build_rete_ul_from_rule(&rule4);
     let node5 = build_rete_ul_from_rule(&rule5);
 
-    println!("Rule 1 (age > 18 AND status == active): {}", evaluate_rete_ul_node(&node1, &facts));
-    println!("Rule 2 (status == active OR score > 80): {}", evaluate_rete_ul_node(&node2, &facts));
-    println!("Rule 3 (NOT country == VN): {}", evaluate_rete_ul_node(&node3, &facts));
-    println!("Rule 4 (EXISTS age > 18): {}", evaluate_rete_ul_node(&node4, &facts));
-    println!("Rule 5 (FORALL status == active): {}", evaluate_rete_ul_node(&node5, &facts));
+    println!(
+        "Rule 1 (age > 18 AND status == active): {}",
+        evaluate_rete_ul_node(&node1, &facts)
+    );
+    println!(
+        "Rule 2 (status == active OR score > 80): {}",
+        evaluate_rete_ul_node(&node2, &facts)
+    );
+    println!(
+        "Rule 3 (NOT country == VN): {}",
+        evaluate_rete_ul_node(&node3, &facts)
+    );
+    println!(
+        "Rule 4 (EXISTS age > 18): {}",
+        evaluate_rete_ul_node(&node4, &facts)
+    );
+    println!(
+        "Rule 5 (FORALL status == active): {}",
+        evaluate_rete_ul_node(&node5, &facts)
+    );
 }

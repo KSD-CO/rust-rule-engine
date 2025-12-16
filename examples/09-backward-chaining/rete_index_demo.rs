@@ -10,8 +10,8 @@
 
 use rust_rule_engine::backward::BackwardEngine;
 use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
-use rust_rule_engine::{Facts, KnowledgeBase};
 use rust_rule_engine::types::{ActionType, Operator, Value};
+use rust_rule_engine::{Facts, KnowledgeBase};
 use std::time::Instant;
 
 fn main() {
@@ -84,7 +84,10 @@ fn demo_with_rule_count(num_rules: usize) {
             let theoretical_on_time = query_time * (num_rules as u32);
             println!("\n💡 Performance Insight:");
             println!("   - With O(1) index: {:?}", query_time);
-            println!("   - Without index (O(n)): ~{:?} (estimated)", theoretical_on_time);
+            println!(
+                "   - Without index (O(n)): ~{:?} (estimated)",
+                theoretical_on_time
+            );
             println!("   - Speedup: ~{}x faster", num_rules);
         }
         Err(e) => {
@@ -105,11 +108,8 @@ fn demo_index_statistics() {
         let field = format!("Category{}.Status", i % 5); // 5 categories, multiple rules per category
         let rule_name = format!("Rule{}", i);
 
-        let condition = Condition::new(
-            "trigger".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        );
+        let condition =
+            Condition::new("trigger".to_string(), Operator::Equal, Value::Boolean(true));
 
         let actions = vec![ActionType::Set {
             field: field.clone(),
@@ -127,13 +127,20 @@ fn demo_index_statistics() {
     println!("📈 Detailed Index Statistics:");
     println!("   Total Rules: {}", stats.total_rules);
     println!("   Indexed Fields: {}", stats.indexed_fields);
-    println!("   Average Rules per Field: {:.2}", stats.avg_rules_per_field);
+    println!(
+        "   Average Rules per Field: {:.2}",
+        stats.avg_rules_per_field
+    );
 
     println!("\n💡 What This Means:");
-    println!("   - The index maps {} unique fields to {} rules",
-        stats.indexed_fields, stats.total_rules);
-    println!("   - On average, each field has {:.1} rules that can derive it",
-        stats.avg_rules_per_field);
+    println!(
+        "   - The index maps {} unique fields to {} rules",
+        stats.indexed_fields, stats.total_rules
+    );
+    println!(
+        "   - On average, each field has {:.1} rules that can derive it",
+        stats.avg_rules_per_field
+    );
     println!("   - Lookup time is O(1) regardless of total rule count!");
 }
 
@@ -145,11 +152,8 @@ fn create_kb_with_rules(num_rules: usize) -> KnowledgeBase {
         let rule_name = format!("Rule{}", i);
 
         // Simple condition: trigger == true
-        let condition = Condition::new(
-            "trigger".to_string(),
-            Operator::Equal,
-            Value::Boolean(true),
-        );
+        let condition =
+            Condition::new("trigger".to_string(), Operator::Equal, Value::Boolean(true));
 
         // Action: Set FieldN = true
         let actions = vec![ActionType::Set {

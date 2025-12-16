@@ -2,8 +2,8 @@ use crate::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugi
 use crate::engine::RustRuleEngine;
 use crate::errors::{Result, RuleEngineError};
 use crate::types::Value;
-use regex::Regex;
 use once_cell::sync::Lazy;
+use regex::Regex;
 
 // Cache email regex for performance
 static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -14,6 +14,12 @@ static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
 /// Built-in plugin for data validation operations
 pub struct ValidationPlugin {
     metadata: PluginMetadata,
+}
+
+impl Default for ValidationPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ValidationPlugin {
@@ -308,7 +314,7 @@ fn get_number_param(
         }
     }
 
-    value_to_number(&value)
+    value_to_number(value)
 }
 
 fn value_to_string(value: &Value) -> Result<String> {

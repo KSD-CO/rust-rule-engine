@@ -9,6 +9,12 @@ pub struct DateUtilsPlugin {
     metadata: PluginMetadata,
 }
 
+impl Default for DateUtilsPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DateUtilsPlugin {
     pub fn new() -> Self {
         Self {
@@ -245,7 +251,7 @@ fn get_number_param(
         }
     }
 
-    value_to_number(&value)
+    value_to_number(value)
 }
 
 fn value_to_string(value: &Value) -> Result<String> {
@@ -285,12 +291,12 @@ fn parse_date_string(date_str: &str) -> Result<DateTime<Local>> {
 
     for format in formats {
         if let Ok(naive_dt) = NaiveDateTime::parse_from_str(date_str, format) {
-            return Ok(Local
+            return Local
                 .from_local_datetime(&naive_dt)
                 .single()
                 .ok_or_else(|| RuleEngineError::ActionError {
                     message: "Invalid datetime".to_string(),
-                })?);
+                });
         }
 
         if let Ok(naive_date) = chrono::NaiveDate::parse_from_str(date_str, format) {
@@ -300,12 +306,12 @@ fn parse_date_string(date_str: &str) -> Result<DateTime<Local>> {
                     .ok_or_else(|| RuleEngineError::ActionError {
                         message: "Invalid date".to_string(),
                     })?;
-            return Ok(Local
+            return Local
                 .from_local_datetime(&naive_dt)
                 .single()
                 .ok_or_else(|| RuleEngineError::ActionError {
                     message: "Invalid datetime".to_string(),
-                })?);
+                });
         }
     }
 
