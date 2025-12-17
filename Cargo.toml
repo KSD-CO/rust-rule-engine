@@ -181,6 +181,11 @@ path = "examples/03-advanced-features/streaming_watermark_demo.rs"
 required-features = ["streaming"]
 
 [[example]]
+name = "stream_join_demo"
+path = "examples/03-advanced-features/stream_join_demo.rs"
+required-features = ["streaming"]
+
+[[example]]
 name = "product_recommendation_demo"
 path = "examples/09-backward-chaining/product_recommendation_demo.rs"
 required-features = ["backward-chaining"]

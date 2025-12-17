@@ -49,6 +49,40 @@ pub struct StreamPattern {
     pub source: StreamSource,
 }
 
+/// Stream join specification
+#[derive(Debug, Clone, PartialEq)]
+pub struct StreamJoinPattern {
+    pub left: StreamPattern,
+    pub right: StreamPattern,
+    pub join_conditions: Vec<JoinCondition>,
+}
+
+/// Join condition between two streams
+#[derive(Debug, Clone, PartialEq)]
+pub enum JoinCondition {
+    /// Equality condition: left.field == right.field
+    Equality {
+        left_field: String,
+        right_field: String,
+    },
+    /// Custom expression condition
+    Expression(String),
+    /// Temporal constraint: right.time > left.time
+    Temporal {
+        operator: TemporalOp,
+        left_field: String,
+        right_field: String,
+    },
+}
+
+/// Temporal operators for stream joins
+#[derive(Debug, Clone, PartialEq)]
+pub enum TemporalOp {
+    Before, // left.time < right.time
+    After,  // left.time > right.time
+    Within, // abs(left.time - right.time) < duration
+}
+
 /// Parse: from stream("stream-name")
 ///
 /// # Example
@@ -381,5 +415,181 @@ mod tests {
         let result = parse_duration(input);
 
         assert!(result.is_err());
+    }
+}
+
+/// Parse stream join pattern with && operator
+///
+/// # Example
+/// ```text
+/// click: ClickEvent from stream("clicks") over window(10 min, sliding) &&
+/// purchase: PurchaseEvent from stream("purchases") over window(10 min, sliding)
+/// ```
+pub fn parse_stream_join_pattern(input: &str) -> IResult<&str, StreamJoinPattern> {
+    use nom::bytes::complete::tag;
+
+    // Parse left stream pattern
+    let (input, left) = parse_stream_pattern(input)?;
+
+    // Expect && operator
+    let (input, _) = multispace0(input)?;
+    let (input, _) = tag("&&")(input)?;
+    let (input, _) = multispace0(input)?;
+
+    // Parse right stream pattern
+    let (input, right) = parse_stream_pattern(input)?;
+
+    // Join conditions will be parsed separately from additional && clauses
+    // For now, return empty conditions (to be filled by caller)
+    Ok((
+        input,
+        StreamJoinPattern {
+            left,
+            right,
+            join_conditions: Vec::new(),
+        },
+    ))
+}
+
+/// Parse a join condition like "click.user_id == purchase.user_id"
+///
+/// # Example
+/// ```text
+/// click.user_id == purchase.user_id
+/// purchase.timestamp > click.timestamp
+/// ```
+pub fn parse_join_condition(input: &str) -> IResult<&str, JoinCondition> {
+    use nom::branch::alt;
+    use nom::bytes::complete::tag;
+
+    // Parse left side: variable.field
+    let (input, left_var) = take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)?;
+    let (input, _) = char('.')(input)?;
+    let (input, left_field) = take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)?;
+
+    let (input, _) = multispace0(input)?;
+
+    // Parse operator
+    let (input, op) = alt((
+        tag("=="),
+        tag("!="),
+        tag("<="),
+        tag(">="),
+        tag("<"),
+        tag(">"),
+    ))(input)?;
+
+    let (input, _) = multispace0(input)?;
+
+    // Parse right side: variable.field
+    let (input, right_var) = take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)?;
+    let (input, _) = char('.')(input)?;
+    let (input, right_field) = take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)?;
+
+    // Construct condition based on operator
+    let condition = match op {
+        "==" => JoinCondition::Equality {
+            left_field: format!("{}.{}", left_var, left_field),
+            right_field: format!("{}.{}", right_var, right_field),
+        },
+        ">" => {
+            if left_field.contains("time") || right_field.contains("time") {
+                JoinCondition::Temporal {
+                    operator: TemporalOp::After,
+                    left_field: format!("{}.{}", left_var, left_field),
+                    right_field: format!("{}.{}", right_var, right_field),
+                }
+            } else {
+                JoinCondition::Expression(format!(
+                    "{}.{} > {}.{}",
+                    left_var, left_field, right_var, right_field
+                ))
+            }
+        }
+        "<" => {
+            if left_field.contains("time") || right_field.contains("time") {
+                JoinCondition::Temporal {
+                    operator: TemporalOp::Before,
+                    left_field: format!("{}.{}", left_var, left_field),
+                    right_field: format!("{}.{}", right_var, right_field),
+                }
+            } else {
+                JoinCondition::Expression(format!(
+                    "{}.{} < {}.{}",
+                    left_var, left_field, right_var, right_field
+                ))
+            }
+        }
+        _ => JoinCondition::Expression(format!(
+            "{}.{} {} {}.{}",
+            left_var, left_field, op, right_var, right_field
+        )),
+    };
+
+    Ok((input, condition))
+}
+
+#[cfg(test)]
+mod join_tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_join_condition_equality() {
+        let input = "click.user_id == purchase.user_id";
+        let result = parse_join_condition(input);
+
+        assert!(result.is_ok());
+        let (_, condition) = result.unwrap();
+        match condition {
+            JoinCondition::Equality {
+                left_field,
+                right_field,
+            } => {
+                assert_eq!(left_field, "click.user_id");
+                assert_eq!(right_field, "purchase.user_id");
+            }
+            _ => panic!("Expected Equality condition"),
+        }
+    }
+
+    #[test]
+    fn test_parse_join_condition_temporal() {
+        let input = "purchase.timestamp > click.timestamp";
+        let result = parse_join_condition(input);
+
+        assert!(result.is_ok());
+        let (_, condition) = result.unwrap();
+        match condition {
+            JoinCondition::Temporal {
+                operator,
+                left_field,
+                right_field,
+            } => {
+                assert_eq!(operator, TemporalOp::After);
+                assert_eq!(left_field, "purchase.timestamp");
+                assert_eq!(right_field, "click.timestamp");
+            }
+            _ => panic!("Expected Temporal condition"),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_join_pattern() {
+        let input = r#"click: ClickEvent from stream("clicks") over window(10 min, sliding) && purchase: PurchaseEvent from stream("purchases") over window(10 min, sliding)"#;
+        let result = parse_stream_join_pattern(input);
+
+        assert!(result.is_ok());
+        let (_, join_pattern) = result.unwrap();
+
+        assert_eq!(join_pattern.left.var_name, "click");
+        assert_eq!(join_pattern.left.event_type, Some("ClickEvent".to_string()));
+        assert_eq!(join_pattern.left.source.stream_name, "clicks");
+
+        assert_eq!(join_pattern.right.var_name, "purchase");
+        assert_eq!(
+            join_pattern.right.event_type,
+            Some("PurchaseEvent".to_string())
+        );
+        assert_eq!(join_pattern.right.source.stream_name, "purchases");
     }
 }

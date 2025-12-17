@@ -1,0 +1,73 @@
+[package]
+name = "iot-farm-monitoring"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Rust Rule Engine - use local path or published version
+rust-rule-engine = { path = "..", features = ["streaming"] }
+
+# Kafka integration (optional)
+rdkafka = { version = "0.36", features = ["cmake-build"], optional = true }
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Time handling
+chrono = "0.4"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Configuration
+toml = "0.8"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[features]
+default = []
+kafka = ["rdkafka"]
+
+[[bin]]
+name = "farm-monitor"
+path = "src/main.rs"
+required-features = ["kafka"]
+
+[[example]]
+name = "basic_demo"
+path = "examples/basic_demo.rs"
+
+[[example]]
+name = "comprehensive_farm_demo"
+path = "examples/comprehensive_farm_demo.rs"
+
+[[example]]
+name = "integrated_farm_demo"
+path = "examples/advanced/integrated_farm_demo.rs"
+
+[[example]]
+name = "test_grl_rules"
+path = "examples/test_grl_rules.rs"
+
+[[example]]
+name = "grl_stream_demo"
+path = "examples/grl_stream_demo.rs"
+
+[[example]]
+name = "test_stream_grl"
+path = "examples/test_stream_grl.rs"
+
+[[example]]
+name = "kafka_consumer"
+path = "examples/kafka_consumer.rs"
+required-features = ["kafka"]

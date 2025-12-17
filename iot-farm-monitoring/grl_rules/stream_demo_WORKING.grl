@@ -1,0 +1,96 @@
+// Working Stream + GRL Integration
+// Uses 2-phase approach:
+// 1. StreamJoinNode defined in code (Rust)
+// 2. GRL rules process joined results
+
+// ============================================================================
+// PHASE 1: Stream Join Configuration (in Rust code, see examples/grl_stream_demo.rs)
+// ============================================================================
+/*
+StreamJoinNode::new(
+    "air-temperature",          // left stream
+    "humidity-sensors",         // right stream
+    JoinType::Inner,
+    JoinStrategy::TimeWindow { duration: Duration::from_secs(300) },
+    Box::new(|left| left.data.get("zone_id").and_then(|v| v.as_string())),
+    Box::new(|right| right.data.get("zone_id").and_then(|v| v.as_string())),
+    Box::new(|_left, _right| true),
+)
+// → Produces: JoinedEvent with combined temperature + humidity data
+// → Converted to: TypedFacts for template "Greenhouse"
+*/
+
+// ============================================================================
+// PHASE 2: GRL Rules (process joined results)
+// ============================================================================
+
+// Rule 1: Process joined temperature + humidity
+rule "GreenhouseClimateControl" salience 100 no-loop {
+    when
+        Greenhouse.temperature > 30.0 &&
+        Greenhouse.humidity < 60.0
+    then
+        Greenhouse.cooling_active = true;
+        Greenhouse.misting_active = true;
+        log("Cooling activated for zone {}", Greenhouse.zone_id);
+}
+
+// Rule 2: CO2 + Light correlation
+rule "CO2Enrichment" salience 90 no-loop {
+    when
+        Greenhouse.light_intensity > 10000 &&
+        Greenhouse.co2_ppm < 800
+    then
+        Greenhouse.co2_injection = true;
+        Greenhouse.co2_target = 1000;
+        log("CO2 injection: Light={} lux, CO2={} ppm",
+            Greenhouse.light_intensity, Greenhouse.co2_ppm);
+}
+
+// Rule 3: Pest risk assessment
+rule "PestRiskDetection" salience 80 no-loop {
+    when
+        Greenhouse.temperature > 25.0 &&
+        Greenhouse.temperature < 32.0 &&
+        Greenhouse.humidity > 75.0
+    then
+        Greenhouse.pest_risk = "HIGH";
+        log("Pest risk: Temp={}°C, Humidity={}%",
+            Greenhouse.temperature, Greenhouse.humidity);
+}
+
+// ============================================================================
+// HOW IT WORKS:
+// ============================================================================
+/*
+1. Sensor events arrive:
+   - air-temperature stream → {zone_id: "GH-1", temperature: 32.0}
+   - humidity-sensors stream → {zone_id: "GH-1", humidity: 55.0}
+
+2. StreamJoinNode matches on zone_id within 5-minute window:
+   - Creates JoinedEvent {left: temp_event, right: humid_event}
+
+3. GrlStreamProcessor converts to TypedFacts:
+   - Template: "Greenhouse"
+   - Data: {zone_id: "GH-1", temperature: 32.0, humidity: 55.0}
+
+4. GRL rules execute on facts:
+   - GreenhouseClimateControl fires (temp > 30 && humidity < 60)
+   - Sets: cooling_active = true, misting_active = true
+
+5. Actions triggered:
+   - Cooling system activated
+   - Misting system activated
+   - Log message sent
+
+BENEFITS:
+✅ Stream joins handled by efficient StreamJoinNode
+✅ Business logic in readable GRL syntax
+✅ Type-safe with RETE engine
+✅ Scalable architecture
+
+EXAMPLE OUTPUT:
+🔥 Rules fired: 1 rules
+   Fired: ["GreenhouseClimateControl"]
+📊 Stats: ProcessorStats { events_processed: 2, rules_fired: 1, active_joins: 1 }
+*/

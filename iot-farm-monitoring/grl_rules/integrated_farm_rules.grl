@@ -1,0 +1,151 @@
+// Integrated Farm Rules - Aquaponics Integration
+// Syntax: Rust Rule Engine GRL Format
+
+// Rule 1: Aquaponics Nutrient Cycle
+rule "AquaponicsNutrientCycle" salience 150 no-loop {
+    when
+        FishPond.nitrate_ppm > 30.0 &&
+        Greenhouse.nutrient_level < 50.0 &&
+        FishPond.aquaponics_enabled == true
+    then
+        FishPond.pump_to_greenhouse = true;
+        FishPond.pump_volume_liters = 100;
+        Greenhouse.receive_pond_water = true;
+        Greenhouse.nutrient_source = "aquaponics";
+        log("Aquaponics cycle: Pumping from {} ({} ppm NO3) to {}",
+            FishPond.pond_id, FishPond.nitrate_ppm, Greenhouse.zone_id);
+}
+
+// Rule 2: Shared Climate Control
+rule "SharedEvaporativeCooling" salience 140 no-loop {
+    when
+        Greenhouse.temperature > 32.0 &&
+        FishPond.temperature < 24.0 &&
+        FishPond.location == "indoor"
+    then
+        FishPond.evaporative_cooling_active = true;
+        Greenhouse.cooling_source = "pond_evaporation";
+        log("Evaporative cooling: Using pond {} to cool greenhouse {}",
+            FishPond.pond_id, Greenhouse.zone_id);
+}
+
+// Rule 3: CO2 Exchange (Fish → Plants)
+rule "CO2ExchangeSystem" salience 130 no-loop {
+    when
+        FishPond.do_mg_per_liter < 5.5 &&
+        Greenhouse.co2_ppm < 600 &&
+        Greenhouse.light_intensity > 10000
+    then
+        FishPond.route_air_to_greenhouse = true;
+        Greenhouse.co2_source = "fish_respiration";
+        log("CO2 exchange: Routing air from pond {} to greenhouse {}",
+            FishPond.pond_id, Greenhouse.zone_id);
+}
+
+// Rule 4: Biofloc Harvest for Plant Fertilizer
+rule "BioflocHarvestForPlants" salience 120 no-loop {
+    when
+        FishPond.tss_mg_per_liter > 400 &&
+        FishPond.biofloc_system == true &&
+        Greenhouse.nitrogen_deficiency == true
+    then
+        FishPond.harvest_biofloc_kg = 10;
+        Greenhouse.apply_biofloc_fertilizer = true;
+        FishPond.increase_aeration = true;
+        log("Biofloc harvest: {} kg from pond {} to greenhouse {}",
+            FishPond.harvest_biofloc_kg, FishPond.pond_id, Greenhouse.zone_id);
+}
+
+// Rule 5: Integrated Pest Management
+rule "BiocontrolPestManagement" salience 110 no-loop {
+    when
+        Greenhouse.pest_type == "aphids" &&
+        Greenhouse.pest_severity > 5 &&
+        FishPond.species == "tilapia"
+    then
+        Greenhouse.collect_pests = true;
+        FishPond.feed_pests_to_fish = true;
+        log("IPM: Feeding {} pests from greenhouse {} to pond {}",
+            Greenhouse.pest_type, Greenhouse.zone_id, FishPond.pond_id);
+}
+
+// Rule 6: Night Oxygen Transfer (Plants → Fish)
+rule "NightOxygenTransfer" salience 100 no-loop {
+    when
+        Farm.hour >= 22 || Farm.hour <= 5 &&
+        Greenhouse.oxygen_percent > 21.5 &&
+        FishPond.do_mg_per_liter < 5.0
+    then
+        Greenhouse.route_air_to_pond = true;
+        FishPond.reduce_aerator_power = 0.7;
+        Farm.energy_saved_percent = 30;
+        log("Night O2 transfer: Greenhouse {} to pond {} - Saving 30% energy",
+            Greenhouse.zone_id, FishPond.pond_id);
+}
+
+// Rule 7: Rainwater Distribution
+rule "RainwaterHarvestDistribution" salience 90 no-loop {
+    when
+        Farm.rainfall_mm > 10.0 &&
+        FishPond.water_level_percent < 80.0 &&
+        Greenhouse.soil_moisture < 40.0
+    then
+        FishPond.rainwater_allocation = 0.6;
+        Greenhouse.rainwater_allocation = 0.4;
+        Farm.rainwater_harvest_active = true;
+        log("Rainwater harvest: {} mm - 60% to pond, 40% to greenhouse",
+            Farm.rainfall_mm);
+}
+
+// Rule 8: Herbal Disease Prevention
+rule "HerbalDiseasePreventionForFish" salience 85 no-loop {
+    when
+        FishPond.disease_risk_level > 7 &&
+        Greenhouse.herb_type == "oregano" || Greenhouse.herb_type == "basil" &&
+        Greenhouse.harvest_ready == true
+    then
+        Greenhouse.extract_essential_oils = true;
+        FishPond.add_herbal_extract = true;
+        log("Herbal treatment: Using {} from greenhouse {} for pond {}",
+            Greenhouse.herb_type, Greenhouse.zone_id, FishPond.pond_id);
+}
+
+// Rule 9: Comprehensive Farm Health Score
+rule "FarmHealthScoreExcellent" salience 80 no-loop {
+    when
+        Farm.avg_plant_health > 80.0 &&
+        Farm.avg_fish_health > 75.0 &&
+        Farm.water_quality_score > 70.0 &&
+        Farm.pest_pressure < 20.0 &&
+        Farm.disease_incidents == 0
+    then
+        Farm.health_score = "EXCELLENT";
+        Farm.generate_daily_report = true;
+        log("Farm health: EXCELLENT - Plants: {}, Fish: {}, Water: {}",
+            Farm.avg_plant_health, Farm.avg_fish_health, Farm.water_quality_score);
+}
+
+// Rule 10: Emergency Cascade Prevention
+rule "EmergencySafeMode" salience 200 no-loop {
+    when
+        Farm.critical_alerts_1hour > 5 &&
+        Farm.system_operational == true
+    then
+        Farm.enter_safe_mode = true;
+        Farm.notify_emergency = true;
+        Farm.activate_backups = true;
+        log("CASCADE WARNING: {} critical alerts in 1 hour - Entering SAFE MODE",
+            Farm.critical_alerts_1hour);
+}
+
+// Rule 11: Resource Optimization
+rule "ResourceEfficiencyOptimization" salience 75 no-loop {
+    when
+        Farm.water_recycling_rate > 0.9 &&
+        Farm.energy_from_renewables > 0.5 &&
+        Farm.waste_utilization > 0.8
+    then
+        Farm.sustainability_score = "EXCELLENT";
+        Farm.carbon_footprint_reduction = 0.7;
+        log("Resource optimization: 90% water recycling, 50% renewable energy, 80% waste use");
+}

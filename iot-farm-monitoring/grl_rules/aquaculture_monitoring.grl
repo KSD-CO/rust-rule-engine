@@ -1,0 +1,130 @@
+// Aquaculture (Fish Farming) Monitoring Rules
+// Syntax: Rust Rule Engine GRL Format
+
+// Rule 1: CRITICAL - Dissolved Oxygen Emergency
+rule "CriticalDissolvedOxygen" salience 200 no-loop {
+    when
+        FishPond.do_mg_per_liter < 4.0 &&
+        FishPond.temperature > 28.0
+    then
+        FishPond.emergency_aeration = true;
+        FishPond.alert_level = "CRITICAL";
+        FishPond.alert_type = "low_oxygen";
+        log("CRITICAL: Pond {} - DO: {} mg/L, Temp: {}C - EMERGENCY AERATION!",
+            FishPond.pond_id, FishPond.do_mg_per_liter, FishPond.temperature);
+}
+
+// Rule 2: pH Imbalance Detection
+rule "PHImbalanceCorrection" salience 150 no-loop {
+    when
+        FishPond.ph_value < 6.5 || FishPond.ph_value > 8.5
+    then
+        FishPond.ph_correction_needed = true;
+        FishPond.alert_type = "ph_imbalance";
+        log("pH Alert: Pond {} - pH: {} (safe range: 6.5-8.5)",
+            FishPond.pond_id, FishPond.ph_value);
+}
+
+// Rule 3: Ammonia Toxicity Warning
+rule "AmmoniaToxicityWarning" salience 180 no-loop {
+    when
+        FishPond.ammonia_ppm > 0.5 &&
+        FishPond.ph_value > 8.0
+    then
+        FishPond.water_change_urgent = true;
+        FishPond.add_zeolite = true;
+        FishPond.alert_level = "CRITICAL";
+        log("AMMONIA TOXICITY: Pond {} - NH3: {} ppm, pH: {} - Water change needed!",
+            FishPond.pond_id, FishPond.ammonia_ppm, FishPond.ph_value);
+}
+
+// Rule 4: Optimal Feeding Conditions
+rule "OptimalFeedingTime" salience 100 no-loop {
+    when
+        FishPond.do_mg_per_liter > 5.0 &&
+        FishPond.temperature > 22.0 &&
+        FishPond.temperature < 28.0 &&
+        FishPond.feeding_allowed == true
+    then
+        FishPond.dispense_feed = true;
+        FishPond.feed_type = "normal_ration";
+        log("Feeding time for pond {} - DO: {} mg/L, Temp: {}C",
+            FishPond.pond_id, FishPond.do_mg_per_liter, FishPond.temperature);
+}
+
+// Rule 5: Nitrite Spike Detection
+rule "NitriteSpikeAlert" salience 170 no-loop {
+    when
+        FishPond.nitrite_ppm > 0.5
+    then
+        FishPond.add_salt = true;
+        FishPond.reduce_feeding = 0.5;
+        FishPond.alert_type = "nitrite_spike";
+        log("Nitrite spike in pond {} - NO2: {} ppm - Reducing feeding 50%",
+            FishPond.pond_id, FishPond.nitrite_ppm);
+}
+
+// Rule 6: Water Quality Score
+rule "WaterQualityAssessment" salience 90 no-loop {
+    when
+        FishPond.do_mg_per_liter >= 5.0 &&
+        FishPond.ph_value >= 6.5 &&
+        FishPond.ph_value <= 8.5 &&
+        FishPond.ammonia_ppm < 0.5 &&
+        FishPond.nitrite_ppm < 0.5
+    then
+        FishPond.water_quality = "EXCELLENT";
+        FishPond.fish_health_score = 95;
+        log("Excellent water quality in pond {}", FishPond.pond_id);
+}
+
+// Rule 7: Temperature Stress Warning
+rule "TemperatureStressWarning" salience 140 no-loop {
+    when
+        FishPond.temperature > 32.0 || FishPond.temperature < 18.0
+    then
+        FishPond.temperature_stress = true;
+        FishPond.feeding_allowed = false;
+        FishPond.alert_type = "temperature_stress";
+        log("Temperature stress in pond {} - Temp: {}C - Feeding suspended",
+            FishPond.pond_id, FishPond.temperature);
+}
+
+// Rule 8: Harvest Window Detection
+rule "HarvestWindowReady" salience 80 no-loop {
+    when
+        FishPond.average_fish_weight >= 500 &&
+        FishPond.do_mg_per_liter > 6.0 &&
+        FishPond.temperature < 25.0
+    then
+        FishPond.harvest_ready = true;
+        FishPond.harvest_window = "OPTIMAL";
+        log("Harvest window ready for pond {} - Avg weight: {} g, DO: {} mg/L",
+            FishPond.pond_id, FishPond.average_fish_weight, FishPond.do_mg_per_liter);
+}
+
+// Rule 9: Water Exchange Schedule
+rule "WaterExchangeNeeded" salience 120 no-loop {
+    when
+        FishPond.nitrate_ppm > 40.0 &&
+        FishPond.days_since_exchange > 7
+    then
+        FishPond.water_exchange_percent = 20;
+        FishPond.schedule_exchange = true;
+        log("Water exchange needed for pond {} - Nitrate: {} ppm",
+            FishPond.pond_id, FishPond.nitrate_ppm);
+}
+
+// Rule 10: Algae Bloom Risk
+rule "AlgaeBloomPrevention" salience 110 no-loop {
+    when
+        FishPond.light_intensity > 50000 &&
+        FishPond.temperature > 28.0 &&
+        FishPond.phosphate_ppm > 0.5
+    then
+        FishPond.deploy_shade = true;
+        FishPond.shade_percent = 50;
+        FishPond.reduce_feeding = 0.7;
+        log("Algae bloom risk in pond {} - Deploying shade & reducing feed",
+            FishPond.pond_id);
+}

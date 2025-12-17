@@ -1,0 +1,52 @@
+// Stream-based Greenhouse Climate Control
+// Using actual stream syntax supported by rust-rule-engine
+
+// Rule 1: Temperature monitoring with sliding window
+rule "TemperatureMonitoringStream" salience 100 no-loop {
+    when
+        temp from stream("air-temperature") over window(5 min, sliding) &&
+        temp.temperature > 30.0
+    then
+        Greenhouse.high_temp_alert = true;
+        log("High temperature detected: {}°C", temp.temperature);
+}
+
+// Rule 2: Humidity monitoring with sliding window
+rule "HumidityMonitoringStream" salience 95 no-loop {
+    when
+        humid from stream("humidity-sensors") over window(5 min, sliding) &&
+        humid.humidity < 60.0
+    then
+        Greenhouse.low_humidity_alert = true;
+        log("Low humidity detected: {}%", humid.humidity);
+}
+
+// Rule 3: CO2 monitoring with tumbling window (hourly aggregation)
+rule "CO2TumblingWindow" salience 90 no-loop {
+    when
+        co2 from stream("co2-sensors") over window(1 hour, tumbling) &&
+        co2.co2_ppm < 600
+    then
+        Greenhouse.co2_injection_needed = true;
+        log("CO2 below threshold in tumbling window: {} ppm", co2.co2_ppm);
+}
+
+// Rule 4: Light intensity with sliding window
+rule "LightIntensityStream" salience 85 no-loop {
+    when
+        light from stream("light-sensors") over window(10 min, sliding) &&
+        light.light_intensity > 10000
+    then
+        Greenhouse.high_light_detected = true;
+        log("High light intensity: {} lux", light.light_intensity);
+}
+
+// Rule 5: Soil moisture monitoring
+rule "SoilMoistureStream" salience 80 no-loop {
+    when
+        soil from stream("soil-sensors") over window(15 min, sliding) &&
+        soil.moisture < 40.0
+    then
+        Greenhouse.irrigation_needed = true;
+        log("Low soil moisture: {}%", soil.moisture);
+}

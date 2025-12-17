@@ -1,0 +1,63 @@
+// Stream-based Fish Pond Monitoring
+// Using stream windows for real-time aquaculture monitoring
+
+// Rule 1: Dissolved Oxygen monitoring with sliding window
+rule "DOStreamMonitoring" salience 200 no-loop {
+    when
+        do_event from stream("dissolved-oxygen") over window(10 min, sliding) &&
+        do_event.do_mg_per_liter < 4.0
+    then
+        FishPond.emergency_aeration = true;
+        FishPond.alert_level = "CRITICAL";
+        log("CRITICAL DO in stream window: {} mg/L", do_event.do_mg_per_liter);
+}
+
+// Rule 2: Water temperature monitoring with sliding window
+rule "WaterTempStreamMonitoring" salience 190 no-loop {
+    when
+        temp from stream("water-temperature") over window(10 min, sliding) &&
+        temp.temperature > 28.0
+    then
+        FishPond.high_temp_alert = true;
+        log("High water temperature in stream: {}°C", temp.temperature);
+}
+
+// Rule 3: pH monitoring with tumbling window (hourly check)
+rule "PHStreamMonitoring" salience 180 no-loop {
+    when
+        ph from stream("ph-sensors") over window(1 hour, tumbling) &&
+        (ph.ph_value < 6.5 || ph.ph_value > 8.5)
+    then
+        FishPond.ph_correction_needed = true;
+        log("pH imbalance in tumbling window: {}", ph.ph_value);
+}
+
+// Rule 4: Ammonia monitoring with sliding window
+rule "AmmoniaStreamMonitoring" salience 170 no-loop {
+    when
+        ammonia from stream("ammonia-sensors") over window(15 min, sliding) &&
+        ammonia.ammonia_ppm > 0.5
+    then
+        FishPond.ammonia_alert = true;
+        log("Elevated ammonia in stream: {} ppm", ammonia.ammonia_ppm);
+}
+
+// Rule 5: Nitrite monitoring with sliding window
+rule "NitriteStreamMonitoring" salience 160 no-loop {
+    when
+        nitrite from stream("nitrite-sensors") over window(15 min, sliding) &&
+        nitrite.nitrite_ppm > 0.5
+    then
+        FishPond.nitrite_alert = true;
+        log("Nitrite spike in stream: {} ppm", nitrite.nitrite_ppm);
+}
+
+// Rule 6: Water quality comprehensive check (tumbling hourly)
+rule "WaterQualityHourlyCheck" salience 150 no-loop {
+    when
+        quality from stream("water-quality") over window(1 hour, tumbling) &&
+        quality.quality_score > 70
+    then
+        FishPond.water_quality = "GOOD";
+        log("Hourly water quality: {} points", quality.quality_score);
+}

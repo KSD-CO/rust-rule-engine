@@ -1,0 +1,242 @@
+// Stream-Enhanced Greenhouse Monitoring Rules
+// Extended GRL Syntax for Stream Processing
+//
+// Proposed Syntax Extensions:
+// - STREAM JOIN ... ON ... WINDOW ...
+// - AGGREGATE ... OVER WINDOW ...
+// - WATERMARK ...
+
+// ============================================================================
+// STREAM JOIN RULE: Temperature + Humidity Correlation
+// ============================================================================
+// Proposed syntax (not yet implemented in parser):
+/*
+stream join "GreenhouseClimateJoin" {
+    left: "air-temperature" as temp
+    right: "humidity-sensors" as humid
+
+    on temp.zone_id == humid.zone_id
+
+    window: time 5 minutes
+
+    when
+        temp.temperature > 30.0 &&
+        humid.humidity < 60.0
+    then
+        Greenhouse.cooling_active = true;
+        Greenhouse.misting_active = true;
+        log("Stream Join: Cooling activated for zone {}", temp.zone_id);
+}
+*/
+
+// Current workaround: Define join in Rust, then regular rule
+rule "GreenhouseCoolingControl" salience 100 no-loop {
+    when
+        Greenhouse.temperature > 30.0 &&
+        Greenhouse.humidity < 60.0
+    then
+        Greenhouse.cooling_active = true;
+        Greenhouse.misting_active = true;
+        log("Cooling activated for greenhouse {}", Greenhouse.zone_id);
+}
+
+// ============================================================================
+// AGGREGATE OVER WINDOW: Average Temperature
+// ============================================================================
+// Proposed syntax:
+/*
+stream aggregate "AvgTemperatureLast24h" {
+    from: "air-temperature"
+
+    window: time 24 hours
+
+    compute: avg(temperature) as avg_temp
+
+    when
+        avg_temp > 28.0
+    then
+        Greenhouse.heat_stress_alert = true;
+        log("Heat stress: 24h avg = {}°C", avg_temp);
+}
+*/
+
+// Current workaround: Pre-computed aggregation → fact
+rule "HeatStressFromAverage" salience 90 no-loop {
+    when
+        Greenhouse.avg_temp_24h > 28.0
+    then
+        Greenhouse.heat_stress_alert = true;
+        log("Heat stress detected in {}", Greenhouse.zone_id);
+}
+
+// ============================================================================
+// TUMBLING WINDOW: CO2 Injection Cycle
+// ============================================================================
+// Proposed syntax:
+/*
+stream window "CO2InjectionCycle" {
+    from: "co2-sensors"
+
+    window: tumbling 1 hour
+
+    when
+        avg(co2_ppm) over window < 600 &&
+        max(light_intensity) over window > 10000
+    then
+        Greenhouse.schedule_co2_injection = true;
+        Greenhouse.co2_target = 1000;
+        log("CO2 injection scheduled for next hour");
+}
+*/
+
+// Current workaround: Instantaneous rule
+rule "CO2EnrichmentControl" salience 90 no-loop {
+    when
+        Greenhouse.light_intensity > 10000 &&
+        Greenhouse.co2_ppm < 800
+    then
+        Greenhouse.co2_target = 1000;
+        Greenhouse.co2_injection = true;
+        log("CO2 injection for greenhouse {} - Light: {} lux, CO2: {} ppm",
+            Greenhouse.zone_id, Greenhouse.light_intensity, Greenhouse.co2_ppm);
+}
+
+// ============================================================================
+// SESSION WINDOW: Pest Activity Burst Detection
+// ============================================================================
+// Proposed syntax:
+/*
+stream session "PestActivityBurst" {
+    from: "pest-sensors"
+
+    window: session with gap 30 minutes
+
+    when
+        count(*) over session > 5
+    then
+        Greenhouse.pest_burst_detected = true;
+        Greenhouse.trigger_treatment = true;
+        log("Pest activity burst: {} detections in session", count(*));
+}
+*/
+
+// Current workaround: Simple threshold
+rule "PestRiskWarning" salience 80 no-loop {
+    when
+        Greenhouse.temperature > 25.0 &&
+        Greenhouse.temperature < 32.0 &&
+        Greenhouse.humidity > 75.0
+    then
+        Greenhouse.pest_risk = "HIGH";
+        Greenhouse.alert_type = "pest_warning";
+        log("Pest risk warning for greenhouse {} - Temp: {}C, Humidity: {}%",
+            Greenhouse.zone_id, Greenhouse.temperature, Greenhouse.humidity);
+}
+
+// ============================================================================
+// WATERMARK: Late Data Handling
+// ============================================================================
+// Proposed syntax:
+/*
+stream watermark "SensorDataWatermark" {
+    from: "all-sensors"
+
+    watermark: event_time - 10 seconds
+
+    on late data {
+        action: drop  // or: buffer, reprocess
+        log: "Late data detected: event_time={}, watermark={}"
+    }
+}
+*/
+
+// ============================================================================
+// PATTERN MATCHING: Temperature Spike Detection
+// ============================================================================
+// Proposed syntax:
+/*
+stream pattern "TemperatureSpike" {
+    from: "air-temperature"
+
+    pattern:
+        a -> b
+    where
+        b.timestamp - a.timestamp < 5 minutes &&
+        b.temperature - a.temperature > 5.0
+
+    then
+        Greenhouse.temperature_spike = true;
+        Greenhouse.alert_level = "WARNING";
+        log("Temperature spike: {} -> {}°C in {} seconds",
+            a.temperature, b.temperature, b.timestamp - a.timestamp);
+}
+*/
+
+// ============================================================================
+// MULTI-STREAM JOIN: Greenhouse + Weather Station
+// ============================================================================
+// Proposed syntax:
+/*
+stream join "GreenhouseWeatherCorrelation" {
+    streams: {
+        greenhouse: "greenhouse-sensors",
+        weather: "weather-station"
+    }
+
+    on greenhouse.location_id == weather.station_id
+
+    window: time 15 minutes
+
+    when
+        greenhouse.temperature > 30.0 &&
+        weather.outdoor_temp > 35.0 &&
+        weather.solar_radiation > 800
+    then
+        Greenhouse.extreme_heat_mode = true;
+        Greenhouse.shade_deployment = 100;
+        log("Extreme heat: Indoor {}°C, Outdoor {}°C, Solar {}W/m²",
+            greenhouse.temperature, weather.outdoor_temp, weather.solar_radiation);
+}
+*/
+
+// ============================================================================
+// NOTES ON IMPLEMENTATION
+// ============================================================================
+/*
+To implement this extended GRL syntax, you need:
+
+1. Extend GRL Parser (src/parser/grl.rs):
+   - Add tokens: STREAM, JOIN, WINDOW, AGGREGATE, WATERMARK, PATTERN
+   - Parse stream-specific constructs
+   - Generate StreamJoinNode, AggregateNode, etc.
+
+2. Create Stream-aware RETE nodes:
+   - StreamJoinAlphaNode (wraps StreamJoinNode)
+   - AggregateAlphaNode (maintains window state)
+   - WatermarkNode (handles late data)
+
+3. Extend GRL Loader (src/rete/grl_loader.rs):
+   - Detect stream rules vs regular rules
+   - Convert to appropriate node types
+   - Wire up stream topology
+
+4. Runtime Integration:
+   - StreamProcessor maintains node graph
+   - Events flow through stream nodes first
+   - Results fed to regular RETE network
+
+Example architecture:
+  StreamEvent → StreamJoinNode → JoinedEvent
+      ↓
+  AggregateNode → AggregatedFact
+      ↓
+  WatermarkNode → TimestampedFact
+      ↓
+  Regular RETE Network (existing GRL rules)
+      ↓
+  Actions
+
+For now, use hybrid approach:
+- Define stream topology in Rust (StreamJoinNode)
+- Write GRL rules to process joined/aggregated results
+*/

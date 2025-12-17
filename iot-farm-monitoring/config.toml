@@ -1,0 +1,58 @@
+[kafka]
+brokers = "localhost:9092"
+group_id = "farm-monitor-group"
+topics = ["soil-sensors", "temperature", "irrigation", "weather"]
+
+# Consumer settings
+auto_offset_reset = "earliest"
+enable_auto_commit = true
+session_timeout_ms = 6000
+
+[monitoring]
+# Irrigation control thresholds
+irrigation_moisture_threshold = 30.0
+irrigation_temp_threshold = 25.0
+
+# Frost alert threshold
+frost_alert_temperature = 2.0
+
+# Time window for joins (seconds)
+time_window_seconds = 600  # 10 minutes
+
+# Anomaly detection
+anomaly_moisture_min = 0.0
+anomaly_moisture_max = 100.0
+anomaly_temp_min = -20.0
+anomaly_temp_max = 60.0
+
+[optimization]
+# Enable optimization strategies
+enable_partitioning = true
+enable_bloom_filter = true
+enable_indexing = true
+
+# Memory limits
+max_memory_mb = 100
+
+# Statistics collection
+collect_stats = true
+stats_interval_seconds = 60
+
+[logging]
+level = "info"
+format = "json"
+
+[alerting]
+# Email settings (optional)
+smtp_server = "smtp.example.com"
+smtp_port = 587
+from_email = "farm-monitor@example.com"
+to_emails = ["admin@example.com"]
+
+# Webhook settings (optional)
+webhook_url = "https://hooks.example.com/farm-alerts"
+
+[database]
+# Optional: Store events to database
+enabled = false
+connection_string = "postgresql://user:pass@localhost/farmdb"

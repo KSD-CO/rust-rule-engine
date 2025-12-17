@@ -1,0 +1,75 @@
+// Vegetable Greenhouse Monitoring Rules
+// Syntax: Rust Rule Engine GRL Format
+
+// Rule 1: Greenhouse Temperature Control
+rule "GreenhouseCoolingControl" salience 100 no-loop {
+    when
+        Greenhouse.temperature > 30.0 &&
+        Greenhouse.humidity < 60.0
+    then
+        Greenhouse.cooling_active = true;
+        Greenhouse.misting_active = true;
+        log("Cooling activated for greenhouse {}", Greenhouse.zone_id);
+}
+
+// Rule 2: CO2 Enrichment for Photosynthesis
+rule "CO2EnrichmentControl" salience 90 no-loop {
+    when
+        Greenhouse.light_intensity > 10000 &&
+        Greenhouse.co2_ppm < 800
+    then
+        Greenhouse.co2_target = 1000;
+        Greenhouse.co2_injection = true;
+        log("CO2 injection for greenhouse {} - Light: {} lux, CO2: {} ppm",
+            Greenhouse.zone_id, Greenhouse.light_intensity, Greenhouse.co2_ppm);
+}
+
+// Rule 3: Pest Risk Detection
+rule "PestRiskWarning" salience 80 no-loop {
+    when
+        Greenhouse.temperature > 25.0 &&
+        Greenhouse.temperature < 32.0 &&
+        Greenhouse.humidity > 75.0
+    then
+        Greenhouse.pest_risk = "HIGH";
+        Greenhouse.alert_type = "pest_warning";
+        log("Pest risk warning for greenhouse {} - Temp: {}C, Humidity: {}%",
+            Greenhouse.zone_id, Greenhouse.temperature, Greenhouse.humidity);
+}
+
+// Rule 4: Night Temperature Reduction (Energy Saving)
+rule "NightModeEnergyS aving" salience 70 no-loop {
+    when
+        Greenhouse.light_intensity < 100 &&
+        Greenhouse.temperature > 22.0
+    then
+        Greenhouse.heating_target = 20.0;
+        Greenhouse.night_mode = true;
+        log("Night mode activated for greenhouse {} - Reducing heating target to 20C",
+            Greenhouse.zone_id);
+}
+
+// Rule 5: Optimal Growth Conditions
+rule "OptimalGrowthConditions" salience 60 no-loop {
+    when
+        Greenhouse.temperature >= 22.0 &&
+        Greenhouse.temperature <= 28.0 &&
+        Greenhouse.humidity >= 60.0 &&
+        Greenhouse.humidity <= 80.0 &&
+        Greenhouse.co2_ppm >= 800
+    then
+        Greenhouse.conditions = "OPTIMAL";
+        Greenhouse.growth_rate_multiplier = 1.2;
+        log("Optimal conditions in greenhouse {}", Greenhouse.zone_id);
+}
+
+// Rule 6: Harvest Readiness Check
+rule "HarvestReadinessCheck" salience 50 no-loop {
+    when
+        Plant.maturity_percent >= 90.0 &&
+        Plant.growth_stage == "fruiting"
+    then
+        Plant.ready_for_harvest = true;
+        Plant.harvest_scheduled = true;
+        log("Harvest ready for {} in zone {}", Plant.variety, Plant.zone_id);
+}
