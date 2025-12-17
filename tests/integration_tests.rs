@@ -76,5 +76,5 @@ fn test_engine_configuration() {
     let _engine = RustRuleEngine::new(kb);
 
     // Test engine can be created
-    assert!(true);
+    // assert!(true); // Optimized out
 }

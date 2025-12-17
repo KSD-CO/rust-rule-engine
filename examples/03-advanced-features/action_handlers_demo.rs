@@ -94,11 +94,9 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         );
 
         // Could access facts for additional context
-        if let Some(customer) = facts.get("Customer") {
-            if let Value::Object(customer_obj) = customer {
-                if let Some(name) = customer_obj.get("name") {
-                    println!("   Customer: {}", name.to_string());
-                }
+        if let Some(Value::Object(customer_obj)) = facts.get("Customer") {
+            if let Some(name) = customer_obj.get("name") {
+                println!("   Customer: {}", name.to_string());
             }
         }
 

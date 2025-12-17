@@ -226,7 +226,7 @@ mod conclusion_index {
         let candidates = index.find_candidates("User.IsVIP == true");
 
         assert_eq!(candidates.len(), 1);
-        assert!(candidates.contains(&"VIPRule".to_string()));
+        assert!(candidates.contains("VIPRule"));
     }
 
     #[test]

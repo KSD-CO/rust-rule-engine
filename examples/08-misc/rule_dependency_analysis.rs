@@ -259,77 +259,77 @@ fn register_sequential_functions(engine: &mut RustRuleEngine) {
     // Register action handlers for custom actions used in rules
     engine.register_action_handler(
         "calculateScore",
-        |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
+        |_params: &std::collections::HashMap<String, Value>, facts: &Facts| {
             println!("     🧮 Calculating score...");
             // Simple stub: write a calculated Score into facts
-            facts.set_nested("User.Score", Value::Number(85.0));
+            let _ = facts.set_nested("User.Score", Value::Number(85.0));
             Ok(())
         },
     );
 
     engine.register_action_handler(
         "setVIPStatus",
-        |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
+        |_params: &std::collections::HashMap<String, Value>, facts: &Facts| {
             println!("     ⭐ Setting VIP status...");
             // Simple stub: set IsVIP to true
-            facts.set_nested("User.IsVIP", Value::Boolean(true)).ok();
+            let _ = facts.set_nested("User.IsVIP", Value::Boolean(true)).ok();
             Ok(())
         },
     );
 
     engine.register_action_handler(
         "applyDiscount",
-        |params: &std::collections::HashMap<String, Value>, facts: &Facts| {
+        |_params: &std::collections::HashMap<String, Value>, facts: &Facts| {
             println!("     💰 Applying discount...");
             // Simple stub: set a DiscountRate on Order
-            facts.set_nested("Order.DiscountRate", Value::Number(0.1));
+            let _ = facts.set_nested("Order.DiscountRate", Value::Number(0.1));
             Ok(())
         },
     );
 }
 
 fn register_parallel_functions(engine: &mut ParallelRuleEngine) {
-    engine.register_function("validateAge", |args: &[Value], _facts: &Facts| {
+    engine.register_function("validateAge", |_args: &[Value], _facts: &Facts| {
         println!("     ✅ Age validation");
         Ok(Value::Null)
     });
 
-    engine.register_function("checkCountry", |args: &[Value], _facts: &Facts| {
+    engine.register_function("checkCountry", |_args: &[Value], _facts: &Facts| {
         println!("     🌎 Country check");
         Ok(Value::Null)
     });
 
-    engine.register_function("validateOrder", |args: &[Value], _facts: &Facts| {
+    engine.register_function("validateOrder", |_args: &[Value], _facts: &Facts| {
         println!("     🛒 Order validation");
         Ok(Value::Null)
     });
 
-    engine.register_function("calculateScore", |args: &[Value], _facts: &Facts| {
+    engine.register_function("calculateScore", |_args: &[Value], _facts: &Facts| {
         println!("     🧮 Calculating score (parallel)");
         Ok(Value::Number(85.0))
     });
 
-    engine.register_function("setVIPStatus", |args: &[Value], _facts: &Facts| {
+    engine.register_function("setVIPStatus", |_args: &[Value], _facts: &Facts| {
         println!("     ⭐ Setting VIP status (parallel)");
         Ok(Value::Boolean(true))
     });
 
-    engine.register_function("applyDiscount", |args: &[Value], _facts: &Facts| {
+    engine.register_function("applyDiscount", |_args: &[Value], _facts: &Facts| {
         println!("     💰 Applying discount (parallel)");
         Ok(Value::Null)
     });
 
-    engine.register_function("calculateTotal", |args: &[Value], _facts: &Facts| {
+    engine.register_function("calculateTotal", |_args: &[Value], _facts: &Facts| {
         println!("     📊 Step 1: Calculating total");
         Ok(Value::Number(150.0))
     });
 
-    engine.register_function("applyOrderDiscount", |args: &[Value], _facts: &Facts| {
+    engine.register_function("applyOrderDiscount", |_args: &[Value], _facts: &Facts| {
         println!("     🏷️  Step 2: Applying discount");
         Ok(Value::Number(0.1))
     });
 
-    engine.register_function("calculateFinalAmount", |args: &[Value], _facts: &Facts| {
+    engine.register_function("calculateFinalAmount", |_args: &[Value], _facts: &Facts| {
         println!("     💵 Step 3: Calculating final amount");
         Ok(Value::Number(135.0))
     });

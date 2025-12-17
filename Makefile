@@ -1,4 +1,4 @@
-.PHONY: help all examples backward-chaining getting-started rete-engine advanced-features plugins performance use-cases advanced-rete misc module-system
+.PHONY: help all examples backward-chaining getting-started rete-engine advanced-features plugins performance use-cases advanced-rete streaming misc module-system
 
 # Default target
 help:
@@ -11,6 +11,7 @@ help:
 	@echo "  make performance           - Run all performance examples"
 	@echo "  make use-cases             - Run all use-case examples"
 	@echo "  make advanced-rete         - Run all advanced RETE examples"
+	@echo "  make streaming             - Run all streaming examples"
 	@echo "  make misc                  - Run all misc examples"
 	@echo "  make backward-chaining     - Run all backward-chaining examples"
 	@echo "  make module-system         - Run all module-system examples"
@@ -22,7 +23,7 @@ help:
 	@echo "  ... (and many more, see Cargo.toml for full list)"
 
 # Run all examples
-all: getting-started rete-engine advanced-features plugins performance use-cases advanced-rete misc backward-chaining module-system
+all: getting-started rete-engine advanced-features plugins performance use-cases advanced-rete streaming misc backward-chaining module-system
 
 # Getting Started Examples (01-getting-started)
 getting-started:
@@ -109,6 +110,12 @@ advanced-rete:
 	cargo run --example rete_p3_variable_binding
 	cargo run --example rete_ul_drools_style
 
+# Streaming Examples (11-streaming)
+streaming:
+	@echo "=== Running Streaming Examples ==="
+	cargo run --features streaming --example stream_alpha_node_demo
+	cargo run --features streaming --example streaming_fraud_detection
+
 # Misc Examples (08-misc)
 misc:
 	@echo "=== Running Misc Examples ==="
@@ -136,21 +143,7 @@ fmt-check:
 # Run clippy
 clippy:
 	@echo "🔍 Running clippy..."
-	@cargo clippy --all-targets --all-features -- -D warnings \
-		-A clippy::collapsible-match \
-		-A clippy::unnecessary-mut-passed \
-		-A clippy::suspicious-doc-comments \
-		-A clippy::unnecessary-get-then-check \
-		-A clippy::unnecessary-to-owned \
-		-A clippy::assertions-on-constants \
-		-A clippy::format-in-format-args \
-		-A clippy::manual-clamp \
-		-A clippy::if-same-then-else \
-		-A clippy::useless-vec \
-		-A unused-variables \
-		-A unused-must-use \
-		-A deprecated \
-		-A dead-code
+	@cargo clippy --all-targets --all-features -- -D warnings 
 
 # Run tests
 test:

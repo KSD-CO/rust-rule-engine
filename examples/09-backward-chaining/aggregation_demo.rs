@@ -74,7 +74,7 @@ fn demo_salary_analysis() -> Result<(), Box<dyn std::error::Error>> {
     );
     kb.add_rule(salary_rule)?;
 
-    let engine = BackwardEngine::with_config(
+    let _engine = BackwardEngine::with_config(
         kb,
         BackwardConfig {
             max_depth: 10,
@@ -140,7 +140,7 @@ fn demo_inventory_analysis() -> Result<(), Box<dyn std::error::Error>> {
         facts.add_value(&format!("product_{}", name), Value::Object(prod_data))?;
     }
 
-    let engine = BackwardEngine::new(kb);
+    let _engine = BackwardEngine::new(kb);
 
     println!("Products:");
     for (name, price, quantity) in &products {
@@ -203,7 +203,7 @@ fn demo_score_analysis() -> Result<(), Box<dyn std::error::Error>> {
     );
     kb.add_rule(honors_rule)?;
 
-    let engine = BackwardEngine::new(kb);
+    let _engine = BackwardEngine::new(kb);
 
     println!("Students:");
     for (name, score) in &students {
@@ -286,7 +286,7 @@ fn demo_sales_analysis() -> Result<(), Box<dyn std::error::Error>> {
     );
     kb.add_rule(high_performer)?;
 
-    let engine = BackwardEngine::new(kb);
+    let _engine = BackwardEngine::new(kb);
 
     println!("Sales Transactions:");
     for (quarter, region, amount) in &sales {

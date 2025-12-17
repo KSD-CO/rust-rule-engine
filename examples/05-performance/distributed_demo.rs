@@ -19,9 +19,11 @@ struct TaskResult {
 
 #[derive(Debug, Clone)]
 struct DistributedTask {
+    #[allow(dead_code)]
     task_id: String,
     target_node: Option<String>,
     customer_data: Value,
+    #[allow(dead_code)]
     task_type: String,
 }
 
@@ -102,11 +104,11 @@ impl DistributedNode {
         let start = Instant::now();
 
         // Create facts for this task
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.add_value("Customer", task.customer_data.clone())?;
 
         // Execute rules
-        let execution_result = self.engine.execute(&mut facts)?;
+        let execution_result = self.engine.execute(&facts)?;
 
         Ok(TaskResult {
             node_id: self.node_id.clone(),
@@ -190,7 +192,7 @@ impl DistributedRuleEngine {
     }
 
     fn get_cluster_status(&self) -> ClusterStatus {
-        let facts = self.shared_facts.lock().unwrap();
+        let _facts = self.shared_facts.lock().unwrap();
         ClusterStatus {
             total_nodes: self.nodes.len(),
             active_nodes: self.nodes.len(), // Simplified - all nodes are active

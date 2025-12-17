@@ -12,7 +12,7 @@ fn main() -> Result<()> {
 
     let kb = KnowledgeBase::new("PluginDemo");
     let mut engine = RustRuleEngine::new(kb);
-    let facts = Facts::new();
+    let _facts = Facts::new();
 
     // Load all built-in plugins
     println!("🔌 Loading built-in plugins...");

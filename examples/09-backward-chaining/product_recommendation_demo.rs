@@ -365,11 +365,9 @@ fn test_premium_tech_enthusiast() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(discount) = facts.get("Recommendation.DiscountPercent") {
             println!("    • Discount: {:?}%", discount);
         }
-        if let Some(upsell) = facts.get("Recommendation.IncludeUpsell") {
-            if let Value::Boolean(true) = upsell {
-                if let Some(upsell_type) = facts.get("Recommendation.UpsellType") {
-                    println!("    • Upsell Available: {:?}", upsell_type);
-                }
+        if let Some(Value::Boolean(true)) = facts.get("Recommendation.IncludeUpsell") {
+            if let Some(upsell_type) = facts.get("Recommendation.UpsellType") {
+                println!("    • Upsell Available: {:?}", upsell_type);
             }
         }
 
@@ -377,10 +375,8 @@ fn test_premium_tech_enthusiast() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(priority) = facts.get("Recommendation.Priority") {
             println!("    • Priority: {:?}", priority);
         }
-        if let Some(email) = facts.get("Recommendation.SendEmail") {
-            if let Value::Boolean(true) = email {
-                println!("    • Action: Send personalized email");
-            }
+        if let Some(Value::Boolean(true)) = facts.get("Recommendation.SendEmail") {
+            println!("    • Action: Send personalized email");
         }
 
         println!("\n  Statistics:");

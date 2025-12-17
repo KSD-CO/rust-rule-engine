@@ -167,7 +167,7 @@ fn setup_native(rule_count: usize) -> (RustRuleEngine, Facts) {
                 value: Value::Boolean(true),
             }],
         );
-        kb.add_rule(rule);
+        let _ = kb.add_rule(rule);
     }
 
     let engine = RustRuleEngine::new(kb);
@@ -245,7 +245,7 @@ fn setup_parallel(rule_count: usize) -> (ParallelRuleEngine, KnowledgeBase, Fact
                 value: Value::Boolean(true),
             }],
         );
-        kb.add_rule(rule);
+        let _ = kb.add_rule(rule);
     }
 
     let facts = Facts::new();

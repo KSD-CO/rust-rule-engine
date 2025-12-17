@@ -4,11 +4,13 @@ use rust_rule_engine::errors::Result;
 use rust_rule_engine::types::Value;
 
 /// HTTP Client Plugin for making REST API calls from rules
+#[allow(dead_code)]
 pub struct HttpClientPlugin {
     metadata: PluginMetadata,
 }
 
 impl HttpClientPlugin {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             metadata: PluginMetadata {
@@ -172,7 +174,7 @@ impl RulePlugin for HttpClientPlugin {
 
         // Parse JSON function
         engine.register_function("parseJson", |args, _facts| {
-            let json_str = args
+            let _json_str = args
                 .first()
                 .map(|v| v.to_string())
                 .unwrap_or("{}".to_string());

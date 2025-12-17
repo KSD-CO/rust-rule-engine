@@ -35,7 +35,7 @@ fn demo_inline_grl_aggregation() -> Result<(), Box<dyn std::error::Error>> {
     // For now, we demonstrate the goal pattern format
 
     let kb = KnowledgeBase::new("AggregationDemo");
-    let engine = BackwardEngine::new(kb);
+    let _engine = BackwardEngine::new(kb);
     let facts = Facts::new();
 
     // Add some employee data
@@ -86,7 +86,7 @@ fn demo_programmatic_aggregation() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "-".repeat(80));
 
     let kb = KnowledgeBase::new("ProgrammaticDemo");
-    let engine = BackwardEngine::new(kb);
+    let _engine = BackwardEngine::new(kb);
     let facts = Facts::new();
 
     // Add product data

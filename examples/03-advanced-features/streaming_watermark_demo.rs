@@ -139,7 +139,7 @@ rule OnTimeData "Normal processing for on-time data" salience 80 {
         let current_watermark = wm_gen.current_watermark();
 
         // Check if event is late according to watermark
-        let late_by_watermark = current_watermark.is_late(event_time);
+        let _late_by_watermark = current_watermark.is_late(event_time);
 
         // Advance watermark if this is newer event
         if event_time > current_watermark.timestamp {
@@ -213,7 +213,7 @@ fn demo2_bounded_out_of_order_processing() -> Result<(), Box<dyn std::error::Err
     println!("\n\n🔄 Demo 2: Bounded Out-of-Order Processing");
     println!("{}", "-".repeat(80));
 
-    let watermark_gen = Arc::new(Mutex::new(WatermarkGenerator::new(
+    let _watermark_gen = Arc::new(Mutex::new(WatermarkGenerator::new(
         WatermarkStrategy::BoundedOutOfOrder {
             max_delay: Duration::from_secs(60), // 1 minute tolerance
         },
@@ -344,7 +344,7 @@ fn demo3_time_window_aggregation_with_alerts() -> Result<(), Box<dyn std::error:
     println!("\n\n📊 Demo 3: Time Window Aggregation with Alerts");
     println!("{}", "-".repeat(80));
 
-    let watermark_gen = Arc::new(Mutex::new(WatermarkGenerator::new(
+    let _watermark_gen = Arc::new(Mutex::new(WatermarkGenerator::new(
         WatermarkStrategy::Periodic {
             interval: Duration::from_secs(10),
         },

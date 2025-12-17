@@ -97,40 +97,36 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Register custom functions for speed control
     engine.register_function("increaseSpeed", |_args, facts| {
-        if let Some(car) = facts.get("TestCar") {
-            if let Value::Object(obj) = car {
-                let current_speed = obj.get("Speed").cloned().unwrap_or(Value::Number(0.0));
-                let increment = obj
-                    .get("SpeedIncrement")
-                    .cloned()
-                    .unwrap_or(Value::Number(10.0));
+        if let Some(Value::Object(obj)) = facts.get("TestCar") {
+            let current_speed = obj.get("Speed").cloned().unwrap_or(Value::Number(0.0));
+            let increment = obj
+                .get("SpeedIncrement")
+                .cloned()
+                .unwrap_or(Value::Number(10.0));
 
-                if let (Value::Number(speed), Value::Number(inc)) = (current_speed, increment) {
-                    let new_speed = speed + inc;
-                    println!("🚗 Increasing speed: {} -> {}", speed, new_speed);
-                    // In real implementation, this would update the fact
-                    return Ok(Value::Number(new_speed));
-                }
+            if let (Value::Number(speed), Value::Number(inc)) = (current_speed, increment) {
+                let new_speed = speed + inc;
+                println!("🚗 Increasing speed: {} -> {}", speed, new_speed);
+                // In real implementation, this would update the fact
+                return Ok(Value::Number(new_speed));
             }
         }
         Ok(Value::String("Speed increase attempted".to_string()))
     });
 
     engine.register_function("decreaseSpeed", |_args, facts| {
-        if let Some(car) = facts.get("TestCar") {
-            if let Value::Object(obj) = car {
-                let current_speed = obj.get("Speed").cloned().unwrap_or(Value::Number(0.0));
-                let increment = obj
-                    .get("SpeedIncrement")
-                    .cloned()
-                    .unwrap_or(Value::Number(10.0));
+        if let Some(Value::Object(obj)) = facts.get("TestCar") {
+            let current_speed = obj.get("Speed").cloned().unwrap_or(Value::Number(0.0));
+            let increment = obj
+                .get("SpeedIncrement")
+                .cloned()
+                .unwrap_or(Value::Number(10.0));
 
-                if let (Value::Number(speed), Value::Number(inc)) = (current_speed, increment) {
-                    let new_speed = (speed - inc).max(0.0);
-                    println!("🚗 Decreasing speed: {} -> {}", speed, new_speed);
-                    // In real implementation, this would update the fact
-                    return Ok(Value::Number(new_speed));
-                }
+            if let (Value::Number(speed), Value::Number(inc)) = (current_speed, increment) {
+                let new_speed = (speed - inc).max(0.0);
+                println!("🚗 Decreasing speed: {} -> {}", speed, new_speed);
+                // In real implementation, this would update the fact
+                return Ok(Value::Number(new_speed));
             }
         }
         Ok(Value::String("Speed decrease attempted".to_string()))

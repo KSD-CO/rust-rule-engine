@@ -140,7 +140,7 @@ fn parse_multiple_queries(
 }
 
 /// Setup test rules for backward chaining
-fn setup_test_rules(engine: &mut BackwardEngine) -> Result<(), Box<dyn std::error::Error>> {
+fn setup_test_rules(_engine: &mut BackwardEngine) -> Result<(), Box<dyn std::error::Error>> {
     // Add some basic inference rules
     // These would normally be loaded from a knowledge base
 

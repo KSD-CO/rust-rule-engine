@@ -51,7 +51,7 @@ fn test_function_calls() -> Result<()> {
             message: "User is adult (via function)".to_string(),
         }],
     );
-    kb.add_rule(rule);
+    kb.add_rule(rule)?;
 
     let facts = Facts::new();
     facts.set("User.age", Value::Integer(25));
@@ -74,12 +74,14 @@ fn test_function_calls() -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn test_pattern_matching_exists() -> Result<()> {
     // Exists/Forall work through PatternMatcher which is already integrated
     // Testing them separately would duplicate engine.rs logic
     Ok(())
 }
 
+#[allow(dead_code)]
 fn test_pattern_matching_forall() -> Result<()> {
     // Forall uses same PatternMatcher infrastructure
     Ok(())
@@ -107,7 +109,7 @@ fn test_accumulate() -> Result<()> {
             message: "Calculated total amount".to_string(),
         }],
     );
-    kb.add_rule(rule);
+    kb.add_rule(rule)?;
 
     let facts = Facts::new();
     facts.set("Order.1.amount", Value::Number(100.0));
@@ -121,11 +123,9 @@ fn test_accumulate() -> Result<()> {
     assert_eq!(result.total_rules_fired, 1, "Accumulate should work");
 
     // Check that totalAmount was calculated
-    if let Some(total) = facts.get("totalAmount") {
-        if let Value::Number(n) = total {
-            assert_eq!(n, 450.0, "Sum should be 450.0");
-            println!("   ✅ Accumulate (sum) works: {} = 450.0", n);
-        }
+    if let Some(Value::Number(n)) = facts.get("totalAmount") {
+        assert_eq!(n, 450.0, "Sum should be 450.0");
+        println!("   ✅ Accumulate (sum) works: {} = 450.0", n);
     }
 
     println!("   ✅ Accumulate operations work in parallel!\n");
@@ -138,16 +138,13 @@ fn test_multifield() -> Result<()> {
     let kb = KnowledgeBase::new("MultiFieldTest");
 
     // Order.items count > 0 using MultiField expression
-    let condition = ConditionGroup::Single(rust_rule_engine::engine::rule::Condition {
-        expression: rust_rule_engine::engine::rule::ConditionExpression::MultiField {
-            field: "Order.items".to_string(),
-            operation: "count".to_string(),
-            variable: None,
-        },
-        operator: Operator::GreaterThan,
-        value: Value::Integer(0),
-        field: "Order.items".to_string(),
-    });
+    let condition = ConditionGroup::Single(
+        rust_rule_engine::engine::rule::Condition::with_multifield_count(
+            "Order.items".to_string(),
+            Operator::GreaterThan,
+            Value::Integer(0),
+        ),
+    );
 
     let rule = rust_rule_engine::engine::rule::Rule::new(
         "HasItems".to_string(),
@@ -156,7 +153,7 @@ fn test_multifield() -> Result<()> {
             message: "Order has items".to_string(),
         }],
     );
-    kb.add_rule(rule);
+    kb.add_rule(rule)?;
 
     let facts = Facts::new();
     facts.set(

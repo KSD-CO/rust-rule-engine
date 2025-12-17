@@ -150,7 +150,7 @@ fn demo_custom_config() {
         enable_memoization: true,
     };
 
-    let optimizer1 = QueryOptimizer::with_config(config1);
+    let _optimizer1 = QueryOptimizer::with_config(config1);
     println!("Config 1: Full Optimization");
     println!("  Reordering: enabled");
     println!("  Index selection: enabled");
@@ -164,7 +164,7 @@ fn demo_custom_config() {
         enable_memoization: true,
     };
 
-    let optimizer2 = QueryOptimizer::with_config(config2);
+    let _optimizer2 = QueryOptimizer::with_config(config2);
     println!("Config 2: Conservative (preserves goal order)");
     println!("  Reordering: disabled");
     println!("  Index selection: enabled");
@@ -172,7 +172,7 @@ fn demo_custom_config() {
     println!();
 
     // Test with same goals
-    let goals = vec![
+    let _goals = vec![
         Goal::new("a(?x)".to_string()),
         Goal::new("b(?x)".to_string()),
         Goal::new("c(?x)".to_string()),

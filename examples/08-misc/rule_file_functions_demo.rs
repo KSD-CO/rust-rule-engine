@@ -85,12 +85,8 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let _speed_field = args.first().unwrap().to_string();
         let limit = args.get(1).unwrap();
 
-        let speed = if let Some(car) = facts.get("Car") {
-            if let Value::Object(obj) = car {
-                obj.get("Speed").cloned().unwrap_or(Value::Number(0.0))
-            } else {
-                Value::Number(0.0)
-            }
+        let speed = if let Some(Value::Object(obj)) = facts.get("Car") {
+            obj.get("Speed").cloned().unwrap_or(Value::Number(0.0))
         } else {
             Value::Number(0.0)
         };
@@ -102,7 +98,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Also register action handlers for the same names because parser maps some
     // 'then' function calls to ActionType::Custom, not function calls. This
     // ensures both styles are handled by this demo.
-    engine.register_action_handler("checkSpeedLimit", |params, facts| {
+    engine.register_action_handler("checkSpeedLimit", |params, _facts| {
         // params use numeric keys "0", "1" etc.
         let speed = params.get("0").cloned().unwrap_or(Value::Number(0.0));
         let limit = params.get("1").cloned().unwrap_or(Value::Number(0.0));
@@ -110,7 +106,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         Ok(())
     });
 
-    engine.register_action_handler("sendAlert", |params, facts| {
+    engine.register_action_handler("sendAlert", |params, _facts| {
         let message = params.get("0").map(|v| v.to_string()).unwrap_or_default();
         println!("🚨 Action Handler Alert: {}", message);
         Ok(())
@@ -169,14 +165,10 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let message = args.first().unwrap().to_string();
         let _driver_field = args.get(1).unwrap().to_string();
 
-        let driver_name = if let Some(driver) = facts.get("Driver") {
-            if let Value::Object(obj) = driver {
-                obj.get("Name")
-                    .cloned()
-                    .unwrap_or(Value::String("Unknown".to_string()))
-            } else {
-                Value::String("Unknown".to_string())
-            }
+        let driver_name = if let Some(Value::Object(obj)) = facts.get("Driver") {
+            obj.get("Name")
+                .cloned()
+                .unwrap_or(Value::String("Unknown".to_string()))
         } else {
             Value::String("Unknown".to_string())
         };

@@ -68,7 +68,7 @@ fn test_1_or_condition_edge_cases() -> Result<(), Box<dyn std::error::Error>> {
         ))),
     };
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "AnyPass".to_string(),
         or_chain,
         vec![ActionType::Set {
@@ -121,7 +121,7 @@ fn test_2_cycle_detection() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("cycle_test");
 
     // Create a cycle: A requires B, B requires A
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "AtoB".to_string(),
         ConditionGroup::Single(Condition::new(
             "A".to_string(),
@@ -134,7 +134,7 @@ fn test_2_cycle_detection() -> Result<(), Box<dyn std::error::Error>> {
         }],
     ));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "BtoA".to_string(),
         ConditionGroup::Single(Condition::new(
             "B".to_string(),
@@ -176,7 +176,7 @@ fn test_3_max_depth_limit() -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .enumerate()
     {
-        kb.add_rule(Rule::new(
+        let _ = kb.add_rule(Rule::new(
             format!("Rule{}", i + 1),
             ConditionGroup::Single(Condition::new(
                 from.to_string(),
@@ -244,7 +244,7 @@ fn test_4_complex_nested_conditions() -> Result<(), Box<dyn std::error::Error>> 
         right: Box::new(not_c),
     };
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "ComplexRule".to_string(),
         complex,
         vec![ActionType::Set {
@@ -306,7 +306,7 @@ fn test_5_string_operators() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("string_test");
 
     // Contains
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "ContainsCheck".to_string(),
         ConditionGroup::Single(Condition::new(
             "Text".to_string(),
@@ -320,7 +320,7 @@ fn test_5_string_operators() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // StartsWith
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "StartsCheck".to_string(),
         ConditionGroup::Single(Condition::new(
             "Name".to_string(),
@@ -360,7 +360,7 @@ fn test_6_function_edge_cases() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("func_test");
 
     // len() on empty string
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "EmptyCheck".to_string(),
         ConditionGroup::Single(Condition::with_function(
             "len".to_string(),
@@ -394,7 +394,7 @@ fn test_7_action_types() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("action_test");
 
     // Multiple actions: Log + Set + Set
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "MultiAction".to_string(),
         ConditionGroup::Single(Condition::new(
             "Trigger".to_string(),
@@ -441,7 +441,7 @@ fn test_8_diamond_dependency() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("diamond_test");
 
     // Diamond: Start → Path1 → End, Start → Path2 → End
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "StartToPath1".to_string(),
         ConditionGroup::Single(Condition::new(
             "Start".to_string(),
@@ -454,7 +454,7 @@ fn test_8_diamond_dependency() -> Result<(), Box<dyn std::error::Error>> {
         }],
     ));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "StartToPath2".to_string(),
         ConditionGroup::Single(Condition::new(
             "Start".to_string(),
@@ -467,7 +467,7 @@ fn test_8_diamond_dependency() -> Result<(), Box<dyn std::error::Error>> {
         }],
     ));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "Path1ToEnd".to_string(),
         ConditionGroup::Single(Condition::new(
             "Path1".to_string(),
@@ -480,7 +480,7 @@ fn test_8_diamond_dependency() -> Result<(), Box<dyn std::error::Error>> {
         }],
     ));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "Path2ToEnd".to_string(),
         ConditionGroup::Single(Condition::new(
             "Path2".to_string(),
@@ -540,7 +540,7 @@ fn test_10_large_rule_chain() -> Result<(), Box<dyn std::error::Error>> {
     // Create chain of 8 rules: A → B → C → D → E → F → G → H
     let chain = ["A", "B", "C", "D", "E", "F", "G", "H"];
     for i in 0..chain.len() - 1 {
-        kb.add_rule(Rule::new(
+        let _ = kb.add_rule(Rule::new(
             format!("Rule{}", i),
             ConditionGroup::Single(Condition::new(
                 chain[i].to_string(),

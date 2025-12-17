@@ -197,7 +197,7 @@ fn main() {
         ]),
     );
 
-    let array_rule = Rule {
+    let _array_rule = Rule {
         name: "HasPermission".to_string(),
         conditions: ConditionGroup::Single(Condition {
             field: "role".to_string(),
@@ -225,7 +225,7 @@ fn main() {
     typed_engine.set_fact("active", true);
 
     for rule in &rules {
-        let node = build_rete_ul_from_condition_group(&rule.conditions);
+        let _node = build_rete_ul_from_condition_group(&rule.conditions);
         typed_engine.add_rule_from_definition(rule, 0, true);
     }
 

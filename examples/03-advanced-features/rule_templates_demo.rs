@@ -136,18 +136,16 @@ fn demo_vip_template() -> Result<(), Box<dyn std::error::Error>> {
         // params may be keyed by "0" etc., but templates here pass a value directly.
         if let Some(val) = params.get("0") {
             // Update User.VIPLevel if provided — safely handle Option<Value> and cloning
-            if let Some(existing) = facts.get("User").or_else(|| facts.get("user")) {
-                if let Value::Object(obj) = existing {
-                    let mut updated = obj.clone();
-                    updated.insert("VIPLevel".to_string(), val.clone());
-                    facts
-                        .add_value("User", Value::Object(updated))
-                        .map_err(|e| {
-                            rust_rule_engine::errors::RuleEngineError::EvaluationError {
-                                message: format!("setIsVIP failed: {}", e),
-                            }
-                        })?;
-                }
+            if let Some(Value::Object(obj)) = facts.get("User").or_else(|| facts.get("user")) {
+                let mut updated = obj.clone();
+                updated.insert("VIPLevel".to_string(), val.clone());
+                facts
+                    .add_value("User", Value::Object(updated))
+                    .map_err(
+                        |e| rust_rule_engine::errors::RuleEngineError::EvaluationError {
+                            message: format!("setIsVIP failed: {}", e),
+                        },
+                    )?;
             }
         }
         Ok(())

@@ -1,7 +1,7 @@
-///! Accumulate Functions with RETE Integration Example
-///!
-///! This example demonstrates how accumulate functions can be used
-///! with RETE engine for complex aggregations in business rules.
+//! Accumulate Functions with RETE Integration Example
+//!
+//! This example demonstrates how accumulate functions can be used
+//! with RETE engine for complex aggregations in business rules.
 use rust_rule_engine::rete::accumulate::*;
 use rust_rule_engine::rete::FactValue;
 

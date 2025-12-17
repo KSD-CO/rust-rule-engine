@@ -12,8 +12,10 @@ use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]
 struct ProcessingResult {
+    #[allow(dead_code)]
     method: String,
     total_time: Duration,
+    #[allow(dead_code)]
     customers_processed: usize,
     rules_fired: usize,
     throughput: f64, // customers per second
@@ -67,10 +69,10 @@ fn test_single_node_processing(
 
     // Process each customer sequentially
     for (i, customer) in customers.iter().enumerate() {
-        let mut facts = Facts::new();
+        let facts = Facts::new();
         facts.add_value("Customer", customer.clone())?;
 
-        let result = engine.execute(&mut facts)?;
+        let result = engine.execute(&facts)?;
         total_rules_fired += result.rules_fired;
 
         if i % 20 == 0 {
@@ -131,10 +133,10 @@ fn test_distributed_processing(
 
                     // Process customers assigned to this node
                     for customer in &chunk {
-                        let mut facts = Facts::new();
+                        let facts = Facts::new();
                         facts.add_value("Customer", customer.clone())?;
 
-                        let result = engine.execute(&mut facts)?;
+                        let result = engine.execute(&facts)?;
                         total_rules_fired += result.rules_fired;
                     }
 

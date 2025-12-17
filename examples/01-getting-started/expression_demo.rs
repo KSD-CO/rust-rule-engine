@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb = KnowledgeBase::new("expression_demo");
     for rule in &rules {
-        kb.add_rule(rule.clone());
+        kb.add_rule(rule.clone())?;
     }
 
     let mut engine = RustRuleEngine::new(kb);
@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📋 Example 1: Calculate Order Total");
     println!("------------------------------------");
 
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     facts.set("Order.quantity", Value::Integer(10));
     facts.set("Order.price", Value::Integer(100));
 
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Order.quantity: {:?}", facts.get("Order.quantity"));
     println!("  Order.price: {:?}", facts.get("Order.price"));
 
-    engine.execute(&mut facts)?;
+    engine.execute(&facts)?;
 
     println!("\nAfter execution:");
     println!("  Order.total (10 * 100): {:?}", facts.get("Order.total"));
@@ -62,11 +62,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb2 = KnowledgeBase::new("expression_demo");
     for rule in &rules {
-        kb2.add_rule(rule.clone());
+        kb2.add_rule(rule.clone())?;
     }
     let mut engine2 = RustRuleEngine::new(kb2);
 
-    let mut facts2 = Facts::new();
+    let facts2 = Facts::new();
     facts2.set("Order.quantity", Value::Integer(5));
     facts2.set("Order.price", Value::Integer(50));
 
@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Order.quantity: {:?}", facts2.get("Order.quantity"));
     println!("  Order.price: {:?}", facts2.get("Order.price"));
 
-    engine2.execute(&mut facts2)?;
+    engine2.execute(&facts2)?;
 
     println!("\nAfter execution:");
     println!("  Order.total (5 * 50): {:?}", facts2.get("Order.total"));

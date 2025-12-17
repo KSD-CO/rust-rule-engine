@@ -4,11 +4,13 @@ use rust_rule_engine::errors::Result;
 use rust_rule_engine::types::Value;
 
 /// AI/ML Integration Plugin for machine learning and AI operations
+#[allow(dead_code)]
 pub struct AIMLPlugin {
     metadata: PluginMetadata,
 }
 
 impl AIMLPlugin {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             metadata: PluginMetadata {
@@ -374,13 +376,12 @@ impl RulePlugin for AIMLPlugin {
                 .unwrap_or(1.0);
 
             // Normalize score to 0-1 range
-            let normalized = if max_val == min_val {
+            let normalized = (if max_val == min_val {
                 0.5
             } else {
                 (score - min_val) / (max_val - min_val)
-            }
-            .max(0.0)
-            .min(1.0);
+            })
+            .clamp(0.0, 1.0);
 
             println!("📊 Score normalized: {} -> {:.3}", score, normalized);
 

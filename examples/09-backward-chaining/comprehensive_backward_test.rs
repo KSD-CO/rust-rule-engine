@@ -55,7 +55,7 @@ fn test_1_basic_goal_proving() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("test1");
 
     // Rule: If User.Points > 1000, then User.IsVIP = true
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "VIPRule".to_string(),
         ConditionGroup::Single(Condition::new(
             "User.Points".to_string(),
@@ -92,7 +92,7 @@ fn test_2_search_strategies() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("test2");
 
     // Chain of 3 rules
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "Rule1".to_string(),
         ConditionGroup::Single(Condition::new(
             "A".to_string(),
@@ -105,7 +105,7 @@ fn test_2_search_strategies() -> Result<(), Box<dyn std::error::Error>> {
         }],
     ));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "Rule2".to_string(),
         ConditionGroup::Single(Condition::new(
             "B".to_string(),
@@ -118,7 +118,7 @@ fn test_2_search_strategies() -> Result<(), Box<dyn std::error::Error>> {
         }],
     ));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "Rule3".to_string(),
         ConditionGroup::Single(Condition::new(
             "C".to_string(),
@@ -207,7 +207,7 @@ fn test_3_complex_conditions() -> Result<(), Box<dyn std::error::Error>> {
         ))),
     };
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "CanDrive".to_string(),
         and_condition,
         vec![ActionType::Set {
@@ -231,7 +231,7 @@ fn test_3_complex_conditions() -> Result<(), Box<dyn std::error::Error>> {
         ))),
     };
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "CanPay".to_string(),
         or_condition,
         vec![ActionType::Set {
@@ -268,7 +268,7 @@ fn test_4_rule_chaining() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("test4");
 
     // Level 1: Points -> Bronze
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "BronzeTier".to_string(),
         ConditionGroup::Single(Condition::new(
             "User.Points".to_string(),
@@ -282,7 +282,7 @@ fn test_4_rule_chaining() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // Level 2: Bronze -> Discount10
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "BronzeDiscount".to_string(),
         ConditionGroup::Single(Condition::new(
             "User.Tier".to_string(),
@@ -296,7 +296,7 @@ fn test_4_rule_chaining() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // Level 3: Discount10 -> SpecialOffer
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "SpecialOffer".to_string(),
         ConditionGroup::Single(Condition::new(
             "User.Discount".to_string(),
@@ -333,7 +333,7 @@ fn test_5_function_calls() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("test5");
 
     // Function: len()
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "LongName".to_string(),
         ConditionGroup::Single(Condition::with_function(
             "len".to_string(),
@@ -348,7 +348,7 @@ fn test_5_function_calls() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // Function: isEmpty()
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "EmptyDescription".to_string(),
         ConditionGroup::Single(Condition::with_function(
             "isEmpty".to_string(),
@@ -390,7 +390,7 @@ fn test_6_grl_query_syntax() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb = KnowledgeBase::new("test6");
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "VIPCheck".to_string(),
         ConditionGroup::Single(Condition::new(
             "User.Points".to_string(),
@@ -505,7 +505,7 @@ fn test_8_conditional_execution() -> Result<(), Box<dyn std::error::Error>> {
     // Test 2: Production mode (should execute)
     let mut facts = Facts::new();
     facts.set("Environment.Mode", Value::String("Production".to_string()));
-    let result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
+    let _result = GRLQueryExecutor::execute(&query, &mut engine, &mut facts)?;
     // Note: Will fail due to missing rules, but at least it tried
     println!("✓ when clause allowed execution in Production mode\n");
 
@@ -519,7 +519,7 @@ fn test_9_memoization() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb = KnowledgeBase::new("test9");
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "SimpleRule".to_string(),
         ConditionGroup::Single(Condition::new(
             "X".to_string(),
@@ -572,7 +572,7 @@ fn test_10_tms_integration() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb = KnowledgeBase::new("test10");
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "DeriveFact".to_string(),
         ConditionGroup::Single(Condition::new(
             "Base.Value".to_string(),
@@ -614,7 +614,7 @@ fn test_11_missing_facts_detection() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("test11");
 
     // Rule that requires specific facts
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "RequiresBoth".to_string(),
         ConditionGroup::Compound {
             left: Box::new(ConditionGroup::Single(Condition::new(
@@ -666,7 +666,7 @@ fn test_12_proof_traces() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb = KnowledgeBase::new("test12");
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "Step1".to_string(),
         ConditionGroup::Single(Condition::new(
             "Start".to_string(),
@@ -679,7 +679,7 @@ fn test_12_proof_traces() -> Result<(), Box<dyn std::error::Error>> {
         }],
     ));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "Step2".to_string(),
         ConditionGroup::Single(Condition::new(
             "Middle".to_string(),

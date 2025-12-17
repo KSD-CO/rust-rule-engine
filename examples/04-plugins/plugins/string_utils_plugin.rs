@@ -3,11 +3,13 @@ use rust_rule_engine::engine::RustRuleEngine;
 use rust_rule_engine::errors::{Result, RuleEngineError};
 use rust_rule_engine::types::Value;
 
+#[allow(dead_code)]
 pub struct StringUtilsPlugin {
     metadata: PluginMetadata,
 }
 
 impl StringUtilsPlugin {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             metadata: PluginMetadata {

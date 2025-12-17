@@ -31,8 +31,21 @@ fn convert_condition_group(
                 Value::Boolean(b) => b.to_string(),
                 _ => cond.value.to_string(),
             };
+            // Extract field name from expression
+            let field_name = match &cond.expression {
+                rust_rule_engine::engine::rule::ConditionExpression::Field(f) => f.clone(),
+                rust_rule_engine::engine::rule::ConditionExpression::FunctionCall {
+                    name, ..
+                } => name.clone(),
+                rust_rule_engine::engine::rule::ConditionExpression::Test { name, .. } => {
+                    name.clone()
+                }
+                rust_rule_engine::engine::rule::ConditionExpression::MultiField {
+                    field, ..
+                } => field.clone(),
+            };
             AutoGroup::Single(AutoCond {
-                field: cond.field.clone(),
+                field: field_name,
                 operator: op_str.to_string(),
                 value: val_str,
             })
@@ -105,7 +118,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Define workflow rules using GRL syntax
-    let workflow_rules = vec![
+    let workflow_rules = [
         // Step 1: Start workflow and validate order
         r#"
         rule "StartOrderWorkflow" salience 100 agenda-group "start" {

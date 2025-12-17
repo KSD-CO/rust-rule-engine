@@ -256,7 +256,7 @@ fn demo_lock_on_active() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔒 Lock-on-active rules should fire only ONCE per agenda activation");
     println!("🔄 Regular rules can fire multiple times");
 
-    let result = engine.execute(&facts)?;
+    let _result = engine.execute(&facts)?;
     println!("✅ Lock-on-Active demo completed - Rules with lock-on-active fired only once!");
 
     Ok(())

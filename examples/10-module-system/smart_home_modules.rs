@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let parsed = GRLParser::parse_with_modules(&grl_content)?;
     let mut manager = parsed.module_manager;
     let rules = parsed.rules;
-    let rule_modules = parsed.rule_modules;
+    let _rule_modules = parsed.rule_modules;
 
     println!("📂 Loaded from: {}\n", grl_path);
     println!(
@@ -69,6 +69,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Set up the module hierarchy for smart home system
+#[allow(dead_code)]
 fn setup_modules(manager: &mut ModuleManager) -> Result<(), Box<dyn std::error::Error>> {
     println!("📦 Setting up Module Hierarchy...\n");
 

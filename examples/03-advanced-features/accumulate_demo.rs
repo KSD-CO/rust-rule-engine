@@ -1,10 +1,10 @@
-///! MANUAL Accumulate Functions Demo
-///!
-///! This demonstrates the LOW-LEVEL accumulate API for manual usage.
-///! Shows how to use accumulate functions directly in code.
-///!
-///! ⚠️ NOTE: For production rules with GRL files, use AUTO accumulate instead!
-///! See `test_auto_accumulate.rs` for the recommended approach.
+//! MANUAL Accumulate Functions Demo
+//!
+//! This demonstrates the LOW-LEVEL accumulate API for manual usage.
+//! Shows how to use accumulate functions directly in code.
+//!
+//! ⚠️ NOTE: For production rules with GRL files, use AUTO accumulate instead!
+//! See `test_auto_accumulate.rs` for the recommended approach.
 use rust_rule_engine::rete::accumulate::*;
 use rust_rule_engine::rete::FactValue;
 
@@ -93,6 +93,7 @@ fn main() {
     println!("   ──────────────────────────────────────");
 
     #[derive(Debug)]
+    #[allow(dead_code)]
     struct Order {
         id: String,
         amount: f64,

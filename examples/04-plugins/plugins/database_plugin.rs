@@ -4,11 +4,13 @@ use rust_rule_engine::errors::Result;
 use rust_rule_engine::types::Value;
 
 /// Database Operations Plugin for SQL and NoSQL database interactions
+#[allow(dead_code)]
 pub struct DatabasePlugin {
     metadata: PluginMetadata,
 }
 
 impl DatabasePlugin {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             metadata: PluginMetadata {

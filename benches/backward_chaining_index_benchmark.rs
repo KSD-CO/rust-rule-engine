@@ -106,7 +106,7 @@ fn bench_query_with_index(c: &mut Criterion) {
 
                 b.iter(|| {
                     let result = engine.query(&query, &mut facts);
-                    black_box(result);
+                    let _ = black_box(result);
                 });
             },
         );
@@ -133,7 +133,7 @@ fn bench_query_miss(c: &mut Criterion) {
 
                 b.iter(|| {
                     let result = engine.query(query, &mut facts);
-                    black_box(result);
+                    let _ = black_box(result);
                 });
             },
         );
@@ -167,7 +167,7 @@ fn bench_multiple_queries(c: &mut Criterion) {
                 b.iter(|| {
                     for query in &queries {
                         let result = engine.query(query, &mut facts);
-                        black_box(result);
+                        let _ = black_box(result);
                     }
                 });
             },

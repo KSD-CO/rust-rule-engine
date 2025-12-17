@@ -40,7 +40,7 @@ fn test_1_rollback_on_failure() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("rollback_test");
 
     // Rule 1: Will fail because condition is false
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "FailingRule".to_string(),
         ConditionGroup::Single(Condition::new(
             "Input.X".to_string(),
@@ -54,7 +54,7 @@ fn test_1_rollback_on_failure() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // Rule 2: Will succeed
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "SuccessRule".to_string(),
         ConditionGroup::Single(Condition::new(
             "Input.X".to_string(),
@@ -100,7 +100,7 @@ fn test_2_not_condition_evaluation() -> Result<(), Box<dyn std::error::Error>> {
         Value::Boolean(true),
     ))));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "AllowAccess".to_string(),
         not_condition,
         vec![ActionType::Set {
@@ -172,7 +172,7 @@ fn test_3_backtracking_multiple_rules() -> Result<(), Box<dyn std::error::Error>
     let kb = KnowledgeBase::new("backtrack_test");
 
     // Rule 1: Requires condition A (will fail)
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "PathA".to_string(),
         ConditionGroup::Single(Condition::new(
             "Condition.A".to_string(),
@@ -186,7 +186,7 @@ fn test_3_backtracking_multiple_rules() -> Result<(), Box<dyn std::error::Error>
     ));
 
     // Rule 2: Requires condition B (will fail)
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "PathB".to_string(),
         ConditionGroup::Single(Condition::new(
             "Condition.B".to_string(),
@@ -200,7 +200,7 @@ fn test_3_backtracking_multiple_rules() -> Result<(), Box<dyn std::error::Error>
     ));
 
     // Rule 3: Requires condition C (will succeed)
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "PathC".to_string(),
         ConditionGroup::Single(Condition::new(
             "Condition.C".to_string(),
@@ -258,7 +258,7 @@ fn test_4_false_positive_prevention() -> Result<(), Box<dyn std::error::Error>> 
         ))),
     };
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "StrictRule".to_string(),
         and_condition,
         vec![ActionType::Set {
@@ -326,7 +326,7 @@ fn test_5_speculative_changes_rollback() -> Result<(), Box<dyn std::error::Error
     let kb = KnowledgeBase::new("speculative_test");
 
     // Rule that will partially succeed but ultimately fail
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "SpeculativeRule".to_string(),
         ConditionGroup::Single(Condition::new(
             "Input".to_string(),
@@ -384,7 +384,7 @@ fn test_6_exists_condition() -> Result<(), Box<dyn std::error::Error>> {
             Value::Boolean(true),
         ))));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "HasActiveItems".to_string(),
         exists_condition,
         vec![ActionType::Set {
@@ -445,7 +445,7 @@ fn test_7_forall_condition() -> Result<(), Box<dyn std::error::Error>> {
             Value::Boolean(true),
         ))));
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "AllOrdersPaid".to_string(),
         forall_condition,
         vec![ActionType::Set {
@@ -483,7 +483,7 @@ fn test_8_nested_rollback() -> Result<(), Box<dyn std::error::Error>> {
     let kb = KnowledgeBase::new("nested_test");
 
     // Level 1: A -> B
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "Rule1".to_string(),
         ConditionGroup::Single(Condition::new(
             "A".to_string(),
@@ -511,7 +511,7 @@ fn test_8_nested_rollback() -> Result<(), Box<dyn std::error::Error>> {
         ))),
     };
 
-    kb.add_rule(Rule::new(
+    let _ = kb.add_rule(Rule::new(
         "Rule2".to_string(),
         compound,
         vec![ActionType::Set {

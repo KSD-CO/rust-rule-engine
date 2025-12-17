@@ -23,12 +23,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb = KnowledgeBase::new("retract_demo");
     for rule in &rules {
-        kb.add_rule(rule.clone());
+        kb.add_rule(rule.clone())?;
     }
 
     let mut engine = RustRuleEngine::new(kb);
 
-    let mut facts = Facts::new();
+    let facts = Facts::new();
     facts.set("Session.expired", Value::Boolean(true));
     facts.set("Session.active", Value::Boolean(true));
     facts.set("Session.id", Value::String("sess-12345".to_string()));
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Session.expired: {:?}", facts.get("Session.expired"));
     println!("  Session.active: {:?}", facts.get("Session.active"));
 
-    engine.execute(&mut facts)?;
+    engine.execute(&facts)?;
 
     println!("\nAfter retract:");
     println!("  Session.active: {:?}", facts.get("Session.active"));
@@ -52,11 +52,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb2 = KnowledgeBase::new("retract_demo");
     for rule in &rules {
-        kb2.add_rule(rule.clone());
+        kb2.add_rule(rule.clone())?;
     }
     let mut engine2 = RustRuleEngine::new(kb2);
 
-    let mut facts2 = Facts::new();
+    let facts2 = Facts::new();
     facts2.set("User.verified", Value::Boolean(false));
     facts2.set("User.loginAttempts", Value::Integer(5));
     facts2.set(
@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         facts2.get("User.loginAttempts")
     );
 
-    engine2.execute(&mut facts2)?;
+    engine2.execute(&facts2)?;
 
     println!("\nAfter delete:");
     println!("  User.status: {:?}", facts2.get("User.status"));
@@ -83,11 +83,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb3 = KnowledgeBase::new("retract_demo");
     for rule in &rules {
-        kb3.add_rule(rule.clone());
+        kb3.add_rule(rule.clone())?;
     }
     let mut engine3 = RustRuleEngine::new(kb3);
 
-    let mut facts3 = Facts::new();
+    let facts3 = Facts::new();
     facts3.set("Order.status", Value::String("completed".to_string()));
     facts3.set("Order.shipped", Value::Boolean(true));
     facts3.set("Order.id", Value::String("ORD-98765".to_string()));
@@ -96,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Order.status: {:?}", facts3.get("Order.status"));
     println!("  Order.shipped: {:?}", facts3.get("Order.shipped"));
 
-    engine3.execute(&mut facts3)?;
+    engine3.execute(&facts3)?;
 
     println!("\nAfter retract:");
     println!("  Order.archived: {:?}", facts3.get("Order.archived"));
@@ -108,11 +108,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let kb4 = KnowledgeBase::new("retract_demo");
     for rule in &rules {
-        kb4.add_rule(rule.clone());
+        kb4.add_rule(rule.clone())?;
     }
     let mut engine4 = RustRuleEngine::new(kb4);
 
-    let mut facts4 = Facts::new();
+    let facts4 = Facts::new();
     facts4.set("Product.stock", Value::Integer(0));
     facts4.set("Product.discontinued", Value::Boolean(true));
     facts4.set("Product.name", Value::String("Old Widget".to_string()));
@@ -124,7 +124,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         facts4.get("Product.discontinued")
     );
 
-    engine4.execute(&mut facts4)?;
+    engine4.execute(&facts4)?;
 
     println!("\nAfter delete:");
     println!(

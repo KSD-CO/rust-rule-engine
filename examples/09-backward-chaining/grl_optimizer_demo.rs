@@ -68,7 +68,7 @@ fn demo_with_optimization() -> Result<(), Box<dyn std::error::Error>> {
 
     // Setup engine and facts
     let kb = KnowledgeBase::new("test");
-    let bc_engine = BackwardEngine::new(kb);
+    let _bc_engine = BackwardEngine::new(kb);
     let facts = Facts::new();
 
     // Add some test facts

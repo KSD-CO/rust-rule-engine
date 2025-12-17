@@ -4,11 +4,13 @@ use rust_rule_engine::errors::Result;
 use rust_rule_engine::types::Value;
 
 /// Notification Plugin for sending alerts, emails, SMS, and push notifications
+#[allow(dead_code)]
 pub struct NotificationPlugin {
     metadata: PluginMetadata,
 }
 
 impl NotificationPlugin {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             metadata: PluginMetadata {
@@ -321,9 +323,7 @@ impl RulePlugin for NotificationPlugin {
             // Calculate delivery time
             let delivery_time = if schedule_time == "now" {
                 "Immediate delivery".to_string()
-            } else if schedule_time.contains("minutes") {
-                format!("Delivery in {}", schedule_time)
-            } else if schedule_time.contains("hours") {
+            } else if schedule_time.contains("minutes") || schedule_time.contains("hours") {
                 format!("Delivery in {}", schedule_time)
             } else {
                 format!("Scheduled for: {}", schedule_time)

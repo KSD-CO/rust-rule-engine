@@ -22,15 +22,15 @@ fn main() {
     {
         println!("=== GRL Query Syntax Demo ===\n");
 
-        demo_1_simple_query();
-        demo_2_query_with_actions();
-        demo_3_medical_diagnosis_grl();
-        demo_4_multiple_queries();
+        let _ = demo_1_simple_query();
+        let _ = demo_2_query_with_actions();
+        let _ = demo_3_medical_diagnosis_grl();
+        let _ = demo_4_multiple_queries();
     }
 }
 
 #[cfg(feature = "backward-chaining")]
-fn demo_1_simple_query() {
+fn demo_1_simple_query() -> Result<(), Box<dyn std::error::Error>> {
     println!("📋 Demo 1: Simple GRL Query");
     println!("─────────────────────────────\n");
 
@@ -47,7 +47,7 @@ fn demo_1_simple_query() {
     let kb = KnowledgeBase::new("demo1");
     let rules = GRLParser::parse_rules(grl_rules).unwrap();
     for rule in rules {
-        kb.add_rule(rule);
+        kb.add_rule(rule)?;
     }
 
     // GRL Query syntax
@@ -80,10 +80,11 @@ fn demo_1_simple_query() {
     }
 
     println!();
+    Ok(())
 }
 
 #[cfg(feature = "backward-chaining")]
-fn demo_2_query_with_actions() {
+fn demo_2_query_with_actions() -> Result<(), Box<dyn std::error::Error>> {
     println!("📋 Demo 2: Query with On-Success Actions");
     println!("───────────────────────────────────────────\n");
 
@@ -99,7 +100,7 @@ fn demo_2_query_with_actions() {
     let kb = KnowledgeBase::new("demo2");
     let rules = GRLParser::parse_rules(grl_rules).unwrap();
     for rule in rules {
-        kb.add_rule(rule);
+        kb.add_rule(rule)?;
     }
 
     // GRL Query with actions
@@ -144,10 +145,11 @@ fn demo_2_query_with_actions() {
     }
 
     println!();
+    Ok(())
 }
 
 #[cfg(feature = "backward-chaining")]
-fn demo_3_medical_diagnosis_grl() {
+fn demo_3_medical_diagnosis_grl() -> Result<(), Box<dyn std::error::Error>> {
     println!("📋 Demo 3: Medical Diagnosis with GRL Queries");
     println!("────────────────────────────────────────────────\n");
 
@@ -179,7 +181,7 @@ fn demo_3_medical_diagnosis_grl() {
     let kb = KnowledgeBase::new("demo3");
     let rules = GRLParser::parse_rules(grl_rules).unwrap();
     for rule in rules {
-        kb.add_rule(rule);
+        kb.add_rule(rule)?;
     }
 
     // GRL Query for flu diagnosis
@@ -246,10 +248,11 @@ fn demo_3_medical_diagnosis_grl() {
     }
 
     println!();
+    Ok(())
 }
 
 #[cfg(feature = "backward-chaining")]
-fn demo_4_multiple_queries() {
+fn demo_4_multiple_queries() -> Result<(), Box<dyn std::error::Error>> {
     println!("📋 Demo 4: Multiple Queries from GRL File");
     println!("────────────────────────────────────────────\n");
 
@@ -279,7 +282,7 @@ fn demo_4_multiple_queries() {
     let kb = KnowledgeBase::new("demo4");
     let rules = GRLParser::parse_rules(grl_rules).unwrap();
     for rule in rules {
-        kb.add_rule(rule);
+        kb.add_rule(rule)?;
     }
 
     // Multiple queries in one file
@@ -324,4 +327,5 @@ fn demo_4_multiple_queries() {
     }
 
     println!();
+    Ok(())
 }

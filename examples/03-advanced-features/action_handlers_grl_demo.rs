@@ -216,25 +216,21 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         println!("   ├── Timestamp: {}", timestamp);
 
         // Add context from facts
-        if let Some(customer) = facts.get("Customer") {
-            if let Value::Object(customer_obj) = customer {
-                if let Some(name) = customer_obj.get("name") {
-                    println!("   ├── Customer: {}", name.to_string());
-                }
-                if let Some(tier) = customer_obj.get("tier") {
-                    println!("   ├── Tier: {}", tier.to_string());
-                }
+        if let Some(Value::Object(customer_obj)) = facts.get("Customer") {
+            if let Some(name) = customer_obj.get("name") {
+                println!("   ├── Customer: {}", name.to_string());
+            }
+            if let Some(tier) = customer_obj.get("tier") {
+                println!("   ├── Tier: {}", tier.to_string());
             }
         }
 
-        if let Some(order) = facts.get("Order") {
-            if let Value::Object(order_obj) = order {
-                if let Some(order_id) = order_obj.get("id") {
-                    println!("   ├── Order ID: {}", order_id.to_string());
-                }
-                if let Some(total) = order_obj.get("total") {
-                    println!("   ├── Order Total: ${}", total.to_string());
-                }
+        if let Some(Value::Object(order_obj)) = facts.get("Order") {
+            if let Some(order_id) = order_obj.get("id") {
+                println!("   ├── Order ID: {}", order_id.to_string());
+            }
+            if let Some(total) = order_obj.get("total") {
+                println!("   ├── Order Total: ${}", total.to_string());
             }
         }
 

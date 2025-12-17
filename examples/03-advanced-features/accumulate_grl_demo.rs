@@ -1,10 +1,10 @@
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
-///! Accumulate Functions with GRL Rules Example
-///!
-///! This example demonstrates:
-///! 1. Using accumulate functions to calculate metrics
-///! 2. Loading business rules from .grl file
-///! 3. Executing rules based on accumulated data
+// Accumulate Functions with GRL Rules Example
+//
+// This example demonstrates:
+// 1. Using accumulate functions to calculate metrics
+// 2. Loading business rules from .grl file
+// 3. Executing rules based on accumulated data
 use rust_rule_engine::rete::accumulate::*;
 use rust_rule_engine::rete::FactValue;
 use rust_rule_engine::{Facts, RustRuleEngine, Value};

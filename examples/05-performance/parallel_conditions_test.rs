@@ -47,7 +47,7 @@ fn test_simple_condition() -> Result<()> {
             message: "User is adult".to_string(),
         }],
     );
-    kb.add_rule(rule);
+    kb.add_rule(rule)?;
 
     let facts = Facts::new();
     facts.set("User.age", Value::Integer(25));
@@ -88,7 +88,7 @@ fn test_and_condition() -> Result<()> {
             message: "User is verified adult".to_string(),
         }],
     );
-    kb.add_rule(rule);
+    kb.add_rule(rule)?;
 
     // Test case 1: Both conditions true
     let facts1 = Facts::new();
@@ -141,7 +141,7 @@ fn test_or_condition() -> Result<()> {
             message: "User is staff".to_string(),
         }],
     );
-    kb.add_rule(rule);
+    kb.add_rule(rule)?;
 
     let config = ParallelConfig::default();
     let engine = ParallelRuleEngine::new(config);
@@ -193,7 +193,7 @@ fn test_not_condition() -> Result<()> {
             message: "User can access".to_string(),
         }],
     );
-    kb.add_rule(rule);
+    kb.add_rule(rule)?;
 
     let config = ParallelConfig::default();
     let engine = ParallelRuleEngine::new(config);
@@ -251,7 +251,7 @@ fn test_nested_condition() -> Result<()> {
             message: "User can access".to_string(),
         }],
     );
-    kb.add_rule(rule);
+    kb.add_rule(rule)?;
 
     let config = ParallelConfig::default();
     let engine = ParallelRuleEngine::new(config);
@@ -309,7 +309,7 @@ fn test_expression_evaluation() -> Result<()> {
             message: "Order exceeds limit".to_string(),
         }],
     );
-    kb.add_rule(rule);
+    kb.add_rule(rule)?;
 
     let config = ParallelConfig::default();
     let engine = ParallelRuleEngine::new(config);

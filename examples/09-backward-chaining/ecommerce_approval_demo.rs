@@ -98,7 +98,7 @@ fn scenario_1_vip_customer() {
     let kb = KnowledgeBase::new("VIPApproval");
     let parsed_rules = GRLParser::parse_rules(&rules).unwrap();
     for rule in parsed_rules {
-        kb.add_rule(rule).unwrap();
+        kb.add_rule(rule).ok();
     }
 
     // Load query from file
@@ -163,7 +163,7 @@ fn scenario_2_new_customer_small_order() {
     let kb = KnowledgeBase::new("SmallOrder");
     let parsed_rules = GRLParser::parse_rules(&rules).unwrap();
     for rule in parsed_rules {
-        kb.add_rule(rule).unwrap();
+        kb.add_rule(rule).ok();
     }
 
     // Load query from file
@@ -215,7 +215,7 @@ fn scenario_3_risky_large_order() {
     let kb = KnowledgeBase::new("RiskyOrder");
     let parsed_rules = GRLParser::parse_rules(&rules).unwrap();
     for rule in parsed_rules {
-        kb.add_rule(rule).unwrap();
+        kb.add_rule(rule).ok();
     }
 
     // Load query from file
@@ -288,7 +288,7 @@ fn scenario_4_batch_approval() {
     let kb = KnowledgeBase::new("BatchApproval");
     let parsed_rules = GRLParser::parse_rules(&rules).unwrap();
     for rule in parsed_rules {
-        kb.add_rule(rule).unwrap();
+        kb.add_rule(rule).ok();
     }
 
     // Load query from file
@@ -320,7 +320,7 @@ fn scenario_4_batch_approval() {
     let query = GRLQueryParser::parse(&query_str).unwrap();
 
     // DEBUG: Test first order only
-    let (order_id, amount, loyalty, payment, account_age) = orders[0];
+    let (_order_id, amount, loyalty, payment, account_age) = orders[0];
 
     let mut facts = Facts::new();
     facts.set("Order.Amount", Value::Number(amount));
@@ -345,7 +345,7 @@ fn scenario_4_batch_approval() {
         Ok(())
     });
 
-    let exec_result = engine.execute(&mut facts);
+    let exec_result = engine.execute(&facts);
     println!("\n📋 After forward chaining:");
     println!("   Execution result: {:?}", exec_result);
     for key in facts.get_all_facts().keys() {
@@ -390,7 +390,7 @@ fn scenario_4_batch_approval() {
         // Register LogMessage handler
         engine.register_action_handler("LogMessage", |_args, _facts| Ok(()));
 
-        engine.execute(&mut facts).ok();
+        engine.execute(&facts).ok();
 
         // NOW use backward chaining to check the compound goal
         let mut bc_engine = BackwardEngine::new(kb.clone());

@@ -117,7 +117,7 @@ fn demo_index_statistics() {
         }];
 
         let rule = Rule::new(rule_name, ConditionGroup::Single(condition), actions);
-        let _ = kb.add_rule(rule);
+        let _ = kb.add_rule(rule).ok();
     }
 
     // Build engine
@@ -162,7 +162,7 @@ fn create_kb_with_rules(num_rules: usize) -> KnowledgeBase {
         }];
 
         let rule = Rule::new(rule_name, ConditionGroup::Single(condition), actions);
-        let _ = kb.add_rule(rule);
+        let _ = kb.add_rule(rule).ok();
     }
 
     kb

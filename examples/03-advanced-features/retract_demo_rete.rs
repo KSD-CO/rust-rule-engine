@@ -95,7 +95,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     user2.set("loginAttempts", FactValue::Integer(5));
     user2.set("status", FactValue::String("pending".to_string()));
 
-    let h1 = engine2.insert_with_template("User", user1)?;
+    let _h1 = engine2.insert_with_template("User", user1)?;
     let h2 = engine2.insert_with_template("User", user2)?;
 
     println!("✅ Inserted 2 users");

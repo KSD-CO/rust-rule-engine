@@ -1088,14 +1088,17 @@ fn data_driven_grl_cases() -> Result<(), Box<dyn std::error::Error>> {
                                             .get(field)
                                             .map(|x| x.to_string())
                                             .unwrap_or_default();
-                                        assert!(
-                                            got_v.contains(&format!("{:?}", v)),
-                                            "fact {}.{} expected {} got {}",
-                                            typ,
-                                            field,
-                                            format!("{:?}", v),
-                                            got_v
-                                        );
+                                        #[allow(clippy::format_in_format_args)]
+                                        {
+                                            assert!(
+                                                got_v.contains(&format!("{:?}", v)),
+                                                "fact {}.{} expected {} got {}",
+                                                typ,
+                                                field,
+                                                format!("{:?}", v),
+                                                got_v
+                                            );
+                                        }
                                     }
                                 }
                             }

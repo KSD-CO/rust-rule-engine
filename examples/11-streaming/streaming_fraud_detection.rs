@@ -398,7 +398,6 @@ impl FraudDetectionSystem {
 fn main() {
     println!("\n╔════════════════════════════════════════════════════╗");
     println!("║  Real-Time Fraud Detection System                 ║");
-    println!("║  Powered by Rust Rule Engine + Streaming          ║");
     println!("╚════════════════════════════════════════════════════╝\n");
 
     let mut system = FraudDetectionSystem::new();

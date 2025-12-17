@@ -88,7 +88,7 @@ fn scenario_1_normal_reorder() {
     let kb = KnowledgeBase::new("PurchasingFlow");
     let parsed_rules = GRLParser::parse_rules(&rules).unwrap();
     for rule in parsed_rules {
-        kb.add_rule(rule).unwrap();
+        kb.add_rule(rule).ok();
     }
 
     // Initial facts
@@ -112,7 +112,7 @@ fn scenario_1_normal_reorder() {
     // Register LogMessage handler
     forward_engine.register_action_handler("LogMessage", |_args, _facts| Ok(()));
 
-    forward_engine.execute(&mut facts).unwrap();
+    forward_engine.execute(&facts).unwrap();
 
     println!("✅ Forward chaining complete. Derived facts:");
     println!("   Shortage: {:?}", facts.get("shortage"));
@@ -151,7 +151,7 @@ fn scenario_2_high_value_order() {
     let kb = KnowledgeBase::new("HighValueOrder");
     let parsed_rules = GRLParser::parse_rules(&rules).unwrap();
     for rule in parsed_rules {
-        kb.add_rule(rule).unwrap();
+        kb.add_rule(rule).ok();
     }
 
     let mut facts = Facts::new();
@@ -173,7 +173,7 @@ fn scenario_2_high_value_order() {
     // Register LogMessage handler
     forward_engine.register_action_handler("LogMessage", |_args, _facts| Ok(()));
 
-    forward_engine.execute(&mut facts).unwrap();
+    forward_engine.execute(&facts).unwrap();
 
     println!("✅ Forward chaining complete:");
     println!("   Total Amount: {:?}", facts.get("total_amount"));
