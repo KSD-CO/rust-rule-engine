@@ -100,7 +100,7 @@ fn main() {
         status: String,
     }
 
-    let orders = vec![
+    let orders = [
         Order {
             id: "ORD-001".to_string(),
             amount: 1500.0,
