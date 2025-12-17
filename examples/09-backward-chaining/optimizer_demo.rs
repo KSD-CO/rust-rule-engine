@@ -172,7 +172,7 @@ fn demo_custom_config() {
     println!();
 
     // Test with same goals
-    let _goals = vec![
+    let _goals = [
         Goal::new("a(?x)".to_string()),
         Goal::new("b(?x)".to_string()),
         Goal::new("c(?x)".to_string()),

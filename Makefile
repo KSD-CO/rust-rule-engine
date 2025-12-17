@@ -1,8 +1,20 @@
-.PHONY: help all examples backward-chaining getting-started rete-engine advanced-features plugins performance use-cases advanced-rete streaming misc module-system
+.PHONY: help all examples backward-chaining getting-started rete-engine advanced-features plugins performance use-cases advanced-rete streaming misc module-system ci check fmt fmt-check clippy test build doc-test
 
 # Default target
 help:
 	@echo "Available targets:"
+	@echo ""
+	@echo "CI & Testing:"
+	@echo "  make ci                     - Full CI check (matches GitHub Actions)"
+	@echo "  make check                  - Quick check (fmt, clippy, test only)"
+	@echo "  make fmt                    - Format code"
+	@echo "  make fmt-check              - Check code formatting"
+	@echo "  make clippy                 - Run clippy linter"
+	@echo "  make test                   - Run tests"
+	@echo "  make build                  - Build project"
+	@echo "  make doc-test               - Run documentation tests"
+	@echo ""
+	@echo "Examples:"
 	@echo "  make all                    - Run all examples"
 	@echo "  make getting-started        - Run all getting-started examples"
 	@echo "  make rete-engine           - Run all RETE engine examples"
@@ -122,11 +134,11 @@ misc:
 	cargo run --example rule_dependency_analysis
 	cargo run --example rule_file_functions_demo
 
-# CI checks (same as GitHub Actions)
-ci: fmt-check clippy test
+# CI checks (exactly matching GitHub Actions workflow)
+ci: fmt-check clippy build test doc-test
 	@echo "✅ All CI checks passed!"
 
-# Check everything
+# Check everything (quick check without build)
 check: fmt clippy test
 	@echo "✅ All checks passed!"
 
@@ -148,7 +160,17 @@ clippy:
 # Run tests
 test:
 	@echo "🧪 Running tests..."
-	@cargo test --all-features
+	@cargo test --verbose --all-features
+
+# Build project
+build:
+	@echo "🔨 Building project..."
+	@cargo build --verbose --all-features
+
+# Run doc tests
+doc-test:
+	@echo "📚 Running doc tests..."
+	@cargo test --doc --verbose
 
 # Backward Chaining Examples (09-backward-chaining)
 backward-chaining:
