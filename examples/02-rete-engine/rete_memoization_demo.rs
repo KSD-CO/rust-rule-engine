@@ -13,7 +13,7 @@ fn main() {
     println!("==========================\n");
 
     // Create complex rules
-    let rules = vec![
+    let rules = [
         Rule {
             name: "ComplexRule1".to_string(),
             conditions: ConditionGroup::Compound {
