@@ -1438,6 +1438,7 @@ dependencies = [
  "criterion",
  "fastrand",
  "futures",
+ "log",
  "nom",
  "num_cpus",
  "once_cell",

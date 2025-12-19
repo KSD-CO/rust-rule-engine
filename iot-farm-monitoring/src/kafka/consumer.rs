@@ -1,7 +1,7 @@
 use crate::config::KafkaConfig;
 use crate::monitor::FarmMonitor;
 use anyhow::{Context, Result};
-use log::{error, info, warn};
+use log::{error, info};
 use rdkafka::config::ClientConfig;
 use rdkafka::consumer::{Consumer, StreamConsumer};
 use rdkafka::message::Message;
@@ -49,6 +49,11 @@ impl KafkaFarmConsumer {
         })
     }
 
+    /// Get reference to monitor statistics for reporting
+    pub fn get_monitor_stats(&self) -> std::sync::Arc<std::sync::Mutex<crate::monitor::MonitorStats>> {
+        self.monitor.get_stats_ref()
+    }
+
     /// Start consuming messages
     pub async fn start_consuming(&mut self) -> Result<()> {
         info!("Starting Kafka consumer loop");
@@ -56,8 +61,20 @@ impl KafkaFarmConsumer {
         loop {
             match self.consumer.recv().await {
                 Ok(message) => {
-                    if let Err(e) = self.process_message(&message) {
-                        error!("Error processing message: {}", e);
+                    // Extract owned values from the borrowed message so we don't hold
+                    // an immutable borrow of `self` while later mutably borrowing it.
+                    let topic = message.topic().to_string();
+                    let payload_opt = message.payload().map(|p| p.to_vec());
+
+                    // Drop the borrowed message to release the immutable borrow on `self`.
+                    drop(message);
+
+                    if let Some(payload) = payload_opt {
+                        if let Err(e) = self.process_message_owned(topic, payload) {
+                            error!("Error processing message: {}", e);
+                        }
+                    } else {
+                        error!("Received message with empty payload");
                     }
                 }
                 Err(e) => {
@@ -69,21 +86,22 @@ impl KafkaFarmConsumer {
     }
 
     /// Process a Kafka message
-    fn process_message(&mut self, message: &rdkafka::message::BorrowedMessage) -> Result<()> {
-        let topic = message.topic();
-        let payload = message
-            .payload()
-            .context("Message payload is empty")?;
-
-        let payload_str = std::str::from_utf8(payload)
+    /// Process a message using owned topic and payload (no borrowed message)
+    fn process_message_owned(&mut self, topic: String, payload: Vec<u8>) -> Result<()> {
+        let payload_str = std::str::from_utf8(&payload)
             .context("Failed to decode message payload as UTF-8")?;
+
+        //info!("📩 Received message from topic '{}': {}", topic, payload_str);
 
         // Parse JSON payload
         let json_data: HashMap<String, serde_json::Value> = serde_json::from_str(payload_str)
             .context("Failed to parse message payload as JSON")?;
 
         // Convert to StreamEvent
-        let stream_event = self.json_to_stream_event(topic, json_data)?;
+        let stream_event = KafkaFarmConsumer::json_to_stream_event(&topic, json_data)?;
+
+        //info!("✅ Successfully converted to StreamEvent: id={}, type={}", 
+        //      stream_event.id, stream_event.event_type);
 
         // Process through monitor
         self.monitor.process_event(stream_event);
@@ -93,7 +111,6 @@ impl KafkaFarmConsumer {
 
     /// Convert JSON data to StreamEvent
     fn json_to_stream_event(
-        &self,
         topic: &str,
         json_data: HashMap<String, serde_json::Value>,
     ) -> Result<StreamEvent> {
@@ -146,12 +163,21 @@ impl KafkaFarmConsumer {
         }
         .to_string();
 
+        // Determine if timestamp is in seconds or milliseconds
+        // If timestamp < 1e12 (year 2001 in seconds), it's in seconds -> convert to ms
+        // Otherwise it's already in milliseconds
+        let timestamp_ms = if timestamp < 1_000_000_000_000 {
+            (timestamp as u64) * 1000 // Convert seconds to milliseconds
+        } else {
+            timestamp as u64 // Already in milliseconds
+        };
+
         Ok(StreamEvent {
             id: event_id,
             event_type,
             data,
             metadata: EventMetadata {
-                timestamp: timestamp as u64,
+                timestamp: timestamp_ms,
                 source: topic.to_string(),
                 sequence: 0,
                 tags: HashMap::new(),
@@ -174,16 +200,6 @@ mod tests {
     fn test_json_to_stream_event() {
         let config = Config::default();
         let monitor = FarmMonitor::new(config);
-        let consumer = KafkaFarmConsumer {
-            consumer: ClientConfig::new()
-                .set("bootstrap.servers", "localhost:9092")
-                .set("group.id", "test")
-                .create()
-                .unwrap(),
-            monitor,
-            topics: vec!["soil-sensors".to_string()],
-        };
-
         let mut json_data = HashMap::new();
         json_data.insert(
             "zone_id".to_string(),
@@ -198,9 +214,7 @@ mod tests {
             serde_json::Value::Number(serde_json::Number::from(1000)),
         );
 
-        let event = consumer
-            .json_to_stream_event("soil-sensors", json_data)
-            .unwrap();
+        let event = KafkaFarmConsumer::json_to_stream_event("soil-sensors", json_data).unwrap();
 
         assert_eq!(event.event_type, "SoilSensorReading");
         assert_eq!(event.metadata.source, "soil-sensors");

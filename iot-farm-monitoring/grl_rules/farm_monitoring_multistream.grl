@@ -1,0 +1,244 @@
+// Farm Monitoring - Multi-Stream Join Rules
+// ✨ NOW SUPPORTS MULTI-STREAM JOINS with StreamBetaNode!
+//
+// Architecture: Kafka Events → Alpha Nodes → Beta Join → RETE → Actions
+
+// ============================================================================
+// MULTI-STREAM JOIN RULES (NOW WORKING!)
+// ============================================================================
+
+rule "CriticalIrrigationNeeded" salience 100 {
+    when
+        moisture: SoilSensorReading from stream("soil-sensors") over window(5 min, sliding) &&
+        temp: TemperatureReading from stream("temperature") over window(5 min, sliding) &&
+        moisture.zone_id == temp.zone_id &&
+        moisture.moisture_level < 25.0 &&
+        temp.temperature > 30.0
+    then
+        log("🚰 CRITICAL IRRIGATION: Zone {} - Moisture: {:.1}%, Temp: {:.1}°C",
+            moisture.zone_id, moisture.moisture_level, temp.temperature);
+        log("   📊 Urgency Score: {:.1}/100",
+            (100.0 - moisture.moisture_level) + (temp.temperature - 20.0) * 2.0);
+}
+
+rule "FrostAlert" salience 100 {
+    when
+        temp: TemperatureReading from stream("temperature") over window(2 min, sliding) &&
+        weather: WeatherEvent from stream("weather") over window(10 min, sliding) &&
+        temp.zone_id == weather.zone_id &&
+        temp.temperature < 0.0 &&
+        weather.condition == "frost"
+    then
+        log("❄️❄️❄️ FROST ALERT: Zone {} - Temp: {:.1}°C, Weather: {}",
+            temp.zone_id, temp.temperature, weather.condition);
+        log("   🚨 ACTIVATE FROST PROTECTION NOW!");
+}
+
+rule "OptimalConditions" salience 70 {
+    when
+        moisture: SoilSensorReading from stream("soil-sensors") over window(5 min, sliding) &&
+        temp: TemperatureReading from stream("temperature") over window(5 min, sliding) &&
+        moisture.zone_id == temp.zone_id &&
+        moisture.moisture_level >= 40.0 &&
+        moisture.moisture_level <= 60.0 &&
+        temp.temperature >= 22.0 &&
+        temp.temperature <= 28.0
+    then
+        log("✅ OPTIMAL CONDITIONS: Zone {} - Perfect growing environment",
+            moisture.zone_id);
+        log("   Moisture: {:.1}%, Temp: {:.1}°C",
+            moisture.moisture_level, temp.temperature);
+}
+
+rule "DroughtStress" salience 110 {
+    when
+        moisture: SoilSensorReading from stream("soil-sensors") over window(10 min, sliding) &&
+        temp: TemperatureReading from stream("temperature") over window(10 min, sliding) &&
+        moisture.zone_id == temp.zone_id &&
+        moisture.moisture_level < 20.0 &&
+        temp.temperature > 32.0
+    then
+        log("🔥 DROUGHT STRESS: Zone {}", moisture.zone_id);
+        log("   Temperature: {:.1}°C, Moisture: {:.1}%",
+            temp.temperature, moisture.moisture_level);
+        log("   🚨 PRIORITY IRRIGATION + SHADE DEPLOYMENT!");
+}
+
+rule "RainDetectedSkipIrrigation" salience 85 {
+    when
+        weather: WeatherEvent from stream("weather") over window(15 min, sliding) &&
+        moisture: SoilSensorReading from stream("soil-sensors") over window(5 min, sliding) &&
+        weather.zone_id == moisture.zone_id &&
+        weather.condition == "rain" &&
+        moisture.moisture_level < 40.0
+    then
+        log("🌧️ RAIN DETECTED: Zone {} - Skip irrigation", weather.zone_id);
+        log("   Current moisture: {:.1}% - Natural irrigation in progress",
+            moisture.moisture_level);
+}
+
+rule "IrrigationEfficiency" salience 80 {
+    when
+        irrigation: IrrigationEvent from stream("irrigation") over window(30 min, tumbling) &&
+        moisture_before: SoilSensorReading from stream("soil-sensors") over window(30 min, tumbling) &&
+        moisture_after: SoilSensorReading from stream("soil-sensors") over window(5 min, sliding) &&
+        irrigation.zone_id == moisture_before.zone_id &&
+        irrigation.zone_id == moisture_after.zone_id &&
+        irrigation.action == "stop" &&
+        moisture_after.timestamp > irrigation.timestamp
+    then
+        log("📈 IRRIGATION EFFICIENCY: Zone {}", irrigation.zone_id);
+        log("   Before: {:.1}%, After: {:.1}%, Improvement: {:.1}%",
+            moisture_before.moisture_level,
+            moisture_after.moisture_level,
+            moisture_after.moisture_level - moisture_before.moisture_level);
+}
+
+// ============================================================================
+// THREE-STREAM JOIN EXAMPLE (NESTED BETA NODES) - NEW! 🎉
+// ============================================================================
+
+rule "ExtremeWeatherIrrigation" salience 120 {
+    when
+        moisture: SoilSensorReading from stream("soil-sensors") over window(5 min, sliding) &&
+        temp: TemperatureReading from stream("temperature") over window(5 min, sliding) &&
+        weather: WeatherEvent from stream("weather") over window(10 min, sliding) &&
+        moisture.zone_id == temp.zone_id &&
+        temp.zone_id == weather.zone_id &&
+        moisture.moisture_level < 30.0 &&
+        temp.temperature > 35.0 &&
+        weather.condition == "heatwave"
+    then
+        log("🔥🌡️☀️ EXTREME WEATHER IRRIGATION ALERT!");
+        log("   Zone: {} - CRITICAL STRESS CONDITIONS", moisture.zone_id);
+        log("   Moisture: {:.1}% | Temp: {:.1}°C | Weather: {}",
+            moisture.moisture_level, temp.temperature, weather.condition);
+        log("   🚨 EMERGENCY IRRIGATION + COOLING SYSTEM REQUIRED!");
+}
+
+rule "OptimalHarvestConditions" salience 90 {
+    when
+        moisture: SoilSensorReading from stream("soil-sensors") over window(10 min, sliding) &&
+        temp: TemperatureReading from stream("temperature") over window(10 min, sliding) &&
+        weather: WeatherEvent from stream("weather") over window(15 min, sliding) &&
+        moisture.zone_id == temp.zone_id &&
+        temp.zone_id == weather.zone_id &&
+        moisture.moisture_level >= 45.0 &&
+        moisture.moisture_level <= 55.0 &&
+        temp.temperature >= 20.0 &&
+        temp.temperature <= 25.0 &&
+        weather.condition == "clear"
+    then
+        log("🌾✨ OPTIMAL HARVEST CONDITIONS: Zone {}", moisture.zone_id);
+        log("   Perfect environment for harvesting!");
+        log("   📊 Moisture: {:.1}% | Temp: {:.1}°C | Sky: {}",
+            moisture.moisture_level, temp.temperature, weather.condition);
+        log("   ✅ Recommended action: Schedule harvest window");
+}
+
+// ============================================================================
+// ARCHITECTURE NOTES
+// ============================================================================
+/*
+HOW MULTI-STREAM JOINS WORK:
+=============================
+
+1. GRL Parser detects multi-stream patterns:
+
+   moisture: ... from stream("soil-sensors") &&
+   temp: ... from stream("temperature") &&
+   moisture.zone_id == temp.zone_id
+
+2. Creates Alpha Nodes for each stream:
+
+   StreamAlphaNode("soil-sensors", window: 5 min)
+   StreamAlphaNode("temperature", window: 5 min)
+
+3. Creates Beta Node for the join:
+
+   StreamBetaNode(
+       left: moisture alpha,
+       right: temp alpha,
+       join_condition: zone_id == zone_id
+   )
+
+4. Event flow:
+
+   Kafka: moisture event → Alpha (filter + window) → Beta (join on zone_id) → Rule fires!
+   Kafka: temp event    → Alpha (filter + window) ↗
+
+BETA NODE FEATURES:
+===================
+✅ Time-window joins
+✅ Multiple join conditions
+✅ Buffered event matching
+✅ Automatic cleanup of old events
+✅ **NESTED BETA NODES** (3+ stream joins) 🎉 NEW!
+
+NESTED BETA NODES (3+ STREAMS):
+================================
+For three-stream joins, beta nodes are nested:
+
+    moisture + temp + weather:
+
+    StreamBetaNode(          ← Beta2
+        left: StreamBetaNode(    ← Beta1 (moisture + temp)
+            left: moisture_alpha,
+            right: temp_alpha
+        ),
+        right: weather_alpha
+    )
+
+Event flow:
+    1. moisture → Alpha1 ↘
+    2. temp → Alpha2     → Beta1 (join) → Beta2 ↘
+    3. weather → Alpha3 -----------------→ Beta2 (join) → Rule fires!
+
+All 3 events must correlate within their time windows!
+
+JOIN STRATEGIES:
+================
+- TimeWindow: Join events within time window ✅
+- ExactTimestamp: Join on exact timestamp (future)
+
+SUPPORTED OPERATORS:
+====================
+✅ Equal (==)
+🔜 NotEqual (!=)
+🔜 GreaterThan (>)
+🔜 LessThan (<)
+
+PERFORMANCE:
+============
+- Events are buffered in memory
+- Old events cleaned up based on window size
+- Join complexity: O(n*m) where n,m = buffer sizes
+- For 3-stream: O(n*m*p) worst case
+- Optimize by using smaller windows
+
+EXAMPLES:
+=========
+
+Two-stream join with equality:
+    s1: Type1 from stream("s1") over window(5 min, sliding) &&
+    s2: Type2 from stream("s2") over window(5 min, sliding) &&
+    s1.id == s2.id
+
+Three-stream join (✅ NOW WORKING!):
+    s1: ... from stream("s1") && s2: ... from stream("s2") && s3: ... from stream("s3") &&
+    s1.id == s2.id && s2.id == s3.id
+    (Creates nested beta nodes: (s1 join s2) join s3)
+
+Multiple join conditions:
+    s1: ... && s2: ... &&
+    s1.zone_id == s2.zone_id &&
+    s1.type == s2.type
+    (Beta node checks ALL conditions)
+
+TEST STATUS:
+============
+✅ Unit tests passing for 2-stream joins
+✅ Unit tests passing for 3-stream nested joins
+✅ GRL examples ready (see above)
+⚠️ Full Kafka integration pending
+*/

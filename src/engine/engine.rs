@@ -9,6 +9,7 @@ use crate::engine::{
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Operator, Value};
 use chrono::{DateTime, Utc};
+use log::info;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -682,6 +683,13 @@ impl RustRuleEngine {
                     facts,
                 )?;
                 // After injecting result, return true to continue
+                Ok(true)
+            }
+
+            #[cfg(feature = "streaming")]
+            ConditionGroup::StreamPattern { .. } => {
+                // Stream patterns are handled by the streaming engine, not here
+                // For forward chaining context, return true to allow rule evaluation
                 Ok(true)
             }
         }
@@ -1414,7 +1422,7 @@ impl RustRuleEngine {
                 .join(" ")
         };
 
-        println!("📋 {}", message);
+        info!("📋 {}", message);
         Ok(message)
     }
 

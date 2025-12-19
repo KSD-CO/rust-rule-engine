@@ -128,6 +128,20 @@ impl DependencyAnalyzer {
                 // For ACCUMULATE, we're reading the source pattern and extract field
                 reads.push(format!("{}.{}", source_pattern, extract_field));
             }
+
+            #[cfg(feature = "streaming")]
+            crate::engine::rule::ConditionGroup::StreamPattern {
+                stream_name,
+                event_type,
+                ..
+            } => {
+                // For STREAM patterns, we're reading from the stream
+                if let Some(event_type) = event_type {
+                    reads.push(format!("{}.{}", stream_name, event_type));
+                } else {
+                    reads.push(stream_name.clone());
+                }
+            }
         }
     }
 

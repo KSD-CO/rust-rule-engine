@@ -5,6 +5,31 @@ use crate::types::{ActionType, LogicalOperator, Operator, Value};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
+#[cfg(feature = "streaming")]
+use std::time::Duration;
+
+/// Window specification for stream patterns
+#[cfg(feature = "streaming")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct StreamWindow {
+    /// Window duration
+    pub duration: Duration,
+    /// Window type (sliding, tumbling, etc.)
+    pub window_type: StreamWindowType,
+}
+
+/// Stream window types
+#[cfg(feature = "streaming")]
+#[derive(Debug, Clone, PartialEq)]
+pub enum StreamWindowType {
+    /// Sliding window - continuously moves forward
+    Sliding,
+    /// Tumbling window - non-overlapping fixed intervals
+    Tumbling,
+    /// Session window - groups events with idle timeout
+    Session { timeout: Duration },
+}
+
 /// Expression in a condition - can be a field reference or function call
 #[derive(Debug, Clone)]
 pub enum ConditionExpression {
@@ -396,6 +421,19 @@ pub enum ConditionGroup {
         /// Variable passed to function (e.g., "$amount" in "sum($amount)")
         function_arg: String,
     },
+    /// Stream pattern: match events from a stream with optional time window
+    /// Example: login: LoginEvent from stream("logins") over window(10 min, sliding)
+    #[cfg(feature = "streaming")]
+    StreamPattern {
+        /// Variable to bind the event to (e.g., "login")
+        var_name: String,
+        /// Optional event type filter (e.g., "LoginEvent")
+        event_type: Option<String>,
+        /// Stream name to read from (e.g., "logins")
+        stream_name: String,
+        /// Optional window specification (duration and type)
+        window: Option<StreamWindow>,
+    },
 }
 
 impl ConditionGroup {
@@ -457,6 +495,22 @@ impl ConditionGroup {
         }
     }
 
+    /// Create a stream pattern condition - matches events from a stream
+    #[cfg(feature = "streaming")]
+    pub fn stream_pattern(
+        var_name: String,
+        event_type: Option<String>,
+        stream_name: String,
+        window: Option<StreamWindow>,
+    ) -> Self {
+        ConditionGroup::StreamPattern {
+            var_name,
+            event_type,
+            stream_name,
+            window,
+        }
+    }
+
     /// Evaluate this condition group against facts
     pub fn evaluate(&self, facts: &HashMap<String, Value>) -> bool {
         match self {
@@ -480,6 +534,12 @@ impl ConditionGroup {
             | ConditionGroup::Accumulate { .. } => {
                 // Pattern matching and accumulate conditions need Facts struct, not HashMap
                 // For now, return false - these will be handled by the engine
+                false
+            }
+            #[cfg(feature = "streaming")]
+            ConditionGroup::StreamPattern { .. } => {
+                // Stream patterns need special handling in RETE engine with stream nodes
+                // For now, return false - these will be handled by the streaming engine
                 false
             }
         }
@@ -513,6 +573,13 @@ impl ConditionGroup {
             ConditionGroup::Accumulate { .. } => {
                 // Accumulate conditions need special handling - they will be evaluated
                 // during the engine execution phase, not here
+                // For now, return true to allow the rule to continue evaluation
+                true
+            }
+            #[cfg(feature = "streaming")]
+            ConditionGroup::StreamPattern { .. } => {
+                // Stream patterns need special handling in RETE engine with stream nodes
+                // They will be evaluated by the streaming engine, not here
                 // For now, return true to allow the rule to continue evaluation
                 true
             }

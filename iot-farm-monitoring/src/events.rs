@@ -177,7 +177,11 @@ pub fn parse_soil_sensor(event: &StreamEvent) -> Option<SoilSensorReading> {
 pub fn parse_temperature(event: &StreamEvent) -> Option<TemperatureReading> {
     let zone_id = event.data.get("zone_id")?.as_string()?;
     let temperature = event.data.get("temperature")?.as_string()?.parse().ok()?;
-    let sensor_type = event.data.get("sensor_type")?.as_string()?;
+    let sensor_type = event
+        .data
+        .get("sensor_type")
+        .and_then(|v| v.as_string())
+        .unwrap_or_else(|| "DHT22".to_string()); // Default sensor type
 
     Some(TemperatureReading {
         zone_id,

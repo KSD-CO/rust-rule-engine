@@ -360,6 +360,40 @@ impl ConditionGroupGRLExport for crate::engine::rule::ConditionGroup {
                     function_arg
                 )
             }
+
+            #[cfg(feature = "streaming")]
+            crate::engine::rule::ConditionGroup::StreamPattern {
+                var_name,
+                event_type,
+                stream_name,
+                window,
+            } => {
+                // Format: login: LoginEvent from stream("logins") over window(10 min, sliding)
+                let event_type_str = event_type
+                    .as_ref()
+                    .map(|t| format!("{} ", t))
+                    .unwrap_or_default();
+                let window_str = window.as_ref().map(|w| {
+                    let dur_secs = w.duration.as_secs();
+                    let (dur_val, dur_unit) = if dur_secs >= 3600 {
+                        (dur_secs / 3600, "hour")
+                    } else if dur_secs >= 60 {
+                        (dur_secs / 60, "min")
+                    } else {
+                        (dur_secs, "sec")
+                    };
+                    let window_type_str = match &w.window_type {
+                        crate::engine::rule::StreamWindowType::Sliding => "sliding",
+                        crate::engine::rule::StreamWindowType::Tumbling => "tumbling",
+                        crate::engine::rule::StreamWindowType::Session { .. } => "session",
+                    };
+                    format!(" over window({} {}, {})", dur_val, dur_unit, window_type_str)
+                }).unwrap_or_default();
+                format!(
+                    "{}: {}from stream(\"{}\"){}",
+                    var_name, event_type_str, stream_name, window_str
+                )
+            }
         }
     }
 }

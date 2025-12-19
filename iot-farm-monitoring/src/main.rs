@@ -29,6 +29,7 @@ async fn main() -> Result<()> {
     // Register all use cases
     info!("Registering use cases...");
     monitor.register_irrigation_control();
+    monitor.register_predictive_irrigation(); // New sophisticated rule
     monitor.register_frost_alert();
     monitor.register_efficiency_analysis();
     monitor.register_anomaly_detection();
@@ -44,8 +45,30 @@ async fn main() -> Result<()> {
     info!("\n✅ Farm monitoring system is running!");
     info!("Listening for events from Kafka topics...\n");
 
-    // Start consuming (this will run indefinitely)
-    consumer.start_consuming().await?;
+    // Clone monitor for statistics thread
+    let stats_handle = {
+        let monitor_stats = consumer.get_monitor_stats();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
+            loop {
+                interval.tick().await;
+                let stats = monitor_stats.lock().unwrap();
+                info!("\n📊 === STATISTICS REPORT ===");
+                info!("Events Processed: {}", stats.events_processed);
+                info!("🚰 Irrigation Triggered: {}", stats.irrigation_triggered);
+                info!("❄️  Frost Alerts: {}", stats.frost_alerts);
+                info!("📈 Efficiency Reports: {}", stats.efficiency_reports);
+                info!("⚠️  Anomalies Detected: {}", stats.anomalies_detected);
+                info!("==========================\n");
+            }
+        })
+    };
 
-    Ok(())
+    // Start consuming (this will run indefinitely)
+    let consume_result = consumer.start_consuming().await;
+
+    // Clean up
+    stats_handle.abort();
+    
+    consume_result
 }

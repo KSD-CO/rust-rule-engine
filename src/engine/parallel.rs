@@ -388,6 +388,13 @@ impl ParallelRuleEngine {
                 )
                 .is_ok()
             }
+
+            #[cfg(feature = "streaming")]
+            ConditionGroup::StreamPattern { .. } => {
+                // Stream patterns are handled by streaming engine
+                // For parallel execution context, return true
+                true
+            }
         }
     }
 

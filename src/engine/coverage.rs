@@ -81,6 +81,11 @@ fn flatten_conditions(
             // Accumulate doesn't have simple single conditions to flatten
             // Skip for now
         }
+        #[cfg(feature = "streaming")]
+        ConditionGroup::StreamPattern { .. } => {
+            // Stream patterns don't have simple single conditions to flatten
+            // Skip for now
+        }
     }
     out
 }
