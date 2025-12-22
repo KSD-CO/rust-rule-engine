@@ -1,0 +1,9 @@
+// Simple test for stream pattern parsing
+rule "TestStreamParsing" salience 100 {
+    when
+        login: LoginEvent from stream("logins") over window(10 min, sliding) &&
+        login.user_id == "test123"
+    then
+        Alert.Type = "STREAM_TEST";
+        Alert.Message = "Stream pattern parsed successfully";
+}

@@ -1431,13 +1431,14 @@ dependencies = [
 
 [[package]]
 name = "rust-rule-engine"
-version = "1.12.0"
+version = "1.12.1"
 dependencies = [
  "axum",
  "chrono",
  "criterion",
  "fastrand",
  "futures",
+ "log",
  "nom",
  "num_cpus",
  "once_cell",

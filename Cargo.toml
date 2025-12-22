@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.12.0"
+version = "1.12.1"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features: forward/backward chaining, pattern matching, unification, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend, watermarking, and custom functions. Production-ready for business rules, expert systems, real-time stream processing, and decision automation."
@@ -27,6 +27,7 @@ regex = "1.11"
 thiserror = "2.0"
 num_cpus = "1.16"
 chrono = { version = "0.4", features = ["serde"] }
+log = "0.4"
 tokio = { version = "1.42", features = ["full"], optional = true }
 futures = { version = "0.3", optional = true }
 petgraph = { version = "0.6", optional = true }
@@ -178,6 +179,11 @@ required-features = ["streaming"]
 [[example]]
 name = "streaming_watermark_demo"
 path = "examples/03-advanced-features/streaming_watermark_demo.rs"
+required-features = ["streaming"]
+
+[[example]]
+name = "stream_join_demo"
+path = "examples/03-advanced-features/stream_join_demo.rs"
 required-features = ["streaming"]
 
 [[example]]

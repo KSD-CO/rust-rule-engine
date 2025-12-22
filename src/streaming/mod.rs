@@ -43,6 +43,10 @@ pub mod engine;
 #[cfg(feature = "streaming")]
 pub mod event;
 #[cfg(feature = "streaming")]
+pub mod join_manager;
+#[cfg(feature = "streaming")]
+pub mod join_optimizer;
+#[cfg(feature = "streaming")]
 pub mod operators;
 #[cfg(feature = "streaming")]
 pub mod state;
@@ -57,6 +61,10 @@ pub use aggregator::{AggregationType, Aggregator};
 pub use engine::StreamRuleEngine;
 #[cfg(feature = "streaming")]
 pub use event::{EventMetadata, StreamEvent};
+#[cfg(feature = "streaming")]
+pub use join_manager::StreamJoinManager;
+#[cfg(feature = "streaming")]
+pub use join_optimizer::{JoinOptimization, JoinOptimizer, OptimizedJoinPlan, StreamStats};
 #[cfg(feature = "streaming")]
 pub use operators::{
     AggregateResult, Aggregation, Average, Count, CustomAggregator, DataStream, GroupedStream,

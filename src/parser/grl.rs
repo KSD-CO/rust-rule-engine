@@ -985,6 +985,13 @@ impl GRLParser {
             trimmed_clause
         };
 
+        // === STREAM PATTERNS ===
+        // Check for stream pattern syntax: "var: Type from stream(...)"
+        #[cfg(feature = "streaming")]
+        if clause_to_parse.contains("from stream(") {
+            return self.parse_stream_pattern_condition(clause_to_parse);
+        }
+
         // === MULTI-FIELD PATTERNS ===
         // Handle multi-field patterns before other patterns
         // These must be checked first to avoid conflict with standard patterns
@@ -1534,6 +1541,43 @@ impl GRLParser {
         }
 
         Ok(params)
+    }
+
+    /// Parse stream pattern condition
+    /// Example: "login: LoginEvent from stream(\"logins\") over window(10 min, sliding)"
+    #[cfg(feature = "streaming")]
+    fn parse_stream_pattern_condition(&self, clause: &str) -> Result<ConditionGroup> {
+        use crate::engine::rule::{StreamWindow, StreamWindowType};
+        use crate::parser::grl::stream_syntax::parse_stream_pattern;
+
+        // Parse using nom parser
+        let parse_result =
+            parse_stream_pattern(clause).map_err(|e| RuleEngineError::ParseError {
+                message: format!("Failed to parse stream pattern: {:?}", e),
+            })?;
+
+        let (_, pattern) = parse_result;
+
+        // Convert WindowType from parser to StreamWindowType
+        let window = pattern.source.window.map(|w| StreamWindow {
+            duration: w.duration,
+            window_type: match w.window_type {
+                crate::parser::grl::stream_syntax::WindowType::Sliding => StreamWindowType::Sliding,
+                crate::parser::grl::stream_syntax::WindowType::Tumbling => {
+                    StreamWindowType::Tumbling
+                }
+                crate::parser::grl::stream_syntax::WindowType::Session { timeout } => {
+                    StreamWindowType::Session { timeout }
+                }
+            },
+        });
+
+        Ok(ConditionGroup::stream_pattern(
+            pattern.var_name,
+            pattern.event_type,
+            pattern.source.stream_name,
+            window,
+        ))
     }
 }
 

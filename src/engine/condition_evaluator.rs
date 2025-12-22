@@ -92,6 +92,13 @@ impl ConditionEvaluator {
                 // Accumulate needs special handling - not fully supported yet
                 Ok(true)
             }
+
+            #[cfg(feature = "streaming")]
+            ConditionGroup::StreamPattern { .. } => {
+                // Stream patterns need special handling in streaming engine
+                // Not fully supported in backward chaining context
+                Ok(true)
+            }
         }
     }
 

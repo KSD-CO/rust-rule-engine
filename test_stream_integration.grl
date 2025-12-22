@@ -1,0 +1,8 @@
+// Test stream rule integration
+rule "Stream Test Rule" salience 10 {
+    when
+        event: LoginEvent from stream("logins") over window(10 min, sliding)
+    then
+        Alert.Type = "TEST";
+        Alert.Message = "Stream integration working";
+}

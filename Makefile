@@ -81,6 +81,7 @@ advanced-features:
 	cargo run --example retract_demo
 	cargo run --example rule_attributes_demo
 	cargo run --example rule_templates_demo
+	cargo run --features streaming --example stream_join_demo
 
 # Plugin Examples (04-plugins)
 plugins:
@@ -457,3 +458,6 @@ disjunction_demo:
 
 grl_or_syntax_demo:
 	cargo run --features backward-chaining --example grl_or_syntax_demo
+
+stream_join_demo:
+	cargo run --features streaming --example stream_join_demo

@@ -13,8 +13,12 @@ use crate::rete::facts::{FactValue, TypedFacts};
 use crate::rete::propagation::IncrementalEngine;
 use crate::rete::{AlphaNode, ReteUlNode, TypedReteUlRule};
 use crate::types::{Operator, Value};
+use log::info;
 use std::fs;
 use std::path::Path;
+
+#[cfg(feature = "streaming")]
+use crate::rete::network::{StreamWindowSpec, StreamWindowTypeRete};
 
 /// GRL to RETE Loader
 /// Converts GRL rules into RETE-UL structures
@@ -125,6 +129,34 @@ impl GrlReteLoader {
                 function: function.clone(),
                 function_arg: function_arg.clone(),
             }),
+            #[cfg(feature = "streaming")]
+            ConditionGroup::StreamPattern {
+                var_name,
+                event_type,
+                stream_name,
+                window,
+            } => {
+                // Convert stream pattern to RETE UlStream node
+                Ok(ReteUlNode::UlStream {
+                    var_name: var_name.clone(),
+                    event_type: event_type.clone(),
+                    stream_name: stream_name.clone(),
+                    window: window.as_ref().map(|w| StreamWindowSpec {
+                        duration: w.duration,
+                        window_type: match &w.window_type {
+                            crate::engine::rule::StreamWindowType::Sliding => {
+                                StreamWindowTypeRete::Sliding
+                            }
+                            crate::engine::rule::StreamWindowType::Tumbling => {
+                                StreamWindowTypeRete::Tumbling
+                            }
+                            crate::engine::rule::StreamWindowType::Session { timeout } => {
+                                StreamWindowTypeRete::Session { timeout: *timeout }
+                            }
+                        },
+                    }),
+                })
+            }
         }
     }
 
@@ -267,7 +299,7 @@ impl GrlReteLoader {
                 facts.set(field, fact_value);
             }
             ActionType::Log { message } => {
-                println!("📝 LOG: {}", message);
+                info!("📝 {}", message);
             }
             ActionType::MethodCall {
                 object,
@@ -423,6 +455,11 @@ impl GrlReteLoader {
             ReteUlNode::UlAccumulate { source_pattern, .. } => {
                 // Add source pattern as a dependency
                 deps.push(source_pattern.clone());
+            }
+            #[cfg(feature = "streaming")]
+            ReteUlNode::UlStream { stream_name, .. } => {
+                // Add stream name as a dependency
+                deps.push(stream_name.clone());
             }
             ReteUlNode::UlTerminal(_) => {
                 // Terminal nodes don't have dependencies

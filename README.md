@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.12.0 🦀⚡🚀
+# Rust Rule Engine v1.12.1 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -141,7 +141,7 @@ for event in event_stream {
 
 ---
 
-## ✨ What's New in v1.12.0 🎉
+## ✨ What's New in v1.12.1 🎉
 
 🌊 **Stream Processing Foundation!**
 
@@ -916,7 +916,7 @@ rust-rule-engine = "1.12.0"
 # Enable backward chaining with negation support (Production Ready! 🚀)
 rust-rule-engine = { version = "1.12.0", features = ["backward-chaining"] }
 
-# Enable streaming support (NEW in v1.12.0! 🌊)
+# Enable streaming support (NEW in v1.12.1! 🌊)
 rust-rule-engine = { version = "1.12.0", features = ["streaming"] }
 
 # Enable streaming with Redis backend (for distributed deployments)

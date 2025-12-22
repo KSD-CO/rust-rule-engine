@@ -528,7 +528,8 @@ impl DepthFirstSearch {
             ConditionGroup::Not(_)
             | ConditionGroup::Exists(_)
             | ConditionGroup::Forall(_)
-            | ConditionGroup::Accumulate { .. } => {
+            | ConditionGroup::Accumulate { .. }
+            | ConditionGroup::StreamPattern { .. } => {
                 // Complex conditions (Not, Exists, Forall, Accumulate) cannot be proven backward;
                 // they can only be evaluated against current facts.
                 // Use the executor's condition evaluator to check them.

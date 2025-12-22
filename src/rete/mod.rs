@@ -22,6 +22,12 @@ pub mod working_memory;
 #[cfg(feature = "streaming")]
 pub mod stream_alpha_node;
 
+#[cfg(feature = "streaming")]
+pub mod stream_beta_node;
+
+#[cfg(feature = "streaming")]
+pub mod stream_join_node;
+
 pub use accumulate::*;
 pub use action_result::*;
 pub use agenda::*;
@@ -43,3 +49,11 @@ pub use working_memory::*;
 
 #[cfg(feature = "streaming")]
 pub use stream_alpha_node::*;
+
+// Avoid glob re-export of stream_beta_node to prevent ambiguous re-exports (e.g. JoinStrategy)
+// If consumers need specific symbols from stream_beta_node, re-export them explicitly here.
+
+#[cfg(feature = "streaming")]
+pub use stream_join_node::JoinStrategy;
+#[cfg(feature = "streaming")]
+pub use stream_join_node::StreamJoinNode;
