@@ -36,12 +36,12 @@ impl StreamJoinManager {
         // Index the join by streams
         self.stream_to_joins
             .entry(left_stream)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(join_id.clone());
 
         self.stream_to_joins
             .entry(right_stream)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(join_id.clone());
 
         // Store join node and handler

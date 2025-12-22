@@ -12,7 +12,6 @@
 /// - Join Optimization: Partitioning by user_id
 ///
 /// Run with: cargo run --features streaming --example stream_join_demo
-
 #[cfg(feature = "streaming")]
 use rust_rule_engine::rete::stream_join_node::{JoinStrategy, JoinType, StreamJoinNode};
 #[cfg(feature = "streaming")]
@@ -122,7 +121,8 @@ fn demo_basic_inner_join() {
 
     if let Some(joined) = results.first() {
         if let (Some(click), Some(purchase)) = (&joined.left, &joined.right) {
-            let time_to_purchase = purchase.timestamp - click.timestamp;
+            let time_to_purchase =
+                purchase.metadata.timestamp as i64 - click.metadata.timestamp as i64;
             println!("  Time to purchase: {} seconds", time_to_purchase);
             println!(
                 "  Product: {}",

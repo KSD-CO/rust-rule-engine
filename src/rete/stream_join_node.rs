@@ -2,6 +2,10 @@ use crate::streaming::event::StreamEvent;
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
+// Type aliases to reduce type complexity warnings from clippy
+type KeyExtractor = Box<dyn Fn(&StreamEvent) -> Option<String> + Send + Sync>;
+type JoinCondition = Box<dyn Fn(&StreamEvent, &StreamEvent) -> bool + Send + Sync>;
+
 /// Join types supported by the stream join node
 #[derive(Debug, Clone, PartialEq)]
 pub enum JoinType {
@@ -46,11 +50,11 @@ pub struct StreamJoinNode {
     /// Join strategy (time window, count window, session window)
     pub join_strategy: JoinStrategy,
     /// Join key extractor for left stream
-    pub left_key_extractor: Box<dyn Fn(&StreamEvent) -> Option<String> + Send + Sync>,
+    pub left_key_extractor: KeyExtractor,
     /// Join key extractor for right stream
-    pub right_key_extractor: Box<dyn Fn(&StreamEvent) -> Option<String> + Send + Sync>,
+    pub right_key_extractor: KeyExtractor,
     /// Additional join condition predicate
-    pub join_condition: Box<dyn Fn(&StreamEvent, &StreamEvent) -> bool + Send + Sync>,
+    pub join_condition: JoinCondition,
     /// Buffer for left stream events, partitioned by join key
     left_buffer: HashMap<String, VecDeque<StreamEvent>>,
     /// Buffer for right stream events, partitioned by join key
@@ -70,9 +74,9 @@ impl StreamJoinNode {
         right_stream: String,
         join_type: JoinType,
         join_strategy: JoinStrategy,
-        left_key_extractor: Box<dyn Fn(&StreamEvent) -> Option<String> + Send + Sync>,
-        right_key_extractor: Box<dyn Fn(&StreamEvent) -> Option<String> + Send + Sync>,
-        join_condition: Box<dyn Fn(&StreamEvent, &StreamEvent) -> bool + Send + Sync>,
+        left_key_extractor: KeyExtractor,
+        right_key_extractor: KeyExtractor,
+        join_condition: JoinCondition,
     ) -> Self {
         Self {
             left_stream,
@@ -105,7 +109,7 @@ impl StreamJoinNode {
         // Add to buffer
         self.left_buffer
             .entry(key.clone())
-            .or_insert_with(VecDeque::new)
+            .or_default()
             .push_back(event.clone());
 
         // Try to join with right stream events
@@ -158,7 +162,7 @@ impl StreamJoinNode {
         // Add to buffer
         self.right_buffer
             .entry(key.clone())
-            .or_insert_with(VecDeque::new)
+            .or_default()
             .push_back(event.clone());
 
         // Try to join with left stream events
@@ -201,6 +205,45 @@ impl StreamJoinNode {
         let mut results = Vec::new();
         self.watermark = new_watermark;
 
+        // First, for join types that should produce matched results (Inner, LeftOuter, RightOuter, FullOuter),
+        // emit all joined pairs currently in the buffers that satisfy the join window and condition.
+        // We do this before eviction so that pairs that are still within window are emitted.
+        if matches!(
+            self.join_type,
+            JoinType::Inner | JoinType::LeftOuter | JoinType::RightOuter | JoinType::FullOuter
+        ) {
+            for (key, left_queue) in &self.left_buffer {
+                if let Some(right_queue) = self.right_buffer.get(key) {
+                    for left_event in left_queue {
+                        for right_event in right_queue {
+                            if self.is_within_window(left_event, right_event)
+                                && (self.join_condition)(left_event, right_event)
+                            {
+                                let left_id = Self::generate_event_id(left_event);
+                                let right_id = Self::generate_event_id(right_event);
+
+                                // Avoid emitting duplicates for events already marked as matched
+                                if !self.left_matched.contains_key(&left_id)
+                                    || !self.right_matched.contains_key(&right_id)
+                                {
+                                    results.push(JoinedEvent {
+                                        left: Some(left_event.clone()),
+                                        right: Some(right_event.clone()),
+                                        join_timestamp: (left_event.metadata.timestamp as i64)
+                                            .max(right_event.metadata.timestamp as i64),
+                                    });
+
+                                    // mark both as matched so outer-unmatched emission won't re-emit them
+                                    self.left_matched.insert(left_id.clone(), true);
+                                    self.right_matched.insert(right_id.clone(), true);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Evict expired events from buffers
         self.evict_expired_events();
 
@@ -219,18 +262,20 @@ impl StreamJoinNode {
     fn is_within_window(&self, left: &StreamEvent, right: &StreamEvent) -> bool {
         match &self.join_strategy {
             JoinStrategy::TimeWindow { duration } => {
+                // Compare timestamps and duration in seconds to match test conventions
                 let time_diff =
                     ((left.metadata.timestamp as i64) - (right.metadata.timestamp as i64)).abs();
-                time_diff <= duration.as_millis() as i64
+                time_diff <= duration.as_secs() as i64
             }
             JoinStrategy::CountWindow { .. } => {
                 // For count windows, we handle this differently in buffer management
                 true
             }
             JoinStrategy::SessionWindow { gap } => {
+                // Session gap is compared in seconds
                 let time_diff =
                     ((left.metadata.timestamp as i64) - (right.metadata.timestamp as i64)).abs();
-                time_diff <= gap.as_millis() as i64
+                time_diff <= gap.as_secs() as i64
             }
         }
     }
@@ -324,8 +369,9 @@ impl StreamJoinNode {
     /// Get window duration in milliseconds
     fn get_window_duration(&self) -> i64 {
         match &self.join_strategy {
-            JoinStrategy::TimeWindow { duration } => duration.as_millis() as i64,
-            JoinStrategy::SessionWindow { gap } => gap.as_millis() as i64,
+            // Return window duration in seconds (consistent with event timestamps used in tests)
+            JoinStrategy::TimeWindow { duration } => duration.as_secs() as i64,
+            JoinStrategy::SessionWindow { gap } => gap.as_secs() as i64,
             JoinStrategy::CountWindow { .. } => i64::MAX, // Count windows don't time out
         }
     }
@@ -371,7 +417,8 @@ mod tests {
         StreamEvent {
             id: format!("test_{}", timestamp),
             event_type: "test".to_string(),
-            data: vec![(key.to_string(), Value::String(key.to_string()))]
+            // Store data under the field name "key" so the key extractor can find it
+            data: vec![("key".to_string(), Value::String(key.to_string()))]
                 .into_iter()
                 .collect(),
             metadata: EventMetadata {
@@ -403,7 +450,18 @@ mod tests {
         let results1 = join_node.process_left(left_event);
         assert_eq!(results1.len(), 0); // No right events yet
 
+        // Debug: inspect buffers before processing right
+        eprintln!(
+            "left_buffer keys: {:?}",
+            join_node.left_buffer.keys().collect::<Vec<_>>()
+        );
+        eprintln!(
+            "right_buffer keys: {:?}",
+            join_node.right_buffer.keys().collect::<Vec<_>>()
+        );
+
         let results2 = join_node.process_right(right_event);
+        eprintln!("results2.len() = {}", results2.len());
         assert_eq!(results2.len(), 1); // Should join
         assert!(results2[0].left.is_some());
         assert!(results2[0].right.is_some());

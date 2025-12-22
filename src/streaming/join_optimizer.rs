@@ -240,7 +240,7 @@ impl JoinOptimizer {
                 let recommended_secs = (max_duration_secs as f64 * 0.8) as u64;
 
                 // Clamp between 10 seconds and 1 hour
-                let clamped_secs = recommended_secs.max(10).min(3600);
+                let clamped_secs = recommended_secs.clamp(10, 3600);
 
                 Duration::from_secs(clamped_secs)
             }

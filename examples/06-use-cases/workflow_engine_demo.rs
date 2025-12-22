@@ -83,6 +83,15 @@ fn convert_condition_group(
                 value: "true".to_string(),
             })
         }
+        _ => {
+            // Stream patterns (or unknown condition groups) are not supported in this demo conversion;
+            // fallback to a no-op true condition so the example builds without the "streaming" feature.
+            AutoGroup::Single(AutoCond {
+                field: "true".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            })
+        }
     }
 }
 

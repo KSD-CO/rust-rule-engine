@@ -1,8 +1,6 @@
 #![cfg(feature = "streaming")]
 
-use rust_rule_engine::rete::stream_join_node::{
-    JoinStrategy, JoinType, JoinedEvent, StreamJoinNode,
-};
+use rust_rule_engine::rete::stream_join_node::{JoinStrategy, JoinType, StreamJoinNode};
 use rust_rule_engine::streaming::event::StreamEvent;
 use rust_rule_engine::streaming::join_manager::StreamJoinManager;
 use rust_rule_engine::streaming::join_optimizer::{JoinOptimizer, StreamStats};
@@ -171,12 +169,12 @@ fn test_join_with_custom_condition() {
             let left_amount = left
                 .data
                 .get("amount")
-                .and_then(|v| v.as_string().as_deref())
+                .and_then(|v| v.as_string())
                 .and_then(|s| s.parse::<i32>().ok());
             let right_amount = right
                 .data
                 .get("amount")
-                .and_then(|v| v.as_string().as_deref())
+                .and_then(|v| v.as_string())
                 .and_then(|s| s.parse::<i32>().ok());
             match (left_amount, right_amount) {
                 (Some(l), Some(r)) => r > l,
