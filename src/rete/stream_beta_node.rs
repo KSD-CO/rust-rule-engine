@@ -49,7 +49,11 @@ impl MultiStreamJoinResult {
     }
 
     /// Create from existing result + new event (nested join)
-    pub fn from_result_and_event(result: MultiStreamJoinResult, event: StreamEvent, timestamp: SystemTime) -> Self {
+    pub fn from_result_and_event(
+        result: MultiStreamJoinResult,
+        event: StreamEvent,
+        timestamp: SystemTime,
+    ) -> Self {
         let mut events = result.events;
         events.push(event);
         Self {
@@ -203,7 +207,10 @@ impl StreamBetaNode {
     }
 
     /// Process join result from left input (for nested beta nodes)
-    pub fn process_left_result(&mut self, result: MultiStreamJoinResult) -> Vec<MultiStreamJoinResult> {
+    pub fn process_left_result(
+        &mut self,
+        result: MultiStreamJoinResult,
+    ) -> Vec<MultiStreamJoinResult> {
         let now = SystemTime::now();
 
         // Add to left buffer
@@ -217,7 +224,10 @@ impl StreamBetaNode {
     }
 
     /// Process join result from right input (for nested beta nodes)
-    pub fn process_right_result(&mut self, result: MultiStreamJoinResult) -> Vec<MultiStreamJoinResult> {
+    pub fn process_right_result(
+        &mut self,
+        result: MultiStreamJoinResult,
+    ) -> Vec<MultiStreamJoinResult> {
         let now = SystemTime::now();
 
         // Add to right buffer
@@ -322,9 +332,7 @@ impl StreamBetaNode {
     fn cleanup_buffers(&mut self, now: SystemTime) {
         match &self.strategy {
             JoinStrategy::TimeWindow { duration } => {
-                let cutoff = now
-                    .checked_sub(*duration)
-                    .unwrap_or(SystemTime::UNIX_EPOCH);
+                let cutoff = now.checked_sub(*duration).unwrap_or(SystemTime::UNIX_EPOCH);
 
                 self.left_buffer.retain(|(ts, _)| *ts >= cutoff);
                 self.right_buffer.retain(|(ts, _)| *ts >= cutoff);
@@ -511,7 +519,7 @@ mod tests {
             beta1.clone(),
             weather_alpha,
             vec![JoinCondition {
-                left_field: "zone_id".to_string(), // from temp (last in beta1)
+                left_field: "zone_id".to_string(),  // from temp (last in beta1)
                 right_field: "zone_id".to_string(), // from weather
                 operator: JoinOperator::Equal,
             }],
@@ -602,7 +610,8 @@ mod tests {
         }
 
         println!("✅ 3-Stream Join Success!");
-        println!("   Events: {} + {} + {}",
+        println!(
+            "   Events: {} + {} + {}",
             final_joined.events[0].event_type,
             final_joined.events[1].event_type,
             final_joined.events[2].event_type

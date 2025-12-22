@@ -151,9 +151,7 @@ impl GrlReteLoader {
                                 StreamWindowTypeRete::Tumbling
                             }
                             crate::engine::rule::StreamWindowType::Session { timeout } => {
-                                StreamWindowTypeRete::Session {
-                                    timeout: *timeout,
-                                }
+                                StreamWindowTypeRete::Session { timeout: *timeout }
                             }
                         },
                     }),

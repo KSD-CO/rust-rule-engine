@@ -1551,9 +1551,10 @@ impl GRLParser {
         use crate::parser::grl::stream_syntax::parse_stream_pattern;
 
         // Parse using nom parser
-        let parse_result = parse_stream_pattern(clause).map_err(|e| RuleEngineError::ParseError {
-            message: format!("Failed to parse stream pattern: {:?}", e),
-        })?;
+        let parse_result =
+            parse_stream_pattern(clause).map_err(|e| RuleEngineError::ParseError {
+                message: format!("Failed to parse stream pattern: {:?}", e),
+            })?;
 
         let (_, pattern) = parse_result;
 
