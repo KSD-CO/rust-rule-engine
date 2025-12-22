@@ -417,7 +417,7 @@ mod tests {
 
     #[test]
     fn test_outer_join_cost_adjustment() {
-        let mut optimizer = JoinOptimizer::new();
+        let optimizer = JoinOptimizer::new();
 
         let inner_plan = optimizer.optimize_join(
             "left",
