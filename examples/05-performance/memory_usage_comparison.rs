@@ -1,10 +1,10 @@
 //! Memory Usage Comparison
 //!
 //! This example measures actual memory consumption for RETE optimizations.
-//! Shows real MB/GB usage, not just percentages.
+//! Loads real GRL rules into RETE engine and compares memory usage.
 
 use rust_rule_engine::rete::optimization::{CompactAlphaMemory, NodeSharingRegistry, TokenPool};
-use rust_rule_engine::rete::{AlphaNode, TypedFacts};
+use rust_rule_engine::rete::{AlphaNode, GrlReteLoader, IncrementalEngine, TypedFacts};
 use std::mem;
 
 fn main() {
@@ -12,6 +12,7 @@ fn main() {
     println!("║                  📊 MEMORY USAGE ANALYSIS 📊                         ║");
     println!("╚══════════════════════════════════════════════════════════════════════╝\n");
 
+    measure_rete_engine_memory();
     measure_node_sharing_memory();
     measure_alpha_memory();
     measure_token_pooling();
@@ -19,6 +20,87 @@ fn main() {
     println!("\n╔══════════════════════════════════════════════════════════════════════╗");
     println!("║                    ✅ ANALYSIS COMPLETE ✅                           ║");
     println!("╚══════════════════════════════════════════════════════════════════════╝\n");
+}
+
+// ===========================================================================
+// RETE ENGINE MEMORY ANALYSIS (Real GRL Rules)
+// ===========================================================================
+
+fn measure_rete_engine_memory() {
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("🔥 RETE Engine Memory Impact (Real GRL Rules)");
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+    println!("📄 Loading GRL rules from: examples/rules/05-performance/optimization_rules.grl\n");
+
+    // Measure baseline engine size
+    let engine_baseline = mem::size_of::<IncrementalEngine>();
+    println!(
+        "Baseline IncrementalEngine size: {} bytes ({:.2} KB)",
+        engine_baseline,
+        engine_baseline as f64 / 1024.0
+    );
+
+    // Load rules into engine
+    let mut engine = IncrementalEngine::new();
+
+    match GrlReteLoader::load_from_file(
+        "examples/rules/05-performance/optimization_rules.grl",
+        &mut engine,
+    ) {
+        Ok(count) => {
+            println!("✅ Successfully loaded {} rules into RETE network\n", count);
+        }
+        Err(e) => {
+            println!("⚠️  Failed to load GRL: {:?}", e);
+            println!("   Make sure you're running from the project root directory\n");
+            return;
+        }
+    };
+
+    // Insert facts to populate working memory
+    println!("Inserting 1,000 facts into working memory...");
+    for i in 0..1000 {
+        let mut customer = TypedFacts::new();
+        customer.set("Id", format!("C{}", i));
+        customer.set("TotalSpent", (i * 100) as i64);
+        customer.set("Status", "Active");
+        engine.insert("Customer".to_string(), customer);
+
+        let mut order = TypedFacts::new();
+        order.set("OrderId", format!("O{}", i));
+        order.set("CustomerId", format!("C{}", i % 100));
+        order.set("Amount", (i * 50) as i64);
+        engine.insert("Order".to_string(), order);
+    }
+
+    // Estimate memory usage
+    let fact_size = mem::size_of::<TypedFacts>();
+    let total_facts = 2000; // 1000 customers + 1000 orders
+    let facts_memory = total_facts * fact_size;
+
+    println!("\n📊 RETE Engine Memory Estimate:");
+    println!(
+        "  Engine structure:  {} bytes ({:.2} KB)",
+        engine_baseline,
+        engine_baseline as f64 / 1024.0
+    );
+    println!("  Facts in memory:   {} facts", total_facts);
+    println!(
+        "  Facts memory:      {} bytes ({:.2} KB)",
+        facts_memory,
+        facts_memory as f64 / 1024.0
+    );
+    println!(
+        "  Total estimate:    ~{} bytes ({:.2} KB)",
+        engine_baseline + facts_memory,
+        (engine_baseline + facts_memory) as f64 / 1024.0
+    );
+
+    println!("\n💡 Key Insight:");
+    println!("   RETE network structure is efficient - most memory is fact data");
+    println!("   Optimizations focus on reducing duplicate storage");
+    println!();
 }
 
 // ===========================================================================

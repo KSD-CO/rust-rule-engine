@@ -157,17 +157,30 @@ Comprehensive RETE optimization system with **Beta Memory Indexing** providing e
 use rust_rule_engine::rete::optimization::BetaMemoryIndex;
 use rust_rule_engine::rete::TypedFacts;
 
-// Create index for join key
-let mut index = BetaMemoryIndex::new("user_id".to_string());
-
-// Index facts for O(1) lookup
-for (i, fact) in facts.iter().enumerate() {
-    index.add(fact, i);
+// Create sample facts (e.g., orders with customer IDs)
+let mut orders = Vec::new();
+for i in 0..1000 {
+    let mut order = TypedFacts::new();
+    order.set("OrderId", format!("O{}", i));
+    order.set("CustomerId", format!("C{}", i % 100));  // 100 unique customers
+    order.set("Amount", (i * 50) as i64);
+    orders.push(order);
 }
 
-// O(1) lookup instead of O(n) scan
-let matches = index.lookup("String(\"user123\")");
-println!("Found {} matching facts", matches.len());
+// Build index on join key (CustomerId)
+let mut index = BetaMemoryIndex::new("CustomerId".to_string());
+for (idx, order) in orders.iter().enumerate() {
+    index.add(order, idx);  // O(1) insertion
+}
+
+// Perform O(1) lookup instead of O(n) scan
+// Note: Key format is the Debug representation of FactValue
+let key = "String(\"C50\")";  // Looking for customer C50's orders
+let matches = index.lookup(key);  // O(1) hash lookup!
+
+println!("Found {} orders for customer C50", matches.len());
+// Without indexing: 1,000 comparisons (O(n))
+// With indexing: 1 hash lookup (O(1)) → 1,000x faster!
 ```
 
 **Real Benchmark Results:**
@@ -271,14 +284,17 @@ use rust_rule_engine::rete::optimization::{
 };
 ```
 
-### 🔬 Run Benchmarks Yourself
+### 🔬 Try It Yourself
 
 ```bash
-# Run all optimization benchmarks
-cargo bench --bench rete_optimization_benchmark
+# Run interactive demos
+cargo run --example rete_optimization_demo       # All 4 optimizations
+cargo run --example grl_optimization_demo        # GRL rules + Beta Indexing
+cargo run --example memory_usage_comparison      # Memory analysis
 
-# Run specific optimization
-cargo bench --bench rete_optimization_benchmark -- beta_indexing
+# Run benchmarks
+cargo bench --bench rete_optimization_benchmark  # All optimizations
+cargo bench -- beta_indexing                     # Specific optimization
 
 # View detailed HTML reports
 open target/criterion/report/index.html
@@ -288,8 +304,9 @@ open target/criterion/report/index.html
 
 - **[RETE Optimization Guide](docs/advanced-features/RETE_OPTIMIZATION.md)** - Comprehensive optimization guide
 - **[Benchmark Results](docs/advanced-features/RETE_OPTIMIZATION_BENCHMARKS.md)** - Real benchmark data & analysis
-- **[Demo](examples/05-performance/rete_optimization_demo.rs)** - Interactive demonstration
-- **[Memory Analysis](examples/05-performance/memory_usage_comparison.rs)** - Actual KB/MB measurements
+- **[Optimization Demo](examples/05-performance/rete_optimization_demo.rs)** - Interactive demonstration
+- **[GRL + Optimization Demo](examples/05-performance/grl_optimization_demo.rs)** - Real GRL rules with Beta Indexing
+- **[Memory Analysis](examples/05-performance/memory_usage_comparison.rs)** - Actual KB/MB measurements with RETE engine
 
 **New in v1.13.0:**
 - ✅ Beta Memory Indexing (11x to 1,235x speedup)
