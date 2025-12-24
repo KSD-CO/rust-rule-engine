@@ -1,0 +1,55 @@
+// RETE Optimization Demo Rules
+// These rules demonstrate multi-pattern joins that benefit from Beta Memory Indexing
+
+rule "HighValueCustomerDiscount" {
+    when
+        Customer.TotalSpent > 10000 &&
+        Customer.Status == "Active" &&
+        Order.CustomerId == Customer.Id &&
+        Order.Amount > 1000
+    then
+        Customer.Discount = 0.15;
+        Order.DiscountApplied = true;
+        LogMessage("High-value customer discount applied");
+}
+
+rule "VIPOrderPriority" {
+    when
+        Customer.VIPStatus == true &&
+        Order.CustomerId == Customer.Id &&
+        Order.Priority == "Normal"
+    then
+        Order.Priority = "High";
+        Order.ProcessingTime = 1;
+        LogMessage("VIP order priority upgraded");
+}
+
+rule "BulkOrderDiscount" {
+    when
+        Order.Quantity > 100 &&
+        Product.Id == Order.ProductId &&
+        Product.Category == "Electronics"
+    then
+        Order.BulkDiscount = 0.10;
+        LogMessage("Bulk electronics discount applied");
+}
+
+rule "LoyaltyPointsBonus" {
+    when
+        Customer.MemberYears > 5 &&
+        Order.CustomerId == Customer.Id &&
+        Order.Amount > 500
+    then
+        Customer.LoyaltyPoints = Customer.LoyaltyPoints + 100;
+        LogMessage("Loyalty bonus points awarded");
+}
+
+rule "FreeShipping" {
+    when
+        Order.Amount > 2000 &&
+        Customer.Id == Order.CustomerId &&
+        Customer.Region == "North America"
+    then
+        Order.ShippingCost = 0;
+        LogMessage("Free shipping applied");
+}

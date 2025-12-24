@@ -126,7 +126,6 @@ advanced-rete:
 # Streaming Examples (11-streaming)
 streaming:
 	@echo "=== Running Streaming Examples ==="
-	cargo run --features streaming --example stream_alpha_node_demo
 	cargo run --features streaming --example streaming_fraud_detection
 
 # Misc Examples (08-misc)

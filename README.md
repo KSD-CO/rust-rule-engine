@@ -1,11 +1,11 @@
-# Rust Rule Engine v1.12.1 🦀⚡🚀
+# Rust Rule Engine v1.13.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
+A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **1,235x join optimization**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
@@ -141,7 +141,169 @@ for event in event_stream {
 
 ---
 
-## ✨ What's New in v1.12.1 🎉
+## ✨ What's New in v1.13.0 🎉
+
+⚡ **RETE Optimization - Up to 1,235x Faster Joins!**
+
+Comprehensive RETE optimization system with **Beta Memory Indexing** providing exponential speedup for multi-pattern rules!
+
+### 🚀 Beta Memory Indexing
+
+**Problem:** Join operations use nested loops (O(n²)) which becomes a bottleneck with large fact sets.
+
+**Solution:** Hash-based indexing changes O(n²) to O(n) - providing **11x to 1,235x speedup!**
+
+```rust
+use rust_rule_engine::rete::optimization::BetaMemoryIndex;
+use rust_rule_engine::rete::TypedFacts;
+
+// Create index for join key
+let mut index = BetaMemoryIndex::new("user_id".to_string());
+
+// Index facts for O(1) lookup
+for (i, fact) in facts.iter().enumerate() {
+    index.add(fact, i);
+}
+
+// O(1) lookup instead of O(n) scan
+let matches = index.lookup("String(\"user123\")");
+println!("Found {} matching facts", matches.len());
+```
+
+**Real Benchmark Results:**
+
+| Dataset Size | Nested Loop (O(n²)) | Indexed (O(n)) | Speedup |
+|--------------|---------------------|----------------|---------|
+| 100 facts    | 1.00 ms             | 92 µs          | **11x** |
+| 1,000 facts  | 113.79 ms           | 672.76 µs      | **169x** |
+| 5,000 facts  | **2.63 seconds**    | **2.13 ms**    | **1,235x** 🚀 |
+
+**Key Insight:** At 5,000 facts, the difference between 2.6 SECONDS and 2ms is production-critical!
+
+### 🔧 Memory Optimizations
+
+Three additional optimizations focus on reducing memory footprint:
+
+**1. Node Sharing** - Deduplicate identical alpha nodes
+```rust
+use rust_rule_engine::rete::optimization::NodeSharingRegistry;
+
+let mut registry = NodeSharingRegistry::new();
+
+// Register 10,000 nodes with 100 unique patterns
+for (idx, node) in nodes.iter().enumerate() {
+    registry.register(node, idx);
+}
+
+// Result: 98.1% memory reduction (689.84 KB saved)
+let stats = registry.stats();
+println!("Memory saved: {:.1}%", stats.memory_saved_percent);
+```
+
+**2. Alpha Memory Compaction** - Eliminate duplicate facts
+```rust
+use rust_rule_engine::rete::optimization::CompactAlphaMemory;
+
+let mut memory = CompactAlphaMemory::new();
+
+// Insert 10,000 facts with duplicates
+for fact in facts {
+    memory.add(&fact);
+}
+
+// Result: 98.7% memory reduction (925.00 KB saved)
+println!("Unique facts: {} (saved {:.1}%)",
+    memory.len(), memory.memory_savings());
+```
+
+**3. Token Pooling** - Reduce allocations
+```rust
+use rust_rule_engine::rete::optimization::TokenPool;
+
+let mut pool = TokenPool::new(100);
+
+// Process 10,000 events with token reuse
+for event in events {
+    let mut token = pool.acquire();
+    token.set_fact(event);
+    // ... process ...
+    pool.release(token);
+}
+
+// Result: 99% fewer allocations
+let stats = pool.stats();
+println!("Reuse rate: {:.1}%", stats.reuse_rate);
+```
+
+### 📊 When to Use Each Optimization
+
+| Optimization | Always Use? | Use When | Skip When |
+|---|---|---|---|
+| **Beta Indexing** ⚡ | **YES** | Any join operations | Never (always beneficial) |
+| **Node Sharing** | No | Memory-constrained + 10K+ rules | Speed is priority |
+| **Alpha Memory** | No | Many duplicate facts expected | Few duplicates |
+| **Token Pooling** | No | 100K+ events/sec continuous | Batch/low-volume processing |
+
+### 💡 Recommended Usage
+
+**Default (Most Production Systems):**
+```rust
+// Use ONLY Beta Indexing for joins - always beneficial!
+use rust_rule_engine::rete::optimization::BetaMemoryIndex;
+
+let mut index = BetaMemoryIndex::new("user_id".to_string());
+// 11x to 1,235x faster - no downsides!
+```
+
+**Memory-Constrained + Large Rule Sets:**
+```rust
+use rust_rule_engine::rete::optimization::{
+    BetaMemoryIndex,      // For speed (always)
+    NodeSharingRegistry,  // For memory (if 10K+ rules)
+};
+```
+
+**High-Duplicate Workloads:**
+```rust
+use rust_rule_engine::rete::optimization::{
+    BetaMemoryIndex,      // For speed (always)
+    CompactAlphaMemory,   // For deduplication (if >50% duplicates)
+};
+```
+
+### 🔬 Run Benchmarks Yourself
+
+```bash
+# Run all optimization benchmarks
+cargo bench --bench rete_optimization_benchmark
+
+# Run specific optimization
+cargo bench --bench rete_optimization_benchmark -- beta_indexing
+
+# View detailed HTML reports
+open target/criterion/report/index.html
+```
+
+### 📚 Complete Documentation
+
+- **[RETE Optimization Guide](docs/advanced-features/RETE_OPTIMIZATION.md)** - Comprehensive optimization guide
+- **[Benchmark Results](docs/advanced-features/RETE_OPTIMIZATION_BENCHMARKS.md)** - Real benchmark data & analysis
+- **[Demo](examples/05-performance/rete_optimization_demo.rs)** - Interactive demonstration
+- **[Memory Analysis](examples/05-performance/memory_usage_comparison.rs)** - Actual KB/MB measurements
+
+**New in v1.13.0:**
+- ✅ Beta Memory Indexing (11x to 1,235x speedup)
+- ✅ Node Sharing (98.1% memory reduction)
+- ✅ Alpha Memory Compaction (98.7% memory reduction)
+- ✅ Token Pooling (99% fewer allocations)
+- ✅ Comprehensive benchmarks with scaled datasets
+- ✅ Real memory measurements (KB/MB)
+- ✅ Production-ready optimization manager
+- ✅ 30+ optimization tests
+
+---
+
+## ✨ Previous Update - v1.12.1
 
 🌊 **Stream Processing Foundation!**
 
@@ -296,6 +458,8 @@ Comprehensive documentation organized by topic:
 - **[Features Overview](docs/core-features/FEATURES.md)** - All engine capabilities
 
 ### ⚡ [Advanced Features](docs/advanced-features/)
+- **[RETE Optimization](docs/advanced-features/RETE_OPTIMIZATION.md)** - 1,235x join speedup & memory optimizations (v1.13.0+)
+- **[RETE Benchmarks](docs/advanced-features/RETE_OPTIMIZATION_BENCHMARKS.md)** - Real performance data & analysis (v1.13.0+)
 - **[Streaming & CEP](docs/advanced-features/STREAMING.md)** - Complex Event Processing
 - **[Streaming Architecture](docs/advanced-features/STREAMING_ARCHITECTURE.md)** - Deep dive into streaming
 - **[Plugins](docs/advanced-features/PLUGINS.md)** - Custom plugins and extensions

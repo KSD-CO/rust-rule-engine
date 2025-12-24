@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.12.1"
+version = "1.13.0"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features: forward/backward chaining, pattern matching, unification, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend, watermarking, and custom functions. Production-ready for business rules, expert systems, real-time stream processing, and decision automation."
@@ -75,6 +75,10 @@ harness = false
 name = "backward_chaining_benchmarks"
 harness = false
 required-features = ["backward-chaining"]
+
+[[bench]]
+name = "rete_optimization_benchmark"
+harness = false
 
 # Optional benchmarks (can run manually if needed)
 # [[bench]]
@@ -410,6 +414,18 @@ path = "examples/05-performance/purchasing_rules_performance.rs"
 [[example]]
 name = "quick_engine_comparison"
 path = "examples/05-performance/quick_engine_comparison.rs"
+
+[[example]]
+name = "rete_optimization_demo"
+path = "examples/05-performance/rete_optimization_demo.rs"
+
+[[example]]
+name = "memory_usage_comparison"
+path = "examples/05-performance/memory_usage_comparison.rs"
+
+[[example]]
+name = "grl_optimization_demo"
+path = "examples/05-performance/grl_optimization_demo.rs"
 
 [[example]]
 name = "advanced_workflow_demo"
