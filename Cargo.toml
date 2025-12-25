@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.13.0"
+version = "1.14.0"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features: forward/backward chaining, pattern matching, unification, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend, watermarking, and custom functions. Production-ready for business rules, expert systems, real-time stream processing, and decision automation."
@@ -58,17 +58,17 @@ chrono = { version = "0.4", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json"] }
 serde_yaml = "0.9"
 
-# Core benchmarks (keep these - used for performance testing)
+# Core benchmarks
 [[bench]]
-name = "rule_engine_benchmarks"
+name = "engine_comparison_benchmark"
 harness = false
 
 [[bench]]
-name = "parallel_benchmarks"
+name = "alpha_indexing_benchmark"
 harness = false
 
 [[bench]]
-name = "rete_comparison_benchmarks"
+name = "rete_optimization_benchmark"
 harness = false
 
 [[bench]]
@@ -77,33 +77,14 @@ harness = false
 required-features = ["backward-chaining"]
 
 [[bench]]
-name = "rete_optimization_benchmark"
+name = "backward_chaining_index_benchmark"
+harness = false
+required-features = ["backward-chaining"]
+
+[[bench]]
+name = "parallel_benchmarks"
 harness = false
 
-# Optional benchmarks (can run manually if needed)
-# [[bench]]
-# name = "rete_simple_benchmark"
-# harness = false
-
-# [[bench]]
-# name = "concurrent_access_test"
-# harness = false
-
-# [[bench]]
-# name = "rule_updates_test"
-# harness = false
-
-# [[bench]]
-# name = "streaming_test"
-# harness = false
-
-# [[bench]]
-# name = "advanced_rete_analysis"
-# harness = false
-
-# [[bench]]
-# name = "rete_2000_test"
-# harness = false
 
 # Binary for large-scale testing
 [[bin]]
@@ -535,3 +516,8 @@ required-features = ["backward-chaining"]
 name = "grl_optimizer_demo"
 path = "examples/09-backward-chaining/grl_optimizer_demo.rs"
 required-features = ["backward-chaining"]
+
+
+[[bin]]
+name = "memory_usage_benchmark"
+path = "benches/memory_usage_benchmark.rs"

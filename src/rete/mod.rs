@@ -3,6 +3,7 @@ pub mod action_result;
 pub mod agenda;
 /// RETE algorithm core module
 mod alpha;
+pub mod alpha_memory_index;
 pub mod auto_network;
 mod beta;
 pub mod deffacts;
@@ -33,6 +34,7 @@ pub use accumulate::*;
 pub use action_result::*;
 pub use agenda::*;
 pub use alpha::*;
+pub use alpha_memory_index::*;
 pub use beta::*;
 pub use deffacts::*;
 pub use facts::*;
