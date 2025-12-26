@@ -528,11 +528,17 @@ impl DepthFirstSearch {
             ConditionGroup::Not(_)
             | ConditionGroup::Exists(_)
             | ConditionGroup::Forall(_)
-            | ConditionGroup::Accumulate { .. }
-            | ConditionGroup::StreamPattern { .. } => {
+            | ConditionGroup::Accumulate { .. } => {
                 // Complex conditions (Not, Exists, Forall, Accumulate) cannot be proven backward;
                 // they can only be evaluated against current facts.
                 // Use the executor's condition evaluator to check them.
+                self.executor
+                    .evaluate_conditions(group, facts)
+                    .unwrap_or(false)
+            }
+            #[cfg(feature = "streaming")]
+            ConditionGroup::StreamPattern { .. } => {
+                // StreamPattern cannot be proven backward; evaluate against current facts.
                 self.executor
                     .evaluate_conditions(group, facts)
                     .unwrap_or(false)

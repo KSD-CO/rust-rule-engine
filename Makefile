@@ -135,8 +135,23 @@ misc:
 	cargo run --example rule_file_functions_demo
 
 # CI checks (exactly matching GitHub Actions workflow)
-ci: fmt-check clippy build test doc-test
+ci: fmt-check clippy build test test-features doc-test
 	@echo "✅ All CI checks passed!"
+
+# Test different feature combinations (critical for catching feature-specific bugs)
+test-features:
+	@echo "🧪 Testing feature combinations..."
+	@echo "  Testing: no features (default)"
+	@cargo test --no-default-features --lib
+	@echo "  Testing: backward-chaining only"
+	@cargo test --no-default-features --features backward-chaining --lib
+	@echo "  Testing: streaming only"
+	@cargo test --no-default-features --features streaming --lib
+	@echo "  Testing: backward-chaining + streaming"
+	@cargo test --no-default-features --features "backward-chaining,streaming" --lib
+	@echo "  Testing: all features"
+	@cargo test --all-features --lib
+	@echo "✅ All feature combinations passed!"
 
 # Check everything (quick check without build)
 check: fmt clippy test

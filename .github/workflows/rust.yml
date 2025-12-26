@@ -54,8 +54,27 @@ jobs:
     - name: Build
       run: cargo build --verbose --all-features
 
-    - name: Run tests
+    - name: Run tests (all features)
       run: cargo test --verbose --all-features
+
+    - name: Test feature combinations
+      run: |
+        echo "Testing feature combinations to catch feature-specific bugs..."
+        echo "::group::No features (default)"
+        cargo test --no-default-features --lib --verbose
+        echo "::endgroup::"
+
+        echo "::group::Backward-chaining only"
+        cargo test --no-default-features --features backward-chaining --lib --verbose
+        echo "::endgroup::"
+
+        echo "::group::Streaming only"
+        cargo test --no-default-features --features streaming --lib --verbose
+        echo "::endgroup::"
+
+        echo "::group::Backward-chaining + Streaming"
+        cargo test --no-default-features --features "backward-chaining,streaming" --lib --verbose
+        echo "::endgroup::"
 
     - name: Run doc tests
       run: cargo test --doc --verbose

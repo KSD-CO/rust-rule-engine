@@ -4,6 +4,15 @@ All notable changes to rust-rule-engine will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.14.1] - 2025-12-26
+
+### Fixed
+- **Backward Chaining Compilation Bug** - Fixed feature guard for `StreamPattern` variant
+  - Added `#[cfg(feature = "streaming")]` guard to prevent compilation errors
+  - Issue: `StreamPattern` variant only exists when `streaming` feature is enabled
+  - Impact: Backward-chaining now compiles correctly without `streaming` feature
+  - Location: [src/backward/search.rs:540](src/backward/search.rs#L540)
+
 ## [1.14.0] - 2025-12-25
 
 ### Added
