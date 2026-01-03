@@ -494,6 +494,9 @@ impl ActionTypeGRLExport for crate::types::ActionType {
             crate::types::ActionType::SetWorkflowData { key, value } => {
                 format!("SetWorkflowData(\"{}={}\")", key, value.to_grl())
             }
+            crate::types::ActionType::Append { field, value } => {
+                format!("{} += {}", field, value.to_grl())
+            }
         }
     }
 }

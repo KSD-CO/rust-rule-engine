@@ -1350,6 +1350,16 @@ impl GRLParser {
             });
         }
 
+        // Check for compound assignment operators first (+=, -=, etc.)
+        if let Some(plus_eq_pos) = trimmed.find("+=") {
+            // Append operator: Field += Value
+            let field = trimmed[..plus_eq_pos].trim().to_string();
+            let value_str = trimmed[plus_eq_pos + 2..].trim();
+            let value = self.parse_value(value_str)?;
+
+            return Ok(ActionType::Append { field, value });
+        }
+
         // Assignment: Field = Value
         if let Some(eq_pos) = trimmed.find('=') {
             let field = trimmed[..eq_pos].trim().to_string();

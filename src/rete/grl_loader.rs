@@ -381,6 +381,39 @@ impl GrlReteLoader {
 
                 println!("📊 WORKFLOW DATA SET: {} = {:?}", key, value);
             }
+            ActionType::Append { field, value } => {
+                // Append to array field
+                // Get current array or create new one
+                let current_value = facts.get(field);
+
+                let mut array = match current_value {
+                    Some(FactValue::Array(arr)) => arr.clone(),
+                    Some(_) => {
+                        // Field exists but is not an array, create new array
+                        log::warn!("Field {} is not an array, creating new array", field);
+                        Vec::new()
+                    }
+                    None => {
+                        // Field doesn't exist, create new array
+                        Vec::new()
+                    }
+                };
+
+                // Evaluate value if it's an expression
+                let evaluated_value = match value {
+                    Value::Expression(expr) => Self::evaluate_expression_for_rete(expr, facts),
+                    _ => value.clone(),
+                };
+
+                // Convert to FactValue and append
+                let fact_value = Self::value_to_fact_value(&evaluated_value);
+                array.push(fact_value);
+
+                // Set the updated array
+                facts.set(field, FactValue::Array(array));
+
+                info!("➕ APPEND: {} += {:?}", field, evaluated_value);
+            }
         }
     }
 

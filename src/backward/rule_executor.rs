@@ -328,6 +328,30 @@ impl RuleExecutor {
                 // Workflow data not supported in backward chaining
                 Ok(())
             }
+
+            ActionType::Append { field, value } => {
+                // Evaluate value expression if needed
+                let evaluated_value = self.evaluate_value_expression(value, facts)?;
+
+                // Get current array or create new one
+                let current_value = facts.get(field);
+                let mut array = match current_value {
+                    Some(Value::Array(arr)) => arr.clone(),
+                    Some(_) => {
+                        // Field exists but is not an array, create new array
+                        Vec::new()
+                    }
+                    None => Vec::new(),
+                };
+
+                // Append value
+                array.push(evaluated_value);
+
+                // Set the updated array
+                facts.set(field, Value::Array(array));
+
+                Ok(())
+            }
         }
     }
 

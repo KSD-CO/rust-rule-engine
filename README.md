@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.14.1 🦀⚡🚀
+# Rust Rule Engine v1.15.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -138,6 +138,69 @@ for event in event_stream {
 
 // Run: cargo run --example streaming_fraud_detection --features streaming
 ```
+
+---
+
+## ✨ What's New in v1.15.0 🎉
+
+### ➕ Array Append Operator (`+=`)
+
+Added support for the `+=` operator to append values to arrays in GRL actions! This is particularly useful for building recommendation lists, accumulating results, and managing collections.
+
+**GRL Syntax:**
+```grl
+rule "Product Recommendation" salience 100 no-loop {
+    when
+        ShoppingCart.items contains "Laptop" &&
+        !(Recommendation.items contains "Mouse")
+    then
+        Recommendation.items += "Mouse";          // Append to array
+        Recommendation.items += "USB-C Hub";      // Multiple appends
+        Log("Added recommendations");
+}
+```
+
+**Rust Usage:**
+```rust
+use rust_rule_engine::rete::{IncrementalEngine, TypedFacts, FactValue};
+use rust_rule_engine::rete::grl_loader::GrlReteLoader;
+
+let mut engine = IncrementalEngine::new();
+GrlReteLoader::load_from_file("rules.grl", &mut engine)?;
+
+let mut facts = TypedFacts::new();
+facts.set("ShoppingCart.items", FactValue::Array(vec![
+    FactValue::String("Laptop".to_string())
+]));
+facts.set("Recommendation.items", FactValue::Array(vec![]));
+
+engine.insert_typed_facts("ShoppingCart", facts.clone());
+engine.fire_all(&mut facts, 10);
+
+// Result: Recommendation.items = ["Mouse", "USB-C Hub"] ✓
+```
+
+**Integration with Rule Mining:**
+
+The `+=` operator works seamlessly with [rust-rule-miner](https://github.com/yourusername/rust-rule-miner) for automatic rule generation:
+
+```rust
+// Mine association rules from historical data
+let rules = miner.mine_association_rules()?;
+
+// Export to GRL with += syntax
+let grl = GrlExporter::to_grl(&rules);
+// Generates: Recommendation.items += "Phone Case";
+
+// Load and execute in RETE engine
+GrlReteLoader::load_from_string(&grl, &mut engine)?;
+```
+
+**Supported Everywhere:**
+- ✅ Forward chaining (RETE engine)
+- ✅ Backward chaining (goal-driven reasoning)
+- ✅ Parallel execution
+- ✅ All action execution contexts
 
 ---
 

@@ -723,6 +723,10 @@ impl ParallelRuleEngine {
                 // Workflow actions not supported in parallel execution
                 Ok(())
             }
+            ActionType::Append { .. } => {
+                // Simplified append handling
+                Ok(())
+            }
         }
     }
 

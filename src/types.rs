@@ -444,4 +444,11 @@ pub enum ActionType {
         /// Data value
         value: Value,
     },
+    /// Append a value to an array field
+    Append {
+        /// Field name (must be an array)
+        field: String,
+        /// Value to append
+        value: Value,
+    },
 }

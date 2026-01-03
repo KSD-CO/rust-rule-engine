@@ -155,6 +155,9 @@ impl DependencyAnalyzer {
                 crate::types::ActionType::Set { field, .. } => {
                     writes.push(field.clone());
                 }
+                crate::types::ActionType::Append { field, .. } => {
+                    writes.push(field.clone());
+                }
                 crate::types::ActionType::Retract { object } => {
                     // Retract removes a fact, mark it as a write
                     writes.push(format!("_retracted_{}", object));

@@ -1313,6 +1313,42 @@ impl RustRuleEngine {
                 self.workflow_engine
                     .set_workflow_data(workflow_id, key.clone(), value.clone());
             }
+            ActionType::Append { field, value } => {
+                // Evaluate expression if value is an Expression
+                let evaluated_value = match value {
+                    Value::Expression(expr) => crate::expression::evaluate_expression(expr, facts)?,
+                    _ => value.clone(),
+                };
+
+                // Get current array or create new one
+                let current_value = facts.get(field);
+                let mut array = match current_value {
+                    Some(Value::Array(arr)) => arr.clone(),
+                    Some(_) => {
+                        // Field exists but is not an array, create new array
+                        if self.config.debug_mode {
+                            println!("  ⚠️ Field {} is not an array, creating new array", field);
+                        }
+                        Vec::new()
+                    }
+                    None => Vec::new(),
+                };
+
+                // Append value
+                array.push(evaluated_value.clone());
+
+                // Set the updated array (try nested first, then flat)
+                if facts
+                    .set_nested(field, Value::Array(array.clone()))
+                    .is_err()
+                {
+                    facts.set(field, Value::Array(array.clone()));
+                }
+
+                if self.config.debug_mode {
+                    println!("  ➕ Appended to {}: {:?}", field, evaluated_value);
+                }
+            }
         }
         Ok(())
     }
