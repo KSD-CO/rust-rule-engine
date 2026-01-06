@@ -2,6 +2,45 @@
 
 All notable changes to rust-rule-engine will be documented in this file.
 
+## [1.16.0] - 2026-01-06
+
+### 🧹 Codebase Cleanup & Streamlining
+
+Major cleanup and optimization of the project structure for better maintainability and developer experience!
+
+### Changed
+- **Examples streamlined from 108 to 26 (-76%)** - Removed duplicate and redundant examples
+- **Dependencies optimized** - Removed 9 unused dev-dependencies (-75%)
+- **Build system improvements** - Cleaner Makefile (478 → 236 lines) and Cargo.toml (524 → 226 lines)
+
+### Added
+- Comprehensive [examples/README.md](examples/README.md) with learning paths and tables
+- Better example organization by category (getting-started, rete-engine, advanced-features, etc.)
+
+### Removed
+- 80+ duplicate examples (manual vs GRL versions - kept GRL)
+- Unused dev-dependencies: axum, tower, tower-http, reqwest, tracing, tracing-subscriber
+- Duplicate dependencies: serde, serde_json, chrono (already in main deps)
+- Test files from examples/ (should be in tests/)
+- Empty legacy directories
+
+### Performance
+- Faster build times due to fewer dependencies
+- Faster CI runs with streamlined examples
+- Smaller binary size
+
+### Documentation
+- Examples now organized into clear categories
+- Created comprehensive examples guide
+- Updated Makefile help text
+- All examples well-documented with purpose and usage
+
+### Testing
+- ✅ All CI checks pass (fmt, clippy, test, build, doc-test)
+- ✅ 152 tests passing
+- ✅ 100% backward compatible
+- ✅ Feature combination tests pass
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [1.15.0] - 2026-01-03

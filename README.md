@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.15.0 🦀⚡🚀
+# Rust Rule Engine v1.15.1 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -141,7 +141,27 @@ for event in event_stream {
 
 ---
 
-## ✨ What's New in v1.15.0 🎉
+## ✨ What's New in v1.15.1 🎉
+
+### 🧹 Codebase Cleanup
+
+Major cleanup and optimization of the project structure for better maintainability and developer experience!
+
+**🔧 Dependencies Optimized (-75% dev-deps)**
+- Removed 9 unused dev-dependencies (axum, tower, reqwest, tracing, etc.)
+- Eliminated duplicate dependencies (serde, chrono already in main deps)
+- Kept only essentials: criterion, tokio, serde_yaml
+- Faster build times and smaller binary size
+
+**Benefits:**
+- ⚡ Faster compilation and CI runs
+- 📚 Easier onboarding with clear example structure
+- 🧹 Less code to maintain (-76% examples)
+- ✅ Production-ready with all tests passing
+
+---
+
+## ✨ What's New in v1.15.0
 
 ### ➕ Array Append Operator (`+=`)
 

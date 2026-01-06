@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.15.0"
+version = "1.15.1"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features: forward/backward chaining, pattern matching, unification, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend, watermarking, and custom functions. Production-ready for business rules, expert systems, real-time stream processing, and decision automation."
@@ -45,18 +45,7 @@ backward-chaining = ["petgraph"]
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 tokio = { version = "1.42", features = ["full"] }
-# REST API dependencies
-axum = "0.8"
-tower = "0.5"
-tower-http = { version = "0.6", features = ["cors"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-chrono = { version = "0.4", features = ["serde"] }
-# AI API dependencies
-reqwest = { version = "0.12", features = ["json"] }
-serde_yaml = "0.9"
+serde_yaml = "0.9"  # Used in tests/grl_harness_data.rs
 
 # Core benchmarks
 [[bench]]
@@ -91,167 +80,28 @@ harness = false
 name = "rete_1m_rules_benchmark"
 path = "benches/rete_1m_rules_benchmark.rs"
 
-# Example programs (useful for documentation)
-[[example]]
-name = "fraud_detection"
-path = "examples/01-getting-started/fraud_detection.rs"
+# ============================================================================
+# EXAMPLES - Streamlined from 108 to 26 essential examples (v1.16.0)
+# ============================================================================
 
+# 01 - Getting Started (4 examples)
 [[example]]
 name = "grule_demo"
 path = "examples/01-getting-started/grule_demo.rs"
 
-# Backward chaining examples
 [[example]]
-name = "simple_query_demo"
-path = "examples/09-backward-chaining/simple_query_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "medical_diagnosis_demo"
-path = "examples/09-backward-chaining/medical_diagnosis_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "detective_system_demo"
-path = "examples/09-backward-chaining/detective_system_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "multiple_solutions_demo"
-path = "examples/09-backward-chaining/multiple_solutions_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "grl_query_demo"
-path = "examples/09-backward-chaining/grl_query_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "unification_demo"
-path = "examples/09-backward-chaining/unification_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "ecommerce_approval_demo"
-path = "examples/09-backward-chaining/ecommerce_approval_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "purchasing_flow_demo"
-path = "examples/09-backward-chaining/purchasing_flow_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "loan_approval_demo"
-path = "examples/09-backward-chaining/loan_approval_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "family_relations_demo"
-path = "examples/09-backward-chaining/family_relations_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "streaming_with_rules_demo"
-path = "examples/03-advanced-features/streaming_with_rules_demo.rs"
-required-features = ["streaming"]
-
-[[example]]
-name = "streaming_state_management_demo"
-path = "examples/03-advanced-features/streaming_state_management_demo.rs"
-required-features = ["streaming"]
-
-[[example]]
-name = "streaming_watermark_demo"
-path = "examples/03-advanced-features/streaming_watermark_demo.rs"
-required-features = ["streaming"]
-
-[[example]]
-name = "stream_join_demo"
-path = "examples/03-advanced-features/stream_join_demo.rs"
-required-features = ["streaming"]
-
-[[example]]
-name = "product_recommendation_demo"
-path = "examples/09-backward-chaining/product_recommendation_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "rete_index_demo"
-path = "examples/09-backward-chaining/rete_index_demo.rs"
-required-features = ["backward-chaining"]
-
-# Backward chaining test suites
-[[example]]
-name = "comprehensive_backward_test"
-path = "examples/09-backward-chaining/comprehensive_backward_test.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "backward_edge_cases_test"
-path = "examples/09-backward-chaining/backward_edge_cases_test.rs"
-required-features = ["backward-chaining"]
-
- 
-
-[[example]]
-name = "module_demo"
-path = "examples/10-module-system/module_demo.rs"
-
-[[example]]
-name = "backward_critical_missing_tests"
-path = "examples/09-backward-chaining/backward_critical_missing_tests.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "smart_home_modules"
-path = "examples/10-module-system/smart_home_modules.rs"
-
-[[example]]
-name = "cyclic_import_detection"
-path = "examples/10-module-system/cyclic_import_detection.rs"
-
-[[example]]
-name = "phase3_demo"
-path = "examples/10-module-system/phase3_demo.rs"
-
-# Auto-added examples (generated by script)
-[[example]]
-name = "advanced_method_calls"
-path = "examples/01-getting-started/advanced_method_calls.rs"
+name = "fraud_detection"
+path = "examples/01-getting-started/fraud_detection.rs"
 
 [[example]]
 name = "expression_demo"
 path = "examples/01-getting-started/expression_demo.rs"
 
 [[example]]
-name = "generic_method_calls"
-path = "examples/01-getting-started/generic_method_calls.rs"
-
-[[example]]
-name = "inline_rules_demo"
-path = "examples/01-getting-started/inline_rules_demo.rs"
-
-[[example]]
 name = "method_calls_demo"
 path = "examples/01-getting-started/method_calls_demo.rs"
 
-[[example]]
-name = "simple_pattern_matching_grl"
-path = "examples/01-getting-started/simple_pattern_matching_grl.rs"
-
-[[example]]
-name = "multifield_demo"
-path = "examples/02-rete-engine/multifield_demo.rs"
-
-[[example]]
-name = "rete_call_function_demo"
-path = "examples/02-rete-engine/rete_call_function_demo.rs"
-
-[[example]]
-name = "rete_deffacts_demo"
-path = "examples/02-rete-engine/rete_deffacts_demo.rs"
-
+# 02 - RETE Engine (5 examples)
 [[example]]
 name = "rete_demo"
 path = "examples/02-rete-engine/rete_demo.rs"
@@ -261,261 +111,94 @@ name = "rete_grl_demo"
 path = "examples/02-rete-engine/rete_grl_demo.rs"
 
 [[example]]
-name = "rete_memoization_demo"
-path = "examples/02-rete-engine/rete_memoization_demo.rs"
-
-[[example]]
-name = "rete_multifield_demo"
-path = "examples/02-rete-engine/rete_multifield_demo.rs"
-
-[[example]]
-name = "rete_parse_demo"
-path = "examples/02-rete-engine/rete_parse_demo.rs"
-
-[[example]]
-name = "rete_template_globals_demo"
-path = "examples/02-rete-engine/rete_template_globals_demo.rs"
-
-[[example]]
 name = "rete_typed_facts_demo"
 path = "examples/02-rete-engine/rete_typed_facts_demo.rs"
+
+[[example]]
+name = "rete_deffacts_demo"
+path = "examples/02-rete-engine/rete_deffacts_demo.rs"
 
 [[example]]
 name = "tms_demo"
 path = "examples/02-rete-engine/tms_demo.rs"
 
-[[example]]
-name = "accumulate_demo"
-path = "examples/03-advanced-features/accumulate_demo.rs"
-
+# 03 - Advanced Features (6 examples)
 [[example]]
 name = "accumulate_grl_demo"
 path = "examples/03-advanced-features/accumulate_grl_demo.rs"
-
-[[example]]
-name = "action_handlers_demo"
-path = "examples/03-advanced-features/action_handlers_demo.rs"
-
-[[example]]
-name = "action_handlers_grl_demo"
-path = "examples/03-advanced-features/action_handlers_grl_demo.rs"
 
 [[example]]
 name = "conflict_resolution_demo"
 path = "examples/03-advanced-features/conflict_resolution_demo.rs"
 
 [[example]]
-name = "custom_functions_demo"
-path = "examples/03-advanced-features/custom_functions_demo.rs"
-
-[[example]]
 name = "grl_no_loop_demo"
 path = "examples/03-advanced-features/grl_no_loop_demo.rs"
 
 [[example]]
-name = "multifield_operations_demo"
-path = "examples/03-advanced-features/multifield_operations_demo.rs"
-
-[[example]]
-name = "no_loop_demo"
-path = "examples/03-advanced-features/no_loop_demo.rs"
-
-[[example]]
-name = "pattern_matching_from_grl"
-path = "examples/03-advanced-features/pattern_matching_from_grl.rs"
-
-[[example]]
-name = "retract_demo_rete"
-path = "examples/03-advanced-features/retract_demo_rete.rs"
-
-[[example]]
-name = "retract_demo"
-path = "examples/03-advanced-features/retract_demo.rs"
-
-[[example]]
-name = "rule_attributes_demo"
-path = "examples/03-advanced-features/rule_attributes_demo.rs"
+name = "action_handlers_grl_demo"
+path = "examples/03-advanced-features/action_handlers_grl_demo.rs"
 
 [[example]]
 name = "rule_templates_demo"
 path = "examples/03-advanced-features/rule_templates_demo.rs"
 
 [[example]]
-name = "advanced_plugins_showcase"
-path = "examples/04-plugins/advanced_plugins_showcase.rs"
+name = "streaming_with_rules_demo"
+path = "examples/03-advanced-features/streaming_with_rules_demo.rs"
+required-features = ["streaming"]
 
+# 05 - Performance (3 examples)
 [[example]]
-name = "builtin_plugins_demo"
-path = "examples/04-plugins/builtin_plugins_demo.rs"
-
-[[example]]
-name = "plugin_system_demo"
-path = "examples/04-plugins/plugin_system_demo.rs"
-
-[[example]]
-name = "complete_speedup_demo"
-path = "examples/05-performance/complete_speedup_demo.rs"
-
-[[example]]
-name = "distributed_demo"
-path = "examples/05-performance/distributed_demo.rs"
-
-[[example]]
-name = "distributed_vs_single_demo"
-path = "examples/05-performance/distributed_vs_single_demo.rs"
-
-[[example]]
-name = "financial_stress_test"
-path = "examples/05-performance/financial_stress_test.rs"
-
-[[example]]
-name = "parallel_advanced_features_test"
-path = "examples/05-performance/parallel_advanced_features_test.rs"
-
-[[example]]
-name = "parallel_conditions_test"
-path = "examples/05-performance/parallel_conditions_test.rs"
+name = "quick_engine_comparison"
+path = "examples/05-performance/quick_engine_comparison.rs"
 
 [[example]]
 name = "parallel_engine_demo"
 path = "examples/05-performance/parallel_engine_demo.rs"
 
 [[example]]
-name = "parallel_performance_demo"
-path = "examples/05-performance/parallel_performance_demo.rs"
-
-[[example]]
-name = "purchasing_rules_parse_benchmark"
-path = "examples/05-performance/purchasing_rules_parse_benchmark.rs"
-
-[[example]]
-name = "purchasing_rules_performance"
-path = "examples/05-performance/purchasing_rules_performance.rs"
-
-[[example]]
-name = "quick_engine_comparison"
-path = "examples/05-performance/quick_engine_comparison.rs"
-
-[[example]]
-name = "rete_optimization_demo"
-path = "examples/05-performance/rete_optimization_demo.rs"
-
-[[example]]
 name = "memory_usage_comparison"
 path = "examples/05-performance/memory_usage_comparison.rs"
 
-[[example]]
-name = "grl_optimization_demo"
-path = "examples/05-performance/grl_optimization_demo.rs"
-
-[[example]]
-name = "advanced_workflow_demo"
-path = "examples/06-use-cases/advanced_workflow_demo.rs"
-
-[[example]]
-name = "analytics_demo"
-path = "examples/06-use-cases/analytics_demo.rs"
-
-[[example]]
-name = "workflow_engine_demo"
-path = "examples/06-use-cases/workflow_engine_demo.rs"
-
-[[example]]
-name = "accumulate_rete_integration"
-path = "examples/07-advanced-rete/accumulate_rete_integration.rs"
-
-[[example]]
-name = "rete_engine_cached"
-path = "examples/07-advanced-rete/rete_engine_cached.rs"
-
-[[example]]
-name = "rete_p2_advanced_agenda"
-path = "examples/07-advanced-rete/rete_p2_advanced_agenda.rs"
-
-[[example]]
-name = "rete_p2_working_memory"
-path = "examples/07-advanced-rete/rete_p2_working_memory.rs"
-
+# 07 - Advanced RETE (2 examples)
 [[example]]
 name = "rete_p3_incremental"
 path = "examples/07-advanced-rete/rete_p3_incremental.rs"
 
 [[example]]
-name = "rete_p3_variable_binding"
-path = "examples/07-advanced-rete/rete_p3_variable_binding.rs"
-
-[[example]]
 name = "rete_ul_drools_style"
 path = "examples/07-advanced-rete/rete_ul_drools_style.rs"
 
+# 09 - Backward Chaining (4 examples)
 [[example]]
-name = "rule_dependency_analysis"
-path = "examples/08-misc/rule_dependency_analysis.rs"
-
-[[example]]
-name = "rule_file_functions_demo"
-path = "examples/08-misc/rule_file_functions_demo.rs"
-
-[[example]]
-name = "access_control_demo"
-path = "examples/09-backward-chaining/access_control_demo.rs"
-required-features = ["backward-chaining"]
-
-
-[[example]]
-name = "aggregation_demo"
-path = "examples/09-backward-chaining/aggregation_demo.rs"
+name = "simple_query_demo"
+path = "examples/09-backward-chaining/simple_query_demo.rs"
 required-features = ["backward-chaining"]
 
 [[example]]
-name = "grl_aggregation_demo"
-path = "examples/09-backward-chaining/grl_aggregation_demo.rs"
+name = "ecommerce_approval_demo"
+path = "examples/09-backward-chaining/ecommerce_approval_demo.rs"
 required-features = ["backward-chaining"]
 
 [[example]]
-name = "negation_demo"
-path = "examples/09-backward-chaining/negation_demo.rs"
+name = "medical_diagnosis_demo"
+path = "examples/09-backward-chaining/medical_diagnosis_demo.rs"
 required-features = ["backward-chaining"]
 
 [[example]]
-name = "grl_negation_demo"
-path = "examples/09-backward-chaining/grl_negation_demo.rs"
+name = "grl_query_demo"
+path = "examples/09-backward-chaining/grl_query_demo.rs"
 required-features = ["backward-chaining"]
 
+# 10 - Module System (2 examples)
 [[example]]
-name = "explanation_demo"
-path = "examples/09-backward-chaining/explanation_demo.rs"
-required-features = ["backward-chaining"]
+name = "smart_home_modules"
+path = "examples/10-module-system/smart_home_modules.rs"
 
 [[example]]
-name = "disjunction_demo"
-path = "examples/09-backward-chaining/disjunction_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "grl_or_syntax_demo"
-path = "examples/09-backward-chaining/grl_or_syntax_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "nested_query_demo"
-path = "examples/09-backward-chaining/nested_query_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "nested_grl_file_demo"
-path = "examples/09-backward-chaining/nested_grl_file_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "optimizer_demo"
-path = "examples/09-backward-chaining/optimizer_demo.rs"
-required-features = ["backward-chaining"]
-
-[[example]]
-name = "grl_optimizer_demo"
-path = "examples/09-backward-chaining/grl_optimizer_demo.rs"
-required-features = ["backward-chaining"]
+name = "phase3_demo"
+path = "examples/10-module-system/phase3_demo.rs"
 
 
 [[bin]]
