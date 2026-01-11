@@ -204,7 +204,13 @@ fn uuid_v4() -> String {
         .unwrap()
         .as_nanos();
 
-    let random_part = fastrand::u64(..);
+    // Use hash-based randomization for the random part
+    use std::collections::hash_map::RandomState;
+    use std::hash::{BuildHasher, Hasher};
+
+    let mut hasher = RandomState::new().build_hasher();
+    hasher.write_u128(timestamp);
+    let random_part = hasher.finish();
 
     format!("{:x}-{:x}", timestamp, random_part)
 }

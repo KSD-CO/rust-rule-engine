@@ -25,7 +25,9 @@ impl Default for ParallelConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            max_threads: num_cpus::get(),
+            max_threads: std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(4),
             min_rules_per_thread: 2,
             dependency_analysis: true,
         }

@@ -219,14 +219,16 @@ impl SafeParallelRuleEngine {
     /// Calculate optimal number of threads
     fn calculate_optimal_threads(&self, rule_count: usize) -> usize {
         let max_threads = if self.config.max_threads == 0 {
-            num_cpus::get()
+            std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(4)
         } else {
             self.config.max_threads
         };
 
         // Don't use more threads than rules
         let optimal = std::cmp::min(max_threads, rule_count);
-        
+
         // Ensure minimum rules per thread
         if rule_count / optimal < self.config.min_rules_per_thread {
             std::cmp::max(1, rule_count / self.config.min_rules_per_thread)

@@ -2,14 +2,18 @@ use crate::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugi
 use crate::engine::RustRuleEngine;
 use crate::errors::{Result, RuleEngineError};
 use crate::types::Value;
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::OnceLock;
 
 // Cache email regex for performance
-static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
-        .expect("Invalid email regex pattern")
-});
+static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
+
+fn email_regex() -> &'static Regex {
+    EMAIL_REGEX.get_or_init(|| {
+        Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+            .expect("Invalid email regex pattern")
+    })
+}
 
 /// Built-in plugin for data validation operations
 pub struct ValidationPlugin {
@@ -343,7 +347,7 @@ fn value_to_number(value: &Value) -> Result<f64> {
 }
 
 fn is_valid_email(email: &str) -> bool {
-    EMAIL_REGEX.is_match(email)
+    email_regex().is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {

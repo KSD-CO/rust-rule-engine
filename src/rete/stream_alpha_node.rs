@@ -629,24 +629,23 @@ mod tests {
 
         let mut node = StreamAlphaNode::new("test-stream", None, Some(window));
 
-        let current_time = StreamAlphaNode::current_time_ms();
+        // Use current time as base to ensure events are within sliding window
+        let base_time = StreamAlphaNode::current_time_ms();
 
         // Add events to session
-        let event1 = create_test_event("test-stream", "Event1", current_time);
-        let event2 = create_test_event("test-stream", "Event2", current_time + 50);
+        let event1 = create_test_event("test-stream", "Event1", base_time);
+        let event2 = create_test_event("test-stream", "Event2", base_time + 50);
 
         node.process_event(&event1);
         node.process_event(&event2);
         assert_eq!(node.event_count(), 2);
 
-        // Wait for timeout
-        std::thread::sleep(Duration::from_millis(250));
-
-        // Process new event - should trigger eviction
-        let event3 = create_test_event("test-stream", "Event3", StreamAlphaNode::current_time_ms());
+        // Process new event after timeout (250ms > 200ms timeout)
+        // Should trigger session eviction
+        let event3 = create_test_event("test-stream", "Event3", base_time + 300);
         node.process_event(&event3);
 
-        // Only the new event should remain
+        // Only the new event should remain (old session cleared)
         assert_eq!(node.event_count(), 1);
         assert_eq!(node.get_events()[0].event_type, "Event3");
     }

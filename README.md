@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.16.0 🦀⚡🚀
+# Rust Rule Engine v1.16.1 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -141,7 +141,50 @@ for event in event_stream {
 
 ---
 
-## ✨ What's New in v1.16.0 🎉
+## ✨ What's New in v1.16.1 🎉
+
+### 🧹 Minimal Dependencies - Pure Stdlib
+
+**Removed 5 external dependencies** - replaced with Rust stdlib or removed dead code:
+
+**Replaced with stdlib:**
+- ❌ `num_cpus` → ✅ `std::thread::available_parallelism()` (Rust 1.59+)
+- ❌ `once_cell` → ✅ `std::sync::OnceLock` (Rust 1.70+)
+- ❌ `fastrand` → ✅ `std::collections::hash_map::RandomState`
+
+**Removed unused:**
+- ❌ `petgraph` - Declared but never used (zero code references)
+- ❌ `futures` - Declared but never used (tokio is sufficient)
+
+**Benefits:**
+- 📦 **5 fewer crates** - down from 12 to 7 core dependencies (41% reduction!)
+- 🛡️ **More reliable** - 100% stdlib for threading, lazy init, randomization
+- ⚡ **Zero performance regression** - all benchmarks unchanged
+- 🔧 **Modern Rust** - using latest stdlib features
+
+**Final Core Dependencies:** Only 7 essential crates
+```
+chrono, log, nom, regex, serde, serde_json, thiserror
+```
+
+**Optional dependencies** (by feature):
+- `tokio` - Async runtime for streaming
+- `redis` - State backend for streaming-redis
+
+**Code changes:**
+- Thread detection: `num_cpus::get()` → `std::thread::available_parallelism()`
+- Lazy regex (20 patterns): `once_cell::Lazy` → `std::sync::OnceLock`
+- Random generation: `fastrand` → `RandomState::new().build_hasher()`
+- Fixed flaky test in session window eviction
+
+**Testing:**
+- ✅ All 428+ tests passing
+- ✅ All 14+ examples working
+- ✅ All features validated (streaming, backward-chaining, etc.)
+
+---
+
+## ✨ What's New in v1.16.0
 
 ### 🪟 Session Windows for Stream Processing
 

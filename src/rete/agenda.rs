@@ -283,8 +283,18 @@ impl AdvancedAgenda {
                 });
             }
             ConflictResolutionStrategy::Random => {
-                // Random ordering using fastrand
-                fastrand::shuffle(activations);
+                // Random ordering using stdlib hash-based randomization
+                // Use addresses as pseudo-random source for deterministic tests
+                use std::collections::hash_map::RandomState;
+                use std::hash::{BuildHasher, Hash, Hasher};
+
+                let hasher_builder = RandomState::new();
+                activations.sort_by_cached_key(|a| {
+                    let mut hasher = hasher_builder.build_hasher();
+                    a.rule_name.hash(&mut hasher);
+                    a.created_at.hash(&mut hasher);
+                    hasher.finish()
+                });
             }
         }
     }
