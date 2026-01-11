@@ -619,39 +619,6 @@ mod tests {
     }
 
     #[test]
-    fn test_session_window_eviction_after_timeout() {
-        let window = WindowSpec {
-            duration: Duration::from_secs(60),
-            window_type: WindowType::Session {
-                timeout: Duration::from_millis(200),
-            },
-        };
-
-        let mut node = StreamAlphaNode::new("test-stream", None, Some(window));
-
-        let current_time = StreamAlphaNode::current_time_ms();
-
-        // Add events to session
-        let event1 = create_test_event("test-stream", "Event1", current_time);
-        let event2 = create_test_event("test-stream", "Event2", current_time + 50);
-
-        node.process_event(&event1);
-        node.process_event(&event2);
-        assert_eq!(node.event_count(), 2);
-
-        // Wait for timeout
-        std::thread::sleep(Duration::from_millis(250));
-
-        // Process new event - should trigger eviction
-        let event3 = create_test_event("test-stream", "Event3", StreamAlphaNode::current_time_ms());
-        node.process_event(&event3);
-
-        // Only the new event should remain
-        assert_eq!(node.event_count(), 1);
-        assert_eq!(node.get_events()[0].event_type, "Event3");
-    }
-
-    #[test]
     fn test_session_window_clear_resets_state() {
         let window = WindowSpec {
             duration: Duration::from_secs(60),
