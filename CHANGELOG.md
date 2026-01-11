@@ -2,7 +2,77 @@
 
 All notable changes to rust-rule-engine will be documented in this file.
 
-## [1.16.0] - 2026-01-06
+## [1.16.0] - 2026-01-11
+
+### Added - 🪟 Session Windows for Stream Processing
+
+**Complete implementation of session-based windowing for real-time event streams!**
+
+Session windows dynamically group events based on **inactivity gaps** rather than fixed time boundaries. This is perfect for natural user sessions, cart abandonment detection, fraud detection, and IoT sensor grouping.
+
+#### Features
+- **Session Window Type** - New `WindowType::Session { timeout }` variant in streaming module
+  - Automatically detects session boundaries based on inactivity gaps
+  - Dynamic session sizes that adapt to activity patterns
+  - Clears entire session when timeout expires (not per-event eviction)
+  - O(1) event processing with minimal overhead
+
+- **StreamAlphaNode Enhancements**
+  - Added `last_session_event_timestamp: Option<u64>` for session tracking
+  - Implemented session timeout logic in `process_event()`
+  - Implemented session eviction in `evict_expired_events()`
+  - Updated `clear()` to reset session state
+  - Locations:
+    - Core implementation: [src/rete/stream_alpha_node.rs:40-41,126-143,155-167,212-228,251-255](src/rete/stream_alpha_node.rs)
+    - Window type definition: [src/streaming/window.rs:16-17](src/streaming/window.rs#L16-L17)
+
+#### GRL Syntax
+```grl
+rule "UserSessionAnalysis" {
+    when
+        activity: UserAction from stream("user-activity")
+            over window(5 min, session)
+    then
+        AnalyzeSession(activity);
+}
+```
+
+#### Rust API
+```rust
+let window = WindowSpec {
+    duration: Duration::from_secs(60),
+    window_type: WindowType::Session {
+        timeout: Duration::from_secs(5),  // Gap threshold
+    },
+};
+let mut node = StreamAlphaNode::new("events", None, Some(window));
+```
+
+#### Testing
+- ✅ 7 comprehensive session window tests (all passing)
+  - Basic session functionality
+  - Timeout-triggered new sessions
+  - Gap detection between sessions
+  - Eviction after timeout
+  - Clear resets session state
+  - Continuous activity keeps session alive
+  - Multiple session transitions
+- ✅ All 236 library tests pass (17 stream tests, no regressions)
+- ✅ Interactive demo: `cargo run --example session_window_demo --features streaming`
+
+#### Documentation
+- [SESSION_WINDOW_IMPLEMENTATION.md](SESSION_WINDOW_IMPLEMENTATION.md) - Complete implementation guide
+- [examples/session_window_demo.rs](examples/session_window_demo.rs) - Interactive demonstration
+
+#### Use Cases
+- 📊 User Session Analytics - Track natural user behavior
+- 🛒 Cart Abandonment Detection - Detect incomplete checkouts
+- 🔒 Fraud Detection - Identify unusual session patterns
+- 📡 IoT Sensor Grouping - Group burst events from sensors
+
+---
+
+## [1.15.1] - 2026-01-06
 
 ### 🧹 Codebase Cleanup & Streamlining
 

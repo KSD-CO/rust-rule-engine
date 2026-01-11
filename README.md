@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.15.1 🦀⚡🚀
+# Rust Rule Engine v1.16.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -41,7 +41,7 @@ A blazing-fast production-ready rule engine for Rust supporting **both Forward a
 
 - **GRL Stream Syntax** - Declarative stream pattern definitions
 - **StreamAlphaNode** - RETE-integrated event filtering & windowing
-- **Time Windows** - Sliding (continuous) and tumbling (non-overlapping)
+- **Time Windows** - Sliding (continuous), tumbling (non-overlapping), and **session (gap-based)** 🆕
 - **Multi-Stream Correlation** - Join events from different streams
 - **WorkingMemory Integration** - Stream events become facts for rule evaluation
 
@@ -141,7 +141,69 @@ for event in event_stream {
 
 ---
 
-## ✨ What's New in v1.15.1 🎉
+## ✨ What's New in v1.16.0 🎉
+
+### 🪟 Session Windows for Stream Processing
+
+Complete implementation of **session-based windowing** for real-time event streams! Session windows dynamically group events based on **inactivity gaps** rather than fixed time boundaries.
+
+**What are Session Windows?**
+
+Unlike sliding or tumbling windows, session windows adapt to natural event patterns:
+
+```
+Events: A(t=0), B(t=1), C(t=2), [gap 10s], D(t=12), E(t=13)
+Timeout: 5 seconds
+
+Result:
+  Session 1: [A, B, C]  - ends when gap > 5s
+  Session 2: [D, E]     - starts after gap > 5s
+```
+
+**GRL Syntax:**
+```grl
+rule "UserSessionAnalysis" {
+    when
+        activity: UserAction from stream("user-activity")
+            over window(5 min, session)
+    then
+        AnalyzeSession(activity);
+}
+```
+
+**Rust API:**
+```rust
+use rust_rule_engine::rete::stream_alpha_node::{StreamAlphaNode, WindowSpec};
+use rust_rule_engine::streaming::window::WindowType;
+use std::time::Duration;
+
+let window = WindowSpec {
+    duration: Duration::from_secs(60),
+    window_type: WindowType::Session {
+        timeout: Duration::from_secs(5),  // Gap threshold
+    },
+};
+
+let mut node = StreamAlphaNode::new("user-events", None, Some(window));
+```
+
+**Perfect for:**
+- 📊 **User Session Analytics** - Track natural user behavior sessions
+- 🛒 **Cart Abandonment** - Detect when users don't complete checkout
+- 🔒 **Fraud Detection** - Identify unusual session patterns
+- 📡 **IoT Sensor Grouping** - Group burst events from sensors
+
+**Features:**
+- ✅ Automatic session boundary detection based on inactivity
+- ✅ Dynamic session sizes (adapts to activity patterns)
+- ✅ O(1) event processing with minimal overhead
+- ✅ Full integration with RETE network
+- ✅ 7 comprehensive tests (all passing)
+- ✅ Interactive demo: `cargo run --example session_window_demo --features streaming`
+
+---
+
+## ✨ What's New in v1.15.1
 
 ### 🧹 Codebase Cleanup
 

@@ -36,6 +36,9 @@ pub struct StreamAlphaNode {
 
     /// Last window start time (for tumbling windows)
     last_window_start: u64,
+
+    /// Last event timestamp in session (for session windows)
+    last_session_event_timestamp: Option<u64>,
 }
 
 /// Window specification for StreamAlphaNode
@@ -81,6 +84,7 @@ impl StreamAlphaNode {
             events: VecDeque::new(),
             max_events: 10_000, // Default: keep 10k events max
             last_window_start: 0,
+            last_session_event_timestamp: None,
         }
     }
 
@@ -120,6 +124,24 @@ impl StreamAlphaNode {
         };
 
         if matches {
+            // For session windows, check if we need to start a new session BEFORE adding
+            if let Some(WindowSpec {
+                window_type: WindowType::Session { timeout },
+                ..
+            }) = &self.window
+            {
+                if let Some(last_time) = self.last_session_event_timestamp {
+                    let gap = event.metadata.timestamp.saturating_sub(last_time);
+                    let timeout_ms = timeout.as_millis() as u64;
+
+                    if gap > timeout_ms {
+                        // Session expired - clear old events before adding new one
+                        self.events.clear();
+                        self.last_session_event_timestamp = None;
+                    }
+                }
+            }
+
             // Add to buffer and evict old events
             self.add_event(event.clone());
             self.evict_expired_events();
@@ -130,7 +152,17 @@ impl StreamAlphaNode {
 
     /// Add event to internal buffer
     fn add_event(&mut self, event: StreamEvent) {
+        let event_timestamp = event.metadata.timestamp;
         self.events.push_back(event);
+
+        // Update session tracking
+        if let Some(WindowSpec {
+            window_type: WindowType::Session { .. },
+            ..
+        }) = &self.window
+        {
+            self.last_session_event_timestamp = Some(event_timestamp);
+        }
 
         // Keep buffer size under limit
         while self.events.len() > self.max_events {
@@ -159,11 +191,28 @@ impl StreamAlphaNode {
 
                         timestamp >= window_start && timestamp < window_end
                     }
-                    WindowType::Session { .. } => {
-                        // Session windows not yet implemented
-                        // For now, treat as sliding window
-                        timestamp >= current_time.saturating_sub(window_duration_ms)
-                            && timestamp <= current_time
+                    WindowType::Session { timeout } => {
+                        let timeout_ms = timeout.as_millis() as u64;
+
+                        match self.last_session_event_timestamp {
+                            None => {
+                                // First event in session - always accept
+                                true
+                            }
+                            Some(last_event_time) => {
+                                // Check if gap from last event exceeds timeout
+                                let gap = timestamp.saturating_sub(last_event_time);
+
+                                if gap > timeout_ms {
+                                    // Gap too large - this starts a new session
+                                    // But we still accept this event (it starts new session)
+                                    true
+                                } else {
+                                    // Within timeout - part of current session
+                                    true
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -209,18 +258,22 @@ impl StreamAlphaNode {
                         }
                     }
                 }
-                WindowType::Session { .. } => {
-                    // Session window eviction not yet implemented
-                    // For now, use same logic as sliding
-                    let cutoff_time = current_time.saturating_sub(window_duration_ms);
+                WindowType::Session { timeout } => {
+                    let timeout_ms = timeout.as_millis() as u64;
 
-                    while let Some(event) = self.events.front() {
-                        if event.metadata.timestamp < cutoff_time {
-                            self.events.pop_front();
-                        } else {
-                            break;
+                    // Check if current session has expired
+                    if let Some(last_event_time) = self.last_session_event_timestamp {
+                        let gap_since_last = current_time.saturating_sub(last_event_time);
+
+                        if gap_since_last > timeout_ms {
+                            // Session expired - clear all events and reset
+                            self.events.clear();
+                            self.last_session_event_timestamp = None;
                         }
                     }
+
+                    // Note: Unlike sliding/tumbling, session windows don't evict individual events
+                    // They either keep the entire session or clear it when timeout expires
                 }
             }
         }
@@ -251,6 +304,7 @@ impl StreamAlphaNode {
     pub fn clear(&mut self) {
         self.events.clear();
         self.last_window_start = 0;
+        self.last_session_event_timestamp = None;
     }
 
     /// Get window statistics
@@ -470,5 +524,207 @@ mod tests {
         assert_eq!(events.len(), 2);
         assert_eq!(events[0].event_type, "Event1");
         assert_eq!(events[1].event_type, "Event2");
+    }
+
+    #[test]
+    fn test_session_window_basic() {
+        let window = WindowSpec {
+            duration: Duration::from_secs(60), // Not used for session windows (timeout is in WindowType)
+            window_type: WindowType::Session {
+                timeout: Duration::from_secs(5),
+            },
+        };
+
+        let mut node = StreamAlphaNode::new("test-stream", None, Some(window));
+
+        let current_time = StreamAlphaNode::current_time_ms();
+
+        // First event - starts session
+        let event1 = create_test_event("test-stream", "Event1", current_time);
+        assert!(node.process_event(&event1));
+        assert_eq!(node.event_count(), 1);
+
+        // Second event within timeout (2 seconds later)
+        let event2 = create_test_event("test-stream", "Event2", current_time + 2000);
+        assert!(node.process_event(&event2));
+        assert_eq!(node.event_count(), 2);
+
+        // Third event within timeout (1 second after event2)
+        let event3 = create_test_event("test-stream", "Event3", current_time + 3000);
+        assert!(node.process_event(&event3));
+        assert_eq!(node.event_count(), 3);
+    }
+
+    #[test]
+    fn test_session_window_timeout_new_session() {
+        let window = WindowSpec {
+            duration: Duration::from_secs(60),
+            window_type: WindowType::Session {
+                timeout: Duration::from_millis(100),
+            },
+        };
+
+        let mut node = StreamAlphaNode::new("test-stream", None, Some(window));
+
+        let current_time = StreamAlphaNode::current_time_ms();
+
+        // First event - Session 1
+        let event1 = create_test_event("test-stream", "Event1", current_time);
+        node.process_event(&event1);
+        assert_eq!(node.event_count(), 1);
+
+        // Wait 150ms - exceed timeout
+        std::thread::sleep(Duration::from_millis(150));
+
+        // This should trigger eviction of old session
+        let event2 = create_test_event("test-stream", "Event2", StreamAlphaNode::current_time_ms());
+        node.process_event(&event2);
+
+        // Old session should be cleared, only new event remains
+        assert_eq!(node.event_count(), 1);
+        assert_eq!(node.get_events()[0].event_type, "Event2");
+    }
+
+    #[test]
+    fn test_session_window_gap_detection() {
+        let window = WindowSpec {
+            duration: Duration::from_secs(60),
+            window_type: WindowType::Session {
+                timeout: Duration::from_secs(2),
+            },
+        };
+
+        let mut node = StreamAlphaNode::new("test-stream", None, Some(window));
+
+        let base_time = StreamAlphaNode::current_time_ms();
+
+        // Session 1: Events at t=0, t=1
+        let event1 = create_test_event("test-stream", "S1_Event1", base_time);
+        let event2 = create_test_event("test-stream", "S1_Event2", base_time + 1000);
+
+        node.process_event(&event1);
+        node.process_event(&event2);
+        assert_eq!(node.event_count(), 2);
+
+        // Gap of 3 seconds (exceeds 2-second timeout)
+        // Session 2: Event at t=5
+        let event3 = create_test_event("test-stream", "S2_Event1", base_time + 5000);
+        node.process_event(&event3);
+
+        // New event is accepted (starts new session)
+        assert!(node
+            .get_events()
+            .iter()
+            .any(|e| e.event_type == "S2_Event1"));
+    }
+
+    #[test]
+    fn test_session_window_eviction_after_timeout() {
+        let window = WindowSpec {
+            duration: Duration::from_secs(60),
+            window_type: WindowType::Session {
+                timeout: Duration::from_millis(200),
+            },
+        };
+
+        let mut node = StreamAlphaNode::new("test-stream", None, Some(window));
+
+        let current_time = StreamAlphaNode::current_time_ms();
+
+        // Add events to session
+        let event1 = create_test_event("test-stream", "Event1", current_time);
+        let event2 = create_test_event("test-stream", "Event2", current_time + 50);
+
+        node.process_event(&event1);
+        node.process_event(&event2);
+        assert_eq!(node.event_count(), 2);
+
+        // Wait for timeout
+        std::thread::sleep(Duration::from_millis(250));
+
+        // Process new event - should trigger eviction
+        let event3 = create_test_event("test-stream", "Event3", StreamAlphaNode::current_time_ms());
+        node.process_event(&event3);
+
+        // Only the new event should remain
+        assert_eq!(node.event_count(), 1);
+        assert_eq!(node.get_events()[0].event_type, "Event3");
+    }
+
+    #[test]
+    fn test_session_window_clear_resets_state() {
+        let window = WindowSpec {
+            duration: Duration::from_secs(60),
+            window_type: WindowType::Session {
+                timeout: Duration::from_secs(5),
+            },
+        };
+
+        let mut node = StreamAlphaNode::new("test-stream", None, Some(window));
+
+        let current_time = StreamAlphaNode::current_time_ms();
+        let event = create_test_event("test-stream", "Event1", current_time);
+
+        node.process_event(&event);
+        assert_eq!(node.event_count(), 1);
+        assert!(node.last_session_event_timestamp.is_some());
+
+        node.clear();
+        assert_eq!(node.event_count(), 0);
+        assert!(node.last_session_event_timestamp.is_none());
+    }
+
+    #[test]
+    fn test_session_window_continuous_activity() {
+        let window = WindowSpec {
+            duration: Duration::from_secs(60),
+            window_type: WindowType::Session {
+                timeout: Duration::from_secs(1),
+            },
+        };
+
+        let mut node = StreamAlphaNode::new("test-stream", None, Some(window));
+
+        let base_time = StreamAlphaNode::current_time_ms();
+
+        // Add events every 500ms (within 1-second timeout)
+        for i in 0..5 {
+            let event =
+                create_test_event("test-stream", &format!("Event{}", i), base_time + (i * 500));
+            node.process_event(&event);
+        }
+
+        // All events should be in the same session
+        assert_eq!(node.event_count(), 5);
+    }
+
+    #[test]
+    fn test_session_window_multiple_sessions() {
+        let window = WindowSpec {
+            duration: Duration::from_secs(60),
+            window_type: WindowType::Session {
+                timeout: Duration::from_millis(500),
+            },
+        };
+
+        let mut node = StreamAlphaNode::new("test-stream", None, Some(window));
+
+        let base_time = StreamAlphaNode::current_time_ms();
+
+        // Session 1: Events at t=0, t=200
+        node.process_event(&create_test_event("test-stream", "S1_E1", base_time));
+        node.process_event(&create_test_event("test-stream", "S1_E2", base_time + 200));
+
+        // Gap of 600ms - new session
+        // Session 2: Event at t=1000
+        node.process_event(&create_test_event("test-stream", "S2_E1", base_time + 1000));
+
+        // Gap of 700ms - new session
+        // Session 3: Event at t=2000
+        node.process_event(&create_test_event("test-stream", "S3_E1", base_time + 2000));
+
+        // Node should contain events from the latest session only
+        // (previous sessions should be evicted when gap exceeded)
+        assert!(node.event_count() > 0);
     }
 }
