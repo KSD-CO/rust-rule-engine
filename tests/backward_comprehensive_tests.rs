@@ -428,8 +428,10 @@ mod unification {
 mod multiple_solutions {
     use rust_rule_engine::backward::search::SearchStrategy;
     use rust_rule_engine::backward::{BackwardConfig, BackwardEngine};
+    use rust_rule_engine::rete::propagation::IncrementalEngine;
     use rust_rule_engine::types::{ActionType, Operator, Value};
     use rust_rule_engine::{Condition, ConditionGroup, Facts, KnowledgeBase, Rule};
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn test_multiple_solutions_single_rule() {
@@ -544,6 +546,9 @@ mod multiple_solutions {
         ))
         .unwrap();
 
+        // Create RETE engine for backward chaining
+        let rete_engine = Arc::new(Mutex::new(IncrementalEngine::new()));
+
         // Test with max_solutions = 1
         let config1 = BackwardConfig {
             max_solutions: 1,
@@ -554,7 +559,9 @@ mod multiple_solutions {
         let mut facts1 = Facts::new();
         facts1.set("Input.Ready", Value::Boolean(true));
 
-        let result1 = engine1.query("Output.Value == 42", &mut facts1).unwrap();
+        let result1 = engine1
+            .query_with_rete_engine("Output.Value == 42", &mut facts1, Some(rete_engine.clone()))
+            .unwrap();
         assert!(result1.provable);
 
         // Test with max_solutions = 10
@@ -567,7 +574,9 @@ mod multiple_solutions {
         let mut facts10 = Facts::new();
         facts10.set("Input.Ready", Value::Boolean(true));
 
-        let result10 = engine10.query("Output.Value == 42", &mut facts10).unwrap();
+        let result10 = engine10
+            .query_with_rete_engine("Output.Value == 42", &mut facts10, Some(rete_engine))
+            .unwrap();
         assert!(result10.provable);
     }
 

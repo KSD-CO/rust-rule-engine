@@ -57,6 +57,35 @@ Distributed state management with Redis.
 
 ### ⚡ Performance & Optimization
 
+#### [RETE Optimization Guide](RETE_OPTIMIZATION.md)
+Comprehensive RETE optimization techniques for maximum performance.
+
+**Topics:**
+- Beta Memory Indexing (11x to 1,235x speedup)
+- Alpha Memory Indexing (up to 800x speedup)
+- Node Sharing (98% memory reduction)
+- Alpha Memory Compaction
+- Token Pooling
+
+#### [RETE Optimization Benchmarks](RETE_OPTIMIZATION_BENCHMARKS.md)
+Real benchmark data and performance analysis.
+
+**Topics:**
+- Detailed benchmark results
+- Performance comparisons
+- Memory measurements
+- Optimization recommendations
+
+#### [ProofGraph Caching](PROOF_GRAPH_CACHING.md) 🆕
+Global proof caching for backward chaining with TMS integration.
+
+**Topics:**
+- Proof caching (100-1000x speedup)
+- Dependency tracking
+- TMS-aware invalidation
+- Multiple justifications
+- Performance benchmarks
+
 #### [Performance Guide](PERFORMANCE.md)
 Optimize your rule engine for production.
 

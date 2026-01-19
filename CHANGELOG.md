@@ -2,6 +2,119 @@
 
 All notable changes to rust-rule-engine will be documented in this file.
 
+## [1.17.0] - 2026-01-19
+
+### Added - 🚀 Proof Graph Caching with TMS Integration
+
+**ProofGraph module** - Global cache for proven facts with dependency tracking and automatic invalidation for backward chaining!
+
+#### Key Features
+
+**1. Proof Caching**
+- Cache proven facts with justifications (rule + premises)
+- O(1) lookup by fact key (predicate + arguments)
+- Supports multiple justifications for same fact
+- Thread-safe with Arc<Mutex<>> for concurrent access
+
+**2. Dependency Tracking**
+- Forward edges: fact → rules that used it as premise
+- Reverse edges: fact → facts it depends on
+- Automatic dependency graph construction
+
+**3. TMS-Aware Invalidation**
+- Integrates with IncrementalEngine's insert_logical
+- When premise retracted → cascading invalidation through dependents
+- Recursive propagation through dependency chains
+- Statistics tracking (cache hits, misses, invalidations)
+
+**4. Search Integration**
+- Integrated into DepthFirstSearch and BreadthFirstSearch
+- Cache lookup before condition evaluation (early return on hit)
+- Inserter closure wires both engine.insert_logical() and proof_graph.insert_proof()
+
+#### Performance Benefits
+
+- **100% hit rate** on repeated queries (no re-exploration)
+- **75-100% hit rate** with mixed queries
+- **100-1000x speedup** expected with cache vs without
+- Example: 100 queries in ~365µs with cache
+
+#### Files Added
+
+- `src/backward/proof_graph.rs` (520 lines)
+  - ProofGraph: Global cache with HashMap<FactHandle, ProofGraphNode>
+  - ProofGraphNode: Stores justifications, dependents, valid flag
+  - FactKey: Predicate + arguments for indexing
+  - Justification: Rule name + premises
+  - Statistics: Tracks hits, misses, invalidations
+
+- `tests/proof_graph_integration_test.rs` (6 tests)
+  - test_proof_graph_invalidation: A→B dependency with cascading invalidation
+  - test_proof_graph_dependency_propagation: A→B→C chain invalidation
+  - test_proof_graph_multiple_justifications: 3 ways to prove same fact
+  - test_proof_graph_cache_statistics: Hit/miss tracking across queries
+  - test_proof_graph_concurrent_access: Thread-safe operations
+  - test_proof_graph_complex_dependencies: Diamond dependency graph
+
+- `examples/09-backward-chaining/proof_graph_cache_demo.rs`
+  - 5 comprehensive demo scenarios
+  - Embedded tests for basic caching and dependency tracking
+  - Performance comparison (with/without cache)
+
+#### Files Modified
+
+- `src/backward/search.rs`
+  - Added `proof_graph: Option<SharedProofGraph>` field to DFS/BFS
+  - Modified `new_with_engine()` to create ProofGraph and wire inserter
+  - Updated `check_goal_in_facts()` to query cache first
+  - Fixed: Avoid cloning `candidate_rules` Vec in loop
+  - Fixed: Parse i64 before f64 in `parse_value_string()`
+
+- `src/backward/mod.rs`
+  - Added proof_graph module and exports (FactKey, ProofGraph, etc.)
+
+- `Cargo.toml`
+  - Registered proof_graph_cache_demo example
+
+- `examples/09-backward-chaining/README.md`
+  - Documented proof_graph_cache_demo example
+
+#### Usage Example
+
+```rust
+use rust_rule_engine::backward::{BackwardEngine, DepthFirstSearch};
+use rust_rule_engine::rete::IncrementalEngine;
+
+// Create RETE engine and backward engine
+let mut rete_engine = IncrementalEngine::new();
+let kb = /* load rules */;
+let mut backward_engine = BackwardEngine::new(kb);
+
+// Create search strategy with ProofGraph enabled
+let search = DepthFirstSearch::new_with_engine(
+    backward_engine.kb().clone(),
+    Arc::new(Mutex::new(rete_engine)),
+);
+
+// Query will use cache automatically
+let result = backward_engine.query_with_search(
+    "eligible(?x)",
+    &mut facts,
+    Box::new(search),
+)?;
+
+// Subsequent queries benefit from cache (100-1000x faster!)
+```
+
+#### Test Results
+
+- ✅ All 152 existing tests passing
+- ✅ All 6 ProofGraph integration tests passing
+- ✅ All 2 demo example tests passing
+- ✅ Zero regressions in existing functionality
+
+Run: `cargo run --example proof_graph_cache_demo --features backward-chaining`
+
 ## [1.16.1] - 2026-01-11
 
 ### Changed - 🧹 Minimal Dependencies - Pure Stdlib

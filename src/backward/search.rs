@@ -3,6 +3,7 @@
 #![allow(deprecated)]
 
 use super::goal::{Goal, GoalStatus};
+use super::proof_graph::{FactKey, SharedProofGraph};
 use super::rule_executor::RuleExecutor;
 use crate::engine::rule::Rule;
 use crate::rete::propagation::IncrementalEngine;
@@ -94,6 +95,7 @@ pub struct DepthFirstSearch {
     executor: RuleExecutor,
     max_solutions: usize,
     solutions: Vec<Solution>,
+    proof_graph: Option<SharedProofGraph>,
 }
 
 impl DepthFirstSearch {
@@ -106,6 +108,7 @@ impl DepthFirstSearch {
             executor: RuleExecutor::new_with_inserter(kb, None),
             max_solutions: 1,
             solutions: Vec::new(),
+            proof_graph: None,
         }
     }
 
@@ -123,9 +126,15 @@ impl DepthFirstSearch {
         kb: KnowledgeBase,
         engine: Option<Arc<Mutex<IncrementalEngine>>>,
     ) -> Self {
+        // Create shared proof graph for caching ONLY if engine is provided
+        let proof_graph = engine.as_ref().map(|_| super::proof_graph::new_shared());
+        let proof_graph_clone = proof_graph.clone();
+
         // Build inserter closure if engine is provided
         let inserter = engine.map(|eng| {
             let eng = eng.clone();
+            let pg = proof_graph_clone.clone();
+
             std::sync::Arc::new(
                 move |fact_type: String,
                       data: crate::rete::TypedFacts,
@@ -133,8 +142,26 @@ impl DepthFirstSearch {
                       premises: Vec<String>| {
                     if let Ok(mut e) = eng.lock() {
                         // Resolve premise keys into FactHandles when possible
-                        let handles = e.resolve_premise_keys(premises);
-                        let _ = e.insert_logical(fact_type, data, rule_name, handles);
+                        let handles = e.resolve_premise_keys(premises.clone());
+
+                        // Insert logical fact and get handle
+                        let handle = e.insert_logical(
+                            fact_type.clone(),
+                            data.clone(),
+                            rule_name.clone(),
+                            handles.clone(),
+                        );
+
+                        // Update proof graph with this derivation
+                        if let Some(ref graph) = pg {
+                            if let Ok(mut g) = graph.lock() {
+                                // Create fact key from fact_type and data
+                                let pattern = format!("{}.{}", fact_type, "derived");
+                                let key = FactKey::from_pattern(&pattern);
+
+                                g.insert_proof(handle, key, rule_name, handles, premises);
+                            }
+                        }
                     }
                 },
             )
@@ -150,6 +177,7 @@ impl DepthFirstSearch {
             executor: RuleExecutor::new_with_inserter(kb, inserter),
             max_solutions: 1,
             solutions: Vec::new(),
+            proof_graph,
         }
     }
 
@@ -366,7 +394,19 @@ impl DepthFirstSearch {
     /// Check if goal is already satisfied by facts
     ///
     /// This method now reuses ConditionEvaluator for proper evaluation
+    /// and checks ProofGraph cache first for previously proven facts
     fn check_goal_in_facts(&self, goal: &Goal, facts: &Facts) -> bool {
+        // First check ProofGraph cache if available
+        if let Some(ref graph_arc) = self.proof_graph {
+            if let Ok(mut graph) = graph_arc.lock() {
+                let key = FactKey::from_pattern(&goal.pattern);
+                if graph.is_proven(&key) {
+                    // Cache hit! Goal was previously proven
+                    return true;
+                }
+            }
+        }
+
         // For negated goals, use the expression directly (parser strips NOT)
         if goal.is_negated {
             if let Some(ref expr) = goal.expression {
@@ -459,12 +499,12 @@ impl DepthFirstSearch {
             return Value::String(s[1..s.len() - 1].to_string());
         }
 
-        // Number (float)
+        // Number (float) - parse first to handle decimal numbers
         if let Ok(n) = s.parse::<f64>() {
             return Value::Number(n);
         }
 
-        // Integer
+        // Integer - only if float parsing fails
         if let Ok(i) = s.parse::<i64>() {
             return Value::Integer(i);
         }
@@ -703,6 +743,7 @@ pub struct BreadthFirstSearch {
     max_depth: usize,
     goals_explored: usize,
     executor: RuleExecutor,
+    proof_graph: Option<SharedProofGraph>,
 }
 
 /// Iterative deepening search implementation
@@ -806,6 +847,7 @@ impl BreadthFirstSearch {
             max_depth,
             goals_explored: 0,
             executor: RuleExecutor::new_with_inserter(kb, None),
+            proof_graph: None,
         }
     }
 
@@ -815,16 +857,38 @@ impl BreadthFirstSearch {
         kb: KnowledgeBase,
         engine: Option<Arc<Mutex<IncrementalEngine>>>,
     ) -> Self {
+        // Create shared proof graph for caching ONLY if engine is provided
+        let proof_graph = engine.as_ref().map(|_| super::proof_graph::new_shared());
+        let proof_graph_clone = proof_graph.clone();
+
         // If engine provided, create inserter closure
         let inserter = engine.map(|eng| {
             let eng = eng.clone();
+            let pg = proof_graph_clone.clone();
+
             std::sync::Arc::new(
                 move |fact_type: String,
                       data: crate::rete::TypedFacts,
                       rule_name: String,
-                      _premises: Vec<String>| {
+                      premises: Vec<String>| {
                     if let Ok(mut e) = eng.lock() {
-                        let _ = e.insert_logical(fact_type, data, rule_name, Vec::new());
+                        let handles = e.resolve_premise_keys(premises.clone());
+
+                        let handle = e.insert_logical(
+                            fact_type.clone(),
+                            data.clone(),
+                            rule_name.clone(),
+                            handles.clone(),
+                        );
+
+                        // Update proof graph
+                        if let Some(ref graph) = pg {
+                            if let Ok(mut g) = graph.lock() {
+                                let pattern = format!("{}.{}", fact_type, "derived");
+                                let key = FactKey::from_pattern(&pattern);
+                                g.insert_proof(handle, key, rule_name, handles, premises);
+                            }
+                        }
                     }
                 },
             )
@@ -837,6 +901,7 @@ impl BreadthFirstSearch {
             max_depth,
             goals_explored: 0,
             executor: RuleExecutor::new_with_inserter(kb, inserter),
+            proof_graph,
         }
     }
 
@@ -920,7 +985,19 @@ impl BreadthFirstSearch {
     /// Check if goal is already satisfied by facts
     ///
     /// This method now reuses ConditionEvaluator for proper evaluation
+    /// and checks ProofGraph cache first for previously proven facts
     fn check_goal_in_facts(&self, goal: &Goal, facts: &Facts) -> bool {
+        // First check ProofGraph cache if available
+        if let Some(ref graph_arc) = self.proof_graph {
+            if let Ok(mut graph) = graph_arc.lock() {
+                let key = FactKey::from_pattern(&goal.pattern);
+                if graph.is_proven(&key) {
+                    // Cache hit! Goal was previously proven
+                    return true;
+                }
+            }
+        }
+
         // For negated goals, use the expression directly (parser strips NOT)
         if goal.is_negated {
             if let Some(ref expr) = goal.expression {
@@ -1049,7 +1126,7 @@ impl BreadthFirstSearch {
 
             goal.depth = depth;
 
-            // Process candidate rules
+            // Process candidate rules (collect names without cloning the Vec)
             for rule_name in &goal.candidate_rules {
                 path.push(rule_name.clone());
             }

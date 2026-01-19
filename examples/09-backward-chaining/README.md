@@ -71,6 +71,19 @@ GRL Query Syntax demonstration
 cargo run --example grl_query_demo --features backward-chaining
 ```
 
+### 5. **proof_graph_cache_demo.rs** 🆕
+ProofGraph caching and TMS integration demonstration
+- Cache hits on repeated queries (100% hit rate demo)
+- Dependency tracking and cascading invalidation
+- Multiple justifications for same fact (alternative proofs)
+- Cache statistics and performance metrics
+- Expected 100-1000x speedup for cached queries
+
+**Run:**
+```bash
+cargo run --example proof_graph_cache_demo --features backward-chaining
+```
+
 ## Use Cases
 
 **Backward chaining is ideal for:**

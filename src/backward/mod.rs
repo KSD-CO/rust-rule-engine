@@ -32,6 +32,7 @@ pub mod goal;
 pub mod grl_query;
 pub mod nested;
 pub mod optimizer;
+pub mod proof_graph;
 pub mod proof_tree;
 pub mod query;
 pub mod rule_executor;
@@ -52,6 +53,9 @@ pub use nested::{
     Query,
 };
 pub use optimizer::{JoinOptimizer, OptimizationStats, OptimizerConfig, QueryOptimizer};
+pub use proof_graph::{
+    FactKey, Justification, ProofGraph, ProofGraphNode, ProofGraphStats, SharedProofGraph,
+};
 pub use proof_tree::{ProofNode, ProofNodeType, ProofStats, ProofTree};
 pub use query::{ProofTrace, QueryResult};
 pub use rule_executor::RuleExecutor;

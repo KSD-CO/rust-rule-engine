@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.16.1 🦀⚡🚀
+# Rust Rule Engine v1.17.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -138,6 +138,123 @@ for event in event_stream {
 
 // Run: cargo run --example streaming_fraud_detection --features streaming
 ```
+
+---
+
+## ✨ What's New in v1.17.0 🎉
+
+### 🚀 Proof Graph Caching with TMS Integration
+
+**Global cache for proven facts** with dependency tracking and automatic invalidation for backward chaining!
+
+#### Key Features
+
+**1. Proof Caching**
+- Cache proven facts with their justifications (rule + premises)
+- O(1) lookup by fact key (predicate + arguments)
+- Multiple justifications per fact (different ways to prove)
+- Thread-safe concurrent access with Arc<Mutex<>>
+
+**2. Dependency Tracking**
+- Forward edges: Track which rules used a fact as premise
+- Reverse edges: Track which facts a fact depends on
+- Automatic dependency graph construction during proof
+
+**3. TMS-Aware Invalidation**
+- Integrates with RETE's IncrementalEngine insert_logical
+- When premise retracted → cascading invalidation through dependents
+- Recursive propagation through entire dependency chain
+- Statistics tracking (hits, misses, invalidations, justifications)
+
+**4. Search Integration**
+- Seamlessly integrated into DepthFirstSearch and BreadthFirstSearch
+- Cache lookup before condition evaluation (early return on hit)
+- Automatic cache updates via inserter closure
+
+
+#### Usage Example
+
+```rust
+use rust_rule_engine::backward::{BackwardEngine, DepthFirstSearch};
+use rust_rule_engine::rete::IncrementalEngine;
+
+// Create engines
+let mut rete_engine = IncrementalEngine::new();
+let kb = /* load rules */;
+let mut backward_engine = BackwardEngine::new(kb);
+
+// Create search with ProofGraph enabled
+let search = DepthFirstSearch::new_with_engine(
+    backward_engine.kb().clone(),
+    Arc::new(Mutex::new(rete_engine)),
+);
+
+// First query builds cache
+let result1 = backward_engine.query_with_search(
+    "eligible(?x)",
+    &mut facts,
+    Box::new(search.clone()),
+)?;
+
+// Subsequent queries use cache 
+let result2 = backward_engine.query_with_search(
+    "eligible(?x)",
+    &mut facts,
+    Box::new(search),
+)?;
+```
+
+#### Dependency Tracking Example
+
+```rust
+// Given rules: A → B → C (chain dependency)
+let result_c = engine.query("C", &mut facts)?;  // Proves A, B, C
+
+// Retract A (premise)
+facts.set("A", FactValue::Bool(false));
+
+// Automatic cascading invalidation:
+// A invalidated → B invalidated → C invalidated
+// Total: 3 invalidations propagated through dependency graph
+```
+
+#### Multiple Justifications Example
+
+```rust
+// Same fact proven 3 different ways:
+// Rule 1: HighSpender → eligible
+// Rule 2: LoyalCustomer → eligible  
+// Rule 3: Subscription → eligible
+
+let result = engine.query("eligible(?x)", &mut facts)?;
+
+// ProofGraph stores all 3 justifications
+// If one premise fails, others still valid!
+```
+
+**Try it yourself:**
+```bash
+# Run comprehensive demo with 5 scenarios
+cargo run --example proof_graph_cache_demo --features backward-chaining
+
+# Run integration tests
+cargo test proof_graph --features backward-chaining
+```
+
+**New Files:**
+- `src/backward/proof_graph.rs` (520 lines) - Core ProofGraph implementation
+- `tests/proof_graph_integration_test.rs` - 6 comprehensive tests
+- `examples/09-backward-chaining/proof_graph_cache_demo.rs` - Interactive demo
+
+**Features:**
+- ✅ Global proof caching with O(1) lookup
+- ✅ Dependency tracking (forward + reverse edges)
+- ✅ TMS-aware cascading invalidation
+- ✅ Multiple justifications per fact
+- ✅ Thread-safe concurrent access
+- ✅ Statistics tracking (hits/misses/invalidations)
+- ✅ Zero overhead when cache miss
+- ✅ Automatic integration with DFS/BFS search
 
 ---
 
@@ -329,420 +446,7 @@ GrlReteLoader::load_from_string(&grl, &mut engine)?;
 
 ---
 
-## ✨ What's New in v1.14.0 🎉
 
-⚡ **Alpha Memory Indexing - Up to 800x Faster Queries!**
-
-New hash-based indexing for alpha node fact filtering, complementing Beta Memory Indexing for complete RETE optimization!
-
-### 🔍 Alpha Memory Indexing
-
-**Problem:** Alpha nodes scan all facts linearly to find matches - O(n) complexity becomes slow with large datasets.
-
-**Solution:** Hash-based indexing provides O(1) fact lookups - **up to 800x speedup** for filtered queries!
-
-```rust
-use rust_rule_engine::rete::{AlphaMemoryIndex, FactValue, TypedFacts};
-
-// Create alpha memory with indexing
-let mut mem = AlphaMemoryIndex::new();
-
-// Create index on frequently-queried field
-mem.create_index("status".to_string());
-
-// Insert facts (index updated automatically)
-for i in 0..10_000 {
-    let mut fact = TypedFacts::new();
-    fact.set("id", i as i64);
-    fact.set("status", if i % 100 == 0 { "active" } else { "pending" });
-    mem.insert(fact);
-}
-
-// Query using index - O(1) lookup!
-let active = mem.filter("status", &FactValue::String("active".to_string()));
-println!("Found {} active facts", active.len());
-// Without index: 10,000 comparisons (O(n))
-// With index: 1 hash lookup (O(1)) → ~800x faster!
-```
-
-**Real Benchmark Results:**
-
-| Dataset Size | Linear Scan | Indexed Lookup | Speedup |
-|--------------|-------------|----------------|---------|
-| 1,000 facts  | 310 µs      | 396 ns         | **782x** |
-| 10,000 facts | 3.18 ms     | 396 ns         | **8,030x** |
-| 50,000 facts | 15.9 ms     | 396 ns         | **40,151x** 🚀 |
-
-**Key Features:**
-- ✅ **Auto-tuning** - Automatically creates indexes after 50+ queries on a field
-- ✅ **Multiple indexes** - Index different fields independently
-- ✅ **Statistics tracking** - Monitor index hit rates and effectiveness
-- ✅ **Low overhead** - ~7-9% memory per index
-
-**When to Use:**
-```rust
-// ✅ Use when:
-// - Dataset > 10K facts
-// - Read-heavy workload (query > insert)
-// - High selectivity queries (<10% match rate)
-// - Same queries repeated multiple times
-
-// ❌ Skip when:
-// - Dataset < 1K facts (overhead > benefit)
-// - Write-heavy workload (insert > query)
-// - Query each field only once
-
-// 🤖 Auto-tuning mode (recommended):
-let mut mem = AlphaMemoryIndex::new();
-
-// Query many times...
-for _ in 0..100 {
-    mem.filter_tracked("status", &FactValue::String("active".to_string()));
-}
-
-// Auto-create index when query count > 50
-mem.auto_tune();  // Indexes "status" automatically!
-```
-
-**Memory Overhead:**
-
-| Index Count | Memory Usage | Overhead |
-|-------------|--------------|----------|
-| 0 indexes   | 59.31 MB     | Baseline |
-| 1 index     | 60.32 MB     | +1.7%    |
-| 3 indexes   | 72.15 MB     | +21.6%   |
-| 5 indexes   | 85.67 MB     | +44.4%   |
-
-**Recommendation:** Use 1-3 indexes max (~20% overhead) for best ROI.
-
----
-
-## ✨ What's New in v1.13.0
-
-⚡ **Beta Memory Indexing - Up to 1,235x Faster Joins!**
-
-Comprehensive RETE optimization system with **Beta Memory Indexing** providing exponential speedup for multi-pattern rules!
-
-### 🚀 Beta Memory Indexing
-
-**Problem:** Join operations use nested loops (O(n²)) which becomes a bottleneck with large fact sets.
-
-**Solution:** Hash-based indexing changes O(n²) to O(n) - providing **11x to 1,235x speedup!**
-
-```rust
-use rust_rule_engine::rete::optimization::BetaMemoryIndex;
-use rust_rule_engine::rete::TypedFacts;
-
-// Create sample facts (e.g., orders with customer IDs)
-let mut orders = Vec::new();
-for i in 0..1000 {
-    let mut order = TypedFacts::new();
-    order.set("OrderId", format!("O{}", i));
-    order.set("CustomerId", format!("C{}", i % 100));  // 100 unique customers
-    order.set("Amount", (i * 50) as i64);
-    orders.push(order);
-}
-
-// Build index on join key (CustomerId)
-let mut index = BetaMemoryIndex::new("CustomerId".to_string());
-for (idx, order) in orders.iter().enumerate() {
-    index.add(order, idx);  // O(1) insertion
-}
-
-// Perform O(1) lookup instead of O(n) scan
-// Note: Key format is the Debug representation of FactValue
-let key = "String(\"C50\")";  // Looking for customer C50's orders
-let matches = index.lookup(key);  // O(1) hash lookup!
-
-println!("Found {} orders for customer C50", matches.len());
-// Without indexing: 1,000 comparisons (O(n))
-// With indexing: 1 hash lookup (O(1)) → 1,000x faster!
-```
-
-**Real Benchmark Results:**
-
-| Dataset Size | Nested Loop (O(n²)) | Indexed (O(n)) | Speedup |
-|--------------|---------------------|----------------|---------|
-| 100 facts    | 1.00 ms             | 92 µs          | **11x** |
-| 1,000 facts  | 113.79 ms           | 672.76 µs      | **169x** |
-| 5,000 facts  | **2.63 seconds**    | **2.13 ms**    | **1,235x** 🚀 |
-
-**Key Insight:** At 5,000 facts, the difference between 2.6 SECONDS and 2ms is production-critical!
-
-### 🔧 Memory Optimizations
-
-Three additional optimizations focus on reducing memory footprint:
-
-**1. Node Sharing** - Deduplicate identical alpha nodes
-```rust
-use rust_rule_engine::rete::optimization::NodeSharingRegistry;
-
-let mut registry = NodeSharingRegistry::new();
-
-// Register 10,000 nodes with 100 unique patterns
-for (idx, node) in nodes.iter().enumerate() {
-    registry.register(node, idx);
-}
-
-// Result: 98.1% memory reduction (689.84 KB saved)
-let stats = registry.stats();
-println!("Memory saved: {:.1}%", stats.memory_saved_percent);
-```
-
-**2. Alpha Memory Compaction** - Eliminate duplicate facts
-```rust
-use rust_rule_engine::rete::optimization::CompactAlphaMemory;
-
-let mut memory = CompactAlphaMemory::new();
-
-// Insert 10,000 facts with duplicates
-for fact in facts {
-    memory.add(&fact);
-}
-
-// Result: 98.7% memory reduction (925.00 KB saved)
-println!("Unique facts: {} (saved {:.1}%)",
-    memory.len(), memory.memory_savings());
-```
-
-**3. Token Pooling** - Reduce allocations
-```rust
-use rust_rule_engine::rete::optimization::TokenPool;
-
-let mut pool = TokenPool::new(100);
-
-// Process 10,000 events with token reuse
-for event in events {
-    let mut token = pool.acquire();
-    token.set_fact(event);
-    // ... process ...
-    pool.release(token);
-}
-
-// Result: 99% fewer allocations
-let stats = pool.stats();
-println!("Reuse rate: {:.1}%", stats.reuse_rate);
-```
-
-### 📊 When to Use Each Optimization
-
-| Optimization | Always Use? | Use When | Skip When |
-|---|---|---|---|
-| **Beta Indexing** ⚡ | **YES** | Any join operations | Never (always beneficial) |
-| **Alpha Indexing** 🆕 | No | Read-heavy + >10K facts | Write-heavy or <1K facts |
-| **Node Sharing** | No | Memory-constrained + 10K+ rules | Speed is priority |
-| **Alpha Memory Compaction** | No | Many duplicate facts expected | Few duplicates |
-| **Token Pooling** | No | 100K+ events/sec continuous | Batch/low-volume processing |
-
-### 💡 Recommended Usage
-
-**Default (Most Production Systems):**
-```rust
-// Use Beta + Alpha Indexing for maximum performance
-use rust_rule_engine::rete::{AlphaMemoryIndex, BetaMemoryIndex};
-
-// Alpha indexing: for filtering (auto-tune recommended)
-let mut alpha_mem = AlphaMemoryIndex::new();
-// Will auto-create indexes for frequently-queried fields
-
-// Beta indexing: for joins (always use)
-let mut beta_index = BetaMemoryIndex::new("user_id".to_string());
-// 150-1,235x faster joins - no downsides!
-```
-
-**Memory-Constrained + Large Rule Sets:**
-```rust
-use rust_rule_engine::rete::optimization::{
-    BetaMemoryIndex,      // For speed (always)
-    NodeSharingRegistry,  // For memory (if 10K+ rules)
-};
-```
-
-**High-Duplicate Workloads:**
-```rust
-use rust_rule_engine::rete::optimization::{
-    BetaMemoryIndex,      // For speed (always)
-    CompactAlphaMemory,   // For deduplication (if >50% duplicates)
-};
-```
-
-### 🔬 Try It Yourself
-
-```bash
-# Run interactive demos
-cargo run --example alpha_indexing_demo          # Alpha Memory Indexing
-cargo run --example rete_optimization_demo       # Beta Memory Indexing
-cargo run --example grl_optimization_demo        # GRL rules + indexing
-
-# Run benchmarks
-cargo bench --bench engine_comparison_benchmark  # Compare all optimizations
-cargo bench --bench alpha_indexing_benchmark     # Alpha indexing details
-cargo run --bin memory_usage_benchmark --release # Memory analysis
-
-
-# View detailed HTML reports
-open target/criterion/report/index.html
-```
-
-### 📚 Complete Documentation
-
-- **[RETE Optimization Guide](docs/advanced-features/RETE_OPTIMIZATION.md)** - Comprehensive optimization guide
-- **[Benchmark Results](docs/advanced-features/RETE_OPTIMIZATION_BENCHMARKS.md)** - Real benchmark data & analysis
-- **[Optimization Demo](examples/05-performance/rete_optimization_demo.rs)** - Interactive demonstration
-- **[GRL + Optimization Demo](examples/05-performance/grl_optimization_demo.rs)** - Real GRL rules with Beta Indexing
-- **[Memory Analysis](examples/05-performance/memory_usage_comparison.rs)** - Actual KB/MB measurements with RETE engine
-
-**New in v1.13.0:**
-- ✅ Beta Memory Indexing (11x to 1,235x speedup)
-- ✅ Node Sharing (98.1% memory reduction)
-- ✅ Alpha Memory Compaction (98.7% memory reduction)
-- ✅ Token Pooling (99% fewer allocations)
-- ✅ Comprehensive benchmarks with scaled datasets
-- ✅ Real memory measurements (KB/MB)
-- ✅ Production-ready optimization manager
-- ✅ 30+ optimization tests
-
----
-
-## ✨ Previous Update - v1.12.1
-
-🌊 **Stream Processing Foundation!**
-
-**GRL Stream Syntax** - Parse and process real-time event streams with time-based windows!
-
-### 🆕 Stream Processing Features
-
-**GRL Stream Pattern Syntax:**
-```rust
-// Stream with sliding window
-login: LoginEvent from stream("logins") over window(10 min, sliding)
-
-// Stream with tumbling window
-metric: MetricEvent from stream("metrics") over window(5 sec, tumbling)
-
-// Simple stream without window
-event: Event from stream("events")
-```
-
-**StreamAlphaNode - RETE Integration:**
-```rust
-use rust_rule_engine::parser::grl::stream_syntax::parse_stream_pattern;
-use rust_rule_engine::rete::stream_alpha_node::{StreamAlphaNode, WindowSpec};
-
-// Parse GRL pattern
-let grl = r#"login: LoginEvent from stream("logins") over window(5 min, sliding)"#;
-let (_, pattern) = parse_stream_pattern(grl)?;
-
-// Create stream processor
-let mut node = StreamAlphaNode::new(
-    &pattern.source.stream_name,
-    pattern.event_type,
-    pattern.source.window.as_ref().map(|w| WindowSpec {
-        duration: w.duration,
-        window_type: w.window_type.clone(),
-    }),
-);
-
-// Process events
-if node.process_event(&event) {
-    let handle = working_memory.insert_from_stream("logins".to_string(), event);
-    // Event now in RETE network for rule evaluation!
-}
-```
-
-**Real-World Example - Fraud Detection:**
-```rust
-// 4 fraud detection rules implemented:
-// 1. Suspicious IP changes (multiple IPs in 15 min)
-// 2. High velocity purchases (>3 purchases in 15 min)
-// 3. Impossible travel (location change too fast)
-// 4. IP mismatch (login IP != purchase IP)
-
-// Result: 7 alerts triggered from 16 events
-cargo run --example streaming_fraud_detection --features streaming
-```
-
-**Features Implemented:**
-- ✅ GRL stream syntax parser (nom-based, 15 tests)
-- ✅ StreamAlphaNode for event filtering & windowing (10 tests)
-- ✅ Sliding windows (continuous rolling)
-- ✅ Tumbling windows (non-overlapping)
-- ✅ WorkingMemory integration (stream → facts)
-- ✅ Duration units: ms, sec, min, hour
-- ✅ Optional event type filtering
-- ✅ Multi-stream correlation
-
-**Test Coverage:**
-- 58 streaming tests (100% pass)
-- 8 integration tests (fraud, IoT, trading, security)
-- 3 end-to-end tests (GRL → RETE → WorkingMemory)
-- 2 comprehensive examples
-
----
-
-## ✨ Previous Update - v1.11.0
-
-🎯 **Nested Queries & Query Optimization!**
-
-Complete **Phase 1.1** with nested queries (subqueries) and intelligent query optimization for 10-100x performance improvements!
-
-### 🆕 Nested Queries
-
-```rust
-use rust_rule_engine::backward::*;
-
-// Find grandparents using nested queries
-let results = engine.query(
-    "grandparent(?x, ?z) WHERE
-        parent(?x, ?y) AND
-        (parent(?y, ?z) WHERE child(?z, ?y))",
-    &mut facts
-)?;
-
-// Complex eligibility with nested OR
-query "CheckEligibility" {
-    goal: (eligible(?x) WHERE (vip(?x) OR premium(?x))) AND active(?x)
-    on-success: { LogMessage("Eligible!"); }
-}
-```
-
-### ⚡ Query Optimization
-
-```rust
-// Enable optimization in GRL
-query "OptimizedSearch" {
-    goal: item(?x) AND expensive(?x) AND in_stock(?x)
-    enable-optimization: true  // Automatically reorders goals!
-}
-
-// Manual optimization
-let mut optimizer = QueryOptimizer::new();
-optimizer.set_selectivity("in_stock(?x)".to_string(), 0.1);   // 10% in stock
-optimizer.set_selectivity("expensive(?x)".to_string(), 0.3);  // 30% expensive
-optimizer.set_selectivity("item(?x)".to_string(), 0.9);       // 90% items
-
-let optimized = optimizer.optimize_goals(goals);
-// Result: in_stock → expensive → item (10-100x faster!)
-```
-
-**Performance Benefits:**
-- **Before**: 1000 items → 900 expensive → 270 in_stock = 2170 evaluations
-- **After**: 10 in_stock → 8 expensive → 8 items = 26 evaluations
-- **Speedup**: ~83x faster! 🚀
-
-**New Features:**
-- Nested queries with WHERE clauses
-- Query optimizer with goal reordering
-- Selectivity estimation (heuristic & custom)
-- Join order optimization
-- `enable-optimization` flag in GRL
-- 19 new tests + 9 integration tests
-
-**Testing:** 485/485 tests pass (368 unit + 117 integration) • Zero regressions
-
-📖 **[Nested Query Demo](examples/09-backward-chaining/nested_query_demo.rs)** • **[Optimizer Demo](examples/09-backward-chaining/optimizer_demo.rs)** • **[GRL Integration](examples/09-backward-chaining/grl_optimizer_demo.rs)**
-
----
 
 ## 📚 Documentation
 

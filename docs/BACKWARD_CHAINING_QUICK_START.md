@@ -1,8 +1,8 @@
 # Backward Chaining Quick Start Guide
 
 > **Category:** Guides
-> **Version:** 1.11.0+
-> **Last Updated:** December 10, 2024
+> **Version:** 1.17.0+
+> **Last Updated:** January 19, 2026
 > **Estimated Time:** 10 minutes
 
 Goal-driven inference with backward chaining - from zero to queries in 10 minutes!
@@ -28,6 +28,19 @@ Answer: "Yes, provable!" or "No, not provable"
 **Use Cases:**
 - Expert systems & diagnostics
 - Decision support systems
+- Query answering with caching
+- AI reasoning
+- Complex eligibility checks
+
+**Features (v1.17.0+):**
+- ✅ Unification with variable bindings
+- ✅ Search strategies: DFS, BFS, Iterative Deepening
+- ✅ Aggregation: COUNT, SUM, AVG, MIN, MAX
+- ✅ Negation (NOT) with closed-world assumption
+- ✅ Disjunction (OR) for alternative paths
+- ✅ Nested queries (subqueries)
+- ✅ Query optimization (automatic goal reordering)
+- ✅ **ProofGraph caching with TMS integration (NEW!)** 🚀
 - Query answering
 - AI reasoning
 - Complex eligibility checks

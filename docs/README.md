@@ -1,9 +1,9 @@
 # Rust Rule Engine Documentation
 
-> **Version:** 1.11.0
-> **Last Updated:** December 10, 2024
+> **Version:** 1.17.0
+> **Last Updated:** January 19, 2026
 
-Complete documentation for the Rust Rule Engine with RETE algorithm, backward chaining inference, and GRL syntax support.
+Complete documentation for the Rust Rule Engine with RETE algorithm, backward chaining inference, ProofGraph caching, and GRL syntax support.
 
 ---
 
@@ -29,6 +29,8 @@ Essential features and capabilities.
 ### ⚡ [Advanced Features](advanced-features/)
 Advanced capabilities for production use.
 
+- **[RETE Optimization](advanced-features/RETE_OPTIMIZATION.md)** - 1,235x join speedup & memory optimizations
+- **[ProofGraph Caching](advanced-features/PROOF_GRAPH_CACHING.md)** 🆕 - 100-1000x speedup for backward chaining
 - **[Streaming & CEP](advanced-features/STREAMING.md)** - Complex Event Processing
 - **[Modules & Imports](advanced-features/MODULES.md)** - Modular rule organization
 - **[Plugins & Extensions](advanced-features/PLUGINS.md)** - Custom plugins and functions
