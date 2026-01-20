@@ -1,6 +1,6 @@
 [package]
 name = "rust-rule-engine"
-version = "1.18.0"
+version = "1.18.0-alpha"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
 description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features SIMD/zero-copy/parallel parsing, forward/backward chaining, pattern matching, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend. Production-ready for business rules, expert systems, and real-time decision automation."
