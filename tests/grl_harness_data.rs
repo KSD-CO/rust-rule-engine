@@ -4,7 +4,7 @@
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
-use rust_rule_engine::parser::grl::GRLParser;
+use rust_rule_engine::parser::GRLParser;
 use rust_rule_engine::types::Value;
 
 use serde::Deserialize;
@@ -118,25 +118,26 @@ fn data_driven_grl_cases() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         });
         // Register action handlers for method calls used in method_calls.grl
-        engine.register_action_handler("setSpeed", |params, facts| {
-            if let Some(speed_value) = params.get("value") {
+        // Note: Actions like TestCar.setSpeed(...) are parsed as Custom actions
+        // with the full name "TestCar.setSpeed" (object.method format)
+        engine.register_action_handler("TestCar.setSpeed", |params, facts| {
+            if let Some(speed_value) = params.get("0") {
                 if let Some(car) = facts.get("TestCar") {
                     if let Value::Object(mut car_obj) = car.clone() {
                         car_obj.insert("Speed".to_string(), speed_value.clone());
-                        // Note: In a real implementation, you'd update the fact in the facts collection
-                        // For this test, we just ensure the handler exists and doesn't panic
+                        facts.add_value("TestCar", Value::Object(car_obj)).ok();
                     }
                 }
             }
             Ok(())
         });
 
-        engine.register_action_handler("setSpeedUp", |params, facts| {
-            if let Some(speed_up_value) = params.get("value") {
+        engine.register_action_handler("TestCar.setSpeedUp", |params, facts| {
+            if let Some(speed_up_value) = params.get("0") {
                 if let Some(car) = facts.get("TestCar") {
                     if let Value::Object(mut car_obj) = car.clone() {
                         car_obj.insert("SpeedUp".to_string(), speed_up_value.clone());
-                        // Note: In a real implementation, you'd update the fact in the facts collection
+                        facts.add_value("TestCar", Value::Object(car_obj)).ok();
                     }
                 }
             }
@@ -346,6 +347,269 @@ fn data_driven_grl_cases() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         });
         // Action handler for setTotalDistance used in complete_speedup.grl
+        // Support both short name "setTotalDistance" and full "DistanceRecord.setTotalDistance"
+        engine.register_action_handler("DistanceRecord.setTotalDistance", |params, facts| {
+            if let Some(val) = params
+                .get("0")
+                .cloned()
+                .or_else(|| params.get("value").cloned())
+            {
+                if let Ok(v) = val.to_string().parse::<f64>() {
+                    if let Some(existing) = facts
+                        .get("DistanceRecord")
+                        .or_else(|| facts.get("distanceRecord"))
+                    {
+                        if let Value::Object(obj) = existing {
+                            let mut updated = obj.clone();
+                            updated.insert("TotalDistance".to_string(), Value::Number(v));
+                            facts
+                                .add_value("DistanceRecord", Value::Object(updated))
+                                .map_err(|e| {
+                                    rust_rule_engine::errors::RuleEngineError::EvaluationError {
+                                        message: format!("setTotalDistance failed: {}", e),
+                                    }
+                                })?;
+                        }
+                    }
+                }
+            }
+            Ok(())
+        });
+        // Handler for Alert.setFraudScore used in fraud_detection.grl
+        engine.register_action_handler("Alert.setFraudScore", |params, facts| {
+            if let Some(val) = params.get("0").cloned() {
+                if let Ok(v) = val.to_string().parse::<f64>() {
+                    if let Some(existing) = facts.get("Alert").or_else(|| facts.get("alert")) {
+                        if let Value::Object(obj) = existing {
+                            let mut updated = obj.clone();
+                            updated.insert("FraudScore".to_string(), Value::Number(v));
+                            facts.add_value("Alert", Value::Object(updated)).ok();
+                        }
+                    }
+                }
+            }
+            Ok(())
+        });
+        // Handler for Alert.setStatus used in fraud_detection.grl
+        engine.register_action_handler("Alert.setStatus", |params, facts| {
+            if let Some(val) = params.get("0") {
+                let status = val.to_string();
+                if let Some(existing) = facts.get("Alert").or_else(|| facts.get("alert")) {
+                    if let Value::Object(obj) = existing {
+                        let mut updated = obj.clone();
+                        updated.insert("status".to_string(), Value::String(status));
+                        facts.add_value("Alert", Value::Object(updated)).ok();
+                    }
+                }
+            }
+            Ok(())
+        });
+        // Handler for User.* methods used in grule_demo.grl
+        engine.register_action_handler("User.setIsAdult", |params, facts| {
+            let flag = params.get("0").and_then(|v| v.as_boolean()).unwrap_or(true);
+            if let Some(existing) = facts.get("User") {
+                if let Value::Object(obj) = existing {
+                    let mut updated = obj.clone();
+                    updated.insert("IsAdult".to_string(), Value::Boolean(flag));
+                    facts.add_value("User", Value::Object(updated)).ok();
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("User.setCategory", |params, facts| {
+            if let Some(val) = params.get("0") {
+                let cat = val.to_string();
+                if let Some(existing) = facts.get("User") {
+                    if let Value::Object(obj) = existing {
+                        let mut updated = obj.clone();
+                        updated.insert("Category".to_string(), Value::String(cat));
+                        facts.add_value("User", Value::Object(updated)).ok();
+                    }
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("User.setIsVIP", |params, facts| {
+            let flag = params.get("0").and_then(|v| v.as_boolean()).unwrap_or(true);
+            if let Some(existing) = facts.get("User") {
+                if let Value::Object(obj) = existing {
+                    let mut updated = obj.clone();
+                    updated.insert("IsVIP".to_string(), Value::Boolean(flag));
+                    facts.add_value("User", Value::Object(updated)).ok();
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("User.setDiscountRate", |params, facts| {
+            if let Some(val) = params.get("0").cloned() {
+                if let Ok(v) = val.to_string().parse::<f64>() {
+                    if let Some(existing) = facts.get("User") {
+                        if let Value::Object(obj) = existing {
+                            let mut updated = obj.clone();
+                            updated.insert("DiscountRate".to_string(), Value::Number(v));
+                            facts.add_value("User", Value::Object(updated)).ok();
+                        }
+                    }
+                }
+            }
+            Ok(())
+        });
+        // Handler for Order.* and Customer.* methods
+        engine.register_action_handler("Order.setDiscountPercent", |params, facts| {
+            if let Some(val) = params.get("0").cloned() {
+                if let Ok(v) = val.to_string().parse::<f64>() {
+                    if let Some(existing) = facts.get("Order") {
+                        if let Value::Object(obj) = existing {
+                            let mut updated = obj.clone();
+                            updated.insert("DiscountPercent".to_string(), Value::Number(v));
+                            facts.add_value("Order", Value::Object(updated)).ok();
+                        }
+                    }
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("Customer.setLoyaltyPoints", |params, facts| {
+            if let Some(val) = params.get("0").cloned() {
+                if let Ok(v) = val.to_string().parse::<i64>() {
+                    if let Some(existing) = facts.get("Customer") {
+                        if let Value::Object(obj) = existing {
+                            let mut updated = obj.clone();
+                            updated.insert("LoyaltyPoints".to_string(), Value::Integer(v));
+                            facts.add_value("Customer", Value::Object(updated)).ok();
+                        }
+                    }
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("Order.setDiscountRate", |params, facts| {
+            if let Some(val) = params.get("0").cloned() {
+                if let Ok(v) = val.to_string().parse::<f64>() {
+                    if let Some(existing) = facts.get("Order") {
+                        if let Value::Object(obj) = existing {
+                            let mut updated = obj.clone();
+                            updated.insert("DiscountRate".to_string(), Value::Number(v));
+                            facts.add_value("Order", Value::Object(updated)).ok();
+                        }
+                    }
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("Order.setDiscountType", |params, facts| {
+            if let Some(val) = params.get("0") {
+                let dtype = val.to_string();
+                if let Some(existing) = facts.get("Order") {
+                    if let Value::Object(obj) = existing {
+                        let mut updated = obj.clone();
+                        updated.insert("DiscountType".to_string(), Value::String(dtype));
+                        facts.add_value("Order", Value::Object(updated)).ok();
+                    }
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("Customer.setWelcomeEmailSent", |params, facts| {
+            let flag = params.get("0").and_then(|v| v.as_boolean()).unwrap_or(true);
+            if let Some(existing) = facts.get("Customer") {
+                if let Value::Object(obj) = existing {
+                    let mut updated = obj.clone();
+                    updated.insert("WelcomeEmailSent".to_string(), Value::Boolean(flag));
+                    facts.add_value("Customer", Value::Object(updated)).ok();
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("Order.setFreeShipping", |params, facts| {
+            let flag = params.get("0").and_then(|v| v.as_boolean()).unwrap_or(true);
+            if let Some(existing) = facts.get("Order") {
+                if let Value::Object(obj) = existing {
+                    let mut updated = obj.clone();
+                    updated.insert("FreeShipping".to_string(), Value::Boolean(flag));
+                    facts.add_value("Order", Value::Object(updated)).ok();
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("Customer.setMembership", |params, facts| {
+            if let Some(val) = params.get("0") {
+                let membership = val.to_string();
+                if let Some(existing) = facts.get("Customer") {
+                    if let Value::Object(obj) = existing {
+                        let mut updated = obj.clone();
+                        updated.insert("Membership".to_string(), Value::String(membership));
+                        facts.add_value("Customer", Value::Object(updated)).ok();
+                    }
+                }
+            }
+            Ok(())
+        });
+        // Handler for TestCar.* methods (for advanced_method_calls.grl)
+        engine.register_action_handler("TestCar.setWarningLight", |params, facts| {
+            let flag = params.get("0").and_then(|v| v.as_boolean()).unwrap_or(true);
+            if let Some(existing) = facts.get("TestCar") {
+                if let Value::Object(obj) = existing {
+                    let mut updated = obj.clone();
+                    updated.insert("WarningLight".to_string(), Value::Boolean(flag));
+                    facts.add_value("TestCar", Value::Object(updated)).ok();
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("TestCar.setEcoMode", |params, facts| {
+            let flag = params.get("0").and_then(|v| v.as_boolean()).unwrap_or(true);
+            if let Some(existing) = facts.get("TestCar") {
+                if let Value::Object(obj) = existing {
+                    let mut updated = obj.clone();
+                    updated.insert("EcoMode".to_string(), Value::Boolean(flag));
+                    facts.add_value("TestCar", Value::Object(updated)).ok();
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("calculateFinalOrderAmount", |params, _facts| {
+            // Just a no-op for testing - calculate final order amount
+            Ok(())
+        });
+        engine.register_action_handler("Car.setIsRunning", |params, facts| {
+            let flag = params.get("0").and_then(|v| v.as_boolean()).unwrap_or(true);
+            if let Some(existing) = facts.get("Car") {
+                if let Value::Object(obj) = existing {
+                    let mut updated = obj.clone();
+                    updated.insert("IsRunning".to_string(), Value::Boolean(flag));
+                    facts.add_value("Car", Value::Object(updated)).ok();
+                }
+            }
+            Ok(())
+        });
+        engine.register_action_handler("DistanceRecord.setCurrentDistance", |params, facts| {
+            if let Some(val) = params
+                .get("0")
+                .cloned()
+                .or_else(|| params.get("value").cloned())
+            {
+                if let Ok(v) = val.to_string().parse::<f64>() {
+                    if let Some(existing) = facts
+                        .get("DistanceRecord")
+                        .or_else(|| facts.get("distanceRecord"))
+                    {
+                        if let Value::Object(obj) = existing {
+                            let mut updated = obj.clone();
+                            updated.insert("CurrentDistance".to_string(), Value::Number(v));
+                            facts
+                                .add_value("DistanceRecord", Value::Object(updated))
+                                .map_err(|e| {
+                                    rust_rule_engine::errors::RuleEngineError::EvaluationError {
+                                        message: format!("setCurrentDistance failed: {}", e),
+                                    }
+                                })?;
+                        }
+                    }
+                }
+            }
+            Ok(())
+        });
         engine.register_action_handler("setTotalDistance", |params, facts| {
             if let Some(val) = params
                 .get("0")

@@ -1,4 +1,4 @@
-use rust_rule_engine::parser::grl::GRLParser;
+use rust_rule_engine::parser::GRLParser;
 use rust_rule_engine::{
     engine::{EngineConfig, RustRuleEngine},
     errors::Result,
