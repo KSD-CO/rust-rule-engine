@@ -87,11 +87,6 @@ harness = false
 name = "advanced_optimizations_benchmark"
 harness = false
 
-# Real-world GRL file benchmarks
-[[bench]]
-name = "real_world_grl_benchmark"
-harness = false
-
 
 # Binary for large-scale testing
 [[bin]]
