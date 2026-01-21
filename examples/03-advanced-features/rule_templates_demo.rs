@@ -118,6 +118,23 @@ fn demo_vip_template() -> Result<(), Box<dyn std::error::Error>> {
             }
         }),
     );
+    // Alias action handler for fully-qualified call from templates
+    engine.register_action_handler("User.setVIPLevel", |params, facts| {
+        if let Some(val) = params.get("0") {
+            if let Some(Value::Object(obj)) = facts.get("User").or_else(|| facts.get("user")) {
+                let mut updated = obj.clone();
+                updated.insert("VIPLevel".to_string(), val.clone());
+                facts
+                    .add_value("User", Value::Object(updated))
+                    .map_err(
+                        |e| rust_rule_engine::errors::RuleEngineError::EvaluationError {
+                            message: format!("User.setVIPLevel failed: {}", e),
+                        },
+                    )?;
+            }
+        }
+        Ok(())
+    });
 
     // Test US user
     let facts = Facts::new();
@@ -144,6 +161,23 @@ fn demo_vip_template() -> Result<(), Box<dyn std::error::Error>> {
                     .map_err(
                         |e| rust_rule_engine::errors::RuleEngineError::EvaluationError {
                             message: format!("setIsVIP failed: {}", e),
+                        },
+                    )?;
+            }
+        }
+        Ok(())
+    });
+    // Also register fully-qualified action handler names used by template actions
+    engine.register_action_handler("User.setIsVIP", |params, facts| {
+        if let Some(val) = params.get("0") {
+            if let Some(Value::Object(obj)) = facts.get("User").or_else(|| facts.get("user")) {
+                let mut updated = obj.clone();
+                updated.insert("VIPLevel".to_string(), val.clone());
+                facts
+                    .add_value("User", Value::Object(updated))
+                    .map_err(
+                        |e| rust_rule_engine::errors::RuleEngineError::EvaluationError {
+                            message: format!("User.setIsVIP failed: {}", e),
                         },
                     )?;
             }

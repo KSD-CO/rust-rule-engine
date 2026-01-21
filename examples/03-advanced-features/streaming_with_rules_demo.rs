@@ -8,7 +8,7 @@
 //! Run with: cargo run --example streaming_with_rules_demo --features streaming
 
 use rust_rule_engine::engine::{facts::Facts, knowledge_base::KnowledgeBase, RustRuleEngine};
-use rust_rule_engine::parser::grl::GRLParser;
+use rust_rule_engine::parser::GRLParser;
 use rust_rule_engine::streaming::*;
 use rust_rule_engine::types::Value;
 use std::collections::HashMap;

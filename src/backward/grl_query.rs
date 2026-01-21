@@ -458,14 +458,22 @@ impl GRLQueryParser {
     }
 
     fn extract_query_name(input: &str) -> Result<String, RuleEngineError> {
-        let re = regex::Regex::new(r#"query\s+"([^"]+)"\s*\{"#).unwrap();
-        if let Some(caps) = re.captures(input) {
-            Ok(caps[1].to_string())
-        } else {
-            Err(RuleEngineError::ParseError {
-                message: "Invalid query syntax: missing query name".to_string(),
-            })
+        // Find query "Name" { pattern using literal search
+        if let Some(query_pos) = input.find("query") {
+            let after_query = &input[query_pos + 5..].trim_start();
+
+            // Try to find quoted name
+            if let Some(quote_start) = after_query.find('"') {
+                let after_quote = &after_query[quote_start + 1..];
+                if let Some(quote_end) = after_quote.find('"') {
+                    return Ok(after_quote[..quote_end].to_string());
+                }
+            }
         }
+
+        Err(RuleEngineError::ParseError {
+            message: "Invalid query syntax: missing query name".to_string(),
+        })
     }
 
     fn extract_goal(input: &str) -> Result<String, RuleEngineError> {
@@ -540,41 +548,93 @@ impl GRLQueryParser {
     }
 
     fn extract_strategy(input: &str) -> Option<GRLSearchStrategy> {
-        let re = regex::Regex::new(r"strategy:\s*([a-z-]+)").unwrap();
-        re.captures(input).and_then(|caps| match caps[1].trim() {
-            "depth-first" => Some(GRLSearchStrategy::DepthFirst),
-            "breadth-first" => Some(GRLSearchStrategy::BreadthFirst),
-            "iterative" => Some(GRLSearchStrategy::Iterative),
-            _ => None,
-        })
+        // Find "strategy:" and extract value
+        if let Some(pos) = input.find("strategy:") {
+            let after_strategy = input[pos + 9..].trim_start();
+
+            // Extract until newline or whitespace
+            let value = after_strategy
+                .split(|c: char| c.is_whitespace() || c == '\n')
+                .next()?
+                .trim();
+
+            match value {
+                "depth-first" => Some(GRLSearchStrategy::DepthFirst),
+                "breadth-first" => Some(GRLSearchStrategy::BreadthFirst),
+                "iterative" => Some(GRLSearchStrategy::Iterative),
+                _ => None,
+            }
+        } else {
+            None
+        }
     }
 
     fn extract_max_depth(input: &str) -> Option<usize> {
-        let re = regex::Regex::new(r"max-depth:\s*(\d+)").unwrap();
-        re.captures(input).and_then(|caps| caps[1].parse().ok())
+        // Find "max-depth:" and extract number
+        if let Some(pos) = input.find("max-depth:") {
+            let after_label = input[pos + 10..].trim_start();
+
+            // Extract digits
+            let digits: String = after_label
+                .chars()
+                .take_while(|c| c.is_ascii_digit())
+                .collect();
+
+            digits.parse().ok()
+        } else {
+            None
+        }
     }
 
     fn extract_max_solutions(input: &str) -> Option<usize> {
-        let re = regex::Regex::new(r"max-solutions:\s*(\d+)").unwrap();
-        re.captures(input).and_then(|caps| caps[1].parse().ok())
+        // Find "max-solutions:" and extract number
+        if let Some(pos) = input.find("max-solutions:") {
+            let after_label = input[pos + 14..].trim_start();
+
+            // Extract digits
+            let digits: String = after_label
+                .chars()
+                .take_while(|c| c.is_ascii_digit())
+                .collect();
+
+            digits.parse().ok()
+        } else {
+            None
+        }
     }
 
     fn extract_memoization(input: &str) -> Option<bool> {
-        let re = regex::Regex::new(r"enable-memoization:\s*(true|false)").unwrap();
-        re.captures(input).and_then(|caps| match caps[1].trim() {
-            "true" => Some(true),
-            "false" => Some(false),
-            _ => None,
-        })
+        // Find "enable-memoization:" and extract boolean
+        if let Some(pos) = input.find("enable-memoization:") {
+            let after_label = input[pos + 19..].trim_start();
+
+            if after_label.starts_with("true") {
+                Some(true)
+            } else if after_label.starts_with("false") {
+                Some(false)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     fn extract_optimization(input: &str) -> Option<bool> {
-        let re = regex::Regex::new(r"enable-optimization:\s*(true|false)").unwrap();
-        re.captures(input).and_then(|caps| match caps[1].trim() {
-            "true" => Some(true),
-            "false" => Some(false),
-            _ => None,
-        })
+        // Find "enable-optimization:" and extract boolean
+        if let Some(pos) = input.find("enable-optimization:") {
+            let after_label = input[pos + 20..].trim_start();
+
+            if after_label.starts_with("true") {
+                Some(true)
+            } else if after_label.starts_with("false") {
+                Some(false)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     fn extract_on_success(input: &str) -> Result<Option<QueryAction>, RuleEngineError> {
@@ -593,37 +653,86 @@ impl GRLQueryParser {
         input: &str,
         action_name: &str,
     ) -> Result<Option<QueryAction>, RuleEngineError> {
-        let pattern = format!(r"{}:\s*\{{([^}}]+)\}}", action_name);
-        let re = regex::Regex::new(&pattern).unwrap();
+        // Find "action_name: {" pattern
+        let pattern = format!("{}:", action_name);
+        if let Some(pos) = input.find(&pattern) {
+            let after_label = input[pos + pattern.len()..].trim_start();
 
-        if let Some(caps) = re.captures(input) {
-            let block = caps[1].trim();
-            let mut action = QueryAction::new();
+            // Find opening brace
+            if let Some(brace_pos) = after_label.find('{') {
+                let after_brace = &after_label[brace_pos + 1..];
 
-            // Parse assignments: Variable = Value
-            let assign_re = regex::Regex::new(r"([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*([^;]+);").unwrap();
-            for caps in assign_re.captures_iter(block) {
-                let var_name = caps[1].trim().to_string();
-                let value_str = caps[2].trim().to_string();
-                action.assignments.push((var_name, value_str));
+                // Find matching closing brace
+                let mut depth = 1;
+                let mut end_pos = 0;
+                let mut in_string = false;
+                let mut escape_next = false;
+
+                for (i, ch) in after_brace.chars().enumerate() {
+                    if escape_next {
+                        escape_next = false;
+                        continue;
+                    }
+
+                    match ch {
+                        '\\' if in_string => escape_next = true,
+                        '"' => in_string = !in_string,
+                        '{' if !in_string => depth += 1,
+                        '}' if !in_string => {
+                            depth -= 1;
+                            if depth == 0 {
+                                end_pos = i;
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                if depth == 0 {
+                    let block = &after_brace[..end_pos];
+                    let mut action = QueryAction::new();
+
+                    // Parse assignments: Variable = Value;
+                    for line in block.lines() {
+                        let line = line.trim();
+                        if line.is_empty() {
+                            continue;
+                        }
+
+                        // Check for assignment (contains '=' and ends with ';')
+                        if line.contains('=') && line.ends_with(';') {
+                            if let Some(eq_pos) = line.find('=') {
+                                let var_name = line[..eq_pos].trim().to_string();
+                                let value_str = line[eq_pos + 1..line.len() - 1].trim().to_string();
+                                action.assignments.push((var_name, value_str));
+                            }
+                        }
+                        // Check for function call (contains '(' and ends with ');')
+                        else if line.contains('(') && line.ends_with(");") {
+                            action.calls.push(line[..line.len() - 1].trim().to_string());
+                        }
+                    }
+
+                    return Ok(Some(action));
+                }
             }
-
-            // Parse function calls: Function(...)
-            let call_re = regex::Regex::new(r"([A-Za-z_][A-Za-z0-9_]*\([^)]*\));").unwrap();
-            for caps in call_re.captures_iter(block) {
-                action.calls.push(caps[1].trim().to_string());
-            }
-
-            Ok(Some(action))
-        } else {
-            Ok(None)
         }
+
+        Ok(None)
     }
 
     fn extract_when_condition(input: &str) -> Result<Option<String>, RuleEngineError> {
-        let re = regex::Regex::new(r"when:\s*([^\n}]+)").unwrap();
-        if let Some(caps) = re.captures(input) {
-            let condition_str = caps[1].trim().to_string();
+        // Use literal search instead of regex
+        if let Some(when_pos) = input.find("when:") {
+            let after_when = &input[when_pos + 5..]; // Skip "when:"
+
+            // Find end of condition (newline or closing brace)
+            let end_pos = after_when
+                .find(|c| ['\n', '}'].contains(&c))
+                .unwrap_or(after_when.len());
+
+            let condition_str = after_when[..end_pos].trim().to_string();
             Ok(Some(condition_str))
         } else {
             Ok(None)

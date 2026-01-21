@@ -1,8 +1,7 @@
 #![allow(deprecated)]
-
 use crate::engine::rule::Rule;
 use crate::errors::{Result, RuleEngineError};
-use crate::parser::grl::GRLParser;
+use crate::parser::GRLParser;
 use crate::types::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};

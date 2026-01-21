@@ -123,8 +123,14 @@ pub use engine::facts::{FactHelper, Facts};
 pub use engine::knowledge_base::KnowledgeBase;
 pub use engine::rule::{Condition, ConditionGroup, Rule};
 
-// Re-export parsers
-pub use parser::grl::GRLParser;
+// Re-export parsers at the crate root for convenience.
+// Note: `parser::GRLParser` is the public, recommended parser type re-exported
+// from `parser::GRLParserNoRegex` (the fast, no-regex parser). A legacy,
+// regex-based `GRLParser` exists in `src/parser/grl.rs` but is exposed as
+// `parser::LegacyGRLParser` behind the `legacy-regex-parser` feature.
+// Prefer the re-exported `GRLParser` for new code.
+pub use parser::GRLParser;
+pub use parser::ParsedGRL;
 
 /// Builder pattern for creating a RustRuleEngine with various configurations
 pub struct RuleEngineBuilder {
