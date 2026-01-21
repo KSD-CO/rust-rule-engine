@@ -179,11 +179,6 @@ path = "examples/05-performance/parallel_engine_demo.rs"
 name = "memory_usage_comparison"
 path = "examples/05-performance/memory_usage_comparison.rs"
 
-# Literal Search Optimization Demo
-[[example]]
-name = "literal_search_demo"
-path = "examples/literal_search_demo.rs"
-
 # 07 - Advanced RETE (2 examples)
 [[example]]
 name = "rete_p3_incremental"
