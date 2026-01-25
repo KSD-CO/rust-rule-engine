@@ -23,7 +23,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-regex = "1.11"
+rexile = "0.2.7"  # Fast regex engine with 10-100x faster compilation
+regex = "1.11"  # Keep for comparison benchmarks
 thiserror = "2.0"
 chrono = { version = "0.4", features = ["serde"] }
 log = "0.4"
@@ -67,6 +68,14 @@ required-features = ["backward-chaining"]
 
 [[bench]]
 name = "parallel_benchmarks"
+harness = false
+
+[[bench]]
+name = "regex_vs_rexile_benchmark"
+harness = false
+
+[[bench]]
+name = "find_iter_investigation"
 harness = false
 
 
@@ -204,3 +213,7 @@ path = "examples/10-module-system/phase3_demo.rs"
 [[bin]]
 name = "memory_usage_benchmark"
 path = "benches/memory_usage_benchmark.rs"
+
+# Use local rexile for testing
+[patch.crates-io]
+rexile = { path = "../rexile" }
