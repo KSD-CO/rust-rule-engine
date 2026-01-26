@@ -945,15 +945,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "caf4aa5b0f434c91fe5c7f1ecb6a5ece2130b02ad2a590589dda5146df959001"
 
 [[package]]
+name = "rexile"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a5eb60da8793044b3eee50108c138141e7493273f4b476c21e7e21f7af63c06"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+]
+
+[[package]]
 name = "rust-rule-engine"
-version = "1.17.0"
+version = "1.18.26"
 dependencies = [
  "chrono",
  "criterion",
  "log",
  "nom",
  "redis",
- "regex",
+ "rexile",
  "serde",
  "serde_json",
  "serde_yaml",

@@ -458,7 +458,7 @@ impl GRLQueryParser {
     }
 
     fn extract_query_name(input: &str) -> Result<String, RuleEngineError> {
-        let re = regex::Regex::new(r#"query\s+"([^"]+)"\s*\{"#).unwrap();
+        let re = rexile::Pattern::new(r#"query\s+"([^"]+)"\s*\{"#).unwrap();
         if let Some(caps) = re.captures(input) {
             Ok(caps[1].to_string())
         } else {
@@ -540,7 +540,7 @@ impl GRLQueryParser {
     }
 
     fn extract_strategy(input: &str) -> Option<GRLSearchStrategy> {
-        let re = regex::Regex::new(r"strategy:\s*([a-z-]+)").unwrap();
+        let re = rexile::Pattern::new(r"strategy:\s*([a-z-]+)").unwrap();
         re.captures(input).and_then(|caps| match caps[1].trim() {
             "depth-first" => Some(GRLSearchStrategy::DepthFirst),
             "breadth-first" => Some(GRLSearchStrategy::BreadthFirst),
@@ -550,17 +550,17 @@ impl GRLQueryParser {
     }
 
     fn extract_max_depth(input: &str) -> Option<usize> {
-        let re = regex::Regex::new(r"max-depth:\s*(\d+)").unwrap();
+        let re = rexile::Pattern::new(r"max-depth:\s*(\d+)").unwrap();
         re.captures(input).and_then(|caps| caps[1].parse().ok())
     }
 
     fn extract_max_solutions(input: &str) -> Option<usize> {
-        let re = regex::Regex::new(r"max-solutions:\s*(\d+)").unwrap();
+        let re = rexile::Pattern::new(r"max-solutions:\s*(\d+)").unwrap();
         re.captures(input).and_then(|caps| caps[1].parse().ok())
     }
 
     fn extract_memoization(input: &str) -> Option<bool> {
-        let re = regex::Regex::new(r"enable-memoization:\s*(true|false)").unwrap();
+        let re = rexile::Pattern::new(r"enable-memoization:\s*(true|false)").unwrap();
         re.captures(input).and_then(|caps| match caps[1].trim() {
             "true" => Some(true),
             "false" => Some(false),
@@ -569,7 +569,7 @@ impl GRLQueryParser {
     }
 
     fn extract_optimization(input: &str) -> Option<bool> {
-        let re = regex::Regex::new(r"enable-optimization:\s*(true|false)").unwrap();
+        let re = rexile::Pattern::new(r"enable-optimization:\s*(true|false)").unwrap();
         re.captures(input).and_then(|caps| match caps[1].trim() {
             "true" => Some(true),
             "false" => Some(false),
@@ -594,14 +594,15 @@ impl GRLQueryParser {
         action_name: &str,
     ) -> Result<Option<QueryAction>, RuleEngineError> {
         let pattern = format!(r"{}:\s*\{{([^}}]+)\}}", action_name);
-        let re = regex::Regex::new(&pattern).unwrap();
+        let re = rexile::Pattern::new(&pattern).unwrap();
 
         if let Some(caps) = re.captures(input) {
             let block = caps[1].trim();
             let mut action = QueryAction::new();
 
             // Parse assignments: Variable = Value
-            let assign_re = regex::Regex::new(r"([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*([^;]+);").unwrap();
+            let assign_re =
+                rexile::Pattern::new(r"([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*([^;]+);").unwrap();
             for caps in assign_re.captures_iter(block) {
                 let var_name = caps[1].trim().to_string();
                 let value_str = caps[2].trim().to_string();
@@ -609,7 +610,7 @@ impl GRLQueryParser {
             }
 
             // Parse function calls: Function(...)
-            let call_re = regex::Regex::new(r"([A-Za-z_][A-Za-z0-9_]*\([^)]*\));").unwrap();
+            let call_re = rexile::Pattern::new(r"([A-Za-z_][A-Za-z0-9_]*\([^)]*\));").unwrap();
             for caps in call_re.captures_iter(block) {
                 action.calls.push(caps[1].trim().to_string());
             }
@@ -621,7 +622,7 @@ impl GRLQueryParser {
     }
 
     fn extract_when_condition(input: &str) -> Result<Option<String>, RuleEngineError> {
-        let re = regex::Regex::new(r"when:\s*([^\n}]+)").unwrap();
+        let re = rexile::Pattern::new(r"when:\s*([^\n}]+)").unwrap();
         if let Some(caps) = re.captures(input) {
             let condition_str = caps[1].trim().to_string();
             Ok(Some(condition_str))

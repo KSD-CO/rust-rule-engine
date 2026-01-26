@@ -2,15 +2,15 @@ use crate::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugi
 use crate::engine::RustRuleEngine;
 use crate::errors::{Result, RuleEngineError};
 use crate::types::Value;
-use regex::Regex;
+use rexile::Pattern;
 use std::sync::OnceLock;
 
 // Cache email regex for performance
-static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
+static EMAIL_REGEX: OnceLock<Pattern> = OnceLock::new();
 
-fn email_regex() -> &'static Regex {
+fn email_regex() -> &'static Pattern {
     EMAIL_REGEX.get_or_init(|| {
-        Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+        Pattern::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
             .expect("Invalid email regex pattern")
     })
 }
@@ -113,7 +113,7 @@ impl RulePlugin for ValidationPlugin {
 
             if let Some(value) = facts.get(&input) {
                 let text = value_to_string(&value)?;
-                let regex = Regex::new(&pattern).map_err(|e| RuleEngineError::ActionError {
+                let regex = Pattern::new(&pattern).map_err(|e| RuleEngineError::ActionError {
                     message: format!("Invalid regex pattern: {}", e),
                 })?;
                 let is_valid = regex.is_match(&text);

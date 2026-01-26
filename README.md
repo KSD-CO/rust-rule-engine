@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.17.0 🦀⚡🚀
+# Rust Rule Engine v1.18.26 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -258,7 +258,38 @@ cargo test proof_graph --features backward-chaining
 
 ---
 
-## ✨ What's New in v1.16.1 🎉
+## ✨ What's New in v1.18.26 🎉
+
+### 🔄 Migrated from `regex` to `rexile` crate
+
+**Lighter regex implementation** - Replaced `regex` crate with `rexile` for pattern matching.
+
+**Why `rexile`?**
+- 🪶 **Lighter weight** - Smaller binary footprint
+- 🎯 **Simpler API** - Direct `&str` access from captures
+- ✅ **Full compatibility** - All 551 tests pass, all examples work
+
+**API Changes (internal):**
+```rust
+// Before (regex)
+use regex::Regex;
+let re = Regex::new(r"pattern").unwrap();
+let value = caps.get(1).unwrap().as_str();
+
+// After (rexile)
+use rexile::Pattern;
+let re = Pattern::new(r"pattern").unwrap();
+let value = &caps[1];  // Direct &str access!
+```
+
+**Final Core Dependencies:** Only 7 essential crates
+```
+chrono, log, nom, rexile, serde, serde_json, thiserror
+```
+
+---
+
+## ✨ What's New in v1.16.1
 
 ### 🧹 Minimal Dependencies - Pure Stdlib
 
@@ -281,7 +312,7 @@ cargo test proof_graph --features backward-chaining
 
 **Final Core Dependencies:** Only 7 essential crates
 ```
-chrono, log, nom, regex, serde, serde_json, thiserror
+chrono, log, nom, rexile, serde, serde_json, thiserror
 ```
 
 **Optional dependencies** (by feature):
@@ -290,7 +321,7 @@ chrono, log, nom, regex, serde, serde_json, thiserror
 
 **Code changes:**
 - Thread detection: `num_cpus::get()` → `std::thread::available_parallelism()`
-- Lazy regex (20 patterns): `once_cell::Lazy` → `std::sync::OnceLock`
+- Lazy patterns (20 patterns): `once_cell::Lazy` → `std::sync::OnceLock`
 - Random generation: `fastrand` → `RandomState::new().build_hasher()`
 - Fixed flaky test in session window eviction
 

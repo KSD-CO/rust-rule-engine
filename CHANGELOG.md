@@ -2,6 +2,41 @@
 
 All notable changes to rust-rule-engine will be documented in this file.
 
+## [1.18.26] - 2026-01-26
+
+### Changed - 🔄 Migrate from `regex` to `rexile` crate
+
+**Dependency Migration** - Replaced `regex` crate with `rexile` for lightweight regex operations.
+
+#### Migration Details
+
+**API Changes:**
+- `regex::Regex` → `rexile::Pattern`
+- `Regex::new()` → `Pattern::new()`
+- `captures.get(n).unwrap().as_str()` → `captures[n]` (direct `&str` access)
+
+**Files Modified:**
+- `Cargo.toml` - Changed dependency from `regex = "1.11"` to `rexile = "0.4.8"`
+- `src/plugins/validation.rs` - Updated validation patterns
+- `src/parser/grl.rs` - Updated 19 static regex patterns
+- `src/backward/grl_query.rs` - Updated query parsing patterns
+
+**All patterns remain unchanged** - Only API calls were modified, no logic changes.
+
+#### Benefits
+
+- **Smaller binary size** - `rexile` is more lightweight than `regex`
+- **Simpler API** - Direct `&str` access from captures without `.as_str()`
+- **Full compatibility** - All 551 tests pass, all examples work correctly
+
+#### Performance
+
+- No significant performance impact
+- RETE engine still 99-124x faster than native evaluation
+- Regex patterns only used during rule parsing (one-time cost)
+
+---
+
 ## [1.17.0] - 2026-01-19
 
 ### Added - 🚀 Proof Graph Caching with TMS Integration

@@ -1,7 +1,7 @@
 # Rust Rule Engine Documentation
 
-> **Version:** 1.17.0
-> **Last Updated:** January 19, 2026
+> **Version:** 1.18.26
+> **Last Updated:** January 26, 2026
 
 Complete documentation for the Rust Rule Engine with RETE algorithm, backward chaining inference, ProofGraph caching, and GRL syntax support.
 
