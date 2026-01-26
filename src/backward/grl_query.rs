@@ -466,10 +466,6 @@ impl GRLQueryParser {
                 message: "Invalid query syntax: missing query name".to_string(),
             })
         }
-
-        Err(RuleEngineError::ParseError {
-            message: "Invalid query syntax: missing query name".to_string(),
-        })
     }
 
     fn extract_goal(input: &str) -> Result<String, RuleEngineError> {
@@ -619,37 +615,10 @@ impl GRLQueryParser {
                 action.calls.push(caps[1].trim().to_string());
             }
 
-                if depth == 0 {
-                    let block = &after_brace[..end_pos];
-                    let mut action = QueryAction::new();
-
-                    // Parse assignments: Variable = Value;
-                    for line in block.lines() {
-                        let line = line.trim();
-                        if line.is_empty() {
-                            continue;
-                        }
-
-                        // Check for assignment (contains '=' and ends with ';')
-                        if line.contains('=') && line.ends_with(';') {
-                            if let Some(eq_pos) = line.find('=') {
-                                let var_name = line[..eq_pos].trim().to_string();
-                                let value_str = line[eq_pos + 1..line.len() - 1].trim().to_string();
-                                action.assignments.push((var_name, value_str));
-                            }
-                        }
-                        // Check for function call (contains '(' and ends with ');')
-                        else if line.contains('(') && line.ends_with(");") {
-                            action.calls.push(line[..line.len() - 1].trim().to_string());
-                        }
-                    }
-
-                    return Ok(Some(action));
-                }
-            }
+            Ok(Some(action))
+        } else {
+            Ok(None)
         }
-
-        Ok(None)
     }
 
     fn extract_when_condition(input: &str) -> Result<Option<String>, RuleEngineError> {

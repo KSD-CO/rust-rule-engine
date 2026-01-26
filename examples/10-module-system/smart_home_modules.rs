@@ -20,7 +20,7 @@
 /// cargo run --example smart_home_modules
 /// ```
 use rust_rule_engine::engine::module::{ExportList, ImportType, ModuleManager};
-use rust_rule_engine::parser::GRLParser;
+use rust_rule_engine::parser::grl::GRLParser;
 use std::fs;
 
 #[allow(dead_code)]

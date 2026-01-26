@@ -1,6 +1,6 @@
 use crate::engine::rule::Rule;
 use crate::errors::{Result, RuleEngineError};
-use crate::parser::GRLParser;
+use crate::parser::grl::GRLParser;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

@@ -6,7 +6,7 @@
 /// - CLIPS-like (bind ?total (* ?quantity ?price))
 use rust_rule_engine::engine::engine::RustRuleEngine;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
-use rust_rule_engine::parser::GRLParser;
+use rust_rule_engine::parser::grl::GRLParser;
 use rust_rule_engine::rete::{GrlReteLoader, IncrementalEngine, TypedFacts};
 use rust_rule_engine::{Facts, Value};
 

@@ -958,13 +958,10 @@ dependencies = [
 name = "rust-rule-engine"
 version = "1.18.26"
 dependencies = [
- "aho-corasick",
  "chrono",
  "criterion",
  "log",
- "memchr",
  "nom",
- "rayon",
  "redis",
  "rexile",
  "serde",
