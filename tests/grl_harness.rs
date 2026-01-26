@@ -3,7 +3,7 @@
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
-use rust_rule_engine::parser::grl::GRLParser;
+use rust_rule_engine::parser::GRLParser;
 use rust_rule_engine::types::Value;
 
 use std::collections::HashMap;
@@ -175,8 +175,10 @@ fn method_calls_smoke() -> Result<(), Box<dyn std::error::Error>> {
     };
     let mut engine = RustRuleEngine::with_config(kb, config);
     // Register action handlers for the method calls used in the GRL file
-    engine.register_action_handler("setSpeed", |params, facts| {
-        if let Some(speed_value) = params.get("value") {
+    // Note: Actions like TestCar.setSpeed(...) are parsed as Custom actions with
+    // the full name "TestCar.setSpeed"
+    engine.register_action_handler("TestCar.setSpeed", |params, facts| {
+        if let Some(speed_value) = params.get("0") {
             if let Some(car) = facts.get("TestCar") {
                 if let Value::Object(mut car_obj) = car.clone() {
                     car_obj.insert("Speed".to_string(), speed_value.clone());
@@ -188,8 +190,8 @@ fn method_calls_smoke() -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     });
 
-    engine.register_action_handler("setSpeedUp", |params, facts| {
-        if let Some(speed_up_value) = params.get("value") {
+    engine.register_action_handler("TestCar.setSpeedUp", |params, facts| {
+        if let Some(speed_up_value) = params.get("0") {
             if let Some(car) = facts.get("TestCar") {
                 if let Value::Object(mut car_obj) = car.clone() {
                     car_obj.insert("SpeedUp".to_string(), speed_up_value.clone());

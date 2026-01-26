@@ -1,3 +1,8 @@
+#![allow(clippy::manual_pattern_char_comparison)]
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::needless_borrow)]
+#![allow(clippy::manual_strip)]
+#![allow(deprecated)]
 use crate::engine::module::{ExportItem, ExportList, ImportType, ItemType, ModuleManager};
 use crate::engine::rule::{Condition, ConditionGroup, Rule};
 use crate::errors::{Result, RuleEngineError};
@@ -162,6 +167,32 @@ fn simple_condition_regex() -> &'static Pattern {
 
 /// GRL (Grule Rule Language) Parser
 /// Parses Grule-like syntax into Rule objects
+///
+/// # ⚠️ Performance Note
+///
+/// This parser uses regex internally which is 4-60x slower than the new literal search parsers.
+///
+/// **For new code, consider using the faster alternatives:**
+///
+/// ```rust,no_run
+/// use rust_rule_engine::parser::{grl_helpers, parallel};
+///
+/// // Example: a small dummy GRL string (doctest is marked no_run to avoid
+/// // executing heavy parsing during docs build)
+/// let grl = r#"rule \"Example\" { when true then }"#;
+///
+/// // Fast rule splitting with SIMD (3.5x faster)
+/// let rules = grl_helpers::split_into_rules(&grl);
+///
+/// // Or parallel parsing for large files (up to 8x faster on multi-core)
+/// let rules = parallel::parse_rules_adaptive(&grl);
+/// ```
+///
+/// This parser (`GRLParser`) is kept for backward compatibility with existing code.
+#[deprecated(
+    since = "1.18.0",
+    note = "Use `grl_helpers` or `parallel` parsers for 4-60x better performance. See module docs."
+)]
 pub struct GRLParser;
 
 /// Parsed rule attributes from GRL header

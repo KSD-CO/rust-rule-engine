@@ -3,7 +3,7 @@ name = "rust-rule-engine"
 version = "1.18.26"
 edition = "2021"
 authors = ["Ton That Vu <ttvuhm@gmail.com>"]
-description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features: forward/backward chaining, pattern matching, unification, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend, watermarking, and custom functions. Production-ready for business rules, expert systems, real-time stream processing, and decision automation."
+description = "A blazing-fast Rust rule engine with RETE algorithm, backward chaining inference, and GRL (Grule Rule Language) syntax. Features SIMD/zero-copy/parallel parsing, forward/backward chaining, pattern matching, O(1) rule indexing, TMS, expression evaluation, method calls, streaming with Redis state backend. Production-ready for business rules, expert systems, and real-time decision automation."
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/KSD-CO/rust-rule-engine"
@@ -32,10 +32,12 @@ nom = "7.1"
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
 
 [features]
-default = []
+default = []  # No extra features by default - regex-free!
 streaming = ["tokio"]
 streaming-redis = ["streaming", "redis"]
 backward-chaining = []
+# Enable legacy regex-based GRLParser (deprecated, use GRLParserNoRegex instead)
+legacy-regex-parser = ["regex"]
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -67,6 +69,16 @@ required-features = ["backward-chaining"]
 
 [[bench]]
 name = "parallel_benchmarks"
+harness = false
+
+# Literal search vs regex benchmarks
+[[bench]]
+name = "literal_search_benchmarks"
+harness = false
+
+# Advanced optimizations benchmarks (SIMD, zero-copy, parallel)
+[[bench]]
+name = "advanced_optimizations_benchmark"
 harness = false
 
 

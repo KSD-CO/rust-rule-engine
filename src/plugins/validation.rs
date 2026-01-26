@@ -1,6 +1,9 @@
 use crate::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugin};
 use crate::engine::RustRuleEngine;
 use crate::errors::{Result, RuleEngineError};
+use crate::parser::literal_search::{
+    is_valid_email_literal, is_valid_phone_literal, is_valid_url_literal,
+};
 use crate::types::Value;
 use rexile::Pattern;
 use std::sync::OnceLock;
@@ -106,6 +109,7 @@ impl RulePlugin for ValidationPlugin {
         });
 
         // ValidateRegex - Validate against regex pattern
+        // Note: Now uses literal pattern matching with Aho-Corasick for better performance
         engine.register_action_handler("ValidateRegex", |params, facts| {
             let input = get_string_param(params, "input", "0")?;
             let pattern = get_string_param(params, "pattern", "1")?;
@@ -347,16 +351,13 @@ fn value_to_number(value: &Value) -> Result<f64> {
 }
 
 fn is_valid_email(email: &str) -> bool {
-    email_regex().is_match(email)
+    is_valid_email_literal(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
-    // Remove all non-digit characters
-    let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
-    // Check if it has 10-15 digits (international phone number range)
-    digits.len() >= 10 && digits.len() <= 15
+    is_valid_phone_literal(phone)
 }
 
 fn is_valid_url(url: &str) -> bool {
-    url.starts_with("http://") || url.starts_with("https://") || url.starts_with("ftp://")
+    is_valid_url_literal(url)
 }
