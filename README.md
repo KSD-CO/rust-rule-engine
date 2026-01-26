@@ -1,25 +1,13 @@
-# Rust Rule Engine v1.18.0 🦀⚡🚀
+# Rust Rule Engine v1.18.26 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A blazing-fast production-ready rule engine for Rust with **SIMD/zero-copy/parallel parsing** supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
+A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
-
----
-
-## ⚡ NEW in v1.18.0: Advanced Parsing Optimizations
-
-**Phase 3 Complete:** SIMD + Zero-Copy + Parallel Parsing
-
-- 🚀 **SIMD Search** - Vector-accelerated pattern matching (2-4x faster)
-- 🧠 **Zero-Copy Parsing** - Lifetime-based parsing without allocations (90% memory reduction)
-- 🔀 **Parallel Parsing** - Multi-core rule parsing (4-8x faster on quad-core)
-- 📊 **4-60x Total Speedup** - Combined optimization improvements
-- ✅ **193 Tests Passing** - Comprehensive validation
 
 ---
 
@@ -120,7 +108,7 @@ if result.provable {
 
 ### Stream Processing Example 🆕
 ```rust
-use rust_rule_engine::parser::GRLParser;
+use rust_rule_engine::parser::grl::stream_syntax::parse_stream_pattern;
 use rust_rule_engine::rete::stream_alpha_node::{StreamAlphaNode, WindowSpec};
 use rust_rule_engine::rete::working_memory::WorkingMemory;
 
@@ -270,7 +258,38 @@ cargo test proof_graph --features backward-chaining
 
 ---
 
-## ✨ What's New in v1.16.1 🎉
+## ✨ What's New in v1.18.26 🎉
+
+### 🔄 Migrated from `regex` to `rexile` crate
+
+**Lighter regex implementation** - Replaced `regex` crate with `rexile` for pattern matching.
+
+**Why `rexile`?**
+- 🪶 **Lighter weight** - Smaller binary footprint
+- 🎯 **Simpler API** - Direct `&str` access from captures
+- ✅ **Full compatibility** - All 551 tests pass, all examples work
+
+**API Changes (internal):**
+```rust
+// Before (regex)
+use regex::Regex;
+let re = Regex::new(r"pattern").unwrap();
+let value = caps.get(1).unwrap().as_str();
+
+// After (rexile)
+use rexile::Pattern;
+let re = Pattern::new(r"pattern").unwrap();
+let value = &caps[1];  // Direct &str access!
+```
+
+**Final Core Dependencies:** Only 7 essential crates
+```
+chrono, log, nom, rexile, serde, serde_json, thiserror
+```
+
+---
+
+## ✨ What's New in v1.16.1
 
 ### 🧹 Minimal Dependencies - Pure Stdlib
 
@@ -291,12 +310,10 @@ cargo test proof_graph --features backward-chaining
 - ⚡ **Zero performance regression** - all benchmarks unchanged
 - 🔧 **Modern Rust** - using latest stdlib features
 
-**Final Core Dependencies:** Only 6 essential crates (regex-free!)
+**Final Core Dependencies:** Only 7 essential crates
 ```
-chrono, log, nom, serde, serde_json, thiserror
+chrono, log, nom, rexile, serde, serde_json, thiserror
 ```
-
-**Note:** `regex` is now optional via `legacy-regex-parser` feature flag.
 
 **Optional dependencies** (by feature):
 - `tokio` - Async runtime for streaming
@@ -304,7 +321,7 @@ chrono, log, nom, serde, serde_json, thiserror
 
 **Code changes:**
 - Thread detection: `num_cpus::get()` → `std::thread::available_parallelism()`
-- Lazy regex (20 patterns): `once_cell::Lazy` → `std::sync::OnceLock`
+- Lazy patterns (20 patterns): `once_cell::Lazy` → `std::sync::OnceLock`
 - Random generation: `fastrand` → `RandomState::new().build_hasher()`
 - Fixed flaky test in session window eviction
 

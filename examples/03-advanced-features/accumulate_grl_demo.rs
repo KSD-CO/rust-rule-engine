@@ -186,66 +186,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut engine = RustRuleEngine::new(kb);
     println!();
 
-    // Register mock action handler for Alert.send used by sales_analytics.grl
-    engine.register_action_handler("Alert.send", |params, facts| {
-        // Typical params: "0" => type/severity, "1" => message
-        if let Some(val) = params.get("1") {
-            facts.set("Notification.message", val.clone());
-        }
-        if let Some(val) = params.get("0") {
-            facts.set("Notification.type", val.clone());
-        }
-        Ok(())
-    });
-    // Mock handler for offering premium membership
-    engine.register_action_handler("Action.offerPremiumMembership", |params, facts| {
-        // Example: set a fact that premium membership was offered
-        facts.set("Customer.premiumOffered", Value::Boolean(true));
-        if let Some(val) = params.get("0") {
-            facts.set("Customer.premiumOfferReason", val.clone());
-        }
-        Ok(())
-    });
-    // Mock handler for inventory allocation
-    engine.register_action_handler("Inventory.allocate", |params, facts| {
-        // params may include product/category and amount
-        if let Some(val) = params.get("0") {
-            facts.set("Inventory.lastAllocated", val.clone());
-        }
-        Ok(())
-    });
-    // Mock handler for marketing promotions
-    engine.register_action_handler("Marketing.promote", |params, facts| {
-        facts.set("Marketing.lastPromo", Value::String("promoted".to_string()));
-        if let Some(val) = params.get("0") {
-            facts.set("Marketing.promoTarget", val.clone());
-        }
-        Ok(())
-    });
-
-    // Generic fallback for common action prefixes to avoid missing handlers in examples
-    let common_prefixes = vec!["Alert.", "Action.", "Inventory.", "Marketing."];
-    for _prefix in common_prefixes {
-        // register a noop handler for prefix + "*" patterns by registering common names
-        // (the engine requires exact name, so register a handful of likely names)
-        // We already registered several specific ones; add a noop default for 'Alert.create'
-        engine.register_action_handler(&format!("{}{}", "Alert", ".create"), |_p, _f| Ok(()));
-    }
-    // Register other handlers used by the GRL file
-    engine.register_action_handler("Discount.apply", |params, facts| {
-        if let Some(val) = params.get("0") {
-            facts.set("Discount.lastCategory", val.clone());
-        }
-        if let Some(val) = params.get("1") {
-            facts.set("Discount.lastPercent", val.clone());
-        }
-        Ok(())
-    });
-
-    engine.register_action_handler("Action.promoteBundleDeals", |_, _| Ok(()));
-    engine.register_action_handler("Analytics.trackSmallOrders", |_, _| Ok(()));
-    engine.register_action_handler("Analytics.trackLargeOrders", |_, _| Ok(()));
-
     // ========================================================================
     // Step 4: Prepare Facts with Accumulated Data
     // ========================================================================

@@ -1,10 +1,19 @@
 use crate::engine::plugin::{PluginHealth, PluginMetadata, PluginState, RulePlugin};
 use crate::engine::RustRuleEngine;
 use crate::errors::{Result, RuleEngineError};
-use crate::parser::literal_search::{
-    is_valid_email_literal, is_valid_phone_literal, is_valid_url_literal,
-};
 use crate::types::Value;
+use rexile::Pattern;
+use std::sync::OnceLock;
+
+// Cache email regex for performance
+static EMAIL_REGEX: OnceLock<Pattern> = OnceLock::new();
+
+fn email_regex() -> &'static Pattern {
+    EMAIL_REGEX.get_or_init(|| {
+        Pattern::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+            .expect("Invalid email regex pattern")
+    })
+}
 
 /// Built-in plugin for data validation operations
 pub struct ValidationPlugin {
@@ -97,7 +106,6 @@ impl RulePlugin for ValidationPlugin {
         });
 
         // ValidateRegex - Validate against regex pattern
-        // Note: Now uses literal pattern matching with Aho-Corasick for better performance
         engine.register_action_handler("ValidateRegex", |params, facts| {
             let input = get_string_param(params, "input", "0")?;
             let pattern = get_string_param(params, "pattern", "1")?;
@@ -105,9 +113,10 @@ impl RulePlugin for ValidationPlugin {
 
             if let Some(value) = facts.get(&input) {
                 let text = value_to_string(&value)?;
-                // For now, use simple contains check
-                // For more complex patterns, consider using Aho-Corasick multi-pattern search
-                let is_valid = text.contains(&pattern);
+                let regex = Pattern::new(&pattern).map_err(|e| RuleEngineError::ActionError {
+                    message: format!("Invalid regex pattern: {}", e),
+                })?;
+                let is_valid = regex.is_match(&text);
                 facts.set_nested(&output, Value::Boolean(is_valid))?;
             }
             Ok(())
@@ -338,13 +347,16 @@ fn value_to_number(value: &Value) -> Result<f64> {
 }
 
 fn is_valid_email(email: &str) -> bool {
-    is_valid_email_literal(email)
+    email_regex().is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
-    is_valid_phone_literal(phone)
+    // Remove all non-digit characters
+    let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
+    // Check if it has 10-15 digits (international phone number range)
+    digits.len() >= 10 && digits.len() <= 15
 }
 
 fn is_valid_url(url: &str) -> bool {
-    is_valid_url_literal(url)
+    url.starts_with("http://") || url.starts_with("https://") || url.starts_with("ftp://")
 }

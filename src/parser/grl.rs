@@ -1,14 +1,9 @@
-#![allow(clippy::manual_pattern_char_comparison)]
-#![allow(clippy::collapsible_if)]
-#![allow(clippy::needless_borrow)]
-#![allow(clippy::manual_strip)]
-#![allow(deprecated)]
 use crate::engine::module::{ExportItem, ExportList, ImportType, ItemType, ModuleManager};
 use crate::engine::rule::{Condition, ConditionGroup, Rule};
 use crate::errors::{Result, RuleEngineError};
 use crate::types::{ActionType, Operator, Value};
 use chrono::{DateTime, Utc};
-use regex::Regex;
+use rexile::Pattern;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -17,182 +12,156 @@ use std::sync::OnceLock;
 pub mod stream_syntax;
 
 // Cached main regexes - compiled once at startup
-static RULE_REGEX: OnceLock<Regex> = OnceLock::new();
-static RULE_SPLIT_REGEX: OnceLock<Regex> = OnceLock::new();
-static DEFMODULE_REGEX: OnceLock<Regex> = OnceLock::new();
-static DEFMODULE_SPLIT_REGEX: OnceLock<Regex> = OnceLock::new();
-static WHEN_THEN_REGEX: OnceLock<Regex> = OnceLock::new();
-static SALIENCE_REGEX: OnceLock<Regex> = OnceLock::new();
-static TEST_CONDITION_REGEX: OnceLock<Regex> = OnceLock::new();
-static TYPED_TEST_CONDITION_REGEX: OnceLock<Regex> = OnceLock::new();
-static FUNCTION_CALL_REGEX: OnceLock<Regex> = OnceLock::new();
-static CONDITION_REGEX: OnceLock<Regex> = OnceLock::new();
-static METHOD_CALL_REGEX: OnceLock<Regex> = OnceLock::new();
-static FUNCTION_BINDING_REGEX: OnceLock<Regex> = OnceLock::new();
-static MULTIFIELD_COLLECT_REGEX: OnceLock<Regex> = OnceLock::new();
-static MULTIFIELD_COUNT_REGEX: OnceLock<Regex> = OnceLock::new();
-static MULTIFIELD_FIRST_REGEX: OnceLock<Regex> = OnceLock::new();
-static MULTIFIELD_LAST_REGEX: OnceLock<Regex> = OnceLock::new();
-static MULTIFIELD_EMPTY_REGEX: OnceLock<Regex> = OnceLock::new();
-static MULTIFIELD_NOT_EMPTY_REGEX: OnceLock<Regex> = OnceLock::new();
-static SIMPLE_CONDITION_REGEX: OnceLock<Regex> = OnceLock::new();
+static RULE_REGEX: OnceLock<Pattern> = OnceLock::new();
+static RULE_SPLIT_REGEX: OnceLock<Pattern> = OnceLock::new();
+static DEFMODULE_REGEX: OnceLock<Pattern> = OnceLock::new();
+static DEFMODULE_SPLIT_REGEX: OnceLock<Pattern> = OnceLock::new();
+static WHEN_THEN_REGEX: OnceLock<Pattern> = OnceLock::new();
+static SALIENCE_REGEX: OnceLock<Pattern> = OnceLock::new();
+static TEST_CONDITION_REGEX: OnceLock<Pattern> = OnceLock::new();
+static TYPED_TEST_CONDITION_REGEX: OnceLock<Pattern> = OnceLock::new();
+static FUNCTION_CALL_REGEX: OnceLock<Pattern> = OnceLock::new();
+static CONDITION_REGEX: OnceLock<Pattern> = OnceLock::new();
+static METHOD_CALL_REGEX: OnceLock<Pattern> = OnceLock::new();
+static FUNCTION_BINDING_REGEX: OnceLock<Pattern> = OnceLock::new();
+static MULTIFIELD_COLLECT_REGEX: OnceLock<Pattern> = OnceLock::new();
+static MULTIFIELD_COUNT_REGEX: OnceLock<Pattern> = OnceLock::new();
+static MULTIFIELD_FIRST_REGEX: OnceLock<Pattern> = OnceLock::new();
+static MULTIFIELD_LAST_REGEX: OnceLock<Pattern> = OnceLock::new();
+static MULTIFIELD_EMPTY_REGEX: OnceLock<Pattern> = OnceLock::new();
+static MULTIFIELD_NOT_EMPTY_REGEX: OnceLock<Pattern> = OnceLock::new();
+static SIMPLE_CONDITION_REGEX: OnceLock<Pattern> = OnceLock::new();
 
 // Helper functions to get or initialize regexes
-fn rule_regex() -> &'static Regex {
+fn rule_regex() -> &'static Pattern {
     RULE_REGEX.get_or_init(|| {
-        Regex::new(r#"rule\s+(?:"([^"]+)"|([a-zA-Z_]\w*))\s*([^{]*)\{(.+)\}"#)
+        Pattern::new(r#"rule\s+(?:"([^"]+)"|([a-zA-Z_]\w*))\s*([^{]*)\{(.+)\}"#)
             .expect("Invalid rule regex pattern")
     })
 }
 
-fn rule_split_regex() -> &'static Regex {
+fn rule_split_regex() -> &'static Pattern {
     RULE_SPLIT_REGEX.get_or_init(|| {
-        Regex::new(r#"(?s)rule\s+(?:"[^"]+"|[a-zA-Z_]\w*).*?\}"#)
+        Pattern::new(r#"(?s)rule\s+(?:"[^"]+"|[a-zA-Z_]\w*).*?\}"#)
             .expect("Invalid rule split regex pattern")
     })
 }
 
-fn defmodule_regex() -> &'static Regex {
+fn defmodule_regex() -> &'static Pattern {
     DEFMODULE_REGEX.get_or_init(|| {
-        Regex::new(r#"defmodule\s+([A-Z_]\w*)\s*\{([^}]*)\}"#)
+        Pattern::new(r#"defmodule\s+([A-Z_]\w*)\s*\{([^}]*)\}"#)
             .expect("Invalid defmodule regex pattern")
     })
 }
 
-fn defmodule_split_regex() -> &'static Regex {
+fn defmodule_split_regex() -> &'static Pattern {
     DEFMODULE_SPLIT_REGEX.get_or_init(|| {
-        Regex::new(r#"(?s)defmodule\s+[A-Z_]\w*\s*\{[^}]*\}"#)
+        Pattern::new(r#"(?s)defmodule\s+[A-Z_]\w*\s*\{[^}]*\}"#)
             .expect("Invalid defmodule split regex pattern")
     })
 }
 
-fn when_then_regex() -> &'static Regex {
+fn when_then_regex() -> &'static Pattern {
     WHEN_THEN_REGEX.get_or_init(|| {
-        Regex::new(r"when\s+(.+?)\s+then\s+(.+)").expect("Invalid when-then regex pattern")
+        Pattern::new(r"when\s+(.+?)\s+then\s+(.+)").expect("Invalid when-then regex pattern")
     })
 }
 
-fn salience_regex() -> &'static Regex {
+fn salience_regex() -> &'static Pattern {
     SALIENCE_REGEX
-        .get_or_init(|| Regex::new(r"salience\s+(\d+)").expect("Invalid salience regex pattern"))
+        .get_or_init(|| Pattern::new(r"salience\s+(\d+)").expect("Invalid salience regex pattern"))
 }
 
-fn test_condition_regex() -> &'static Regex {
+fn test_condition_regex() -> &'static Pattern {
     TEST_CONDITION_REGEX.get_or_init(|| {
-        Regex::new(r#"^test\s*\(\s*([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*\)$"#)
+        Pattern::new(r#"^test\s*\(\s*([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*\)$"#)
             .expect("Invalid test condition regex")
     })
 }
 
-fn typed_test_condition_regex() -> &'static Regex {
+fn typed_test_condition_regex() -> &'static Pattern {
     TYPED_TEST_CONDITION_REGEX.get_or_init(|| {
-        Regex::new(r#"\$(\w+)\s*:\s*(\w+)\s*\(\s*(.+?)\s*\)"#)
+        Pattern::new(r#"\$(\w+)\s*:\s*(\w+)\s*\(\s*(.+?)\s*\)"#)
             .expect("Invalid typed test condition regex")
     })
 }
 
-fn function_call_regex() -> &'static Regex {
+fn function_call_regex() -> &'static Pattern {
     FUNCTION_CALL_REGEX.get_or_init(|| {
-        Regex::new(r#"([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#)
+        Pattern::new(r#"([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#)
             .expect("Invalid function call regex")
     })
 }
 
-fn condition_regex() -> &'static Regex {
+fn condition_regex() -> &'static Pattern {
     CONDITION_REGEX.get_or_init(|| {
-        Regex::new(r#"([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*(?:\s*[+\-*/%]\s*[a-zA-Z0-9_\.]+)*)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#)
+        Pattern::new(r#"([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*(?:\s*[+\-*/%]\s*[a-zA-Z0-9_\.]+)*)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#)
             .expect("Invalid condition regex")
     })
 }
 
-fn method_call_regex() -> &'static Regex {
+fn method_call_regex() -> &'static Pattern {
     METHOD_CALL_REGEX.get_or_init(|| {
-        Regex::new(r#"\$(\w+)\.(\w+)\s*\(([^)]*)\)"#).expect("Invalid method call regex")
+        Pattern::new(r#"\$(\w+)\.(\w+)\s*\(([^)]*)\)"#).expect("Invalid method call regex")
     })
 }
 
-fn function_binding_regex() -> &'static Regex {
+fn function_binding_regex() -> &'static Pattern {
     FUNCTION_BINDING_REGEX.get_or_init(|| {
-        Regex::new(r#"(\w+)\s*\(\s*(.+?)?\s*\)"#).expect("Invalid function binding regex")
+        Pattern::new(r#"(\w+)\s*\(\s*(.+?)?\s*\)"#).expect("Invalid function binding regex")
     })
 }
 
-fn multifield_collect_regex() -> &'static Regex {
+fn multifield_collect_regex() -> &'static Pattern {
     MULTIFIELD_COLLECT_REGEX.get_or_init(|| {
-        Regex::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+(\$\?[a-zA-Z_]\w*)$"#)
+        Pattern::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+(\$\?[a-zA-Z_]\w*)$"#)
             .expect("Invalid multifield collect regex")
     })
 }
 
-fn multifield_count_regex() -> &'static Regex {
+fn multifield_count_regex() -> &'static Pattern {
     MULTIFIELD_COUNT_REGEX.get_or_init(|| {
-        Regex::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+count\s*(>=|<=|==|!=|>|<)\s*(.+)$"#)
+        Pattern::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+count\s*(>=|<=|==|!=|>|<)\s*(.+)$"#)
             .expect("Invalid multifield count regex")
     })
 }
 
-fn multifield_first_regex() -> &'static Regex {
+fn multifield_first_regex() -> &'static Pattern {
     MULTIFIELD_FIRST_REGEX.get_or_init(|| {
-        Regex::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+first(?:\s+(\$[a-zA-Z_]\w*))?$"#)
+        Pattern::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+first(?:\s+(\$[a-zA-Z_]\w*))?$"#)
             .expect("Invalid multifield first regex")
     })
 }
 
-fn multifield_last_regex() -> &'static Regex {
+fn multifield_last_regex() -> &'static Pattern {
     MULTIFIELD_LAST_REGEX.get_or_init(|| {
-        Regex::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+last(?:\s+(\$[a-zA-Z_]\w*))?$"#)
+        Pattern::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+last(?:\s+(\$[a-zA-Z_]\w*))?$"#)
             .expect("Invalid multifield last regex")
     })
 }
 
-fn multifield_empty_regex() -> &'static Regex {
+fn multifield_empty_regex() -> &'static Pattern {
     MULTIFIELD_EMPTY_REGEX.get_or_init(|| {
-        Regex::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+empty$"#)
+        Pattern::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+empty$"#)
             .expect("Invalid multifield empty regex")
     })
 }
 
-fn multifield_not_empty_regex() -> &'static Regex {
+fn multifield_not_empty_regex() -> &'static Pattern {
     MULTIFIELD_NOT_EMPTY_REGEX.get_or_init(|| {
-        Regex::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+not_empty$"#)
+        Pattern::new(r#"^([a-zA-Z_]\w*\.[a-zA-Z_]\w*)\s+not_empty$"#)
             .expect("Invalid multifield not_empty regex")
     })
 }
 
-fn simple_condition_regex() -> &'static Regex {
+fn simple_condition_regex() -> &'static Pattern {
     SIMPLE_CONDITION_REGEX.get_or_init(|| {
-        Regex::new(r#"(\w+)\s*(>=|<=|==|!=|>|<)\s*(.+)"#).expect("Invalid simple condition regex")
+        Pattern::new(r#"(\w+)\s*(>=|<=|==|!=|>|<)\s*(.+)"#).expect("Invalid simple condition regex")
     })
 }
 
 /// GRL (Grule Rule Language) Parser
 /// Parses Grule-like syntax into Rule objects
-///
-/// # ⚠️ Performance Note
-///
-/// This parser uses regex internally which is 4-60x slower than the new literal search parsers.
-///
-/// **For new code, consider using the faster alternatives:**
-///
-/// ```rust,no_run
-/// use rust_rule_engine::parser::{grl_helpers, parallel};
-///
-/// // Example: a small dummy GRL string (doctest is marked no_run to avoid
-/// // executing heavy parsing during docs build)
-/// let grl = r#"rule \"Example\" { when true then }"#;
-///
-/// // Fast rule splitting with SIMD (3.5x faster)
-/// let rules = grl_helpers::split_into_rules(&grl);
-///
-/// // Or parallel parsing for large files (up to 8x faster on multi-core)
-/// let rules = parallel::parse_rules_adaptive(&grl);
-/// ```
-///
-/// This parser (`GRLParser`) is kept for backward compatibility with existing code.
-#[deprecated(
-    since = "1.18.0",
-    note = "Use `grl_helpers` or `parallel` parsers for 4-60x better performance. See module docs."
-)]
 pub struct GRLParser;
 
 /// Parsed rule attributes from GRL header
@@ -319,8 +288,8 @@ impl GRLParser {
     ) -> Result<()> {
         // Parse: defmodule MODULE_NAME { export: all/none, import: ... }
         if let Some(captures) = defmodule_regex().captures(module_def) {
-            let module_name = captures.get(1).unwrap().as_str().to_string();
-            let module_body = captures.get(2).unwrap().as_str();
+            let module_name = captures.get(1).unwrap().to_string();
+            let module_body = captures.get(2).unwrap();
 
             // Create module (ignore if already exists)
             let _ = manager.create_module(&module_name);
@@ -444,9 +413,9 @@ impl GRLParser {
 
         // Rule name can be either quoted (group 1) or unquoted (group 2)
         let rule_name = if let Some(quoted_name) = captures.get(1) {
-            quoted_name.as_str().to_string()
+            quoted_name.to_string()
         } else if let Some(unquoted_name) = captures.get(2) {
-            unquoted_name.as_str().to_string()
+            unquoted_name.to_string()
         } else {
             return Err(RuleEngineError::ParseError {
                 message: "Could not extract rule name".to_string(),
@@ -454,10 +423,10 @@ impl GRLParser {
         };
 
         // Attributes section (group 3)
-        let attributes_section = captures.get(3).map(|m| m.as_str()).unwrap_or("");
+        let attributes_section = captures.get(3).unwrap_or("");
 
         // Rule body (group 4)
-        let rule_body = captures.get(4).unwrap().as_str();
+        let rule_body = captures.get(4).unwrap();
 
         // Parse salience from attributes section
         let salience = self.extract_salience(attributes_section)?;
@@ -470,8 +439,8 @@ impl GRLParser {
                     message: "Missing when or then clause".to_string(),
                 })?;
 
-        let when_clause = when_then_captures.get(1).unwrap().as_str().trim();
-        let then_clause = when_then_captures.get(2).unwrap().as_str().trim();
+        let when_clause = when_then_captures.get(1).unwrap().trim();
+        let then_clause = when_then_captures.get(2).unwrap().trim();
 
         // Parse conditions and actions
         let conditions = self.parse_when_clause(when_clause)?;
@@ -531,7 +500,7 @@ impl GRLParser {
         let mut attrs_section = rule_header.to_string();
 
         // Remove all quoted strings (descriptions) to avoid false matches
-        let quoted_regex = Regex::new(r#""[^"]*""#).map_err(|e| RuleEngineError::ParseError {
+        let quoted_regex = Pattern::new(r#""[^"]*""#).map_err(|e| RuleEngineError::ParseError {
             message: format!("Invalid quoted string regex: {}", e),
         })?;
         attrs_section = quoted_regex.replace_all(&attrs_section, "").to_string();
@@ -555,11 +524,11 @@ impl GRLParser {
 
         // Now check for boolean attributes using word boundaries
         let no_loop_regex =
-            Regex::new(r"\bno-loop\b").map_err(|e| RuleEngineError::ParseError {
+            Pattern::new(r"\bno-loop\b").map_err(|e| RuleEngineError::ParseError {
                 message: format!("Invalid no-loop regex: {}", e),
             })?;
         let lock_on_active_regex =
-            Regex::new(r"\block-on-active\b").map_err(|e| RuleEngineError::ParseError {
+            Pattern::new(r"\block-on-active\b").map_err(|e| RuleEngineError::ParseError {
                 message: format!("Invalid lock-on-active regex: {}", e),
             })?;
 
@@ -598,13 +567,13 @@ impl GRLParser {
     /// Extract quoted attribute value from rule header
     fn extract_quoted_attribute(&self, header: &str, attribute: &str) -> Result<Option<String>> {
         let pattern = format!(r#"{}\s+"([^"]+)""#, attribute);
-        let regex = Regex::new(&pattern).map_err(|e| RuleEngineError::ParseError {
+        let regex = Pattern::new(&pattern).map_err(|e| RuleEngineError::ParseError {
             message: format!("Invalid attribute regex for {}: {}", attribute, e),
         })?;
 
         if let Some(captures) = regex.captures(header) {
             if let Some(value) = captures.get(1) {
-                return Ok(Some(value.as_str().to_string()));
+                return Ok(Some(value.to_string()));
             }
         }
 
@@ -639,11 +608,11 @@ impl GRLParser {
     fn extract_salience(&self, attributes_section: &str) -> Result<i32> {
         if let Some(captures) = salience_regex().captures(attributes_section) {
             if let Some(salience_match) = captures.get(1) {
-                return salience_match.as_str().parse::<i32>().map_err(|e| {
-                    RuleEngineError::ParseError {
+                return salience_match
+                    .parse::<i32>()
+                    .map_err(|e| RuleEngineError::ParseError {
                         message: format!("Invalid salience value: {}", e),
-                    }
-                });
+                    });
             }
         }
 
@@ -1090,8 +1059,8 @@ impl GRLParser {
         // Pattern 1: Field.array $?var (Collect operation with variable binding)
         // Example: Order.items $?all_items
         if let Some(captures) = multifield_collect_regex().captures(clause_to_parse) {
-            let field = captures.get(1).unwrap().as_str().to_string();
-            let variable = captures.get(2).unwrap().as_str().to_string();
+            let field = captures.get(1).unwrap().to_string();
+            let variable = captures.get(2).unwrap().to_string();
 
             // Create a multifield Collect condition
             // Note: This will need to be handled by the engine
@@ -1106,9 +1075,9 @@ impl GRLParser {
         // Pattern 3: Field.array count operator value
         // Example: Order.items count > 0, Order.items count >= 5
         if let Some(captures) = multifield_count_regex().captures(clause_to_parse) {
-            let field = captures.get(1).unwrap().as_str().to_string();
-            let operator_str = captures.get(2).unwrap().as_str();
-            let value_str = captures.get(3).unwrap().as_str().trim();
+            let field = captures.get(1).unwrap().to_string();
+            let operator_str = captures.get(2).unwrap();
+            let value_str = captures.get(3).unwrap().trim();
 
             let operator = Operator::from_str(operator_str).ok_or_else(|| {
                 RuleEngineError::InvalidOperator {
@@ -1125,8 +1094,8 @@ impl GRLParser {
         // Pattern 4: Field.array first [optional: $var or operator value]
         // Example: Queue.tasks first, Queue.tasks first $first_task
         if let Some(captures) = multifield_first_regex().captures(clause_to_parse) {
-            let field = captures.get(1).unwrap().as_str().to_string();
-            let variable = captures.get(2).map(|m| m.as_str().to_string());
+            let field = captures.get(1).unwrap().to_string();
+            let variable = captures.get(2).map(|m| m.to_string());
 
             let condition = Condition::with_multifield_first(field, variable);
             return Ok(ConditionGroup::single(condition));
@@ -1135,8 +1104,8 @@ impl GRLParser {
         // Pattern 5: Field.array last [optional: $var]
         // Example: Queue.tasks last, Queue.tasks last $last_task
         if let Some(captures) = multifield_last_regex().captures(clause_to_parse) {
-            let field = captures.get(1).unwrap().as_str().to_string();
-            let variable = captures.get(2).map(|m| m.as_str().to_string());
+            let field = captures.get(1).unwrap().to_string();
+            let variable = captures.get(2).map(|m| m.to_string());
 
             let condition = Condition::with_multifield_last(field, variable);
             return Ok(ConditionGroup::single(condition));
@@ -1145,7 +1114,7 @@ impl GRLParser {
         // Pattern 6: Field.array empty
         // Example: ShoppingCart.items empty
         if let Some(captures) = multifield_empty_regex().captures(clause_to_parse) {
-            let field = captures.get(1).unwrap().as_str().to_string();
+            let field = captures.get(1).unwrap().to_string();
 
             let condition = Condition::with_multifield_empty(field);
             return Ok(ConditionGroup::single(condition));
@@ -1154,7 +1123,7 @@ impl GRLParser {
         // Pattern 7: Field.array not_empty
         // Example: ShoppingCart.items not_empty
         if let Some(captures) = multifield_not_empty_regex().captures(clause_to_parse) {
-            let field = captures.get(1).unwrap().as_str().to_string();
+            let field = captures.get(1).unwrap().to_string();
 
             let condition = Condition::with_multifield_not_empty(field);
             return Ok(ConditionGroup::single(condition));
@@ -1165,8 +1134,8 @@ impl GRLParser {
         // Handle Test CE: test(functionName(args...))
         // This is a CLIPS-inspired feature for arbitrary boolean expressions
         if let Some(captures) = test_condition_regex().captures(clause_to_parse) {
-            let function_name = captures.get(1).unwrap().as_str().to_string();
-            let args_str = captures.get(2).unwrap().as_str();
+            let function_name = captures.get(1).unwrap().to_string();
+            let args_str = captures.get(2).unwrap();
 
             // Parse arguments
             let args: Vec<String> = if args_str.trim().is_empty() {
@@ -1184,9 +1153,9 @@ impl GRLParser {
 
         // Handle typed object conditions like: $TestCar : TestCarClass( speedUp == true && speed < maxSpeed )
         if let Some(captures) = typed_test_condition_regex().captures(clause_to_parse) {
-            let _object_name = captures.get(1).unwrap().as_str();
-            let _object_type = captures.get(2).unwrap().as_str();
-            let conditions_str = captures.get(3).unwrap().as_str();
+            let _object_name = captures.get(1).unwrap();
+            let _object_type = captures.get(2).unwrap();
+            let conditions_str = captures.get(3).unwrap();
 
             // Parse conditions inside parentheses
             return self.parse_conditions_within_object(conditions_str);
@@ -1194,10 +1163,10 @@ impl GRLParser {
 
         // Try to parse function call pattern: functionName(arg1, arg2, ...) operator value
         if let Some(captures) = function_call_regex().captures(clause_to_parse) {
-            let function_name = captures.get(1).unwrap().as_str().to_string();
-            let args_str = captures.get(2).unwrap().as_str();
-            let operator_str = captures.get(3).unwrap().as_str();
-            let value_str = captures.get(4).unwrap().as_str().trim();
+            let function_name = captures.get(1).unwrap().to_string();
+            let args_str = captures.get(2).unwrap();
+            let operator_str = captures.get(3).unwrap();
+            let value_str = captures.get(4).unwrap().trim();
 
             // Parse arguments
             let args: Vec<String> = if args_str.trim().is_empty() {
@@ -1230,9 +1199,9 @@ impl GRLParser {
             }
         })?;
 
-        let left_side = captures.get(1).unwrap().as_str().trim().to_string();
-        let operator_str = captures.get(2).unwrap().as_str();
-        let value_str = captures.get(3).unwrap().as_str().trim();
+        let left_side = captures.get(1).unwrap().trim().to_string();
+        let operator_str = captures.get(2).unwrap();
+        let value_str = captures.get(3).unwrap().trim();
 
         let operator =
             Operator::from_str(operator_str).ok_or_else(|| RuleEngineError::InvalidOperator {
@@ -1295,9 +1264,9 @@ impl GRLParser {
             }
         })?;
 
-        let field = captures.get(1).unwrap().as_str().to_string();
-        let operator_str = captures.get(2).unwrap().as_str();
-        let value_str = captures.get(3).unwrap().as_str().trim();
+        let field = captures.get(1).unwrap().to_string();
+        let operator_str = captures.get(2).unwrap();
+        let value_str = captures.get(3).unwrap().trim();
 
         let operator =
             Operator::from_str(operator_str).ok_or_else(|| RuleEngineError::InvalidOperator {
@@ -1423,9 +1392,9 @@ impl GRLParser {
 
         // Method call: $Object.method(args)
         if let Some(captures) = method_call_regex().captures(trimmed) {
-            let object = captures.get(1).unwrap().as_str().to_string();
-            let method = captures.get(2).unwrap().as_str().to_string();
-            let args_str = captures.get(3).unwrap().as_str();
+            let object = captures.get(1).unwrap().to_string();
+            let method = captures.get(2).unwrap().to_string();
+            let args_str = captures.get(3).unwrap();
 
             let args = if args_str.trim().is_empty() {
                 Vec::new()
@@ -1461,8 +1430,8 @@ impl GRLParser {
 
         // Function calls: update($Object), retract($Object), etc.
         if let Some(captures) = function_binding_regex().captures(trimmed) {
-            let function_name = captures.get(1).unwrap().as_str();
-            let args_str = captures.get(2).map(|m| m.as_str()).unwrap_or("");
+            let function_name = captures.get(1).unwrap();
+            let args_str = captures.get(2).unwrap_or("");
 
             match function_name.to_lowercase().as_str() {
                 "retract" => {

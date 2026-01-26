@@ -4,23 +4,6 @@ Comprehensive performance benchmarks for rust-rule-engine.
 
 ## 📊 Available Benchmarks
 
-### NEW: **literal_search_benchmarks.rs** ⚡
-Comparison of literal search vs regex for parsing:
-- Email validation
-- Rule parsing (name + salience)
-- When-then parsing
-- Multi-pattern search (Aho-Corasick)
-- Operator parsing
-- Rule splitting
-- Large text (100 rules)
-
-**Results:** 2-10x faster for GRL parsing tasks!
-
-**Run:**
-```bash
-cargo bench --bench literal_search_benchmarks
-```
-
 ### 1. **engine_comparison_benchmark.rs** ⭐ (Main)
 Complete comparison across all engine types and optimization levels:
 - Native Rust (baseline)
