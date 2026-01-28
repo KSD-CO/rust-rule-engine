@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.18.26 🦀⚡🚀
+# Rust Rule Engine v1.18.27 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -6,6 +6,8 @@
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
+
+**🆕 v1.18.27**: Upgraded to **rexile 0.4.10** - Performance improvements: up to 25% faster on common workloads, enhanced beta indexing (180-815x speedup), improved token pooling efficiency.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
@@ -255,6 +257,34 @@ cargo test proof_graph --features backward-chaining
 - ✅ Statistics tracking (hits/misses/invalidations)
 - ✅ Zero overhead when cache miss
 - ✅ Automatic integration with DFS/BFS search
+
+---
+
+## ✨ What's New in v1.18.27 🎉
+
+### ⚡ Performance Upgrade - Rexile 0.4.10
+
+**Major performance improvements** - Upgraded to `rexile 0.4.10` with significant optimizations.
+
+**Performance Gains:**
+- 🚀 **Alpha Linear 10K**: 13.8% faster (7.95ms → 6.85ms)
+- 🚀 **Alpha Linear 50K**: 25% faster (validated with stable benchmarks)
+- 🚀 **Beta Nested Loop 1K**: 9.8% faster (119ms → 108ms)
+- 🚀 **Token Pooling 100K**: 7.7% faster (3.28ms → 3.02ms)
+- ⚡ **Beta Indexing**: Maintains exceptional 180-815x speedup over linear scan
+
+**What Changed:**
+- Expression evaluation optimized for small-to-medium workloads (1K-10K items)
+- Improved memory access patterns for indexed lookups
+- Enhanced token pooling efficiency
+- Better linear scanning performance
+
+**Benchmarking:**
+- Use `./bench_stable.sh` for reliable performance measurements
+- See `REXILE_0.4.10_PERFORMANCE_COMPARISON.md` for detailed analysis
+- See `BENCHMARK_VARIANCE_ANALYSIS.md` for stability testing methodology
+
+**Verdict:** ✅ **Strongly recommended upgrade** - Real performance improvements across all common workloads with no significant regressions.
 
 ---
 
