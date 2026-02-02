@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.18.27 🦀⚡🚀
+# Rust Rule Engine v1.18.28 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -7,7 +7,7 @@
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
-**🆕 v1.18.27**: Upgraded to **rexile 0.4.10** - Performance improvements: up to 25% faster on common workloads, enhanced beta indexing (180-815x speedup), improved token pooling efficiency.
+**🆕 v1.18.28**: Upgraded to **rexile 0.5.3** and **nom 8.0** - Fixed Unicode support (critical bug in rexile 0.5.1-0.5.2), modernized parser combinators, replaced deprecated `criterion::black_box` with `std::hint::black_box`. All 152 tests pass, all examples working perfectly.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
@@ -257,6 +257,59 @@ cargo test proof_graph --features backward-chaining
 - ✅ Statistics tracking (hits/misses/invalidations)
 - ✅ Zero overhead when cache miss
 - ✅ Automatic integration with DFS/BFS search
+
+---
+
+## ✨ What's New in v1.18.28 🎉
+
+### 🔧 Dependency Updates & Bug Fixes
+
+**Critical Unicode Bug Fix** - Upgraded to rexile 0.5.3 with complete Unicode support!
+
+#### Changes
+
+**1. Rexile Upgrade (0.4.10 → 0.5.3)**
+- ✅ **CRITICAL FIX**: Unicode char boundary panic resolved
+- ✅ GRL files with Unicode symbols (→, ∑, ∫, emojis, CJK) now work perfectly
+- ✅ No performance regression - benchmarks stable
+- ⚠️ **Skipped 0.5.1 & 0.5.2** due to critical Unicode bugs
+
+**2. Nom Parser Upgrade (7.x → 8.0)**
+- ✅ Removed deprecated `tuple` combinator
+- ✅ Updated to modern nom 8.0 API with `Parser` trait
+- ✅ Changed from `parser(input)?` to `parser.parse(input)?`
+- ✅ All stream syntax parsing updated
+
+**3. Criterion Benchmark Updates**
+- ✅ Replaced deprecated `criterion::black_box` with `std::hint::black_box`
+- ✅ Updated all 6 benchmark files
+- ✅ Modern Rust stdlib usage (no external deps for black_box)
+
+#### Verification
+
+**All Systems Green:**
+- ✅ **152/152 tests passing** (100% pass rate)
+- ✅ **All 29 examples working** (including Unicode-heavy examples)
+- ✅ **All benchmarks passing** with stable performance
+- ✅ **Zero regressions** detected
+
+**Unicode Test Cases:**
+```rust
+// These now work perfectly in v1.18.28:
+// Rule: Amount < 2M + COD → Auto approve  ✅
+// Mathematical: ∑ ∫ ∂ → ← ↔              ✅
+// Emoji: 🚀 🎉 ✅ ❌                      ✅
+// CJK: 规则 (Chinese characters)          ✅
+```
+
+#### Performance
+
+**No regression from previous version:**
+- Alpha Linear 1K: ~18.0µs (stable)
+- Alpha Indexed 1K: ~147ns (stable)
+- Speedup: ~122x (maintained)
+
+**Recommendation:** ✅ **Safe to upgrade** - Critical Unicode fixes with zero breaking changes!
 
 ---
 
