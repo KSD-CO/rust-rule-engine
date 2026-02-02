@@ -7,11 +7,12 @@
 //! cargo bench --features backward-chaining --bench backward_chaining_index_benchmark
 //! ```
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rust_rule_engine::backward::{BackwardEngine, ConclusionIndex};
 use rust_rule_engine::engine::rule::{Condition, ConditionGroup, Rule};
 use rust_rule_engine::types::{ActionType, Operator, Value};
 use rust_rule_engine::{Facts, KnowledgeBase};
+use std::hint::black_box;
 
 /// Create a knowledge base with N rules
 fn create_kb_with_rules(num_rules: usize) -> KnowledgeBase {

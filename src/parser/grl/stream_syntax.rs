@@ -9,8 +9,8 @@ use nom::{
     bytes::complete::{tag, take_while1},
     character::complete::{alpha1, char, digit1, multispace0, multispace1},
     combinator::opt,
-    sequence::{delimited, tuple},
-    IResult,
+    sequence::delimited,
+    IResult, Parser,
 };
 use std::time::Duration;
 
@@ -99,13 +99,14 @@ pub fn parse_stream_source(input: &str) -> IResult<&str, StreamSource> {
 
     // Parse stream name in parentheses: stream("name")
     let (input, stream_name) = delimited(
-        tuple((char('('), multispace0, char('"'))),
+        (char('('), multispace0, char('"')),
         take_while1(|c: char| c != '"'),
-        tuple((char('"'), multispace0, char(')'))),
-    )(input)?;
+        (char('"'), multispace0, char(')')),
+    )
+    .parse(input)?;
 
     // Optional window specification
-    let (input, window) = opt(parse_window_spec)(input)?;
+    let (input, window) = opt(parse_window_spec).parse(input)?;
 
     Ok((
         input,
@@ -477,7 +478,8 @@ pub fn parse_join_condition(input: &str) -> IResult<&str, JoinCondition> {
         tag(">="),
         tag("<"),
         tag(">"),
-    ))(input)?;
+    ))
+    .parse(input)?;
 
     let (input, _) = multispace0(input)?;
 

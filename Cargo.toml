@@ -23,13 +23,13 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-rexile = "0.4.10"
+rexile = "0.5.3"
 thiserror = "2.0"
 chrono = { version = "0.4", features = ["serde"] }
 log = "0.4"
-tokio = { version = "1.42", features = ["full"], optional = true }
-nom = "7.1"
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
+tokio = { version = "1.49", features = ["full"], optional = true }
+nom = "8.0"
+redis = { version = "1.0", features = ["tokio-comp", "connection-manager"], optional = true }
 
 [features]
 default = []
@@ -38,8 +38,8 @@ streaming-redis = ["streaming", "redis"]
 backward-chaining = []
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
-tokio = { version = "1.42", features = ["full"] }
+criterion = { version = "0.8", features = ["html_reports"] }
+tokio = { version = "1.49", features = ["full"] }
 serde_yaml = "0.9"  # Used in tests/grl_harness_data.rs
 
 # Core benchmarks

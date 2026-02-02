@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rust_rule_engine::engine::facts::Facts;
 use rust_rule_engine::engine::knowledge_base::KnowledgeBase;
 use rust_rule_engine::engine::parallel::{ParallelConfig, ParallelRuleEngine};
@@ -6,6 +6,7 @@ use rust_rule_engine::engine::{EngineConfig, RustRuleEngine};
 use rust_rule_engine::parser::grl::GRLParser;
 use rust_rule_engine::types::Value;
 use std::collections::HashMap;
+use std::hint::black_box;
 use std::time::Duration;
 
 // Setup functions for different rule set sizes
