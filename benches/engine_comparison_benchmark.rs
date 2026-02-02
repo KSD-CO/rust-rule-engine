@@ -6,9 +6,10 @@
 //! 3. Beta Memory Indexing (nested loop vs hash join)
 //! 4. Combined optimizations
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rust_rule_engine::rete::{AlphaMemoryIndex, BetaMemoryIndex, FactValue, TypedFacts};
 use std::collections::HashMap;
+use std::hint::black_box;
 
 // ============================================================================
 // 1. NATIVE RUST BASELINE

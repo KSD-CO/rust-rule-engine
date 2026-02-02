@@ -6,11 +6,12 @@
 //! - Beta memory indexing
 //! - Token pooling
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rust_rule_engine::rete::optimization::{
     BetaMemoryIndex, CompactAlphaMemory, NodeSharingRegistry, TokenPool,
 };
 use rust_rule_engine::rete::{AlphaNode, TypedFacts};
+use std::hint::black_box;
 use std::time::Duration;
 
 // ===========================================================================

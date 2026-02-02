@@ -817,9 +817,7 @@ checksum = "caf4aa5b0f434c91fe5c7f1ecb6a5ece2130b02ad2a590589dda5146df959001"
 
 [[package]]
 name = "rexile"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "365887069fa39f207abff5557c0d7ef208f1057b24c75baf1b8945b7acddec28"
+version = "0.5.3"
 dependencies = [
  "aho-corasick",
  "memchr",
