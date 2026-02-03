@@ -642,6 +642,7 @@ impl DepthFirstSearch {
             crate::types::Operator::StartsWith => "starts_with",
             crate::types::Operator::EndsWith => "ends_with",
             crate::types::Operator::Matches => "matches",
+            crate::types::Operator::In => "in",
         };
 
         // Convert value to string format that matches goal patterns
