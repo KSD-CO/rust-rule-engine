@@ -2,6 +2,105 @@
 
 All notable changes to rust-rule-engine will be documented in this file.
 
+## [1.19.0] - 2026-02-03
+
+### Added - 🎯 Array Membership Operator (`in`) and String Methods
+
+**New Features** - Added `in` operator for array membership checks and fixed string methods (`startsWith`, `endsWith`) in GRL parser.
+
+#### New `in` Operator
+
+**Syntax:**
+```grl
+rule "Example" {
+    when
+        User.role in ["admin", "moderator", "vip"]
+    then
+        User.access = "granted";
+}
+```
+
+**Features:**
+- ✅ Array literal parsing: `["value1", "value2", 123, true]`
+- ✅ Mixed types: strings, numbers, booleans
+- ✅ Concise syntax replaces verbose OR chains
+- ✅ Works with RETE engine and backward chaining
+- ✅ Full evaluation in `Operator::In` and `FactValue::in_array()`
+
+**Example:** `cargo run --example in_operator_demo`
+
+#### String Methods Fixed
+
+**Previously Missing** - `startsWith` and `endsWith` were not recognized by GRL parser regex patterns.
+
+**Now Supported:**
+```grl
+rule "AdminEmail" {
+    when
+        User.email startsWith "admin@"
+    then
+        User.role = "administrator";
+}
+
+rule "ImageFile" {
+    when
+        File.name endsWith ".jpg"
+    then
+        File.type = "image";
+}
+```
+
+**All String Operators:**
+- ✅ `startsWith` - Check string prefix (now works!)
+- ✅ `endsWith` - Check string suffix (now works!)
+- ✅ `contains` - Substring search
+- ✅ `matches` - Wildcard patterns with `*` and `?`
+
+**Example:** `cargo run --example string_methods_demo`
+
+#### Files Modified
+
+1. **src/types.rs**
+   - Added `Operator::In` variant
+   - Added `from_str()` support for `"in"`, `"startsWith"`, `"endsWith"`
+   - Added evaluation logic in `Operator::evaluate()`
+
+2. **src/parser/grl.rs**
+   - Updated `function_call_regex()` - Added `|in|startsWith|endsWith`
+   - Updated `condition_regex()` - Added `|in|startsWith|endsWith`
+   - Added `parse_array_literal()` function for array parsing
+   - Updated `parse_value()` to handle array literals
+   - Added tests: `test_parse_in_operator()`, `test_parse_startswith_endswith_operators()`
+
+3. **src/rete/alpha.rs**
+   - Enhanced `parse_value_string()` to parse array literals from string format
+
+4. **src/engine/knowledge_base.rs**
+   - Updated `OperatorGRLExport` trait for `In`, `StartsWith`, `EndsWith`
+
+5. **src/rete/grl_loader.rs**
+   - Added operator string conversions for new operators
+
+6. **examples/**
+   - Added `in_operator_demo.rs` - 5 examples showing `in` operator
+   - Added `string_methods_demo.rs` - 4 examples showing string methods
+
+7. **Cargo.toml**
+   - Added example entries for new demos
+
+#### Tests
+
+- ✅ **154 tests pass** (152 existing + 2 new)
+- ✅ `test_parse_in_operator` - Validates `in` operator parsing
+- ✅ `test_parse_startswith_endswith_operators` - Validates string methods
+- ✅ No regressions in existing functionality
+
+#### Breaking Changes
+
+**None** - All changes are additive. Existing code continues to work.
+
+---
+
 ## [1.18.27] - 2026-01-28
 
 ### Changed - ⚡ Performance Upgrade: Rexile 0.4.10

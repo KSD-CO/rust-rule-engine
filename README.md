@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.18.28 🦀⚡🚀
+# Rust Rule Engine v1.19.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -7,7 +7,7 @@
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
-**🆕 v1.18.28**: Upgraded to **rexile 0.5.3** and **nom 8.0** - Fixed Unicode support (critical bug in rexile 0.5.1-0.5.2), modernized parser combinators, replaced deprecated `criterion::black_box` with `std::hint::black_box`. All 152 tests pass, all examples working perfectly.
+**🆕 v1.19.0**: Added **`in` operator** for array membership checks and **fixed string methods** (`startsWith`, `endsWith`) in GRL parser. Now supports concise syntax like `User.role in ["admin", "moderator"]` and `File.name endsWith ".jpg"`. All 154 tests pass!
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
@@ -143,7 +143,69 @@ for event in event_stream {
 
 ---
 
-## ✨ What's New in v1.17.0 🎉
+## ✨ What's New in v1.19.0 🎉
+
+### 🎯 Array Membership Operator (`in`)
+
+Concise syntax for checking if a value exists in an array!
+
+```rust
+// OLD WAY - Verbose with multiple OR conditions
+rule "SkipDependencies" {
+    when
+        Path.name == "node_modules" ||
+        Path.name == "__pycache__" ||
+        Path.name == ".pytest_cache"
+    then
+        Path.action = "skip";
+}
+
+// NEW WAY - Clean and maintainable ✨
+rule "SkipDependencies" {
+    when
+        Path.name in ["node_modules", "__pycache__", ".pytest_cache"]
+    then
+        Path.action = "skip";
+}
+```
+
+**Features:**
+- ✅ Array literals: `["value1", "value2", 123, true]`
+- ✅ Mixed types: strings, numbers, booleans
+- ✅ Works with RETE and backward chaining
+- ✅ Example: `cargo run --example in_operator_demo`
+
+### 🔤 String Methods Fixed (`startsWith`, `endsWith`)
+
+Previously missing from GRL parser, now fully supported!
+
+```rust
+rule "AdminEmail" {
+    when
+        User.email startsWith "admin@"
+    then
+        User.role = "administrator";
+}
+
+rule "ImageFile" {
+    when
+        File.name endsWith ".jpg" ||
+        File.name endsWith ".png"
+    then
+        File.type = "image";
+}
+```
+
+**All String Operators:**
+- ✅ `startsWith` - Check prefix
+- ✅ `endsWith` - Check suffix  
+- ✅ `contains` - Substring search
+- ✅ `matches` - Wildcard patterns (`*` and `?`)
+- ✅ Example: `cargo run --example string_methods_demo`
+
+---
+
+## ✨ Previous Release: v1.17.0
 
 ### 🚀 Proof Graph Caching with TMS Integration
 

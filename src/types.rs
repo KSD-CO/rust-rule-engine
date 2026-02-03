@@ -235,6 +235,8 @@ pub enum Operator {
     EndsWith,
     /// Regex pattern match
     Matches,
+    /// Array membership check (value in array)
+    In,
 }
 
 impl Operator {
@@ -250,9 +252,10 @@ impl Operator {
             "<=" | "lte" => Some(Operator::LessThanOrEqual),
             "contains" => Some(Operator::Contains),
             "not_contains" => Some(Operator::NotContains),
-            "starts_with" => Some(Operator::StartsWith),
-            "ends_with" => Some(Operator::EndsWith),
+            "starts_with" | "startsWith" => Some(Operator::StartsWith),
+            "ends_with" | "endsWith" => Some(Operator::EndsWith),
             "matches" => Some(Operator::Matches),
+            "in" => Some(Operator::In),
             _ => None,
         }
     }
@@ -351,6 +354,13 @@ impl Operator {
                     l.contains(&r)
                 } else {
                     false
+                }
+            }
+            Operator::In => {
+                // Check if left value is in right array
+                match right {
+                    Value::Array(arr) => arr.contains(left),
+                    _ => false,
                 }
             }
         }

@@ -88,14 +88,14 @@ fn typed_test_condition_regex() -> &'static Pattern {
 
 fn function_call_regex() -> &'static Pattern {
     FUNCTION_CALL_REGEX.get_or_init(|| {
-        Pattern::new(r#"([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#)
+        Pattern::new(r#"([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*(>=|<=|==|!=|>|<|contains|startsWith|endsWith|matches|in)\s*(.+)"#)
             .expect("Invalid function call regex")
     })
 }
 
 fn condition_regex() -> &'static Pattern {
     CONDITION_REGEX.get_or_init(|| {
-        Pattern::new(r#"([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*(?:\s*[+\-*/%]\s*[a-zA-Z0-9_\.]+)*)\s*(>=|<=|==|!=|>|<|contains|matches)\s*(.+)"#)
+        Pattern::new(r#"([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*(?:\s*[+\-*/%]\s*[a-zA-Z0-9_\.]+)*)\s*(>=|<=|==|!=|>|<|contains|startsWith|endsWith|matches|in)\s*(.+)"#)
             .expect("Invalid condition regex")
     })
 }
@@ -1282,6 +1282,11 @@ impl GRLParser {
     fn parse_value(&self, value_str: &str) -> Result<Value> {
         let trimmed = value_str.trim();
 
+        // Array literal: ["value1", "value2", 123]
+        if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            return self.parse_array_literal(trimmed);
+        }
+
         // String literal
         if (trimmed.starts_with('"') && trimmed.ends_with('"'))
             || (trimmed.starts_with('\'') && trimmed.ends_with('\''))
@@ -1368,6 +1373,64 @@ impl GRLParser {
 
         // Expression if: has operator AND (has field reference OR has spaces)
         has_operator && (has_field_ref || has_spaces)
+    }
+
+    /// Parse array literal like ["value1", "value2", 123]
+    fn parse_array_literal(&self, array_str: &str) -> Result<Value> {
+        let content = array_str.trim();
+        if !content.starts_with('[') || !content.ends_with(']') {
+            return Err(RuleEngineError::ParseError {
+                message: format!("Invalid array literal: {}", array_str),
+            });
+        }
+
+        let inner = content[1..content.len() - 1].trim();
+        if inner.is_empty() {
+            return Ok(Value::Array(vec![]));
+        }
+
+        // Split by comma, handling quoted strings
+        let mut elements = Vec::new();
+        let mut current_element = String::new();
+        let mut in_quotes = false;
+        let mut quote_char = ' ';
+
+        for ch in inner.chars() {
+            match ch {
+                '"' | '\'' if !in_quotes => {
+                    in_quotes = true;
+                    quote_char = ch;
+                    current_element.push(ch);
+                }
+                c if in_quotes && c == quote_char => {
+                    in_quotes = false;
+                    current_element.push(ch);
+                }
+                ',' if !in_quotes => {
+                    if !current_element.trim().is_empty() {
+                        elements.push(current_element.trim().to_string());
+                    }
+                    current_element.clear();
+                }
+                _ => {
+                    current_element.push(ch);
+                }
+            }
+        }
+
+        // Don't forget the last element
+        if !current_element.trim().is_empty() {
+            elements.push(current_element.trim().to_string());
+        }
+
+        // Parse each element
+        let mut array_values = Vec::new();
+        for elem in elements {
+            let value = self.parse_value(&elem)?;
+            array_values.push(value);
+        }
+
+        Ok(Value::Array(array_values))
     }
 
     fn parse_then_clause(&self, then_clause: &str) -> Result<Vec<ActionType>> {
@@ -1931,6 +1994,92 @@ mod tests {
                 }
             }
             _ => panic!("Expected compound condition, got: {:?}", rule.conditions),
+        }
+    }
+
+    #[test]
+    fn test_parse_in_operator() {
+        let grl = r#"
+        rule "TestInOperator" salience 75 {
+            when
+                User.role in ["admin", "moderator", "vip"]
+            then
+                User.access = "granted";
+        }
+        "#;
+
+        let rules = GRLParser::parse_rules(grl).unwrap();
+        assert_eq!(rules.len(), 1);
+        let rule = &rules[0];
+        assert_eq!(rule.name, "TestInOperator");
+        assert_eq!(rule.salience, 75);
+
+        // Check the condition
+        match &rule.conditions {
+            crate::engine::rule::ConditionGroup::Single(cond) => {
+                // The field might be in expression format
+                println!("Condition: {:?}", cond);
+                assert_eq!(cond.operator, crate::types::Operator::In);
+
+                // Value should be an array
+                match &cond.value {
+                    crate::types::Value::Array(arr) => {
+                        assert_eq!(arr.len(), 3);
+                        assert_eq!(arr[0], crate::types::Value::String("admin".to_string()));
+                        assert_eq!(arr[1], crate::types::Value::String("moderator".to_string()));
+                        assert_eq!(arr[2], crate::types::Value::String("vip".to_string()));
+                    }
+                    _ => panic!("Expected Array value, got {:?}", cond.value),
+                }
+            }
+            _ => panic!("Expected Single condition, got: {:?}", rule.conditions),
+        }
+    }
+
+    #[test]
+    fn test_parse_startswith_endswith_operators() {
+        let grl = r#"
+        rule "StringMethods" salience 50 {
+            when
+                User.email startsWith "admin@" &&
+                User.filename endsWith ".txt"
+            then
+                User.validated = true;
+        }
+        "#;
+
+        let rules = GRLParser::parse_rules(grl).unwrap();
+        assert_eq!(rules.len(), 1);
+        let rule = &rules[0];
+        assert_eq!(rule.name, "StringMethods");
+        assert_eq!(rule.salience, 50);
+
+        // Check the compound condition (AND)
+        match &rule.conditions {
+            crate::engine::rule::ConditionGroup::Compound {
+                left,
+                operator,
+                right,
+            } => {
+                assert_eq!(*operator, crate::types::LogicalOperator::And);
+
+                // Left should be startsWith
+                match left.as_ref() {
+                    crate::engine::rule::ConditionGroup::Single(cond) => {
+                        assert_eq!(cond.operator, crate::types::Operator::StartsWith);
+                    }
+                    _ => panic!("Expected Single condition for startsWith, got: {:?}", left),
+                }
+
+                // Right should be endsWith
+                match right.as_ref() {
+                    crate::engine::rule::ConditionGroup::Single(cond) => {
+                        assert_eq!(cond.operator, crate::types::Operator::EndsWith);
+                    }
+                    _ => panic!("Expected Single condition for endsWith, got: {:?}", right),
+                }
+            }
+            _ => panic!("Expected Compound condition, got: {:?}", rule.conditions),
         }
     }
 }

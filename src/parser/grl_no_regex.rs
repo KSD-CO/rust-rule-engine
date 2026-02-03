@@ -1027,7 +1027,7 @@ fn find_matching_paren(text: &str, open_pos: usize) -> Option<usize> {
 
 /// Split condition into field, operator, value
 fn split_condition(clause: &str) -> Result<(&str, &str, &str)> {
-    let operators = [">=", "<=", "==", "!=", ">", "<", "contains", "matches"];
+    let operators = [">=", "<=", "==", "!=", ">", "<", "contains", "matches", "in"];
 
     for op in &operators {
         if let Some(op_pos) = find_operator(clause, op) {
@@ -1057,11 +1057,12 @@ fn split_condition_from_start(text: &str) -> Result<(&str, &str, &str)> {
     split_condition(text)
 }
 
-/// Find operator position (not inside strings)
+/// Find operator position (not inside strings or brackets)
 fn find_operator(text: &str, op: &str) -> Option<usize> {
     let bytes = text.as_bytes();
     let op_bytes = op.as_bytes();
     let mut in_string = false;
+    let mut bracket_depth = 0;
     let mut i = 0;
 
     while i + op_bytes.len() <= bytes.len() {
@@ -1071,7 +1072,15 @@ fn find_operator(text: &str, op: &str) -> Option<usize> {
             continue;
         }
 
-        if !in_string && &bytes[i..i + op_bytes.len()] == op_bytes {
+        if !in_string {
+            if bytes[i] == b'[' {
+                bracket_depth += 1;
+            } else if bytes[i] == b']' {
+                bracket_depth = bracket_depth.saturating_sub(1);
+            }
+        }
+
+        if !in_string && bracket_depth == 0 && &bytes[i..i + op_bytes.len()] == op_bytes {
             // For keyword operators, check word boundaries
             if op.chars().next().unwrap().is_alphabetic() {
                 let before_ok = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
@@ -1261,9 +1270,44 @@ fn parse_accumulate_function(func_str: &str) -> Result<(String, String)> {
 // Value Parsing
 // ============================================================================
 
+/// Parse array literal: ["value1", "value2", 123, true]
+fn parse_array_literal(array_str: &str) -> Result<Value> {
+    let trimmed = array_str.trim();
+    
+    // Remove surrounding brackets
+    if !trimmed.starts_with('[') || !trimmed.ends_with(']') {
+        return Err(RuleEngineError::ParseError {
+            message: format!("Invalid array literal: {}", array_str),
+        });
+    }
+    
+    let inner = &trimmed[1..trimmed.len() - 1].trim();
+    
+    // Empty array
+    if inner.is_empty() {
+        return Ok(Value::Array(Vec::new()));
+    }
+    
+    // Split by comma at top level
+    let elements = split_top_level_comma(inner)?;
+    
+    let mut array = Vec::new();
+    for element in elements {
+        let value = parse_value(element.trim())?;
+        array.push(value);
+    }
+    
+    Ok(Value::Array(array))
+}
+
 /// Parse a value string into a Value
 fn parse_value(value_str: &str) -> Result<Value> {
     let trimmed = value_str.trim();
+
+    // Array literal: ["value1", "value2", ...]
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        return parse_array_literal(trimmed);
+    }
 
     // String literal
     if (trimmed.starts_with('"') && trimmed.ends_with('"'))
@@ -1757,6 +1801,45 @@ mod tests {
                 assert_eq!(*value, Value::String("new_item".to_string()));
             }
             _ => panic!("Expected Append action"),
+        }
+    }
+
+    #[test]
+    fn test_parse_in_operator() {
+        let grl = r#"
+        rule "TestInOperator" {
+            when
+                User.role in ["admin", "moderator", "vip"]
+            then
+                User.access = "granted";
+        }
+        "#;
+
+        let result = GRLParserNoRegex::parse_rules(grl);
+        match result {
+            Ok(rules) => {
+                assert_eq!(rules.len(), 1);
+                assert_eq!(rules[0].name, "TestInOperator");
+                
+                // Check the condition
+                match &rules[0].conditions {
+                    ConditionGroup::Single(cond) => {
+                        assert_eq!(cond.field, "User.role");
+                        assert_eq!(cond.operator, crate::types::Operator::In);
+                        // Value should be an array
+                        match &cond.value {
+                            Value::Array(arr) => {
+                                assert_eq!(arr.len(), 3);
+                            }
+                            _ => panic!("Expected Array value, got {:?}", cond.value),
+                        }
+                    }
+                    _ => panic!("Expected Single condition"),
+                }
+            }
+            Err(e) => {
+                panic!("Failed to parse 'in' operator: {}", e);
+            }
         }
     }
 }

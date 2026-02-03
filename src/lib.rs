@@ -1,8 +1,15 @@
-//! # Rust Rule Engine v0.19.0 - Parallel Execution Edition
+//! # Rust Rule Engine v1.19.0 - Array Operators & String Methods Edition
 //!
-//! A high-performance rule engine for Rust with **Parallel Execution (38x faster)**, **RETE-UL algorithm**,
-//! **CLIPS-inspired features**, **Plugin System**, and **GRL (Grule Rule Language)** support.
-//! Features multi-threaded execution, complete feature parity, and production-ready performance.
+//! A high-performance rule engine for Rust with **RETE-UL algorithm**, **Array Membership (`in`) operator**,
+//! **String Methods (startsWith, endsWith)**, **Plugin System**, and **GRL (Grule Rule Language)** support.
+//! Features forward/backward chaining, stream processing, and production-ready performance.
+//!
+//! ## What's New in v1.19.0
+//!
+//! - **🎯 `in` Operator**: Array membership checks - `User.role in ["admin", "moderator"]`
+//! - **🔤 String Methods**: Fixed `startsWith` and `endsWith` support in GRL parser
+//! - **📦 Array Literals**: Full support for `["value1", "value2", 123, true]` syntax
+//! - **✅ 154 Tests**: All tests passing including new operator tests
 //!
 //! ## Features
 //!

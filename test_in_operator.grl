@@ -1,0 +1,14 @@
+rule "TestInOperator" salience 100 {
+    when
+        Path.name in ["node_modules", "__pycache__", ".pytest_cache"]
+    then
+        Path.action = "skip";
+        Log("Matched with in operator");
+}
+
+rule "TestContainsOperator" salience 90 {
+    when
+        Tags contains "important"
+    then
+        Log("Contains works");
+}

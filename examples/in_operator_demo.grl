@@ -1,0 +1,46 @@
+// Demo GRL file showing the 'in' operator usage
+// This demonstrates checking if a value is in an array
+
+rule "SkipDependencies" salience 85 no-loop {
+    when
+        Path.name in ["node_modules", "__pycache__", ".pytest_cache", "vendor", "venv", ".venv"]
+    then
+        Path.action = "skip";
+        Path.reason = "dependencies";
+        Log("Skipping dependency directory: " + Path.name);
+}
+
+rule "ProcessSourceFiles" salience 80 {
+    when
+        Path.extension in [".rs", ".toml", ".md", ".yml"]
+    then
+        Path.action = "process";
+        Path.reason = "source_file";
+        Log("Processing source file: " + Path.name);
+}
+
+rule "BlockedCountries" salience 90 {
+    when
+        User.country in ["XX", "YY", "ZZ"] &&
+        User.verified == false
+    then
+        User.status = "blocked";
+        Log("Blocked user from restricted country");
+}
+
+rule "VIPRole" salience 100 {
+    when
+        User.role in ["admin", "moderator", "vip"]
+    then
+        User.access_level = "premium";
+        User.features += "advanced_analytics";
+        Log("Granted VIP access");
+}
+
+rule "ValidStatus" salience 70 {
+    when
+        Order.status in ["pending", "processing", "shipped"]
+    then
+        Order.can_cancel = true;
+        Log("Order can be cancelled");
+}

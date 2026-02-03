@@ -230,6 +230,7 @@ impl GrlReteLoader {
             Operator::StartsWith => "startsWith".to_string(),
             Operator::EndsWith => "endsWith".to_string(),
             Operator::Matches => "matches".to_string(),
+            Operator::In => "in".to_string(),
         }
     }
 

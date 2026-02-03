@@ -65,6 +65,34 @@ impl AlphaNode {
 
     /// Parse value string into FactValue
     fn parse_value_string(&self, s: &str) -> FactValue {
+        // Check for array literal: [value1,value2,value3]
+        if s.starts_with('[') && s.ends_with(']') {
+            let inner = &s[1..s.len() - 1];
+            if inner.is_empty() {
+                return FactValue::Array(vec![]);
+            }
+
+            let elements: Vec<FactValue> = inner
+                .split(',')
+                .map(|elem| {
+                    let trimmed = elem.trim();
+                    // Parse each element recursively
+                    if let Ok(i) = trimmed.parse::<i64>() {
+                        FactValue::Integer(i)
+                    } else if let Ok(f) = trimmed.parse::<f64>() {
+                        FactValue::Float(f)
+                    } else if let Ok(b) = trimmed.parse::<bool>() {
+                        FactValue::Boolean(b)
+                    } else if trimmed == "null" {
+                        FactValue::Null
+                    } else {
+                        FactValue::String(trimmed.to_string())
+                    }
+                })
+                .collect();
+            return FactValue::Array(elements);
+        }
+
         // Try to parse as different types
         if let Ok(i) = s.parse::<i64>() {
             FactValue::Integer(i)

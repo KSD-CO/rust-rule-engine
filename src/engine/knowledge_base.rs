@@ -420,9 +420,10 @@ impl OperatorGRLExport for crate::types::Operator {
             crate::types::Operator::LessThanOrEqual => "<=",
             crate::types::Operator::Contains => "contains",
             crate::types::Operator::NotContains => "not_contains",
-            crate::types::Operator::StartsWith => "starts_with",
-            crate::types::Operator::EndsWith => "ends_with",
+            crate::types::Operator::StartsWith => "startsWith",
+            crate::types::Operator::EndsWith => "endsWith",
             crate::types::Operator::Matches => "matches",
+            crate::types::Operator::In => "in",
         }
     }
 }
