@@ -757,9 +757,9 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e969d1d702793536d5fda739a82b88ad7cbe7d04f8386ee8cd16ad3eff4854a5"
+checksum = "dbe7f6e08ce1c6a9b21684e643926f6fc3b683bc006cb89afd72a5e0eb16e3a2"
 dependencies = [
  "arc-swap",
  "arcstr",
@@ -822,9 +822,9 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "rexile"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de374dd087c6e5f46ee0c56ee53ba175fd52974f9e0c76644081cfe95e8458a8"
+checksum = "ecf6573f8cb142a5afe21c0809d6be349c982fa064bf16ed1474e834b7fac988"
 dependencies = [
  "aho-corasick",
  "memchr",
