@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.19.0 🦀⚡🚀
+# Rust Rule Engine v1.19.1 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -7,7 +7,7 @@
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
-**🆕 v1.19.0**: Added **`in` operator** for array membership checks and **fixed string methods** (`startsWith`, `endsWith`) in GRL parser. Now supports concise syntax like `User.role in ["admin", "moderator"]` and `File.name endsWith ".jpg"`. All 154 tests pass!
+**🆕 v1.19.1**: Patch release — bumped `rexile` to `0.5.4` for minor fixes and stability improvements. No API changes. Run `cargo update -p rexile` to update your lockfile.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
@@ -669,4 +669,3 @@ Comprehensive documentation organized by topic:
 ## 📜 Older Releases
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history (v0.1.0 - v0.19.0).
-
