@@ -1,197 +1,152 @@
 # Agent Guidelines for rust-rule-engine
 
-This document provides guidelines for AI coding agents working on the `rust-rule-engine` codebase.
+This file tells autonomous agents (and humans) how to build, test, lint, and edit
+the `rust-rule-engine` repository safely and consistently. Keep edits focused,
+non-destructive, and aligned with the project's Rust 2021 style.
 
-## Project Overview
+Location: repository root — `/home/vutt/Documents/rust-rule-engine`
 
-A production-ready Rust rule engine (v1.16.1) featuring:
-- RETE-UL algorithm for forward chaining
-- Backward chaining inference (goal-driven reasoning)
-- GRL (Grule Rule Language) parser
-- Streaming event processing with Redis state backend
-- Plugin system with 44+ actions and 33+ functions
-- Truth Maintenance System (TMS)
+---
 
-**Repository:** https://github.com/KSD-CO/rust-rule-engine
-**License:** MIT
-**Rust Edition:** 2021
+Build, Lint, Test (common commands)
 
-## Build Commands
+- Build (all features):
 
-### Standard Build & Test
 ```bash
-cargo build --verbose --all-features          # Build with all features
-cargo test --verbose --all-features           # Run all tests
-cargo clippy --all-targets --all-features -- -D warnings  # Lint
-cargo fmt                                     # Format code
+cargo build --verbose --all-features
 ```
 
-### Makefile Shortcuts
+- Run the full test suite (all features):
+
 ```bash
-make ci                # Full CI pipeline (fmt-check, clippy, build, test, test-features, doc-test)
-make check             # Quick check (fmt, clippy, test)
-make test              # Run all tests with all features
-make clippy            # Run clippy with -D warnings
-make fmt               # Format code
-make fmt-check         # Check formatting without modifying
-make build             # Build project
-make doc-test          # Run documentation tests
-make test-features     # Test all feature combinations
+cargo test --verbose --all-features
 ```
 
-### Running a Single Test
-```bash
-# Run a specific test by name
-cargo test test_name --all-features
+- Run a single named test (recommended form):
 
-# Run tests in a specific file
+```bash
+# by test name or pattern
+cargo test <test_name_or_pattern> --all-features -- --nocapture
+```
+
+- Run tests in a specific integration test file:
+
+```bash
+# e.g. the grl_harness integration test
 cargo test --test grl_harness --all-features
-
-# Run a single test with output
-cargo test test_name --all-features -- --nocapture
-
-# Run tests matching a pattern
-cargo test backward --all-features
-
-# Run doc tests only
-cargo test --doc
 ```
 
-### Feature Flags
+- Run tests with a specific feature set:
+
 ```bash
-# Test with specific features
-cargo test --no-default-features --lib                          # No features
-cargo test --features backward-chaining --lib                   # Backward chaining only
-cargo test --features streaming --lib                           # Streaming only
-cargo test --features "backward-chaining,streaming" --lib       # Multiple features
+cargo test --features backward-chaining --lib
+cargo test --no-default-features --lib            # no features
 ```
 
-### Examples
+- Formatting and checks:
+
 ```bash
-# Run all examples (26 total)
-make all
-
-# Run by category
-make getting-started        # 4 examples
-make rete-engine           # 5 examples
-make advanced-features     # 6 examples
-make performance           # 3 examples (runs in --release mode)
-make backward-chaining     # 4 examples (requires backward-chaining feature)
-make module-system         # 2 examples
-
-# Run individual example
-cargo run --example grule_demo
-cargo run --features backward-chaining --example simple_query_demo
-cargo run --release --example quick_engine_comparison
+cargo fmt                      # format
+cargo fmt -- --check           # CI style check
+cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-### Benchmarks
+- Benchmarks (when needed):
+
 ```bash
-cargo bench                                      # Run all benchmarks
-cargo bench --bench engine_comparison_benchmark  # Specific benchmark
+cargo bench                    # runs benches (may require release mode)
 ```
 
-## Code Style Guidelines
+- Makefile shortcuts (repository provides a Makefile):
 
-### General Conventions
+```bash
+make ci         # full CI locally (fmt-check, clippy, build, test, test-features, doc-test)
+make check      # quick check (fmt, clippy, test)
+make test       # tests with all features
+make fmt-check  # format check
+```
 
-**Rust Edition:** 2021 with standard Rust formatting (no custom rustfmt.toml)
+Notes on running tests reliably
+- Use `--nocapture` to see printed logs in failing tests.
+- To run a single test function from a module use the exact test name or a
+  substring pattern that uniquely matches the test name.
+- If tests depend on optional features (streaming, redis, backward-chaining),
+  enable them via `--features` or `--all-features`.
 
-**Linting:**
-- Clippy with `-D warnings` (all warnings are errors in CI)
-- `#![warn(clippy::all)]` in lib.rs
-- Use `#[allow(clippy::lint_name)]` sparingly and only when justified
+---
 
-**Documentation:**
-- Use `///` for public API documentation
-- Use `//!` for module-level documentation
-- Include examples in doc comments where helpful
-- Missing docs warning is currently disabled but documentation is encouraged
+Code Style Guidelines
 
-### Import Style
+Purpose: keep public APIs stable, make reviews easy, and ensure CI passes.
 
-**Order (as used in the codebase):**
-1. Crate-level imports (`crate::` or `super::`)
-2. External crate imports (chrono, regex, log, etc.)
-3. Standard library imports (`std::`)
+General
+- Rust edition: 2021. Keep code idiomatic and formatted with `cargo fmt`.
+- Add `#![warn(clippy::all)]` at crate root when adding new crates/modules.
+- Prefer small, well-documented public APIs and thorough unit tests.
 
-**Pattern:**
+Imports ordering
+- Use three groups, separated by a blank line in this order:
+  1. crate-level imports (`crate::` or `super::`)
+ 2. external crates (`chrono`, `rexile`, `nom`, etc.)
+ 3. standard library (`std::`)
+
+Example:
+
 ```rust
-// 1. Crate-level imports first
-use crate::engine::{
-    agenda::AgendaManager,
-    facts::Facts,
-    knowledge_base::KnowledgeBase,
-};
-use crate::errors::{Result, RuleEngineError};
-use crate::types::{ActionType, Value};
+// 1. crate-level imports
+use crate::engine::{engine::RustRuleEngine, facts::Facts};
+use crate::errors::Result;
 
-// 2. External crate imports
+// 2. external crates
 use chrono::{DateTime, Utc};
-use log::info;
 
-// 3. Standard library imports
+// 3. standard library
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
 ```
 
-**Note:** Use blank lines to separate the three groups for clarity.
+Formatting and comments
+- Keep comments factual and minimal. Use `///` for public API docs and `//!` for
+  module-level documentation. Examples in doc comments are encouraged.
 
-### Naming Conventions
+Naming
+- Types (struct / enum / trait): PascalCase
+- Functions / methods: snake_case
+- Constants: SCREAMING_SNAKE_CASE
+- Modules: snake_case (single-word preferred)
 
-**Types:** PascalCase
+Examples:
+
 ```rust
-struct RustRuleEngine { }
-enum Value { }
-type CustomFunction = Box<dyn Fn(...) -> Result<Value>>;
-```
-
-**Functions/Methods:** snake_case
-```rust
-pub fn execute_with_callback(&mut self) -> Result<GruleExecutionResult>
-pub fn to_string(&self) -> String
-```
-
-**Constants:** SCREAMING_SNAKE_CASE
-```rust
+struct RuleEngine {}          // PascalCase
+fn evaluate_rule() -> bool {} // snake_case
 const MAX_CYCLES: usize = 100;
+pub mod rete;
 ```
 
-**Modules:** snake_case (single word preferred)
+Types and ownership
+- Prefer explicit types for public APIs. Example:
+
 ```rust
-pub mod engine;
-pub mod backward;
-pub mod streaming;
+pub fn new(name: &str) -> Self;
+pub fn execute(&mut self, facts: &Facts) -> Result<ExecutionResult>;
 ```
 
-### Type Usage
+- Use owned types inside structs and borrowed references in function params where
+  appropriate (helpful for API ergonomics and lifetime reasoning).
 
-**Prefer explicit types for public APIs:**
-```rust
-pub fn new(name: &str) -> Self
-pub fn execute(&mut self, facts: &Facts) -> Result<GruleExecutionResult>
-```
+Use aliases for complex types
 
-**Use type aliases for complex types:**
 ```rust
 pub type Result<T> = std::result::Result<T, RuleEngineError>;
-pub type CustomFunction = Box<dyn Fn(&[Value], &Facts) -> Result<Value> + Send + Sync>;
+pub type CustomFunction =
+    Box<dyn Fn(&[Value], &Facts) -> Result<Value> + Send + Sync>;
 ```
 
-**Prefer owned types in structs, borrowed in function parameters:**
-```rust
-pub struct Rule {
-    pub name: String,              // Owned
-    pub conditions: Vec<Condition>, // Owned
-}
+Error handling
+- Use `thiserror` for error enums. Provide clear, localized messages.
+- Export a `Result<T>` alias in `errors.rs` and use `?` to propagate errors.
+- Example pattern:
 
-pub fn add_rule(&mut self, rule: Rule) -> Result<()>  // Owned
-pub fn evaluate(&self, facts: &Facts) -> Result<bool> // Borrowed
-```
-
-### Error Handling
-
-**Use `thiserror` for error definitions:**
 ```rust
 use thiserror::Error;
 
@@ -199,140 +154,81 @@ use thiserror::Error;
 pub enum RuleEngineError {
     #[error("Parse error: {message}")]
     ParseError { message: String },
-    
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
-    
-    #[error("Type mismatch: expected {expected}, got {actual}")]
-    TypeMismatch { expected: String, actual: String },
 }
-```
 
-**Use `Result<T>` type alias:**
-```rust
 pub type Result<T> = std::result::Result<T, RuleEngineError>;
-
-pub fn parse_rules(input: &str) -> Result<Vec<Rule>> {
-    // Implementation
-}
 ```
 
-**Propagate errors with `?` operator:**
-```rust
-let rules = GRLParser::parse_rules(&content)?;
-let value = facts.get("field")?;
-```
+Module organization
+- Typical layout (root `src/`):
 
-### Module Organization
-
-**Structure:**
 ```
 src/
-├── lib.rs                 # Public API re-exports
-├── errors.rs              # Error types
-├── types.rs               # Core type definitions
-├── engine/                # Forward chaining engine
-│   ├── mod.rs
-│   ├── engine.rs
-│   ├── facts.rs
-│   └── knowledge_base.rs
-├── backward/              # Backward chaining (feature-gated)
-├── rete/                  # RETE algorithm
-├── streaming/             # Streaming (feature-gated)
-└── parser/                # GRL parser
+├── lib.rs            # re-exports and crate root
+├── errors.rs
+├── types.rs
+├── engine/           # forward chaining engine
+├── rete/             # rete algorithm internals
+├── parser/           # grl parser
+├── backward/         # optional feature
+└── streaming/        # optional feature
 ```
 
-**Re-exports in lib.rs:**
-```rust
-pub use errors::{Result, RuleEngineError};
-pub use types::{Value, Operator};
-pub use engine::engine::RustRuleEngine;
-pub use parser::grl::GRLParser;
-```
+Feature gates
+- Use `#[cfg(feature = "..." )]` to gate modules and optional dependencies.
+- Document feature combinations in README and CI (e.g., `streaming`,
+  `streaming-redis`, `backward-chaining`).
 
-### Feature Gates
+Dependencies policy
+- Minimize transitive dependencies. Add external crates only when justified.
+- The repo currently uses `rexile` (parser), `nom`, `serde`, `thiserror`,
+  `chrono`, `log`, `tokio` (optional), and `redis` (optional).
 
-**Conditional compilation:**
-```rust
-#[cfg(feature = "backward-chaining")]
-pub mod backward;
+Testing guidance
+- Unit tests: inline with `#[cfg(test)]` modules.
+- Integration tests: place files in `tests/` and use `--test <name>` to run.
+- Doc tests: keep examples small and runnable.
+- Use `serde_yaml` fixtures (dev-dependency) for harness tests when needed.
 
-#[cfg(feature = "streaming")]
-pub mod streaming;
-```
+CI and pre-commit
+- CI runs: format check, clippy (`-D warnings`), build and tests with all
+  features, and a set of feature combo tests.
+- Before opening PRs locally run:
 
-**Optional dependencies:**
-```rust
-// In Cargo.toml
-[dependencies]
-tokio = { version = "1.42", features = ["full"], optional = true }
-
-[features]
-streaming = ["tokio"]
-```
-
-### Testing
-
-**Test organization:**
-- Unit tests: Inline with `#[cfg(test)]` modules
-- Integration tests: `tests/` directory
-- Doc tests: In doc comments
-
-**Test style:**
-```rust
-#[test]
-fn test_name() -> Result<(), Box<dyn std::error::Error>> {
-    let facts = Facts::new();
-    facts.set("field", Value::Number(42.0));
-    
-    assert_eq!(facts.get("field")?, Value::Number(42.0));
-    Ok(())
-}
-```
-
-**Use `#[allow(clippy::lint)]` for test-specific patterns:**
-```rust
-#![allow(clippy::unnecessary_get_then_check)]
-```
-
-## Dependencies Philosophy
-
-**Minimize dependencies:** The project recently reduced from 12 to 7 core dependencies (v1.16.1), preferring standard library over external crates:
-- `std::thread::available_parallelism()` instead of `num_cpus`
-- `std::sync::OnceLock` instead of `once_cell`
-- `std::collections::hash_map::RandomState` instead of `fastrand`
-
-**Core dependencies (only add if necessary):**
-- serde/serde_json - serialization
-- regex - pattern matching
-- thiserror - error handling
-- chrono - date/time
-- log - logging facade
-- nom - parser combinators
-
-## Performance Considerations
-
-- Use indexing for O(1) lookups (alpha/beta memory)
-- Leverage parallel execution where appropriate
-- Benchmark changes with criterion (see `benches/`)
-- Profile memory usage for large-scale scenarios
-
-## CI/CD
-
-GitHub Actions workflow runs on:
-- Push to `main`
-- Pull requests to `main`
-- Tags matching `v*.*.*`
-
-**CI checks:**
-1. Format check (`cargo fmt -- --check`)
-2. Clippy (`-D warnings`)
-3. Build (`--all-features`)
-4. Tests (`--all-features`)
-5. Feature combination tests (5 combinations)
-6. Doc tests
-
-**Before committing:**
 ```bash
-make ci  # Runs full CI pipeline locally
+make check   # or make ci for the full pipeline
 ```
+
+Agent rules (must-follow)
+- Never create commits or push to remote unless the user explicitly asks you
+  to. If asked to commit, follow the Git Safety Protocol: do not amend other
+  authors' commits, do not force-push, and do not change the repo's config.
+- Do not run destructive git commands (`git reset --hard`, `git checkout --`)
+  unless explicitly requested.
+- Do not commit secrets (.env, credentials). If secrets are present, warn the
+  user and stop.
+- If you must create a PR, run `make ci` locally first and attach test results.
+
+PR/Commit guidelines (if asked to create changes)
+- Follow conventional, concise commit messages focusing on the why.
+- Include a short description and list of changed subsystems in the PR body.
+- If CI fails, do not amend pushed commits—instead create a new commit.
+
+Cursor / Copilot rules
+- No `.cursor/rules/` or `.cursorrules` directory found in the repository.
+- No `.github/copilot-instructions.md` found. If such rules are added later,
+  agents must copy them verbatim into their operating policy and follow them.
+
+Contact / next steps
+- If you want, I can:
+  1) Run `make ci` locally and report back (long).
+ 2) Create a PR with small policy tweaks (must be requested).
+
+---
+
+Be conservative and non-destructive: run tests and lint locally, keep changes
+small and well-documented, and ask one targeted question if any ambiguity blocks
+progress.

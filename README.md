@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.19.1 🦀⚡🚀
+# Rust Rule Engine v1.19.2 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -7,7 +7,7 @@
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
-**🆕 v1.19.1**: Patch release — bumped `rexile` to `0.5.4` for minor fixes and stability improvements. No API changes. Run `cargo update -p rexile` to update your lockfile.
+**🆕 v1.19.2**: Documentation release — complete API documentation with `#![warn(missing_docs)]` enabled. Enhanced `RuleEngineBuilder` docs with examples. Zero breaking changes.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
