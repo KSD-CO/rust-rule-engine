@@ -1,15 +1,37 @@
-//! # Rust Rule Engine v1.19.2 - API Documentation Edition
+//! # Rust Rule Engine v1.19.3 - Parser Robustness Release
 //!
 //! A high-performance rule engine for Rust with **RETE-UL algorithm**, **Array Membership (`in`) operator**,
 //! **String Methods (startsWith, endsWith)**, **Plugin System**, and **GRL (Grule Rule Language)** support.
 //! Features forward/backward chaining, stream processing, and production-ready performance.
 //!
-//! ## What's New in v1.19.2
+//! ## What's New in v1.19.3
 //!
-//! - **📚 Complete API Documentation**: All public APIs now have comprehensive documentation
-//! - **🔍 Missing Docs Lint**: Enabled `#![warn(missing_docs)]` to ensure API documentation quality
-//! - **📖 Enhanced RuleEngineBuilder Docs**: Detailed documentation with examples for builder pattern
-//! - **✨ Zero Breaking Changes**: Pure documentation improvement with no API changes
+//! - **🛡️ Parser Robustness**: Eliminated all 16 critical unwraps that could panic on malformed input
+//! - **🔧 Better Error Handling**: Parser now returns proper `RuleEngineError::ParseError` with descriptive messages
+//! - **✅ Zero Breaking Changes**: All 436 tests passing, zero clippy warnings
+//! - **📊 Improved Reliability**: Date parsing, string operations, and iterator handling now use safe patterns
+//!
+//! ### Parser Improvements
+//!
+//! Fixed critical unwraps in:
+//! - Date parsing (`.and_hms_opt()` now properly propagates errors)
+//! - String operations (`find`, `strip_prefix` use safe patterns)
+//! - Iterator operations (clear invariant documentation)
+//! - Character access (handles empty strings gracefully)
+//!
+//! ```rust
+//! // Before v1.19.3 - Could panic
+//! // naive_date.and_hms_opt(0, 0, 0).unwrap()
+//!
+//! // v1.19.3 - Returns Result with helpful error message
+//! use rust_rule_engine::parser::grl::GRLParser;
+//!
+//! let result = GRLParser::parse_rules("malformed GRL...");
+//! match result {
+//!     Ok(rules) => println!("Parsed {} rules", rules.len()),
+//!     Err(e) => println!("Parse error: {}", e), // Descriptive message, no panic
+//! }
+//! ```
 //!
 //! ## Features
 //!

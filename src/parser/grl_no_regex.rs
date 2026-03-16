@@ -502,7 +502,13 @@ fn parse_date_string(date_str: &str) -> Result<DateTime<Utc>> {
             return Ok(naive_date.and_utc());
         }
         if let Ok(naive_date) = chrono::NaiveDate::parse_from_str(date_str, format) {
-            return Ok(naive_date.and_hms_opt(0, 0, 0).unwrap().and_utc());
+            let datetime =
+                naive_date
+                    .and_hms_opt(0, 0, 0)
+                    .ok_or_else(|| RuleEngineError::ParseError {
+                        message: format!("Invalid time for date: {}", naive_date),
+                    })?;
+            return Ok(datetime.and_utc());
         }
     }
 
@@ -814,7 +820,9 @@ fn parse_or_parts(parts: Vec<String>) -> Result<ConditionGroup> {
     }
 
     let mut iter = conditions.into_iter();
-    let mut result = iter.next().unwrap();
+    let mut result = iter
+        .next()
+        .expect("Iterator cannot be empty after empty check");
     for condition in iter {
         result = ConditionGroup::or(result, condition);
     }
@@ -836,7 +844,9 @@ fn parse_and_parts(parts: Vec<String>) -> Result<ConditionGroup> {
     }
 
     let mut iter = conditions.into_iter();
-    let mut result = iter.next().unwrap();
+    let mut result = iter
+        .next()
+        .expect("Iterator cannot be empty after empty check");
     for condition in iter {
         result = ConditionGroup::and(result, condition);
     }
@@ -891,8 +901,7 @@ fn try_parse_multifield(clause: &str) -> Result<Option<Condition>> {
     }
 
     // Pattern: field.array count op value
-    if clause.contains(" count ") {
-        let count_pos = clause.find(" count ").unwrap();
+    if let Some(count_pos) = clause.find(" count ") {
         let field = clause[..count_pos].trim().to_string();
         let rest = clause[count_pos + 7..].trim();
 
@@ -909,8 +918,7 @@ fn try_parse_multifield(clause: &str) -> Result<Option<Condition>> {
     }
 
     // Pattern: field.array first [$var]
-    if clause.contains(" first") {
-        let first_pos = clause.find(" first").unwrap();
+    if let Some(first_pos) = clause.find(" first") {
         let field = clause[..first_pos].trim().to_string();
         let rest = clause[first_pos + 6..].trim();
         let variable = if rest.starts_with('$') {
@@ -922,8 +930,7 @@ fn try_parse_multifield(clause: &str) -> Result<Option<Condition>> {
     }
 
     // Pattern: field.array last [$var]
-    if clause.contains(" last") {
-        let last_pos = clause.find(" last").unwrap();
+    if let Some(last_pos) = clause.find(" last") {
         let field = clause[..last_pos].trim().to_string();
         let rest = clause[last_pos + 5..].trim();
         let variable = if rest.starts_with('$') {
@@ -1027,7 +1034,9 @@ fn find_matching_paren(text: &str, open_pos: usize) -> Option<usize> {
 
 /// Split condition into field, operator, value
 fn split_condition(clause: &str) -> Result<(&str, &str, &str)> {
-    let operators = [">=", "<=", "==", "!=", ">", "<", "contains", "matches", "in"];
+    let operators = [
+        ">=", "<=", "==", "!=", ">", "<", "contains", "matches", "in",
+    ];
 
     for op in &operators {
         if let Some(op_pos) = find_operator(clause, op) {
@@ -1082,14 +1091,19 @@ fn find_operator(text: &str, op: &str) -> Option<usize> {
 
         if !in_string && bracket_depth == 0 && &bytes[i..i + op_bytes.len()] == op_bytes {
             // For keyword operators, check word boundaries
-            if op.chars().next().unwrap().is_alphabetic() {
-                let before_ok = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
-                let after_ok = i + op_bytes.len() >= bytes.len()
-                    || !bytes[i + op_bytes.len()].is_ascii_alphanumeric();
-                if before_ok && after_ok {
+            if let Some(first_char) = op.chars().next() {
+                if first_char.is_alphabetic() {
+                    let before_ok = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
+                    let after_ok = i + op_bytes.len() >= bytes.len()
+                        || !bytes[i + op_bytes.len()].is_ascii_alphanumeric();
+                    if before_ok && after_ok {
+                        return Some(i);
+                    }
+                } else {
                     return Some(i);
                 }
             } else {
+                // Empty operator string - shouldn't happen but handle gracefully
                 return Some(i);
             }
         }
@@ -1225,8 +1239,9 @@ fn parse_accumulate_pattern(pattern: &str) -> Result<(String, String, Vec<String
         let part = part.trim();
 
         if part.contains(':') && part.starts_with('$') {
-            let colon_pos = part.find(':').unwrap();
-            extract_field = part[colon_pos + 1..].trim().to_string();
+            if let Some(colon_pos) = part.find(':') {
+                extract_field = part[colon_pos + 1..].trim().to_string();
+            }
         } else if part.contains("==")
             || part.contains("!=")
             || part.contains(">=")
@@ -1273,30 +1288,30 @@ fn parse_accumulate_function(func_str: &str) -> Result<(String, String)> {
 /// Parse array literal: ["value1", "value2", 123, true]
 fn parse_array_literal(array_str: &str) -> Result<Value> {
     let trimmed = array_str.trim();
-    
+
     // Remove surrounding brackets
     if !trimmed.starts_with('[') || !trimmed.ends_with(']') {
         return Err(RuleEngineError::ParseError {
             message: format!("Invalid array literal: {}", array_str),
         });
     }
-    
+
     let inner = &trimmed[1..trimmed.len() - 1].trim();
-    
+
     // Empty array
     if inner.is_empty() {
         return Ok(Value::Array(Vec::new()));
     }
-    
+
     // Split by comma at top level
     let elements = split_top_level_comma(inner)?;
-    
+
     let mut array = Vec::new();
     for element in elements {
         let value = parse_value(element.trim())?;
         array.push(value);
     }
-    
+
     Ok(Value::Array(array))
 }
 
@@ -1365,7 +1380,7 @@ fn is_identifier(s: &str) -> bool {
         return false;
     }
 
-    let first = s.chars().next().unwrap();
+    let first = s.chars().next().expect("Cannot be empty after empty check");
     if !first.is_alphabetic() && first != '_' {
         return false;
     }
@@ -1820,7 +1835,7 @@ mod tests {
             Ok(rules) => {
                 assert_eq!(rules.len(), 1);
                 assert_eq!(rules[0].name, "TestInOperator");
-                
+
                 // Check the condition
                 match &rules[0].conditions {
                     ConditionGroup::Single(cond) => {

@@ -595,7 +595,13 @@ impl GRLParser {
                 return Ok(naive_date.and_utc());
             }
             if let Ok(naive_date) = chrono::NaiveDate::parse_from_str(date_str, format) {
-                return Ok(naive_date.and_hms_opt(0, 0, 0).unwrap().and_utc());
+                let datetime =
+                    naive_date
+                        .and_hms_opt(0, 0, 0)
+                        .ok_or_else(|| RuleEngineError::ParseError {
+                            message: format!("Invalid time for date: {}", naive_date),
+                        })?;
+                return Ok(datetime.and_utc());
             }
         }
 
@@ -760,7 +766,9 @@ impl GRLParser {
         }
 
         let mut iter = conditions.into_iter();
-        let mut result = iter.next().unwrap();
+        let mut result = iter
+            .next()
+            .expect("Iterator cannot be empty after empty check");
         for condition in iter {
             result = ConditionGroup::or(result, condition);
         }
@@ -782,7 +790,9 @@ impl GRLParser {
         }
 
         let mut iter = conditions.into_iter();
-        let mut result = iter.next().unwrap();
+        let mut result = iter
+            .next()
+            .expect("Iterator cannot be empty after empty check");
         for condition in iter {
             result = ConditionGroup::and(result, condition);
         }
@@ -791,7 +801,12 @@ impl GRLParser {
     }
 
     fn parse_not_condition(&self, clause: &str) -> Result<ConditionGroup> {
-        let inner_clause = clause.strip_prefix("!").unwrap().trim();
+        let inner_clause = clause
+            .strip_prefix('!')
+            .ok_or_else(|| RuleEngineError::ParseError {
+                message: format!("Expected '!' prefix in NOT condition: {}", clause),
+            })?
+            .trim();
         let inner_condition = self.parse_when_clause(inner_clause)?;
         Ok(ConditionGroup::not(inner_condition))
     }
@@ -943,10 +958,9 @@ impl GRLParser {
 
             // Check if this is a variable binding: $var: field
             if part.contains(':') && part.starts_with('$') {
-                let colon_pos = part.find(':').unwrap();
-                let _var_name = part[..colon_pos].trim();
-                let field_name = part[colon_pos + 1..].trim();
-                extract_field = field_name.to_string();
+                if let Some(colon_pos) = part.find(':') {
+                    extract_field = part[colon_pos + 1..].trim().to_string();
+                }
             } else if part.contains("==")
                 || part.contains("!=")
                 || part.contains(">=")
@@ -1248,7 +1262,9 @@ impl GRLParser {
         }
 
         let mut iter = conditions.into_iter();
-        let mut result = iter.next().unwrap();
+        let mut result = iter
+            .next()
+            .expect("Iterator cannot be empty after empty check");
         for condition in iter {
             result = ConditionGroup::and(result, condition);
         }
@@ -1343,6 +1359,10 @@ impl GRLParser {
     /// Valid identifiers: alphanumeric + underscore, starts with letter or underscore
     fn is_identifier(&self, s: &str) -> bool {
         if s.is_empty() {
+            return false;
+        }
+        let first_char = s.chars().next().expect("Cannot be empty after empty check");
+        if !first_char.is_alphabetic() && first_char != '_' {
             return false;
         }
 

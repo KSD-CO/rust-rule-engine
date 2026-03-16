@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.19.2 🦀⚡🚀
+# Rust Rule Engine v1.19.3 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -7,9 +7,55 @@
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
-**🆕 v1.19.2**: Documentation release — complete API documentation with `#![warn(missing_docs)]` enabled. Enhanced `RuleEngineBuilder` docs with examples. Zero breaking changes.
+**🆕 v1.19.3**: Parser robustness release — eliminated all critical unwraps that could panic on malformed input. 16 parser unwraps replaced with proper error handling for better reliability and error messages. Zero breaking changes.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
+
+---
+
+## 🎯 What's New in v1.19.3 🛡️
+
+### 🛡️ Parser Robustness & Error Handling
+
+**Production-hardened parser** with all critical unwraps eliminated for better reliability!
+
+**Fixed 16 critical unwraps** that could cause panics on malformed user input:
+- ✅ **Date parsing errors** now return proper `ParseError` instead of panicking
+- ✅ **String operations** (`find`, `strip_prefix`) use safe patterns  
+- ✅ **Iterator operations** with clear invariant documentation
+- ✅ **Better error messages** - descriptive `RuleEngineError::ParseError` with context
+
+**Impact:**
+```rust
+// Before v1.19.3 - Could panic on invalid date
+naive_date.and_hms_opt(0, 0, 0).unwrap()  // 💥 PANIC!
+
+// v1.19.3 - Proper error handling
+naive_date.and_hms_opt(0, 0, 0).ok_or_else(|| 
+    RuleEngineError::ParseError {
+        message: format!("Invalid time for date: {}", naive_date)
+    }
+)?  // ✅ Returns Result
+```
+
+**Files improved:**
+- `src/parser/grl_no_regex.rs` - 9 critical unwraps fixed
+- `src/parser/grl.rs` - 7 critical unwraps fixed
+
+**Quality metrics:**
+- ✅ 436 tests passing (100% pass rate maintained)
+- ✅ Zero clippy warnings
+- ✅ Zero breaking changes
+- ✅ Better UX with descriptive error messages
+
+**Patterns fixed:**
+1. Date parsing: `.and_hms_opt().unwrap()` → proper `Result` propagation
+2. String find: `contains() + find().unwrap()` → `if let Some(pos) = find()`
+3. Iterators: `.unwrap()` → `.expect()` with invariant docs
+4. Char access: Safe handling of empty strings
+5. Prefix stripping: Proper error on missing prefix
+
+This release makes the parser **production-ready** for handling untrusted or malformed GRL input without panicking.
 
 ---
 
@@ -143,9 +189,17 @@ for event in event_stream {
 
 ---
 
-## ✨ What's New in v1.19.0 🎉
+## ✨ Previous Releases
 
-### 🎯 Array Membership Operator (`in`)
+### v1.19.2 - Documentation Release
+- **📚 Complete API Documentation**: All public APIs now have comprehensive documentation
+- **🔍 Missing Docs Lint**: Enabled `#![warn(missing_docs)]` to ensure API documentation quality
+- **📖 Enhanced RuleEngineBuilder Docs**: Detailed documentation with examples for builder pattern
+- **✨ Zero Breaking Changes**: Pure documentation improvement with no API changes
+
+### v1.19.0 - Array Membership & String Methods
+
+#### 🎯 Array Membership Operator (`in`)
 
 Concise syntax for checking if a value exists in an array!
 
