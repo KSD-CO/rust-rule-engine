@@ -495,115 +495,125 @@ impl RustRuleEngine {
                 }
             }
 
-            // Get rules sorted by salience (highest first)
-            let mut rules = self.knowledge_base.get_rules().clone();
-            rules.sort_by(|a, b| b.salience.cmp(&a.salience));
+            // Get rule indices sorted by salience (highest first) - avoids cloning rules
+            let rule_indices = self.knowledge_base.get_rules_by_salience();
 
-            // Filter rules by agenda group
-            let rules: Vec<_> = rules
-                .iter()
-                .filter(|rule| self.agenda_manager.should_evaluate_rule(rule))
-                .collect();
-
-            for rule in &rules {
-                if !rule.enabled {
-                    continue;
-                }
-
-                // Check date effective/expires
-                if !rule.is_active_at(timestamp) {
-                    continue;
-                }
-
-                // Check agenda group constraints (lock-on-active)
-                if !self.agenda_manager.can_fire_rule(rule) {
-                    continue;
-                }
-
-                // Check activation group constraints
-                if !self.activation_group_manager.can_fire(rule) {
-                    continue;
-                }
-
-                // Check no-loop: if rule has no_loop=true and already fired globally, skip
-                if rule.no_loop && self.fired_rules_global.contains(&rule.name) {
-                    if self.config.debug_mode {
-                        println!("⛔ Skipping '{}' due to no_loop (already fired)", rule.name);
+            // Process rules by index to avoid cloning
+            for &rule_index in &rule_indices {
+                if let Some(rule) = self.knowledge_base.get_rule_by_index(rule_index) {
+                    if !rule.enabled {
+                        continue;
                     }
-                    continue;
-                }
 
-                rules_evaluated += 1;
-                let rule_start = Instant::now();
+                    if !self.agenda_manager.should_evaluate_rule(&rule) {
+                        continue;
+                    }
 
-                if self.config.debug_mode {
-                    println!(
-                        "📝 Evaluating rule: {} (no_loop={})",
-                        rule.name, rule.no_loop
-                    );
-                }
+                    // Check date effective/expires
+                    if !rule.is_active_at(timestamp) {
+                        continue;
+                    }
 
-                // Evaluate rule conditions
-                let condition_result = self.evaluate_conditions(&rule.conditions, facts)?;
-                if self.config.debug_mode {
-                    println!(
-                        "  🔍 Condition result for '{}': {}",
-                        rule.name, condition_result
-                    );
-                }
+                    // Check agenda group constraints (lock-on-active)
+                    if !self.agenda_manager.can_fire_rule(&rule) {
+                        continue;
+                    }
 
-                if condition_result {
+                    // Check activation group constraints (only one rule per group can fire)
+                    if !self.activation_group_manager.can_fire(&rule) {
+                        continue;
+                    }
+
+                    // Check no-loop: skip if already fired in this execution cycle
+                    if rule.no_loop && self.fired_rules_global.contains(&rule.name) {
+                        println!("⛔ Skipping '{}' due to no_loop (already fired)", rule.name);
+                        continue;
+                    }
+
+                    // Debug
                     if self.config.debug_mode {
                         println!(
-                            "🔥 Rule '{}' fired (salience: {})",
-                            rule.name, rule.salience
+                            "🔍 Checking rule '{}' (no_loop: {})",
+                            rule.name, rule.no_loop
                         );
                     }
 
-                    // Execute actions
-                    for action in &rule.actions {
-                        self.execute_action(action, facts)?;
+                    let rule_start = std::time::Instant::now();
+
+                    // Count rule evaluation
+                    rules_evaluated += 1;
+
+                    // Evaluate rule conditions
+                    let condition_result = self.evaluate_conditions(&rule.conditions, facts)?;
+
+                    if self.config.debug_mode {
+                        println!(
+                            "   Rule '{}' condition result: {}",
+                            rule.name, condition_result
+                        );
                     }
 
-                    let rule_duration = rule_start.elapsed();
-
-                    // Record analytics if enabled
-                    if let Some(analytics) = &mut self.analytics {
-                        analytics.record_execution(&rule.name, rule_duration, true, true, None, 0);
-                    }
-
-                    rules_fired += 1;
-                    any_rule_fired = true;
-
-                    // Track that this rule fired in this cycle (for cycle counting)
-                    fired_rules_in_cycle.insert(rule.name.clone());
-
-                    // Track that this rule fired globally (for no-loop support)
-                    if rule.no_loop {
-                        self.fired_rules_global.insert(rule.name.clone());
+                    // If conditions match, fire the rule
+                    if condition_result {
                         if self.config.debug_mode {
-                            println!("  🔒 Marked '{}' as fired (no_loop tracking)", rule.name);
+                            println!(
+                                "🔥 Firing rule '{}' (salience: {})",
+                                rule.name, rule.salience
+                            );
+                        }
+
+                        // Execute actions
+                        for action in &rule.actions {
+                            self.execute_action(action, facts)?;
+                        }
+
+                        let rule_duration = rule_start.elapsed();
+
+                        // Record analytics if enabled
+                        if let Some(analytics) = &mut self.analytics {
+                            analytics.record_execution(
+                                &rule.name,
+                                rule_duration,
+                                true,
+                                true,
+                                None,
+                                0,
+                            );
+                        }
+
+                        rules_fired += 1;
+                        any_rule_fired = true;
+
+                        // Track that this rule fired in this cycle (for cycle counting)
+                        fired_rules_in_cycle.insert(rule.name.clone());
+
+                        // Track that this rule fired globally (for no-loop support)
+                        if rule.no_loop {
+                            self.fired_rules_global.insert(rule.name.clone());
+                            if self.config.debug_mode {
+                                println!("  🔒 Marked '{}' as fired (no_loop tracking)", rule.name);
+                            }
+                        }
+
+                        // Mark rule as fired for agenda and activation group management
+                        self.agenda_manager.mark_rule_fired(&rule);
+                        self.activation_group_manager.mark_fired(&rule);
+                    } else {
+                        let rule_duration = rule_start.elapsed();
+
+                        // Record analytics for failed rules too
+                        if let Some(analytics) = &mut self.analytics {
+                            analytics.record_execution(
+                                &rule.name,
+                                rule_duration,
+                                false,
+                                false,
+                                None,
+                                0,
+                            );
                         }
                     }
-
-                    // Mark rule as fired for agenda and activation group management
-                    self.agenda_manager.mark_rule_fired(rule);
-                    self.activation_group_manager.mark_fired(rule);
-                } else {
-                    let rule_duration = rule_start.elapsed();
-
-                    // Record analytics for failed rules too
-                    if let Some(analytics) = &mut self.analytics {
-                        analytics.record_execution(
-                            &rule.name,
-                            rule_duration,
-                            false,
-                            false,
-                            None,
-                            0,
-                        );
-                    }
-                }
+                } // Close if let Some(rule)
             }
 
             // If no rules fired in this cycle, we're done
@@ -716,8 +726,8 @@ impl RustRuleEngine {
         // Find all facts that match the pattern (e.g., "Order.amount", "Order.status")
         let pattern_prefix = format!("{}.", source_pattern);
 
-        // Group facts by instance (e.g., Order.1.amount, Order.1.status)
-        let mut instances: HashMap<String, HashMap<String, Value>> = HashMap::new();
+        // Group facts by instance (e.g., Order.1.amount, Order.1.status) - pre-sized for performance
+        let mut instances: HashMap<String, HashMap<String, Value>> = HashMap::with_capacity(16);
 
         for (key, value) in &all_facts {
             if key.starts_with(&pattern_prefix) {

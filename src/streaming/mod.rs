@@ -13,8 +13,6 @@
 //!
 //! ## Example
 //!
-
-#![allow(missing_docs)]
 //! ```rust,ignore
 //! use rust_rule_engine::streaming::*;
 //!

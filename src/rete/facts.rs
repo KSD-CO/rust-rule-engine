@@ -263,6 +263,14 @@ impl TypedFacts {
         }
     }
 
+    /// Create new facts collection with estimated capacity
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            data: HashMap::with_capacity(capacity),
+            fact_handles: HashMap::with_capacity(capacity),
+        }
+    }
+
     /// Set metadata about which handle corresponds to which fact type
     pub fn set_fact_handle(&mut self, fact_type: String, handle: super::FactHandle) {
         self.fact_handles.insert(fact_type, handle);

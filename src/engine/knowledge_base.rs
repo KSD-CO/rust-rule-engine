@@ -120,6 +120,21 @@ impl KnowledgeBase {
         rules.clone()
     }
 
+    /// Get rules sorted by salience without cloning individual rules
+    /// Returns references to rules in descending salience order
+    pub fn get_rules_by_salience(&self) -> Vec<usize> {
+        let rules = self.rules.read().unwrap();
+        let mut indices: Vec<usize> = (0..rules.len()).collect();
+        indices.sort_by(|&a, &b| rules[b].salience.cmp(&rules[a].salience));
+        indices
+    }
+
+    /// Get rule by index - avoids cloning
+    pub fn get_rule_by_index(&self, index: usize) -> Option<Rule> {
+        let rules = self.rules.read().unwrap();
+        rules.get(index).cloned()
+    }
+
     /// Get all rule names
     pub fn get_rule_names(&self) -> Vec<String> {
         let index = self.rule_index.read().unwrap();

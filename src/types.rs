@@ -23,11 +23,11 @@ pub enum Value {
 }
 
 impl Value {
-    /// Convert Value to string representation
-    #[allow(clippy::inherent_to_string)]
+    /// Convert Value to string representation  
+    #[allow(clippy::inherent_to_string_shadow_display)]
     pub fn to_string(&self) -> String {
         match self {
-            Value::String(s) => s.clone(),
+            Value::String(s) => s.clone(), // TODO: Can be optimized with Cow<str>
             Value::Number(n) => n.to_string(),
             Value::Integer(i) => i.to_string(),
             Value::Boolean(b) => b.to_string(),
@@ -35,6 +35,20 @@ impl Value {
             Value::Object(_) => "[Object]".to_string(),
             Value::Null => "null".to_string(),
             Value::Expression(expr) => format!("[Expr: {}]", expr),
+        }
+    }
+
+    /// Get string reference without cloning (when possible)
+    pub fn as_str(&self) -> std::borrow::Cow<'_, str> {
+        match self {
+            Value::String(s) => std::borrow::Cow::Borrowed(s),
+            Value::Number(n) => std::borrow::Cow::Owned(n.to_string()),
+            Value::Integer(i) => std::borrow::Cow::Owned(i.to_string()),
+            Value::Boolean(b) => std::borrow::Cow::Borrowed(if *b { "true" } else { "false" }),
+            Value::Array(_) => std::borrow::Cow::Borrowed("[Array]"),
+            Value::Object(_) => std::borrow::Cow::Borrowed("[Object]"),
+            Value::Null => std::borrow::Cow::Borrowed("null"),
+            Value::Expression(expr) => std::borrow::Cow::Owned(format!("[Expr: {}]", expr)),
         }
     }
 
@@ -461,4 +475,20 @@ pub enum ActionType {
         /// Value to append
         value: Value,
     },
+}
+
+// Efficient Display implementation for Value to avoid unnecessary cloning
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::String(s) => write!(f, "{}", s),
+            Value::Number(n) => write!(f, "{}", n),
+            Value::Integer(i) => write!(f, "{}", i),
+            Value::Boolean(b) => write!(f, "{}", b),
+            Value::Array(_) => write!(f, "[Array]"),
+            Value::Object(_) => write!(f, "[Object]"),
+            Value::Null => write!(f, "null"),
+            Value::Expression(expr) => write!(f, "[Expr: {}]", expr),
+        }
+    }
 }

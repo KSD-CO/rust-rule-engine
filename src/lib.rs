@@ -140,15 +140,15 @@ pub use engine::rule::{Condition, ConditionGroup, Rule};
 pub use parser::grl::GRLParser;
 
 /// Builder pattern for creating a RustRuleEngine with various configurations.
-/// 
+///
 /// Provides a fluent interface for configuring and building rule engines with
 /// rules loaded from files or inline GRL strings.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```rust
 /// use rust_rule_engine::RuleEngineBuilder;
-/// 
+///
 /// // Build engine with inline rules
 /// let engine = RuleEngineBuilder::new()
 ///     .with_inline_grl(r#"
@@ -167,7 +167,7 @@ pub struct RuleEngineBuilder {
 
 impl RuleEngineBuilder {
     /// Create a new RuleEngineBuilder with default configuration.
-    /// 
+    ///
     /// Creates an empty knowledge base named "DefaultKB" and default engine configuration.
     pub fn new() -> Self {
         Self {
@@ -177,11 +177,11 @@ impl RuleEngineBuilder {
     }
 
     /// Add rules from a .grl file.
-    /// 
+    ///
     /// Reads and parses GRL rules from the specified file path.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns an error if the file cannot be read or if the GRL syntax is invalid.
     pub fn with_rule_file<P: AsRef<std::path::Path>>(self, path: P) -> Result<Self> {
         let content = std::fs::read_to_string(path)?;
@@ -195,11 +195,11 @@ impl RuleEngineBuilder {
     }
 
     /// Add rules from inline GRL string.
-    /// 
+    ///
     /// Parses GRL rules directly from a string.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns an error if the GRL syntax is invalid.
     pub fn with_inline_grl(self, grl_content: &str) -> Result<Self> {
         let rules = GRLParser::parse_rules(grl_content)?;
@@ -212,7 +212,7 @@ impl RuleEngineBuilder {
     }
 
     /// Set engine configuration.
-    /// 
+    ///
     /// Overrides the default engine configuration with custom settings.
     pub fn with_config(mut self, config: EngineConfig) -> Self {
         self.config = config;
@@ -220,7 +220,7 @@ impl RuleEngineBuilder {
     }
 
     /// Build the RustRuleEngine.
-    /// 
+    ///
     /// Consumes the builder and creates a configured rule engine instance.
     pub fn build(self) -> RustRuleEngine {
         RustRuleEngine::with_config(self.kb, self.config)
