@@ -39,6 +39,18 @@ impl FactValue {
         }
     }
 
+    /// Get string representation as Cow<str> (zero-copy for String variant)
+    pub fn as_str(&self) -> std::borrow::Cow<'_, str> {
+        match self {
+            FactValue::String(s) => std::borrow::Cow::Borrowed(s),
+            FactValue::Integer(i) => std::borrow::Cow::Owned(i.to_string()),
+            FactValue::Float(f) => std::borrow::Cow::Owned(f.to_string()),
+            FactValue::Boolean(b) => std::borrow::Cow::Borrowed(if *b { "true" } else { "false" }),
+            FactValue::Array(arr) => std::borrow::Cow::Owned(format!("{:?}", arr)),
+            FactValue::Null => std::borrow::Cow::Borrowed("null"),
+        }
+    }
+
     /// Try to convert to integer
     pub fn as_integer(&self) -> Option<i64> {
         match self {
@@ -178,7 +190,7 @@ impl FactValue {
 
 impl fmt::Display for FactValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_string())
+        write!(f, "{}", self.as_str())
     }
 }
 

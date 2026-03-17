@@ -73,6 +73,15 @@ impl Facts {
         data.get(name).cloned()
     }
 
+    /// Access a fact value by reference via a callback, avoiding clone
+    pub fn with_value<F, R>(&self, name: &str, f: F) -> Option<R>
+    where
+        F: FnOnce(&Value) -> R,
+    {
+        let data = self.data.read().unwrap();
+        data.get(name).map(f)
+    }
+
     /// Get a nested fact property (e.g., "User.Profile.Age")
     pub fn get_nested(&self, path: &str) -> Option<Value> {
         let parts: Vec<&str> = path.split('.').collect();

@@ -18,7 +18,7 @@ fn compute_facts_hash(facts: &TypedFacts) -> u64 {
 
     for (key, value) in sorted_facts {
         key.hash(&mut hasher);
-        value.as_string().hash(&mut hasher);
+        value.as_str().hash(&mut hasher);
     }
 
     hasher.finish()
