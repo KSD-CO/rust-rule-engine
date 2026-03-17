@@ -70,6 +70,14 @@ impl Value {
         }
     }
 
+    /// Get string reference without cloning (returns None for non-String variants)
+    pub fn as_string_ref(&self) -> Option<&str> {
+        match self {
+            Value::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
     /// Get integer value if this is an integer
     pub fn as_integer(&self) -> Option<i64> {
         match self {
@@ -334,38 +342,38 @@ impl Operator {
                 }
             }
             Operator::Contains => {
-                if let (Some(l), Some(r)) = (left.as_string(), right.as_string()) {
-                    l.contains(&r)
+                if let (Some(l), Some(r)) = (left.as_string_ref(), right.as_string_ref()) {
+                    l.contains(r)
                 } else {
                     false
                 }
             }
             Operator::NotContains => {
-                if let (Some(l), Some(r)) = (left.as_string(), right.as_string()) {
-                    !l.contains(&r)
+                if let (Some(l), Some(r)) = (left.as_string_ref(), right.as_string_ref()) {
+                    !l.contains(r)
                 } else {
                     false
                 }
             }
             Operator::StartsWith => {
-                if let (Some(l), Some(r)) = (left.as_string(), right.as_string()) {
-                    l.starts_with(&r)
+                if let (Some(l), Some(r)) = (left.as_string_ref(), right.as_string_ref()) {
+                    l.starts_with(r)
                 } else {
                     false
                 }
             }
             Operator::EndsWith => {
-                if let (Some(l), Some(r)) = (left.as_string(), right.as_string()) {
-                    l.ends_with(&r)
+                if let (Some(l), Some(r)) = (left.as_string_ref(), right.as_string_ref()) {
+                    l.ends_with(r)
                 } else {
                     false
                 }
             }
             Operator::Matches => {
                 // Simple regex match implementation
-                if let (Some(l), Some(r)) = (left.as_string(), right.as_string()) {
+                if let (Some(l), Some(r)) = (left.as_string_ref(), right.as_string_ref()) {
                     // For now, just use contains as a simple match
-                    l.contains(&r)
+                    l.contains(r)
                 } else {
                     false
                 }

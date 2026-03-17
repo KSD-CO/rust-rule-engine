@@ -107,45 +107,44 @@ impl RustRuleEngine {
                 }
             }
 
-            let mut rules = self.knowledge_base.get_rules().clone();
-            rules.sort_by(|a, b| b.salience.cmp(&a.salience));
-            let rules: Vec<_> = rules
-                .iter()
-                .filter(|rule| self.agenda_manager.should_evaluate_rule(rule))
-                .collect();
+            let rule_indices = self.knowledge_base.get_rules_by_salience();
 
-            for rule in &rules {
-                if !rule.enabled {
-                    continue;
-                }
-                if !rule.is_active_at(timestamp) {
-                    continue;
-                }
-                if !self.agenda_manager.can_fire_rule(rule) {
-                    continue;
-                }
-                if !self.activation_group_manager.can_fire(rule) {
-                    continue;
-                }
-                if rule.no_loop && self.fired_rules_global.contains(&rule.name) {
-                    continue;
-                }
-                rules_evaluated += 1;
-                let condition_result = self.evaluate_conditions(&rule.conditions, facts)?;
-                if condition_result {
-                    for action in &rule.actions {
-                        self.execute_action(action, facts)?;
+            for &rule_index in &rule_indices {
+                if let Some(rule) = self.knowledge_base.get_rule_by_index(rule_index) {
+                    if !rule.enabled {
+                        continue;
                     }
-                    rules_fired += 1;
-                    any_rule_fired = true;
-                    fired_rules_in_cycle.insert(rule.name.clone());
-                    if rule.no_loop {
-                        self.fired_rules_global.insert(rule.name.clone());
+                    if !self.agenda_manager.should_evaluate_rule(&rule) {
+                        continue;
                     }
-                    self.agenda_manager.mark_rule_fired(rule);
-                    self.activation_group_manager.mark_fired(rule);
-                    // Gọi callback khi rule fired - truyền tham chiếu tới facts
-                    on_rule_fired(&rule.name, facts);
+                    if !rule.is_active_at(timestamp) {
+                        continue;
+                    }
+                    if !self.agenda_manager.can_fire_rule(&rule) {
+                        continue;
+                    }
+                    if !self.activation_group_manager.can_fire(&rule) {
+                        continue;
+                    }
+                    if rule.no_loop && self.fired_rules_global.contains(&rule.name) {
+                        continue;
+                    }
+                    rules_evaluated += 1;
+                    let condition_result = self.evaluate_conditions(&rule.conditions, facts)?;
+                    if condition_result {
+                        for action in &rule.actions {
+                            self.execute_action(action, facts)?;
+                        }
+                        rules_fired += 1;
+                        any_rule_fired = true;
+                        fired_rules_in_cycle.insert(rule.name.clone());
+                        if rule.no_loop {
+                            self.fired_rules_global.insert(rule.name.clone());
+                        }
+                        self.agenda_manager.mark_rule_fired(&rule);
+                        self.activation_group_manager.mark_fired(&rule);
+                        on_rule_fired(&rule.name, facts);
+                    }
                 }
             }
             if !any_rule_fired {
@@ -255,12 +254,7 @@ impl RustRuleEngine {
     pub fn execute_scheduled_tasks(&mut self, facts: &Facts) -> Result<()> {
         let ready_tasks = self.get_ready_tasks();
         for task in ready_tasks {
-            if let Some(rule) = self
-                .knowledge_base
-                .get_rules()
-                .iter()
-                .find(|r| r.name == task.rule_name)
-            {
+            if let Some(rule) = self.knowledge_base.get_rule(&task.rule_name) {
                 if self.config.debug_mode {
                     println!("⚡ Executing scheduled task: {}", task.rule_name);
                 }
@@ -433,12 +427,7 @@ impl RustRuleEngine {
             }
 
             // Find and execute the specific rule
-            if let Some(rule) = self
-                .knowledge_base
-                .get_rules()
-                .iter()
-                .find(|r| r.name == task.rule_name)
-            {
+            if let Some(rule) = self.knowledge_base.get_rule(&task.rule_name) {
                 // Execute just this one rule
                 if self.evaluate_conditions(&rule.conditions, facts)? {
                     for action in &rule.actions {
@@ -473,7 +462,7 @@ impl RustRuleEngine {
         if self.config.debug_mode {
             println!(
                 "🚀 Starting rule execution with {} rules (agenda group: {})",
-                self.knowledge_base.get_rules().len(),
+                self.knowledge_base.rule_count(),
                 self.agenda_manager.get_active_group()
             );
         }

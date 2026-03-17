@@ -69,6 +69,10 @@ required-features = ["backward-chaining"]
 name = "parallel_benchmarks"
 harness = false
 
+[[bench]]
+name = "clone_optimization_benchmark"
+harness = false
+
 
 # Binary for large-scale testing
 [[bin]]

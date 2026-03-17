@@ -322,7 +322,7 @@ impl IncrementalEngine {
                                 }
                                 (FactValue::String(x), FactValue::String(y)) => x == y,
                                 // Mixed string vs other: compare stringified forms
-                                _ => a.as_string() == b.as_string(),
+                                _ => a.as_str() == b.as_str(),
                             }
                         }
 
@@ -334,7 +334,7 @@ impl IncrementalEngine {
                                 return false;
                             }
                             if let Some(fv) = fact.data.get(field) {
-                                fact_value_equal(fv, &expected) || fv.as_string() == value_part
+                                fact_value_equal(fv, &expected) || fv.as_str() == value_part
                             } else {
                                 false
                             }
