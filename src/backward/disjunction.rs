@@ -143,6 +143,71 @@ impl Default for DisjunctionResult {
     }
 }
 
+/// Split a string by " OR " only at the top level (paren_depth == 0),
+/// respecting nested parentheses and quoted strings.
+///
+/// For example:
+/// - `"A OR B"` → `["A", "B"]`
+/// - `"A OR (B AND C)"` → `["A", "(B AND C)"]`
+/// - `"(A OR B) OR (C OR D)"` → `["(A OR B)", "(C OR D)"]`
+/// - `"func(a, OR b) OR c"` → `["func(a, OR b)", "c"]`
+fn split_top_level_or(input: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut paren_depth: i32 = 0;
+    let mut in_string = false;
+    let chars: Vec<char> = input.chars().collect();
+    let len = chars.len();
+    let mut i = 0;
+
+    while i < len {
+        let ch = chars[i];
+
+        match ch {
+            '"' if !in_string => {
+                in_string = true;
+                current.push(ch);
+            }
+            '"' if in_string => {
+                in_string = false;
+                current.push(ch);
+            }
+            '(' if !in_string => {
+                paren_depth += 1;
+                current.push(ch);
+            }
+            ')' if !in_string => {
+                paren_depth -= 1;
+                current.push(ch);
+            }
+            ' ' if !in_string && paren_depth == 0 => {
+                // Check if we're at " OR " boundary
+                if i + 4 <= len && &input[i..i + 4] == " OR " {
+                    let trimmed = current.trim().to_string();
+                    if !trimmed.is_empty() {
+                        parts.push(trimmed);
+                    }
+                    current.clear();
+                    i += 4; // skip " OR "
+                    continue;
+                }
+                current.push(ch);
+            }
+            _ => {
+                current.push(ch);
+            }
+        }
+        i += 1;
+    }
+
+    let trimmed = current.trim().to_string();
+    if !trimmed.is_empty() {
+        parts.push(trimmed);
+    }
+
+    parts
+}
+
 /// Parser for OR patterns in queries
 pub struct DisjunctionParser;
 
@@ -164,13 +229,16 @@ impl DisjunctionParser {
         // Remove outer parentheses
         let inner = &pattern[1..pattern.len() - 1];
 
-        // Split by OR (naive implementation - TODO: handle nested parens)
         if !inner.contains(" OR ") {
             return None;
         }
 
-        let branches: Vec<Goal> = inner
-            .split(" OR ")
+        // Split by " OR " at the top level only, respecting nested parentheses
+        // and quoted strings so that patterns like "(A OR (B AND C))" split correctly.
+        let parts = split_top_level_or(inner);
+
+        let branches: Vec<Goal> = parts
+            .into_iter()
             .map(|s| Goal::new(s.trim().to_string()))
             .collect();
 
@@ -181,9 +249,10 @@ impl DisjunctionParser {
         Some(Disjunction::new(branches, pattern.to_string()))
     }
 
-    /// Check if a pattern contains OR
+    /// Check if a pattern contains a top-level OR (not inside nested parentheses)
     pub fn contains_or(pattern: &str) -> bool {
-        pattern.contains(" OR ")
+        let parts = split_top_level_or(pattern);
+        parts.len() > 1
     }
 }
 
@@ -270,8 +339,73 @@ mod tests {
 
     #[test]
     fn test_parser_contains_or() {
-        assert!(DisjunctionParser::contains_or("(A OR B)"));
+        assert!(DisjunctionParser::contains_or("A OR B"));
         assert!(!DisjunctionParser::contains_or("A AND B"));
+        // OR inside parentheses is not top-level
+        assert!(!DisjunctionParser::contains_or("(A OR B)"));
+    }
+
+    #[test]
+    fn test_parser_nested_parens() {
+        // "(A OR (B AND C))" should split into ["A", "(B AND C)"]
+        let pattern = "(A OR (B AND C))";
+        let disj = DisjunctionParser::parse(pattern).unwrap();
+        assert_eq!(disj.branch_count(), 2);
+        assert_eq!(disj.branches[0].pattern, "A");
+        assert_eq!(disj.branches[1].pattern, "(B AND C)");
+    }
+
+    #[test]
+    fn test_parser_nested_or_groups() {
+        // "((A OR B) OR (C OR D))" should split at top-level only
+        let pattern = "((A OR B) OR (C OR D))";
+        let disj = DisjunctionParser::parse(pattern).unwrap();
+        assert_eq!(disj.branch_count(), 2);
+        assert_eq!(disj.branches[0].pattern, "(A OR B)");
+        assert_eq!(disj.branches[1].pattern, "(C OR D)");
+    }
+
+    #[test]
+    fn test_parser_function_args_with_or_keyword() {
+        // OR inside function arguments should not be treated as a split point
+        let pattern = "(func(a, OR, b) OR c)";
+        let disj = DisjunctionParser::parse(pattern).unwrap();
+        assert_eq!(disj.branch_count(), 2);
+        assert_eq!(disj.branches[0].pattern, "func(a, OR, b)");
+        assert_eq!(disj.branches[1].pattern, "c");
+    }
+
+    #[test]
+    fn test_parser_deeply_nested() {
+        let pattern = "(A OR (B OR (C AND D)))";
+        let disj = DisjunctionParser::parse(pattern).unwrap();
+        assert_eq!(disj.branch_count(), 2);
+        assert_eq!(disj.branches[0].pattern, "A");
+        assert_eq!(disj.branches[1].pattern, "(B OR (C AND D))");
+    }
+
+    #[test]
+    fn test_contains_or_nested() {
+        // OR inside parens should not count as top-level
+        assert!(!DisjunctionParser::contains_or("(A OR B)"));
+        // OR at top level should count
+        assert!(DisjunctionParser::contains_or("A OR B"));
+        // OR only inside nested parens
+        assert!(!DisjunctionParser::contains_or("func(A OR B)"));
+    }
+
+    #[test]
+    fn test_split_top_level_or_basic() {
+        let parts = split_top_level_or("A OR B OR C");
+        assert_eq!(parts, vec!["A", "B", "C"]);
+    }
+
+    #[test]
+    fn test_split_top_level_or_with_quotes() {
+        let parts = split_top_level_or(r#""hello OR world" OR B"#);
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[0], r#""hello OR world""#);
+        assert_eq!(parts[1], "B");
     }
 
     #[test]

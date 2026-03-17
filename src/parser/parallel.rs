@@ -147,14 +147,58 @@ fn parse_single_module(module_text: &str) -> Option<ParsedModule> {
         ExportPolicy::None // Default
     };
 
-    // Parse imports (simple for now)
-    let imports = Vec::new(); // TODO: implement import parsing
+    // Parse imports from module body
+    let imports = parse_imports(body);
 
     Some(ParsedModule {
         name,
         export_policy,
         imports,
     })
+}
+
+/// Parse import declarations from a module body.
+///
+/// Supports the GRL import syntax:
+/// - `import: MODULE_NAME` — import all from a module
+/// - `import: MODULE_NAME (rules *)` — import all rules
+/// - `import: MODULE_NAME (templates temperature)` — import specific templates
+/// - Multiple `import:` directives on separate lines
+fn parse_imports(body: &str) -> Vec<Import> {
+    let mut imports = Vec::new();
+
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if let Some(spec) = trimmed.strip_prefix("import:") {
+            let spec = spec.trim();
+            if spec.is_empty() {
+                continue;
+            }
+
+            // Split module name from optional pattern: "MODULE_NAME (rules *)"
+            let (module_name, pattern) = if let Some(paren_start) = spec.find('(') {
+                let name = spec[..paren_start].trim();
+                let rest = &spec[paren_start..];
+                // Extract content inside parentheses
+                let pattern_content = rest
+                    .strip_prefix('(')
+                    .and_then(|s| s.strip_suffix(')'))
+                    .map(|s| s.trim().to_string());
+                (name, pattern_content)
+            } else {
+                (spec, None)
+            };
+
+            if !module_name.is_empty() {
+                imports.push(Import {
+                    module_name: module_name.to_string(),
+                    pattern,
+                });
+            }
+        }
+    }
+
+    imports
 }
 
 // Helper functions
@@ -358,6 +402,67 @@ rule "Rule2" { when A < 3 then B = 7 }
         let module = parse_single_module(module_text).unwrap();
         assert_eq!(module.name, "MYMODULE");
         assert_eq!(module.export_policy, ExportPolicy::All);
+    }
+
+    #[test]
+    fn test_parse_imports_single() {
+        let body = "import: SENSORS (rules *)";
+        let imports = parse_imports(body);
+        assert_eq!(imports.len(), 1);
+        assert_eq!(imports[0].module_name, "SENSORS");
+        assert_eq!(imports[0].pattern.as_deref(), Some("rules *"));
+    }
+
+    #[test]
+    fn test_parse_imports_multiple() {
+        let body = r#"
+            export: all
+            import: SENSORS (rules *)
+            import: CONTROL (templates temperature)
+        "#;
+        let imports = parse_imports(body);
+        assert_eq!(imports.len(), 2);
+        assert_eq!(imports[0].module_name, "SENSORS");
+        assert_eq!(imports[0].pattern.as_deref(), Some("rules *"));
+        assert_eq!(imports[1].module_name, "CONTROL");
+        assert_eq!(
+            imports[1].pattern.as_deref(),
+            Some("templates temperature")
+        );
+    }
+
+    #[test]
+    fn test_parse_imports_no_pattern() {
+        let body = "import: UTILS";
+        let imports = parse_imports(body);
+        assert_eq!(imports.len(), 1);
+        assert_eq!(imports[0].module_name, "UTILS");
+        assert!(imports[0].pattern.is_none());
+    }
+
+    #[test]
+    fn test_parse_imports_empty_body() {
+        let body = "export: all";
+        let imports = parse_imports(body);
+        assert!(imports.is_empty());
+    }
+
+    #[test]
+    fn test_parse_module_with_imports() {
+        let module_text = r#"defmodule CONTROL {
+            export: all
+            import: SENSORS (rules *)
+            import: UTILS
+        }"#;
+
+        let module = parse_single_module(module_text).unwrap();
+        assert_eq!(module.name, "CONTROL");
+        assert_eq!(module.export_policy, ExportPolicy::All);
+        assert_eq!(module.imports.len(), 2);
+        assert_eq!(module.imports[0].module_name, "SENSORS");
+        assert_eq!(module.imports[0].pattern.as_deref(), Some("rules *"));
+        assert_eq!(module.imports[1].module_name, "UTILS");
+        assert!(module.imports[1].pattern.is_none());
     }
 
     #[test]
