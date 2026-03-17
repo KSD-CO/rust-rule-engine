@@ -148,21 +148,17 @@ fn bench_factvalue_string_comparison(c: &mut Criterion) {
         );
 
         // New path: as_str() zero-copy Cow
-        group.bench_with_input(
-            BenchmarkId::new("as_str_cow", count),
-            &pairs,
-            |b, pairs| {
-                b.iter(|| {
-                    let mut matches = 0u32;
-                    for (a, b_val) in pairs {
-                        if a.as_str() == b_val.as_str() {
-                            matches += 1;
-                        }
+        group.bench_with_input(BenchmarkId::new("as_str_cow", count), &pairs, |b, pairs| {
+            b.iter(|| {
+                let mut matches = 0u32;
+                for (a, b_val) in pairs {
+                    if a.as_str() == b_val.as_str() {
+                        matches += 1;
                     }
-                    black_box(matches)
-                });
-            },
-        );
+                }
+                black_box(matches)
+            });
+        });
     }
 
     group.finish();
@@ -174,7 +170,10 @@ fn bench_factvalue_hashing(c: &mut Criterion) {
     for count in [100, 1_000, 10_000] {
         let mut facts = TypedFacts::new();
         for i in 0..count {
-            facts.set(format!("field_{}", i), FactValue::String(format!("value_{}", i)));
+            facts.set(
+                format!("field_{}", i),
+                FactValue::String(format!("value_{}", i)),
+            );
         }
 
         // Old path: as_string().hash()
@@ -324,13 +323,9 @@ fn bench_knowledge_base_count(c: &mut Criterion) {
         );
 
         // New path: rule_count() — reads len under lock
-        group.bench_with_input(
-            BenchmarkId::new("rule_count", rule_count),
-            &kb,
-            |b, kb| {
-                b.iter(|| black_box(kb.rule_count()));
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("rule_count", rule_count), &kb, |b, kb| {
+            b.iter(|| black_box(kb.rule_count()));
+        });
     }
 
     group.finish();
