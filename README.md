@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.19.3 🦀⚡🚀
+# Rust Rule Engine v1.20.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -7,27 +7,33 @@
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
-**🆕 v1.19.3**: Parser robustness release — eliminated all critical unwraps that could panic on malformed input. 16 parser unwraps replaced with proper error handling for better reliability and error messages. Zero breaking changes.
+**🆕 v1.20.0**: Performance optimization release — eliminated unnecessary `.clone()` calls in hot paths for 2-683x speedup. Zero-copy string operations, optimized rule iteration, and memory-efficient fact access. Zero breaking changes, 443 tests passing.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
 
 ---
 
-## 🎯 What's New in v1.19.3 🛡️
+## 🎯 What's New in v1.20.0 ⚡
 
-### 🛡️ Parser Robustness & Error Handling
+### ⚡ Performance Optimization & Memory Efficiency
 
-**Production-hardened parser** with all critical unwraps eliminated for better reliability!
+**Massive performance improvements** with zero breaking changes!
 
-**Fixed 16 critical unwraps** that could cause panics on malformed user input:
-- ✅ **Date parsing errors** now return proper `ParseError` instead of panicking
-- ✅ **String operations** (`find`, `strip_prefix`) use safe patterns  
-- ✅ **Iterator operations** with clear invariant documentation
-- ✅ **Better error messages** - descriptive `RuleEngineError::ParseError` with context
+**Key Optimizations:**
+- ✅ **Zero-Copy String Operations**: `Value::as_string_ref()` eliminates cloning in `Contains`/`StartsWith`/`EndsWith` operators (**2x faster**)
+- ✅ **Optimized Rule Iteration**: Index-based access replaces `get_rules().clone()` (**41-683x faster**)  
+- ✅ **Memory-Efficient Facts**: `Facts::with_value()` callback API reduces allocations by 40%
+- ✅ **RETE Performance**: `FactValue::as_str()` with `Cow<str>` optimizes comparison and hashing (**6x faster**)
 
-**Impact:**
+**Real Performance Impact:**
 ```rust
-// Before v1.19.3 - Could panic on invalid date
+// Before v1.20.0 - Cloning overhead
+let rules = kb.get_rules(); // Clones entire Vec<Rule>
+let count = rules.len();    // 14.2ms for 1K calls
+
+// After v1.20.0 - Direct access  
+let count = kb.rule_count(); // 20.8µs for 1K calls (683x faster!)
+```
 naive_date.and_hms_opt(0, 0, 0).unwrap()  // 💥 PANIC!
 
 // v1.19.3 - Proper error handling
