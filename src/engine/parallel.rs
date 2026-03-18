@@ -71,8 +71,14 @@ impl ParallelRuleEngine {
     where
         F: Fn(&[Value], &Facts) -> Result<Value> + Send + Sync + 'static,
     {
-        let mut functions = self.custom_functions.write().unwrap();
-        functions.insert(name.to_string(), Box::new(func));
+        match self.custom_functions.write() {
+            Ok(mut functions) => {
+                functions.insert(name.to_string(), Box::new(func));
+            }
+            Err(e) => {
+                log::error!("Failed to register function '{}': lock poisoned: {}", name, e);
+            }
+        }
     }
 
     /// Execute rules with parallel processing
@@ -449,7 +455,13 @@ impl ParallelRuleEngine {
             }
             ConditionExpression::FunctionCall { name, args } => {
                 // Function call condition - now supported!
-                let functions_guard = functions.read().unwrap();
+                let functions_guard = match functions.read() {
+                    Ok(guard) => guard,
+                    Err(e) => {
+                        log::error!("Functions lock poisoned during condition evaluation: {}", e);
+                        return false;
+                    }
+                };
                 if let Some(function) = functions_guard.get(name) {
                     // Resolve arguments from facts
                     let arg_values: Vec<Value> = args
@@ -475,7 +487,13 @@ impl ParallelRuleEngine {
             }
             ConditionExpression::Test { name, args } => {
                 // Test CE - now supported!
-                let functions_guard = functions.read().unwrap();
+                let functions_guard = match functions.read() {
+                    Ok(guard) => guard,
+                    Err(e) => {
+                        log::error!("Functions lock poisoned during test evaluation: {}", e);
+                        return false;
+                    }
+                };
                 if let Some(function) = functions_guard.get(name) {
                     let arg_values: Vec<Value> = args
                         .iter()
@@ -692,7 +710,14 @@ impl ParallelRuleEngine {
         match action {
             ActionType::Custom { action_type, .. } => {
                 // Try to execute as custom function
-                let functions_guard = functions.read().unwrap();
+                let functions_guard = match functions.read() {
+                    Ok(guard) => guard,
+                    Err(e) => {
+                        return Err(RuleEngineError::EvaluationError {
+                            message: format!("Failed to read custom functions: lock poisoned: {}", e),
+                        });
+                    }
+                };
                 if let Some(func) = functions_guard.get(action_type) {
                     let empty_args = Vec::new();
                     let _result = func(&empty_args, facts)?;
