@@ -221,8 +221,12 @@ impl ParallelRuleEngine {
                         });
                     }
 
-                    let mut results = results_clone.lock().unwrap();
-                    results.extend(thread_results);
+                    match results_clone.lock() {
+                        Ok(mut results) => results.extend(thread_results),
+                        Err(e) => {
+                            log::error!("Results lock poisoned in parallel worker, {} results lost: {}", thread_results.len(), e);
+                        }
+                    }
                 })
             })
             .collect();
@@ -236,7 +240,9 @@ impl ParallelRuleEngine {
                 })?;
         }
 
-        let results = results.lock().unwrap();
+        let results = results.lock().map_err(|e| RuleEngineError::EvaluationError {
+            message: format!("Failed to acquire results lock after parallel execution: {}", e),
+        })?;
         Ok(results.clone())
     }
 
