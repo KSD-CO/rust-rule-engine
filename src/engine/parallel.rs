@@ -76,7 +76,11 @@ impl ParallelRuleEngine {
                 functions.insert(name.to_string(), Box::new(func));
             }
             Err(e) => {
-                log::error!("Failed to register function '{}': lock poisoned: {}", name, e);
+                log::error!(
+                    "Failed to register function '{}': lock poisoned: {}",
+                    name,
+                    e
+                );
             }
         }
     }
@@ -93,7 +97,7 @@ impl ParallelRuleEngine {
         if debug_mode {
             println!(
                 "🚀 Starting parallel rule execution with {} rules",
-                knowledge_base.get_rules().len()
+                knowledge_base.rule_count()
             );
         }
 
@@ -230,7 +234,11 @@ impl ParallelRuleEngine {
                     match results_clone.lock() {
                         Ok(mut results) => results.extend(thread_results),
                         Err(e) => {
-                            log::error!("Results lock poisoned in parallel worker, {} results lost: {}", thread_results.len(), e);
+                            log::error!(
+                                "Results lock poisoned in parallel worker, {} results lost: {}",
+                                thread_results.len(),
+                                e
+                            );
                         }
                     }
                 })
@@ -246,9 +254,14 @@ impl ParallelRuleEngine {
                 })?;
         }
 
-        let results = results.lock().map_err(|e| RuleEngineError::EvaluationError {
-            message: format!("Failed to acquire results lock after parallel execution: {}", e),
-        })?;
+        let results = results
+            .lock()
+            .map_err(|e| RuleEngineError::EvaluationError {
+                message: format!(
+                    "Failed to acquire results lock after parallel execution: {}",
+                    e
+                ),
+            })?;
         Ok(results.clone())
     }
 
@@ -714,7 +727,10 @@ impl ParallelRuleEngine {
                     Ok(guard) => guard,
                     Err(e) => {
                         return Err(RuleEngineError::EvaluationError {
-                            message: format!("Failed to read custom functions: lock poisoned: {}", e),
+                            message: format!(
+                                "Failed to read custom functions: lock poisoned: {}",
+                                e
+                            ),
                         });
                     }
                 };
