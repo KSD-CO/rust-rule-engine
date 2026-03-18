@@ -77,7 +77,7 @@ harness = false
 # Binary for large-scale testing
 [[bin]]
 name = "rete_1m_rules_benchmark"
-path = "benches/rete_1m_rules_benchmark.rs"
+path = "bin/rete_1m_rules_benchmark.rs"
 
 # ============================================================================
 # EXAMPLES - Streamlined from 108 to 26 essential examples (v1.16.0)
@@ -215,4 +215,4 @@ path = "examples/10-module-system/phase3_demo.rs"
 
 [[bin]]
 name = "memory_usage_benchmark"
-path = "benches/memory_usage_benchmark.rs"
+path = "bin/memory_usage_benchmark.rs"
