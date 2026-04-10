@@ -16,6 +16,7 @@ use super::working_memory::{FactHandle, WorkingMemory};
 use crate::errors::{Result, RuleEngineError};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 /// Track which rules are affected by which fact types
 #[derive(Debug)]
@@ -76,6 +77,12 @@ impl Default for RuleDependencyGraph {
 pub type ReteCustomFunction =
     Arc<dyn Fn(&[FactValue], &TypedFacts) -> Result<FactValue> + Send + Sync>;
 
+#[derive(Debug, Clone)]
+struct ScheduledRuleTask {
+    rule_name: String,
+    execute_at: Instant,
+}
+
 /// Incremental Propagation Engine
 /// Only re-evaluates rules affected by changed facts
 pub struct IncrementalEngine {
@@ -99,6 +106,8 @@ pub struct IncrementalEngine {
     custom_functions: HashMap<String, ReteCustomFunction>,
     /// Truth Maintenance System
     tms: TruthMaintenanceSystem,
+    /// Scheduled rule executions waiting for their delay to expire
+    scheduled_rules: Vec<ScheduledRuleTask>,
 }
 
 impl IncrementalEngine {
@@ -115,7 +124,222 @@ impl IncrementalEngine {
             globals: GlobalsRegistry::new(),
             deffacts: DeffactsRegistry::new(),
             tms: TruthMaintenanceSystem::new(),
+            scheduled_rules: Vec::new(),
         }
+    }
+
+    fn apply_fact_updates(&mut self, original_facts: &TypedFacts, modified_facts: &TypedFacts) {
+        let mut updates_by_type: HashMap<String, Vec<(String, FactValue)>> = HashMap::new();
+
+        for (key, value) in modified_facts.get_all() {
+            if original_facts.get(key) == Some(value) {
+                continue;
+            }
+
+            let parts: Vec<&str> = key.split('.').collect();
+            if parts.len() < 2 {
+                continue;
+            }
+
+            let fact_type = parts[0].to_string();
+            let field = parts[parts.len() - 1].to_string();
+
+            updates_by_type
+                .entry(fact_type)
+                .or_default()
+                .push((field, value.clone()));
+        }
+
+        if updates_by_type.is_empty() {
+            return;
+        }
+
+        for (fact_type, field_updates) in updates_by_type {
+            let fact_handles: Vec<FactHandle> = self
+                .working_memory
+                .get_by_type(&fact_type)
+                .iter()
+                .map(|f| f.handle)
+                .collect();
+
+            for handle in fact_handles {
+                if let Some(fact) = self.working_memory.get(&handle) {
+                    let mut updated_data = fact.data.clone();
+
+                    for (field, value) in &field_updates {
+                        updated_data.set(field, value.clone());
+                    }
+
+                    let _ = self.working_memory.update(handle, updated_data);
+                }
+            }
+        }
+        self.propagate_changes();
+    }
+
+    fn schedule_rule(&mut self, rule_name: String, delay_ms: u64) {
+        self.scheduled_rules.push(ScheduledRuleTask {
+            rule_name,
+            execute_at: Instant::now() + Duration::from_millis(delay_ms),
+        });
+    }
+
+    fn enqueue_rule_activations_by_name(&mut self, rule_name: &str) -> bool {
+        let Some((rule_idx, rule)) = self
+            .rules
+            .iter()
+            .enumerate()
+            .find(|(_, rule)| rule.name == rule_name)
+        else {
+            eprintln!("❌ Scheduled rule '{}' not found", rule_name);
+            return false;
+        };
+
+        let rule_name = rule.name.clone();
+        let priority = rule.priority;
+        let no_loop = rule.no_loop;
+        let node = rule.node.clone();
+        let dependent_types = self.dependencies.get_rule_dependencies(rule_idx);
+
+        if dependent_types.is_empty() {
+            let facts = self.working_memory.to_typed_facts();
+            if super::network::evaluate_rete_ul_node_typed(&node, &facts) {
+                let activation = Activation::new(rule_name, priority).with_no_loop(no_loop);
+                self.agenda.add_activation(activation);
+                return true;
+            }
+
+            return false;
+        }
+
+        let mut queued = false;
+
+        for fact_type in dependent_types {
+            let facts_of_type = self.working_memory.get_by_type(&fact_type);
+
+            for fact in facts_of_type {
+                let mut single_fact_data = TypedFacts::new();
+                for (key, value) in fact.data.get_all() {
+                    single_fact_data.set(format!("{}.{}", fact_type, key), value.clone());
+                }
+                single_fact_data.set_fact_handle(fact_type.clone(), fact.handle);
+
+                if super::network::evaluate_rete_ul_node_typed(&node, &single_fact_data) {
+                    let activation = Activation::new(rule_name.clone(), priority)
+                        .with_no_loop(no_loop)
+                        .with_matched_fact(fact.handle);
+                    self.agenda.add_activation(activation);
+                    queued = true;
+                }
+            }
+        }
+
+        queued
+    }
+
+    fn fire_activation(&mut self, activation: Activation) -> Option<String> {
+        let Some((_idx, rule)) = self
+            .rules
+            .iter_mut()
+            .enumerate()
+            .find(|(_, r)| r.name == activation.rule_name)
+        else {
+            return None;
+        };
+
+        if let Some(matched_handle) = activation.matched_fact_handle {
+            if self.working_memory.get(&matched_handle).is_none() {
+                return None;
+            }
+        }
+
+        let original_facts = self.working_memory.to_typed_facts();
+        let mut modified_facts = original_facts.clone();
+
+        if let Some(matched_handle) = activation.matched_fact_handle {
+            if let Some(fact) = self.working_memory.get(&matched_handle) {
+                modified_facts.set_fact_handle(fact.fact_type.clone(), matched_handle);
+            }
+        }
+
+        let mut action_results = super::ActionResults::new();
+        (rule.action)(&mut modified_facts, &mut action_results);
+
+        self.apply_fact_updates(&original_facts, &modified_facts);
+        self.process_action_results(action_results);
+        self.agenda.mark_rule_fired(&activation);
+
+        Some(activation.rule_name)
+    }
+
+    fn fire_queued_activations(&mut self, max_iterations: usize) -> Vec<String> {
+        let mut fired_rules = Vec::new();
+        let mut iteration_count = 0;
+
+        while let Some(activation) = self.agenda.get_next_activation() {
+            iteration_count += 1;
+            if iteration_count > max_iterations {
+                eprintln!(
+                    "WARNING: Maximum iterations ({}) reached in fire_all(). Possible infinite loop!",
+                    max_iterations
+                );
+                break;
+            }
+
+            if let Some(rule_name) = self.fire_activation(activation) {
+                fired_rules.push(rule_name);
+            }
+        }
+
+        fired_rules
+    }
+
+    fn drain_scheduled_rules_to_quiescence(&mut self, max_iterations: usize) -> Vec<String> {
+        let mut fired_rules = Vec::new();
+        let mut iteration_count = 0;
+
+        loop {
+            let ready_fired = self.run_ready_scheduled_rules();
+            if ready_fired.is_empty() {
+                break;
+            }
+
+            iteration_count += ready_fired.len();
+            if iteration_count > max_iterations {
+                eprintln!(
+                    "WARNING: Maximum iterations ({}) reached while draining scheduled rules.",
+                    max_iterations
+                );
+                break;
+            }
+
+            fired_rules.extend(ready_fired);
+        }
+
+        fired_rules
+    }
+
+    /// Execute scheduled rules that are due at the start of this pass.
+    pub fn run_ready_scheduled_rules(&mut self) -> Vec<String> {
+        let now = Instant::now();
+        let mut ready = Vec::new();
+        let mut pending = Vec::new();
+
+        for task in self.scheduled_rules.drain(..) {
+            if task.execute_at <= now {
+                ready.push(task);
+            } else {
+                pending.push(task);
+            }
+        }
+
+        self.scheduled_rules = pending;
+
+        for task in ready {
+            self.enqueue_rule_activations_by_name(&task.rule_name);
+        }
+
+        self.fire_queued_activations(1000)
     }
 
     /// Add rule and register its dependencies
@@ -447,128 +671,8 @@ impl IncrementalEngine {
 
     /// Fire all pending activations
     pub fn fire_all(&mut self) -> Vec<String> {
-        let mut fired_rules = Vec::new();
-        let max_iterations = 1000; // Prevent infinite loops
-        let mut iteration_count = 0;
-
-        while let Some(activation) = self.agenda.get_next_activation() {
-            iteration_count += 1;
-            if iteration_count > max_iterations {
-                eprintln!("WARNING: Maximum iterations ({}) reached in fire_all(). Possible infinite loop!", max_iterations);
-                break;
-            }
-
-            // Find rule
-            if let Some((_idx, rule)) = self
-                .rules
-                .iter_mut()
-                .enumerate()
-                .find(|(_, r)| r.name == activation.rule_name)
-            {
-                // Validate that matched fact still exists (hasn't been retracted)
-                if let Some(matched_handle) = activation.matched_fact_handle {
-                    if self.working_memory.get(&matched_handle).is_none() {
-                        // Fact was retracted, skip this activation
-                        continue;
-                    }
-                }
-
-                // Execute action on a copy of all facts
-                let original_facts = self.working_memory.to_typed_facts();
-                let mut modified_facts = original_facts.clone();
-
-                // Inject matched fact handle if available
-                if let Some(matched_handle) = activation.matched_fact_handle {
-                    // Find the fact type from working memory
-                    if let Some(fact) = self.working_memory.get(&matched_handle) {
-                        modified_facts.set_fact_handle(fact.fact_type.clone(), matched_handle);
-                    }
-                }
-
-                let mut action_results = super::ActionResults::new();
-                (rule.action)(&mut modified_facts, &mut action_results);
-
-                // Update working memory: detect changes and apply them
-                // Build a map of fact_type -> updated fields
-                let mut updates_by_type: HashMap<String, Vec<(String, FactValue)>> = HashMap::new();
-
-                for (key, value) in modified_facts.get_all() {
-                    // Keys are in format "FactType.field" or "FactType.handle.field"
-                    // We want to extract the FactType and field name
-                    if let Some(original_value) = original_facts.get(key) {
-                        if original_value != value {
-                            // Value changed! Extract fact type and field
-                            let parts: Vec<&str> = key.split('.').collect();
-                            if parts.len() >= 2 {
-                                let fact_type = parts[0].to_string();
-                                // Field is the last part (skip handle if present)
-                                let field = if parts.len() == 2 {
-                                    parts[1].to_string()
-                                } else {
-                                    parts[parts.len() - 1].to_string()
-                                };
-
-                                updates_by_type
-                                    .entry(fact_type)
-                                    .or_default()
-                                    .push((field, value.clone()));
-                            }
-                        }
-                    } else {
-                        // New field added
-                        let parts: Vec<&str> = key.split('.').collect();
-                        if parts.len() >= 2 {
-                            let fact_type = parts[0].to_string();
-                            let field = if parts.len() == 2 {
-                                parts[1].to_string()
-                            } else {
-                                parts[parts.len() - 1].to_string()
-                            };
-
-                            updates_by_type
-                                .entry(fact_type)
-                                .or_default()
-                                .push((field, value.clone()));
-                        }
-                    }
-                }
-
-                // Apply updates to working memory facts
-                for (fact_type, field_updates) in updates_by_type {
-                    // Get handles of all facts of this type (collect to avoid borrow issues)
-                    let fact_handles: Vec<FactHandle> = self
-                        .working_memory
-                        .get_by_type(&fact_type)
-                        .iter()
-                        .map(|f| f.handle)
-                        .collect();
-
-                    for handle in fact_handles {
-                        if let Some(fact) = self.working_memory.get(&handle) {
-                            let mut updated_data = fact.data.clone();
-
-                            // Apply all field updates
-                            for (field, value) in &field_updates {
-                                updated_data.set(field, value.clone());
-                            }
-
-                            let _ = self.working_memory.update(handle, updated_data);
-                        }
-                    }
-                }
-
-                // Re-evaluate matches after working memory update
-                // This allows subsequent rules to see the updated values
-                self.propagate_changes();
-
-                // Process action results (retractions, agenda activations, etc.)
-                self.process_action_results(action_results);
-
-                // Track fired rule
-                fired_rules.push(activation.rule_name.clone());
-                self.agenda.mark_rule_fired(&activation);
-            }
-        }
+        let mut fired_rules = self.fire_queued_activations(1000);
+        fired_rules.extend(self.drain_scheduled_rules_to_quiescence(1000));
 
         fired_rules
     }
@@ -642,9 +746,8 @@ impl IncrementalEngine {
                     rule_name,
                     delay_ms,
                 } => {
-                    // Log scheduled rules (requires scheduler to actually execute)
+                    self.schedule_rule(rule_name.clone(), delay_ms);
                     println!("⏰ Rule scheduled: {} after {}ms", rule_name, delay_ms);
-                    // TODO: Implement rule scheduler
                 }
                 super::ActionResult::None => {
                     // No action needed
@@ -702,6 +805,7 @@ impl IncrementalEngine {
     /// Clear fired flags and reset agenda
     pub fn reset(&mut self) {
         self.agenda.reset_fired_flags();
+        self.scheduled_rules.clear();
     }
 
     /// Get template registry
@@ -830,6 +934,7 @@ impl IncrementalEngine {
         self.working_memory = WorkingMemory::new();
         self.agenda.clear();
         self.rule_matched_facts.clear();
+        self.scheduled_rules.clear();
 
         // Reload all deffacts
         self.load_deffacts()
@@ -879,6 +984,8 @@ mod tests {
     use super::*;
     use crate::rete::alpha::AlphaNode;
     use crate::rete::network::ReteUlNode;
+    use crate::rete::ActionResult;
+    use std::sync::Arc;
 
     #[test]
     fn test_dependency_graph() {
@@ -935,5 +1042,360 @@ mod tests {
         engine.update(handle, updated).unwrap();
 
         // Rule should be re-evaluated (incrementally)
+    }
+
+    #[test]
+    fn schedule_rule_zero_delay_executes_in_fire_all() {
+        let mut engine = IncrementalEngine::new();
+
+        let trigger_rule = TypedReteUlRule {
+            name: "TriggerRule".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 10,
+            no_loop: true,
+            action: Arc::new(|_, results| {
+                results.add(ActionResult::ScheduleRule {
+                    rule_name: "ScheduledRule".to_string(),
+                    delay_ms: 0,
+                });
+            }),
+        };
+
+        let scheduled_rule = TypedReteUlRule {
+            name: "ScheduledRule".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 0,
+            no_loop: true,
+            action: Arc::new(|facts, _| {
+                facts.set("Trigger.scheduled_fired", FactValue::Boolean(true));
+            }),
+        };
+
+        let mut trigger = TypedFacts::new();
+        trigger.set("active", FactValue::Boolean(true));
+        engine.add_rule(trigger_rule, vec!["Trigger".to_string()]);
+        engine.insert("Trigger".to_string(), trigger);
+        engine.add_rule(scheduled_rule, vec!["Trigger".to_string()]);
+
+        let fired = engine.fire_all();
+
+        assert!(fired.iter().any(|name| name == "TriggerRule"));
+        assert!(fired.iter().any(|name| name == "ScheduledRule"));
+        assert_eq!(
+            engine
+                .working_memory()
+                .to_typed_facts()
+                .get("Trigger.scheduled_fired"),
+            Some(&FactValue::Boolean(true))
+        );
+    }
+
+    #[test]
+    fn schedule_rule_waits_until_due() {
+        let mut engine = IncrementalEngine::new();
+
+        let trigger_rule = TypedReteUlRule {
+            name: "TriggerRule".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 10,
+            no_loop: true,
+            action: Arc::new(|_, results| {
+                results.add(ActionResult::ScheduleRule {
+                    rule_name: "DelayedRule".to_string(),
+                    delay_ms: 20,
+                });
+            }),
+        };
+
+        let delayed_rule = TypedReteUlRule {
+            name: "DelayedRule".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 0,
+            no_loop: true,
+            action: Arc::new(|facts, _| {
+                facts.set("Trigger.delayed_fired", FactValue::Boolean(true));
+            }),
+        };
+
+        let mut trigger = TypedFacts::new();
+        trigger.set("active", FactValue::Boolean(true));
+        engine.add_rule(trigger_rule, vec!["Trigger".to_string()]);
+        engine.insert("Trigger".to_string(), trigger);
+        engine.add_rule(delayed_rule, vec!["Trigger".to_string()]);
+
+        let fired = engine.fire_all();
+        assert!(fired.iter().any(|name| name == "TriggerRule"));
+        assert!(!fired.iter().any(|name| name == "DelayedRule"));
+
+        let early = engine.run_ready_scheduled_rules();
+        assert!(early.is_empty());
+
+        std::thread::sleep(std::time::Duration::from_millis(25));
+
+        let later = engine.run_ready_scheduled_rules();
+        assert_eq!(later, vec!["DelayedRule".to_string()]);
+        assert_eq!(
+            engine
+                .working_memory()
+                .to_typed_facts()
+                .get("Trigger.delayed_fired"),
+            Some(&FactValue::Boolean(true))
+        );
+    }
+
+    #[test]
+    fn schedule_rule_unknown_target_is_ignored() {
+        let mut engine = IncrementalEngine::new();
+
+        let trigger_rule = TypedReteUlRule {
+            name: "TriggerRule".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 10,
+            no_loop: true,
+            action: Arc::new(|_, results| {
+                results.add(ActionResult::ScheduleRule {
+                    rule_name: "MissingRule".to_string(),
+                    delay_ms: 0,
+                });
+            }),
+        };
+
+        engine.add_rule(trigger_rule, vec!["Trigger".to_string()]);
+
+        let mut trigger = TypedFacts::new();
+        trigger.set("active", FactValue::Boolean(true));
+        engine.insert("Trigger".to_string(), trigger);
+
+        let fired = engine.fire_all();
+
+        assert_eq!(fired, vec!["TriggerRule".to_string()]);
+        assert!(engine.run_ready_scheduled_rules().is_empty());
+    }
+
+    #[test]
+    fn scheduled_rule_preserves_matched_fact_handle() {
+        let mut engine = IncrementalEngine::new();
+
+        let trigger_rule = TypedReteUlRule {
+            name: "TriggerRule".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 10,
+            no_loop: true,
+            action: Arc::new(|_, results| {
+                results.add(ActionResult::ScheduleRule {
+                    rule_name: "ScheduledRetractRule".to_string(),
+                    delay_ms: 0,
+                });
+            }),
+        };
+
+        let scheduled_rule = TypedReteUlRule {
+            name: "ScheduledRetractRule".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 0,
+            no_loop: true,
+            action: Arc::new(|facts, results| {
+                let handle = facts
+                    .get_fact_handle("Trigger")
+                    .expect("matched Trigger handle should be available");
+                results.add(ActionResult::Retract(handle));
+            }),
+        };
+
+        let mut trigger = TypedFacts::new();
+        trigger.set("active", FactValue::Boolean(true));
+
+        engine.add_rule(trigger_rule, vec!["Trigger".to_string()]);
+        let handle = engine.insert("Trigger".to_string(), trigger);
+        engine.add_rule(scheduled_rule, vec!["Trigger".to_string()]);
+
+        let fired = engine.fire_all();
+
+        assert!(fired.iter().any(|name| name == "ScheduledRetractRule"));
+        assert!(engine.working_memory().get(&handle).is_none());
+    }
+
+    #[test]
+    fn scheduled_rules_respect_no_loop_semantics() {
+        let mut engine = IncrementalEngine::new();
+
+        let scheduled_rule = TypedReteUlRule {
+            name: "ScheduledRule".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 0,
+            no_loop: true,
+            action: Arc::new(|facts, _| {
+                let count = facts
+                    .get("Trigger.fire_count")
+                    .and_then(|value| value.as_integer())
+                    .unwrap_or(0);
+                facts.set("Trigger.fire_count", FactValue::Integer(count + 1));
+            }),
+        };
+
+        let mut trigger = TypedFacts::new();
+        trigger.set("active", FactValue::Boolean(true));
+        trigger.set("fire_count", FactValue::Integer(0));
+        engine.insert("Trigger".to_string(), trigger);
+        engine.add_rule(scheduled_rule, vec!["Trigger".to_string()]);
+
+        engine.schedule_rule("ScheduledRule".to_string(), 0);
+        engine.schedule_rule("ScheduledRule".to_string(), 0);
+
+        let fired = engine.run_ready_scheduled_rules();
+
+        assert_eq!(fired, vec!["ScheduledRule".to_string()]);
+        assert_eq!(
+            engine
+                .working_memory()
+                .to_typed_facts()
+                .get("Trigger.fire_count"),
+            Some(&FactValue::Integer(1))
+        );
+    }
+
+    #[test]
+    fn reset_clears_pending_scheduled_rules() {
+        let mut engine = IncrementalEngine::new();
+
+        let scheduled_rule = TypedReteUlRule {
+            name: "ScheduledRule".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 0,
+            no_loop: true,
+            action: Arc::new(|facts, _| {
+                facts.set("Trigger.after_reset", FactValue::Boolean(true));
+            }),
+        };
+
+        let mut trigger = TypedFacts::new();
+        trigger.set("active", FactValue::Boolean(true));
+        engine.insert("Trigger".to_string(), trigger);
+        engine.add_rule(scheduled_rule, vec!["Trigger".to_string()]);
+
+        engine.schedule_rule("ScheduledRule".to_string(), 0);
+        engine.reset();
+
+        let fired = engine.run_ready_scheduled_rules();
+
+        assert!(fired.is_empty());
+        assert_eq!(
+            engine
+                .working_memory()
+                .to_typed_facts()
+                .get("Trigger.after_reset"),
+            None
+        );
+    }
+
+    #[test]
+    fn zero_delay_schedule_chain_drains_in_single_fire_all() {
+        let mut engine = IncrementalEngine::new();
+
+        let rule_a = TypedReteUlRule {
+            name: "RuleA".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 20,
+            no_loop: true,
+            action: Arc::new(|_, results| {
+                results.add(ActionResult::ScheduleRule {
+                    rule_name: "RuleB".to_string(),
+                    delay_ms: 0,
+                });
+            }),
+        };
+
+        let rule_b = TypedReteUlRule {
+            name: "RuleB".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 10,
+            no_loop: true,
+            action: Arc::new(|_, results| {
+                results.add(ActionResult::ScheduleRule {
+                    rule_name: "RuleC".to_string(),
+                    delay_ms: 0,
+                });
+            }),
+        };
+
+        let rule_c = TypedReteUlRule {
+            name: "RuleC".to_string(),
+            node: ReteUlNode::UlAlpha(AlphaNode {
+                field: "Trigger.active".to_string(),
+                operator: "==".to_string(),
+                value: "true".to_string(),
+            }),
+            priority: 0,
+            no_loop: true,
+            action: Arc::new(|facts, _| {
+                facts.set("Trigger.chain_complete", FactValue::Boolean(true));
+            }),
+        };
+
+        let mut trigger = TypedFacts::new();
+        trigger.set("active", FactValue::Boolean(true));
+
+        engine.add_rule(rule_a, vec!["Trigger".to_string()]);
+        engine.insert("Trigger".to_string(), trigger);
+        engine.add_rule(rule_b, vec!["Trigger".to_string()]);
+        engine.add_rule(rule_c, vec!["Trigger".to_string()]);
+
+        let fired = engine.fire_all();
+
+        assert!(fired.iter().any(|name| name == "RuleA"));
+        assert!(fired.iter().any(|name| name == "RuleB"));
+        assert!(fired.iter().any(|name| name == "RuleC"));
+        assert_eq!(
+            engine
+                .working_memory()
+                .to_typed_facts()
+                .get("Trigger.chain_complete"),
+            Some(&FactValue::Boolean(true))
+        );
+        assert!(engine.run_ready_scheduled_rules().is_empty());
     }
 }
