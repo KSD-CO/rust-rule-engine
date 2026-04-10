@@ -238,19 +238,14 @@ impl IncrementalEngine {
     }
 
     fn fire_activation(&mut self, activation: Activation) -> Option<String> {
-        let Some((_idx, rule)) = self
+        let (_idx, rule) = self
             .rules
             .iter_mut()
             .enumerate()
-            .find(|(_, r)| r.name == activation.rule_name)
-        else {
-            return None;
-        };
+            .find(|(_, r)| r.name == activation.rule_name)?;
 
         if let Some(matched_handle) = activation.matched_fact_handle {
-            if self.working_memory.get(&matched_handle).is_none() {
-                return None;
-            }
+            self.working_memory.get(&matched_handle)?;
         }
 
         let original_facts = self.working_memory.to_typed_facts();
