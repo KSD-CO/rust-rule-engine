@@ -56,7 +56,8 @@ impl KnowledgeBase {
         rules.push(rule);
 
         // Sort rules by priority (salience)
-        rules.sort_by(|a, b| b.salience.cmp(&a.salience));
+        // Sort by salience descending using sort_by_key + Reverse
+        rules.sort_by_key(|b| std::cmp::Reverse(b.salience));
 
         // Rebuild index after sorting
         index.clear();

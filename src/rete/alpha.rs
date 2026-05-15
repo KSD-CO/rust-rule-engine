@@ -177,13 +177,7 @@ impl AlphaNode {
                     "+" => left_val + right_val,
                     "-" => left_val - right_val,
                     "*" => left_val * right_val,
-                    "/" => {
-                        if right_val != 0.0 {
-                            left_val / right_val
-                        } else {
-                            return None;
-                        }
-                    }
+                    "/" if right_val != 0.0 => left_val / right_val,
                     "%" => left_val % right_val,
                     _ => return None,
                 };

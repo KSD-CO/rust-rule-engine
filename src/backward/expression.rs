@@ -196,10 +196,8 @@ impl Expression {
 
     fn extract_fields_recursive(&self, fields: &mut Vec<String>) {
         match self {
-            Expression::Field(name) => {
-                if !fields.contains(name) {
-                    fields.push(name.clone());
-                }
+            Expression::Field(name) if !fields.contains(name) => {
+                fields.push(name.clone());
             }
             Expression::Comparison { left, right, .. } => {
                 left.extract_fields_recursive(fields);
