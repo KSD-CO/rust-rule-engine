@@ -245,7 +245,8 @@ impl AdvancedAgenda {
             }
             ConflictResolutionStrategy::LEX => {
                 // Recency: most recent first
-                activations.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+                // Sort by creation time descending (most recent first) using sort_by_key
+                activations.sort_by_key(|b| std::cmp::Reverse(b.created_at));
             }
             ConflictResolutionStrategy::MEA => {
                 // Recency + Specificity: recent first, then more conditions

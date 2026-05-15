@@ -341,11 +341,9 @@ where
 
     /// Flatten back to a regular stream
     pub fn flatten(self) -> DataStream {
-        let events: Vec<StreamEvent> = self
-            .keyed_events
-            .into_iter()
-            .flat_map(|(_, events)| events)
-            .collect();
+        // Prefer iterating values directly to avoid iterating over key/value pairs
+        // Flatten the vectors of events coming from each key directly
+        let events: Vec<StreamEvent> = self.keyed_events.into_values().flatten().collect();
 
         DataStream { events }
     }

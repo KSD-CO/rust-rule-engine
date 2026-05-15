@@ -249,7 +249,8 @@ fn bench_knowledge_base_iteration(c: &mut Criterion) {
             |b, kb| {
                 b.iter(|| {
                     let mut rules = kb.get_rules(); // already clones
-                    rules.sort_by(|a, b| b.salience.cmp(&a.salience));
+                                                    // Use sort_by_key with Reverse for descending salience
+                    rules.sort_by_key(|b| std::cmp::Reverse(b.salience));
                     black_box(rules.len())
                 });
             },

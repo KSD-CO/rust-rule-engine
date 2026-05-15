@@ -307,7 +307,8 @@ impl RuleAnalytics {
     /// Get the most frequently fired rules
     pub fn most_fired_rules(&self, limit: usize) -> Vec<&RuleMetrics> {
         let mut rules: Vec<&RuleMetrics> = self.rule_metrics.values().collect();
-        rules.sort_by(|a, b| b.total_fires.cmp(&a.total_fires));
+        // Use sort_by_key with Reverse for clearer intent and better performance
+        rules.sort_by_key(|b| std::cmp::Reverse(b.total_fires));
         rules.into_iter().take(limit).collect()
     }
 

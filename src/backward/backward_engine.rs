@@ -222,15 +222,13 @@ impl BackwardEngine {
         // Check actions
         for action in &rule.actions {
             match action {
-                crate::types::ActionType::Set { field, .. } => {
-                    if goal.pattern.contains(field) {
-                        return true;
-                    }
+                crate::types::ActionType::Set { field, .. } if goal.pattern.contains(field) => {
+                    return true;
                 }
-                crate::types::ActionType::MethodCall { object, method, .. } => {
-                    if goal.pattern.contains(object) || goal.pattern.contains(method) {
-                        return true;
-                    }
+                crate::types::ActionType::MethodCall { object, method, .. }
+                    if (goal.pattern.contains(object) || goal.pattern.contains(method)) =>
+                {
+                    return true;
                 }
                 _ => {}
             }

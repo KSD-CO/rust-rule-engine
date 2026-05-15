@@ -717,23 +717,15 @@ impl GRLParser {
                     paren_count -= 1;
                     current_part.push(ch);
                 }
-                '&' if operator == "&&" && paren_count == 0 => {
-                    if chars.peek() == Some(&'&') {
-                        chars.next(); // consume second &
-                        parts.push(current_part.trim().to_string());
-                        current_part.clear();
-                    } else {
-                        current_part.push(ch);
-                    }
+                '&' if operator == "&&" && paren_count == 0 && chars.peek() == Some(&'&') => {
+                    chars.next(); // consume second &
+                    parts.push(current_part.trim().to_string());
+                    current_part.clear();
                 }
-                '|' if operator == "||" && paren_count == 0 => {
-                    if chars.peek() == Some(&'|') {
-                        chars.next(); // consume second |
-                        parts.push(current_part.trim().to_string());
-                        current_part.clear();
-                    } else {
-                        current_part.push(ch);
-                    }
+                '|' if operator == "||" && paren_count == 0 && chars.peek() == Some(&'|') => {
+                    chars.next(); // consume second |
+                    parts.push(current_part.trim().to_string());
+                    current_part.clear();
                 }
                 _ => {
                     current_part.push(ch);

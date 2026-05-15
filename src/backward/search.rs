@@ -278,59 +278,57 @@ impl DepthFirstSearch {
             if let Some(rule) = kb.get_rule(&rule_name) {
                 // Try to execute rule (checks conditions AND executes actions)
                 match self.executor.try_execute_rule(&rule, facts) {
-                    Ok(true) => {
-                        // Rule executed successfully - derived new facts!
-                        // Now check if our goal is proven
-                        if self.check_goal_in_facts(goal, facts) {
-                            goal.status = GoalStatus::Proven;
+                    Ok(true) if self.check_goal_in_facts(goal, facts) => {
+                        // Rule executed successfully and goal is now proven
+                        goal.status = GoalStatus::Proven;
 
-                            // Save this solution
-                            self.solutions.push(Solution {
-                                path: self.path.clone(),
-                                bindings: goal.bindings.to_map(),
-                            });
+                        // Save this solution
+                        self.solutions.push(Solution {
+                            path: self.path.clone(),
+                            bindings: goal.bindings.to_map(),
+                        });
 
-                            // If we only want one solution OR we've found enough, stop searching
-                            if self.max_solutions == 1 || self.solutions.len() >= self.max_solutions
-                            {
-                                return true; // keep changes
-                            }
-
-                            // Otherwise (max_solutions > 1 and not enough yet), rollback and continue
-                            // This allows us to find alternative proof paths
-                            facts.rollback_undo_frame();
-                            self.path.pop();
-                            continue;
+                        // If we only want one solution OR we've found enough, stop searching
+                        if self.max_solutions == 1 || self.solutions.len() >= self.max_solutions {
+                            return true; // keep changes
                         }
-                        // Not proven yet: fallthrough and rollback below
+
+                        // Otherwise (max_solutions > 1 and not enough yet), rollback and continue
+                        facts.rollback_undo_frame();
+                        self.path.pop();
+                        continue;
+                    }
+                    Ok(true) => {
+                        // Rule executed but did not prove the goal yet
                     }
                     Ok(false) => {
                         // Conditions not satisfied - try to prove them recursively!
                         if self.try_prove_rule_conditions(&rule, facts, kb, depth + 1) {
                             // All conditions now satisfied! Try executing rule again
                             match self.executor.try_execute_rule(&rule, facts) {
-                                Ok(true) => {
-                                    if self.check_goal_in_facts(goal, facts) {
-                                        goal.status = GoalStatus::Proven;
+                                Ok(true) if self.check_goal_in_facts(goal, facts) => {
+                                    goal.status = GoalStatus::Proven;
 
-                                        // Save this solution
-                                        self.solutions.push(Solution {
-                                            path: self.path.clone(),
-                                            bindings: goal.bindings.to_map(),
-                                        });
+                                    // Save this solution
+                                    self.solutions.push(Solution {
+                                        path: self.path.clone(),
+                                        bindings: goal.bindings.to_map(),
+                                    });
 
-                                        // If we only want one solution OR we've found enough, stop searching
-                                        if self.max_solutions == 1
-                                            || self.solutions.len() >= self.max_solutions
-                                        {
-                                            return true; // keep changes
-                                        }
-
-                                        // Otherwise, rollback and continue searching
-                                        facts.rollback_undo_frame();
-                                        self.path.pop();
-                                        continue;
+                                    // If we only want one solution OR we've found enough, stop searching
+                                    if self.max_solutions == 1
+                                        || self.solutions.len() >= self.max_solutions
+                                    {
+                                        return true; // keep changes
                                     }
+
+                                    // Otherwise, rollback and continue searching
+                                    facts.rollback_undo_frame();
+                                    self.path.pop();
+                                    continue;
+                                }
+                                Ok(true) => {
+                                    // Executed but goal not yet proven
                                 }
                                 _ => {
                                     // execution failed on second attempt
@@ -663,15 +661,13 @@ impl DepthFirstSearch {
         // Simple heuristic: check if pattern mentions fields that this rule sets
         for action in &rule.actions {
             match action {
-                crate::types::ActionType::Set { field, .. } => {
-                    if pattern.contains(field) {
-                        return true;
-                    }
+                crate::types::ActionType::Set { field, .. } if pattern.contains(field) => {
+                    return true;
                 }
-                crate::types::ActionType::MethodCall { object, method, .. } => {
-                    if pattern.contains(object) || pattern.contains(method) {
-                        return true;
-                    }
+                crate::types::ActionType::MethodCall { object, method, .. }
+                    if (pattern.contains(object) || pattern.contains(method)) =>
+                {
+                    return true;
                 }
                 _ => {}
             }

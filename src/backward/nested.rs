@@ -273,13 +273,11 @@ impl NestedQueryParser {
                         in_parens = false;
                     }
                 }
-                'W' if in_parens && paren_depth > 0 => {
+                'W' if in_parens && paren_depth > 0 && i + 5 < chars.len() => {
                     // Check if this starts "WHERE"
-                    if i + 5 < chars.len() {
-                        let substr: String = chars[i..i + 5].iter().collect();
-                        if substr == "WHERE" {
-                            return true;
-                        }
+                    let substr: String = chars[i..i + 5].iter().collect();
+                    if substr == "WHERE" {
+                        return true;
                     }
                 }
                 _ => {}
