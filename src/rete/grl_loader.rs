@@ -200,6 +200,14 @@ impl GrlReteLoader {
                     compare_value: if operation == "count" { cmp_val } else { None },
                 })
             }
+            ConditionExpression::FunctionCall { name, args } => {
+                Ok(ReteUlNode::UlFunctionCall {
+                    name:     name.clone(),
+                    args:     args.clone(),
+                    operator: Self::operator_to_string(&condition.operator),
+                    value:    Self::value_to_string(&condition.value),
+                })
+            }
             _ => {
                 // Standard alpha node for regular conditions
                 let operator_str = Self::operator_to_string(&condition.operator);
@@ -495,9 +503,14 @@ impl GrlReteLoader {
                 // Add stream name as a dependency
                 deps.push(stream_name.clone());
             }
-            ReteUlNode::UlTerminal(_) => {
-                // Terminal nodes don't have dependencies
+            ReteUlNode::UlFunctionCall { args, .. } => {
+                for arg in args {
+                    if let Some(dot_pos) = arg.find('.') {
+                        deps.push(arg[..dot_pos].to_string());
+                    }
+                }
             }
+            ReteUlNode::UlTerminal(_) => {}
         }
     }
 

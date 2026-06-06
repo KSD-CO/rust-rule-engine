@@ -387,7 +387,7 @@ impl IncrementalEngine {
 
                 // Evaluate rule condition with this single fact
                 let matches =
-                    super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data);
+                    super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data, &self.custom_functions);
 
                 if matches {
                     // Create activation for this specific fact match
@@ -431,7 +431,7 @@ impl IncrementalEngine {
                     }
 
                     let matches =
-                        super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data);
+                        super::network::evaluate_rete_ul_node_typed(&rule.node, &single_fact_data, &self.custom_functions);
 
                     if matches {
                         let activation = Activation::new(rule.name.clone(), rule.priority)

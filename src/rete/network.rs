@@ -374,7 +374,8 @@ pub fn evaluate_rete_ul_node(node: &ReteUlNode, facts: &HashMap<String, String>)
             // For HashMap evaluation context, return true
             true
         }
-        ReteUlNode::UlTerminal(_) => true, // Rule match
+        ReteUlNode::UlFunctionCall { .. } => false, // needs custom_fns, not available here
+        ReteUlNode::UlTerminal(_) => true,
     }
 }
 
@@ -409,6 +410,14 @@ pub enum ReteUlNode {
         stream_name: String,
         window: Option<StreamWindowSpec>,
     },
+    /// Custom function call in WHEN: `funcName(arg1, arg2, ...) == true`
+    /// `args` are fact field paths (e.g. "Fact.text") or string literals.
+    UlFunctionCall {
+        name:     String,
+        args:     Vec<String>,
+        operator: String,
+        value:    String,
+    },
     UlTerminal(String), // Rule name
 }
 
@@ -428,9 +437,9 @@ pub enum StreamWindowTypeRete {
 }
 
 impl ReteUlNode {
-    /// Evaluate with typed facts (convenience method)
+    /// Evaluate with typed facts (no custom functions — for backward compat).
     pub fn evaluate_typed(&self, facts: &super::facts::TypedFacts) -> bool {
-        evaluate_rete_ul_node_typed(self, facts)
+        evaluate_rete_ul_node_typed(self, facts, &std::collections::HashMap::new())
     }
 }
 
@@ -676,17 +685,24 @@ impl ReteUlEngine {
 
 use super::facts::{FactValue, TypedFacts};
 
-/// Evaluate RETE-UL node with typed facts (NEW!)
-pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> bool {
+/// Evaluate RETE-UL node with typed facts.
+/// `custom_fns` is the engine's registered function map — needed for `UlFunctionCall` nodes.
+pub fn evaluate_rete_ul_node_typed(
+    node: &ReteUlNode,
+    facts: &TypedFacts,
+    custom_fns: &std::collections::HashMap<String, super::propagation::ReteCustomFunction>,
+) -> bool {
     match node {
         ReteUlNode::UlAlpha(alpha) => alpha.matches_typed(facts),
         ReteUlNode::UlAnd(left, right) => {
-            evaluate_rete_ul_node_typed(left, facts) && evaluate_rete_ul_node_typed(right, facts)
+            evaluate_rete_ul_node_typed(left, facts, custom_fns)
+                && evaluate_rete_ul_node_typed(right, facts, custom_fns)
         }
         ReteUlNode::UlOr(left, right) => {
-            evaluate_rete_ul_node_typed(left, facts) || evaluate_rete_ul_node_typed(right, facts)
+            evaluate_rete_ul_node_typed(left, facts, custom_fns)
+                || evaluate_rete_ul_node_typed(right, facts, custom_fns)
         }
-        ReteUlNode::UlNot(inner) => !evaluate_rete_ul_node_typed(inner, facts),
+        ReteUlNode::UlNot(inner) => !evaluate_rete_ul_node_typed(inner, facts, custom_fns),
         ReteUlNode::UlExists(inner) => {
             let target_field = match &**inner {
                 ReteUlNode::UlAlpha(alpha) => alpha.field.clone(),
@@ -704,12 +720,12 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                         .collect();
                     filtered
                         .iter()
-                        .any(|(_, _)| evaluate_rete_ul_node_typed(inner, facts))
+                        .any(|(_, _)| evaluate_rete_ul_node_typed(inner, facts, custom_fns))
                 } else {
-                    evaluate_rete_ul_node_typed(inner, facts)
+                    evaluate_rete_ul_node_typed(inner, facts, custom_fns)
                 }
             } else {
-                evaluate_rete_ul_node_typed(inner, facts)
+                evaluate_rete_ul_node_typed(inner, facts, custom_fns)
             }
         }
         ReteUlNode::UlForall(inner) => {
@@ -732,18 +748,18 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                     }
                     filtered
                         .iter()
-                        .all(|(_, _)| evaluate_rete_ul_node_typed(inner, facts))
+                        .all(|(_, _)| evaluate_rete_ul_node_typed(inner, facts, custom_fns))
                 } else {
                     if facts.get_all().is_empty() {
                         return true; // Vacuous truth
                     }
-                    evaluate_rete_ul_node_typed(inner, facts)
+                    evaluate_rete_ul_node_typed(inner, facts, custom_fns)
                 }
             } else {
                 if facts.get_all().is_empty() {
                     return true; // Vacuous truth
                 }
-                evaluate_rete_ul_node_typed(inner, facts)
+                evaluate_rete_ul_node_typed(inner, facts, custom_fns)
             }
         }
         ReteUlNode::UlAccumulate {
@@ -916,6 +932,44 @@ pub fn evaluate_rete_ul_node_typed(node: &ReteUlNode, facts: &TypedFacts) -> boo
                 }
             }
         }
+        ReteUlNode::UlFunctionCall { name, args, operator, value } => {
+            // Resolve each arg: fact field reference first, then string/numeric literal.
+            // Quoted args like `"pattern"` arrive with surrounding quotes from the parser.
+            let resolved: Vec<FactValue> = args.iter().map(|arg| {
+                if let Some(v) = facts.get(arg) {
+                    return v.clone();
+                }
+                // Strip surrounding quotes for string literals
+                if (arg.starts_with('"') && arg.ends_with('"'))
+                    || (arg.starts_with('\'') && arg.ends_with('\''))
+                {
+                    return FactValue::String(arg[1..arg.len() - 1].to_string());
+                }
+                // Numeric literal
+                if let Ok(n) = arg.parse::<f64>() {
+                    return FactValue::from(n);
+                }
+                FactValue::String(arg.clone())
+            }).collect();
+
+            let result = if let Some(func) = custom_fns.get(name) {
+                func(&resolved, facts).unwrap_or(FactValue::Boolean(false))
+            } else {
+                FactValue::Boolean(false)
+            };
+
+            let expected = match value.as_str() {
+                "true"  => FactValue::Boolean(true),
+                "false" => FactValue::Boolean(false),
+                s       => if let Ok(n) = s.parse::<f64>() {
+                    FactValue::from(n)
+                } else {
+                    FactValue::String(s.to_string())
+                },
+            };
+
+            result.compare(operator, &expected)
+        }
         #[cfg(feature = "streaming")]
         ReteUlNode::UlStream { .. } => {
             // Stream nodes are handled by streaming engine
@@ -1042,7 +1096,7 @@ impl TypedReteUlEngine {
                         || self.facts.get(&fired_flag).and_then(|v| v.as_boolean()) == Some(true);
                     !rule.no_loop || !already_fired
                 })
-                .filter(|(_, rule)| evaluate_rete_ul_node_typed(&rule.node, &self.facts))
+                .filter(|(_, rule)| evaluate_rete_ul_node_typed(&rule.node, &self.facts, &std::collections::HashMap::new()))
                 .map(|(i, _)| i)
                 .collect();
 
@@ -1079,7 +1133,7 @@ impl TypedReteUlEngine {
         self.rules
             .iter()
             .find(|r| r.name == rule_name)
-            .map(|r| evaluate_rete_ul_node_typed(&r.node, &self.facts))
+            .map(|r| evaluate_rete_ul_node_typed(&r.node, &self.facts, &std::collections::HashMap::new()))
             .unwrap_or(false)
     }
 
@@ -1087,7 +1141,7 @@ impl TypedReteUlEngine {
     pub fn get_matching_rules(&self) -> Vec<&str> {
         self.rules
             .iter()
-            .filter(|r| evaluate_rete_ul_node_typed(&r.node, &self.facts))
+            .filter(|r| evaluate_rete_ul_node_typed(&r.node, &self.facts, &std::collections::HashMap::new()))
             .map(|r| r.name.as_str())
             .collect()
     }

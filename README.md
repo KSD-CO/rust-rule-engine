@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.20.0 🦀⚡🚀
+# Rust Rule Engine v1.20.3 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -7,9 +7,43 @@
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
-**🆕 v1.20.0**: Performance optimization release — eliminated unnecessary `.clone()` calls in hot paths for 2-683x speedup. Zero-copy string operations, optimized rule iteration, and memory-efficient fact access. Zero breaking changes, 443 tests passing.
+**🆕 v1.20.3**: Custom function calls in RETE `when` conditions — register any function via `register_function()` and call it directly in GRL rules. Enables regex matching, external lookups, and complex predicates without hardcoding patterns. Zero breaking changes.
+
+**v1.20.0**: Performance optimization — 2-683x speedup via zero-copy string ops and optimized rule iteration.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
+
+---
+
+## 🎯 What's New in v1.20.3
+
+### Custom Function Calls in RETE `when` Conditions
+
+Register any Rust function and call it directly in GRL `when` clauses — enables full regex matching, external lookups, or any custom predicate:
+
+```rust
+engine.register_function("regex_match", |args, _| {
+    match (args.first(), args.get(1)) {
+        (Some(FactValue::String(text)), Some(FactValue::String(pattern))) =>
+            Ok(FactValue::Boolean(Regex::new(pattern)?.is_match(text))),
+        _ => Ok(FactValue::Boolean(false)),
+    }
+});
+```
+
+```grl
+rule "detect_vn_phone" salience 200 no-loop {
+  when
+    Fact.action == "" &&
+    regex_match(Fact.text, "0[35789]\d\d\d\d\d\d\d\d|\+84[35789]\d\d\d\d\d\d\d\d") == true
+  then
+    Fact.action = "block";
+    Fact.violation = "Vietnamese Phone Number";
+    Retract("detect_vn_phone");
+}
+```
+
+Function arguments are resolved from facts (field paths like `Fact.text`) or treated as string/numeric literals. Multiple functions can be composed in a single `when` clause.
 
 ---
 
