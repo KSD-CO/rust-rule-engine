@@ -413,10 +413,10 @@ pub enum ReteUlNode {
     /// Custom function call in WHEN: `funcName(arg1, arg2, ...) == true`
     /// `args` are fact field paths (e.g. "Fact.text") or string literals.
     UlFunctionCall {
-        name:     String,
-        args:     Vec<String>,
+        name: String,
+        args: Vec<String>,
         operator: String,
-        value:    String,
+        value: String,
     },
     UlTerminal(String), // Rule name
 }
@@ -932,25 +932,33 @@ pub fn evaluate_rete_ul_node_typed(
                 }
             }
         }
-        ReteUlNode::UlFunctionCall { name, args, operator, value } => {
+        ReteUlNode::UlFunctionCall {
+            name,
+            args,
+            operator,
+            value,
+        } => {
             // Resolve each arg: fact field reference first, then string/numeric literal.
             // Quoted args like `"pattern"` arrive with surrounding quotes from the parser.
-            let resolved: Vec<FactValue> = args.iter().map(|arg| {
-                if let Some(v) = facts.get(arg) {
-                    return v.clone();
-                }
-                // Strip surrounding quotes for string literals
-                if (arg.starts_with('"') && arg.ends_with('"'))
-                    || (arg.starts_with('\'') && arg.ends_with('\''))
-                {
-                    return FactValue::String(arg[1..arg.len() - 1].to_string());
-                }
-                // Numeric literal
-                if let Ok(n) = arg.parse::<f64>() {
-                    return FactValue::from(n);
-                }
-                FactValue::String(arg.clone())
-            }).collect();
+            let resolved: Vec<FactValue> = args
+                .iter()
+                .map(|arg| {
+                    if let Some(v) = facts.get(arg) {
+                        return v.clone();
+                    }
+                    // Strip surrounding quotes for string literals
+                    if (arg.starts_with('"') && arg.ends_with('"'))
+                        || (arg.starts_with('\'') && arg.ends_with('\''))
+                    {
+                        return FactValue::String(arg[1..arg.len() - 1].to_string());
+                    }
+                    // Numeric literal
+                    if let Ok(n) = arg.parse::<f64>() {
+                        return FactValue::from(n);
+                    }
+                    FactValue::String(arg.clone())
+                })
+                .collect();
 
             let result = if let Some(func) = custom_fns.get(name) {
                 func(&resolved, facts).unwrap_or(FactValue::Boolean(false))
@@ -959,13 +967,15 @@ pub fn evaluate_rete_ul_node_typed(
             };
 
             let expected = match value.as_str() {
-                "true"  => FactValue::Boolean(true),
+                "true" => FactValue::Boolean(true),
                 "false" => FactValue::Boolean(false),
-                s       => if let Ok(n) = s.parse::<f64>() {
-                    FactValue::from(n)
-                } else {
-                    FactValue::String(s.to_string())
-                },
+                s => {
+                    if let Ok(n) = s.parse::<f64>() {
+                        FactValue::from(n)
+                    } else {
+                        FactValue::String(s.to_string())
+                    }
+                }
             };
 
             result.compare(operator, &expected)
@@ -1096,7 +1106,13 @@ impl TypedReteUlEngine {
                         || self.facts.get(&fired_flag).and_then(|v| v.as_boolean()) == Some(true);
                     !rule.no_loop || !already_fired
                 })
-                .filter(|(_, rule)| evaluate_rete_ul_node_typed(&rule.node, &self.facts, &std::collections::HashMap::new()))
+                .filter(|(_, rule)| {
+                    evaluate_rete_ul_node_typed(
+                        &rule.node,
+                        &self.facts,
+                        &std::collections::HashMap::new(),
+                    )
+                })
                 .map(|(i, _)| i)
                 .collect();
 
@@ -1133,7 +1149,9 @@ impl TypedReteUlEngine {
         self.rules
             .iter()
             .find(|r| r.name == rule_name)
-            .map(|r| evaluate_rete_ul_node_typed(&r.node, &self.facts, &std::collections::HashMap::new()))
+            .map(|r| {
+                evaluate_rete_ul_node_typed(&r.node, &self.facts, &std::collections::HashMap::new())
+            })
             .unwrap_or(false)
     }
 
@@ -1141,7 +1159,9 @@ impl TypedReteUlEngine {
     pub fn get_matching_rules(&self) -> Vec<&str> {
         self.rules
             .iter()
-            .filter(|r| evaluate_rete_ul_node_typed(&r.node, &self.facts, &std::collections::HashMap::new()))
+            .filter(|r| {
+                evaluate_rete_ul_node_typed(&r.node, &self.facts, &std::collections::HashMap::new())
+            })
             .map(|r| r.name.as_str())
             .collect()
     }
