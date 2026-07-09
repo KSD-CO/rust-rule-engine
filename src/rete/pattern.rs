@@ -188,12 +188,8 @@ impl Pattern {
         let mut new_bindings = bindings.clone();
 
         for constraint in &self.constraints {
-            match constraint.evaluate(facts, &new_bindings) {
-                Some(additional_bindings) => {
-                    new_bindings.extend(additional_bindings);
-                }
-                None => return None,
-            }
+            let additional_bindings = constraint.evaluate(facts, &new_bindings)?;
+            new_bindings.extend(additional_bindings);
         }
 
         Some(new_bindings)

@@ -381,7 +381,7 @@ impl ModuleManager {
 
         // Clean up import graph
         self.import_graph.remove(name);
-        for (_, imports) in self.import_graph.iter_mut() {
+        for imports in self.import_graph.values_mut() {
             imports.remove(name);
         }
 

@@ -200,14 +200,12 @@ impl GrlReteLoader {
                     compare_value: if operation == "count" { cmp_val } else { None },
                 })
             }
-            ConditionExpression::FunctionCall { name, args } => {
-                Ok(ReteUlNode::UlFunctionCall {
-                    name:     name.clone(),
-                    args:     args.clone(),
-                    operator: Self::operator_to_string(&condition.operator),
-                    value:    Self::value_to_string(&condition.value),
-                })
-            }
+            ConditionExpression::FunctionCall { name, args } => Ok(ReteUlNode::UlFunctionCall {
+                name: name.clone(),
+                args: args.clone(),
+                operator: Self::operator_to_string(&condition.operator),
+                value: Self::value_to_string(&condition.value),
+            }),
             _ => {
                 // Standard alpha node for regular conditions
                 let operator_str = Self::operator_to_string(&condition.operator);
