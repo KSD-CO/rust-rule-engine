@@ -362,11 +362,7 @@ impl AdvancedAgenda {
             }
 
             // No more activations in current focus, try to pop focus stack
-            if let Some(prev_focus) = self.focus_stack.pop() {
-                self.focus = prev_focus;
-            } else {
-                return None; // Agenda is empty
-            }
+            self.focus = self.focus_stack.pop()?;
         }
     }
 
