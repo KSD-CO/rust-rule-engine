@@ -387,15 +387,29 @@ mod tests {
         // duration=60s, first event at t=1000 → window covers [0, 1001).
         let mut window = TimeWindow::new(WindowType::Sliding, Duration::from_secs(60), 1000, 100);
 
-        window.record(StreamEvent::with_timestamp("Hit", HashMap::new(), "test", 1000));
+        window.record(StreamEvent::with_timestamp(
+            "Hit",
+            HashMap::new(),
+            "test",
+            1000,
+        ));
         assert_eq!(window.count(), 1);
 
         // t=310000 is way past the original end_time (61000) — `add_event`
         // would reject this outright; `record` instead advances the window
         // to trail 60s behind the new event and evicts the now-stale one.
-        window.record(StreamEvent::with_timestamp("Hit", HashMap::new(), "test", 310_000));
+        window.record(StreamEvent::with_timestamp(
+            "Hit",
+            HashMap::new(),
+            "test",
+            310_000,
+        ));
 
-        assert_eq!(window.count(), 1, "event older than the trailing duration must be evicted");
+        assert_eq!(
+            window.count(),
+            1,
+            "event older than the trailing duration must be evicted"
+        );
         assert_eq!(window.start_time, 250_000); // 310000 - 60000
         assert_eq!(window.end_time, 310_001);
     }
@@ -404,8 +418,18 @@ mod tests {
     fn test_record_keeps_events_still_within_duration() {
         let mut window = TimeWindow::new(WindowType::Sliding, Duration::from_secs(60), 0, 100);
 
-        window.record(StreamEvent::with_timestamp("Hit", HashMap::new(), "test", 1_000));
-        window.record(StreamEvent::with_timestamp("Hit", HashMap::new(), "test", 30_000));
+        window.record(StreamEvent::with_timestamp(
+            "Hit",
+            HashMap::new(),
+            "test",
+            1_000,
+        ));
+        window.record(StreamEvent::with_timestamp(
+            "Hit",
+            HashMap::new(),
+            "test",
+            30_000,
+        ));
         // 30_000 - 1_000 = 29s, still inside the 60s trailing window.
         assert_eq!(window.count(), 2);
     }
