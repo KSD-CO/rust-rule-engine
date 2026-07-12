@@ -2,6 +2,36 @@
 
 All notable changes to rust-rule-engine will be documented in this file.
 
+## [1.21.0] - 2026-07-12
+
+### Added - 🔄 `TimeWindow::record()` — Continuously Sliding Single-Window Counter
+
+**New Streaming API** — a live "how many X in the trailing N seconds, as of right now" counter, distinct from the existing history-of-fixed-windows model.
+
+#### Why
+
+`TimeWindow` (and `WindowManager` on top of it) is a *fixed* `[start_time, end_time)` bucket: `add_event` rejects anything outside that range, and `WindowManager` handles "sliding" by accumulating a list of many overlapping fixed windows over time — built for inspecting stream history after the fact (analytics over past windows). There was no primitive for the much more common case of a single rate/threshold rule that needs one continuously up-to-date number, e.g. "10+ failed logins from this IP in the last 60 seconds" evaluated fresh on every incoming event.
+
+#### New API
+
+```rust
+use rust_rule_engine::streaming::{TimeWindow, WindowType, StreamEvent};
+use std::time::Duration;
+
+let mut window = TimeWindow::new(WindowType::Sliding, Duration::from_secs(60), start_ms, 10_000);
+
+// On every incoming event:
+window.record(StreamEvent::with_timestamp("login_failure", data, "auth", event_ts_ms));
+let count_in_last_60s = window.count();
+```
+
+Unlike `add_event`, `record()` never rejects an event — it advances the window's trailing boundary to the event's own timestamp and evicts anything older than `duration` first. No-op on the boundary advance for non-`Sliding` window types (the event is still recorded).
+
+#### Compatibility
+
+- **Zero breaking changes** — purely additive method on `TimeWindow`; `add_event`, `WindowManager`, and existing window-history semantics are untouched.
+- Originally built while integrating `rust-rule-engine` into Iron Shield Insight's on-prem SIEM rule pack (per-app rate limiting for auth/HTTP-error correlation rules).
+
 ## [1.19.2] - 2026-03-16
 
 ### Added - 📚 Complete API Documentation

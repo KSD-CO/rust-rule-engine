@@ -70,6 +70,42 @@ impl TimeWindow {
         }
     }
 
+    /// Records an event into a *continuously* sliding window: advances the
+    /// trailing boundary to the event's own timestamp and evicts anything
+    /// older than `duration`, instead of rejecting events the way
+    /// [`add_event`](Self::add_event) does once `[start_time, end_time)` is
+    /// stale.
+    ///
+    /// `add_event` and [`WindowManager`] are built around a *history* of
+    /// many fixed, non-advancing windows (useful for looking back at past
+    /// windows later). `record` is for the opposite case: maintaining a
+    /// single live value — "how many X in the trailing N seconds, as of
+    /// right now" — which is what most rate/threshold rules actually need.
+    ///
+    /// No-op on the boundary advance for non-`Sliding` window types (the
+    /// event is still recorded); tumbling/session semantics don't have a
+    /// meaningful "trailing" window to advance.
+    pub fn record(&mut self, event: StreamEvent) {
+        if self.window_type == WindowType::Sliding {
+            let now = event.metadata.timestamp;
+            self.start_time = now.saturating_sub(self.duration.as_millis() as u64);
+            self.end_time = now + 1; // inclusive of `now` itself
+        }
+
+        self.events.push_back(event);
+
+        while self
+            .events
+            .front()
+            .is_some_and(|e| e.metadata.timestamp < self.start_time)
+        {
+            self.events.pop_front();
+        }
+        while self.events.len() > self.max_events {
+            self.events.pop_front();
+        }
+    }
+
     /// Check if timestamp falls within this window
     pub fn contains_timestamp(&self, timestamp: u64) -> bool {
         timestamp >= self.start_time && timestamp < self.end_time
@@ -344,6 +380,34 @@ mod tests {
 
         assert!(window.add_event(event));
         assert_eq!(window.count(), 1);
+    }
+
+    #[test]
+    fn test_record_slides_boundary_forward() {
+        // duration=60s, first event at t=1000 → window covers [0, 1001).
+        let mut window = TimeWindow::new(WindowType::Sliding, Duration::from_secs(60), 1000, 100);
+
+        window.record(StreamEvent::with_timestamp("Hit", HashMap::new(), "test", 1000));
+        assert_eq!(window.count(), 1);
+
+        // t=310000 is way past the original end_time (61000) — `add_event`
+        // would reject this outright; `record` instead advances the window
+        // to trail 60s behind the new event and evicts the now-stale one.
+        window.record(StreamEvent::with_timestamp("Hit", HashMap::new(), "test", 310_000));
+
+        assert_eq!(window.count(), 1, "event older than the trailing duration must be evicted");
+        assert_eq!(window.start_time, 250_000); // 310000 - 60000
+        assert_eq!(window.end_time, 310_001);
+    }
+
+    #[test]
+    fn test_record_keeps_events_still_within_duration() {
+        let mut window = TimeWindow::new(WindowType::Sliding, Duration::from_secs(60), 0, 100);
+
+        window.record(StreamEvent::with_timestamp("Hit", HashMap::new(), "test", 1_000));
+        window.record(StreamEvent::with_timestamp("Hit", HashMap::new(), "test", 30_000));
+        // 30_000 - 1_000 = 29s, still inside the 60s trailing window.
+        assert_eq!(window.count(), 2);
     }
 
     #[test]

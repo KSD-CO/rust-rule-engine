@@ -880,7 +880,7 @@ dependencies = [
 
 [[package]]
 name = "rust-rule-engine"
-version = "1.20.3"
+version = "1.20.4"
 dependencies = [
  "chrono",
  "criterion",

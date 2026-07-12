@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.20.3 🦀⚡🚀
+# Rust Rule Engine v1.21.0 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -7,11 +7,35 @@
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
-**🆕 v1.20.3**: Custom function calls in RETE `when` conditions — register any function via `register_function()` and call it directly in GRL rules. Enables regex matching, external lookups, and complex predicates without hardcoding patterns. Zero breaking changes.
+**🆕 v1.21.0**: `TimeWindow::record()` — a continuously sliding single-window counter for streaming (`streaming` feature). Answers "how many X in the trailing N seconds, right now" for rate/threshold rules, without the fixed-bucket-rejection behavior of `add_event`. Zero breaking changes.
+
+**v1.20.3**: Custom function calls in RETE `when` conditions — register any function via `register_function()` and call it directly in GRL rules. Enables regex matching, external lookups, and complex predicates without hardcoding patterns. Zero breaking changes.
 
 **v1.20.0**: Performance optimization — 2-683x speedup via zero-copy string ops and optimized rule iteration.
 
 🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
+
+---
+
+## 🎯 What's New in v1.21.0
+
+### 🔄 `TimeWindow::record()` — Continuously Sliding Single-Window Counter
+
+`TimeWindow`/`WindowManager` model a *history* of fixed, non-advancing windows — great for looking back at past windows, but `add_event` rejects any event once the window's fixed range is stale. Most rate/threshold rules need the opposite: one number that's always "count in the trailing N seconds, as of now." `record()` does that:
+
+```rust
+use rust_rule_engine::streaming::{TimeWindow, WindowType, StreamEvent};
+use std::time::Duration;
+
+let mut window = TimeWindow::new(WindowType::Sliding, Duration::from_secs(60), start_ms, 10_000);
+
+// On every incoming event — never rejects, evicts stale events automatically:
+window.record(StreamEvent::with_timestamp("login_failure", data, "auth", event_ts_ms));
+
+if window.count() >= 10 {
+    // 10+ matching events in the trailing 60s
+}
+```
 
 ---
 
@@ -130,6 +154,7 @@ This release makes the parser **production-ready** for handling untrusted or mal
 - **GRL Stream Syntax** - Declarative stream pattern definitions
 - **StreamAlphaNode** - RETE-integrated event filtering & windowing
 - **Time Windows** - Sliding (continuous), tumbling (non-overlapping), and **session (gap-based)** 🆕
+- **`TimeWindow::record()`** 🆕 - continuously sliding single-window counter, for "count in the trailing N seconds" rate/threshold rules driven from plain Rust (no GRL stream syntax needed)
 - **Multi-Stream Correlation** - Join events from different streams
 - **WorkingMemory Integration** - Stream events become facts for rule evaluation
 
