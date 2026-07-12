@@ -2,6 +2,14 @@
 
 All notable changes to rust-rule-engine will be documented in this file.
 
+## [1.21.1] - 2026-07-12
+
+### Fixed - 🔇 `no_loop` skip message no longer prints unconditionally
+
+`RustRuleEngine::execute_at_time()` printed `⛔ Skipping '{rule}' due to no_loop (already fired)` on every RETE cycle a no-loop rule was re-checked — unlike every other diagnostic `println!` in the same function, it wasn't gated behind `EngineConfig::debug_mode`. On a rule whose `when` condition stays true across many incoming facts (a very normal shape for rate/threshold rules), this produced one unconditional stdout line per fact, impossible to silence via a consumer's own logging setup since it bypassed `log`/`tracing` entirely.
+
+Now gated behind `debug_mode` like its siblings. No change in firing behavior — this is diagnostic output only.
+
 ## [1.21.0] - 2026-07-12
 
 ### Added - 🔄 `TimeWindow::record()` — Continuously Sliding Single-Window Counter

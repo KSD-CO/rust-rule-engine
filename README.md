@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.21.0 🦀⚡🚀
+# Rust Rule Engine v1.21.1 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)

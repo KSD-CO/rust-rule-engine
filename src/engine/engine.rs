@@ -515,7 +515,9 @@ impl RustRuleEngine {
 
                     // Check no-loop: skip if already fired in this execution cycle
                     if rule.no_loop && self.fired_rules_global.contains(&rule.name) {
-                        println!("⛔ Skipping '{}' due to no_loop (already fired)", rule.name);
+                        if self.config.debug_mode {
+                            println!("⛔ Skipping '{}' due to no_loop (already fired)", rule.name);
+                        }
                         continue;
                     }
 
