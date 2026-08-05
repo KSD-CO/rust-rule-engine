@@ -44,9 +44,20 @@ pub fn evaluate_expression(expr: &str, facts: &Facts) -> Result<Value> {
     }
 
     // No operator found - must be a single value
-    // Could be: field reference (Order.quantity), number (100), or variable
+    // Could be: string literal, field reference (Order.quantity), number (100), or variable
 
-    // Try to parse as number first
+    // Is it a string literal?
+    if expr.len() >= 2 {
+        let unquoted = &expr[1..expr.len() - 1];
+        if (expr.starts_with('"') && expr.ends_with('"') && !unquoted.contains('"'))
+            || (expr.starts_with('\'') && expr.ends_with('\'') && !unquoted.contains('\''))
+        {
+            let unquoted = &expr[1..expr.len() - 1];
+            return Ok(Value::String(unquoted.to_string()));
+        }
+    }
+
+    // Try to parse as number
     if let Ok(int_val) = expr.parse::<i64>() {
         return Ok(Value::Integer(int_val));
     }
