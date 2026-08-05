@@ -1333,7 +1333,7 @@ impl GRLParser {
 
         // Field reference (like User.Name)
         if trimmed.contains('.') {
-            return Ok(Value::String(trimmed.to_string()));
+            return Ok(Value::Expression(trimmed.to_string()));
         }
 
         // Variable reference (identifier without quotes or dots)
