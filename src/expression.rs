@@ -89,8 +89,25 @@ fn find_operator(expr: &str, operators: &[char]) -> Option<usize> {
 /// Apply arithmetic operator to two values
 fn apply_operator(left: &Value, op: &str, right: &Value) -> Result<Value> {
     // Convert to numbers
-    let left_num = value_to_number(left)?;
-    let right_num = value_to_number(right)?;
+    let left_num = value_to_number(left);
+    let right_num = value_to_number(right);
+
+    // The + sign can also mean string concatenation
+    if op == "+" && (left_num.is_err() || right_num.is_err()) {
+        // at least one operand cannoy be converted to numeric
+        let concatenated = match (left, right) {
+            // both operands are strings => concatenate
+            (Value::String(s1), Value::String(s2)) => format!("{}{}", s1, s2),
+            // at least one operand is not a string => error
+            _ => return Err(RuleEngineError::EvaluationError {
+                    message: "Only strings can be concatenated".to_string()
+                })
+        };
+        return Ok(Value::String(concatenated));
+    }
+    
+    let left_num = left_num.unwrap();
+    let right_num = right_num.unwrap();
 
     let result = match op {
         "+" => left_num + right_num,
