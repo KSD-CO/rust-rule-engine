@@ -1299,7 +1299,9 @@ impl GRLParser {
         if trimmed.len() >= 2 {
             let unquoted = &trimmed[1..trimmed.len() - 1];
             if (trimmed.starts_with('"') && trimmed.ends_with('"') && !unquoted.contains('"'))
-                || (trimmed.starts_with('\'') && trimmed.ends_with('\'') && !unquoted.contains('\''))
+                || (trimmed.starts_with('\'')
+                    && trimmed.ends_with('\'')
+                    && !unquoted.contains('\''))
             {
                 return Ok(Value::String(unquoted.to_string()));
             }
