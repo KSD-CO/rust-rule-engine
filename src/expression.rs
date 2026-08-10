@@ -110,13 +110,15 @@ fn apply_operator(left: &Value, op: &str, right: &Value) -> Result<Value> {
             // both operands are strings => concatenate
             (Value::String(s1), Value::String(s2)) => format!("{}{}", s1, s2),
             // at least one operand is not a string => error
-            _ => return Err(RuleEngineError::EvaluationError {
-                    message: "Only strings can be concatenated".to_string()
+            _ => {
+                return Err(RuleEngineError::EvaluationError {
+                    message: "Only strings can be concatenated".to_string(),
                 })
+            }
         };
         return Ok(Value::String(concatenated));
     }
-    
+
     let left_num = left_num.unwrap();
     let right_num = right_num.unwrap();
 
