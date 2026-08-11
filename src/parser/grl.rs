@@ -1792,7 +1792,7 @@ mod tests {
                 assert_eq!(action_type, "set");
                 assert_eq!(
                     params.get("0"),
-                    Some(&crate::types::Value::String("user.status".to_string()))
+                    Some(&crate::types::Value::Expression("user.status".to_string()))
                 );
                 assert_eq!(
                     params.get("1"),
