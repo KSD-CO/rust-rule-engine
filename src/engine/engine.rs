@@ -1810,14 +1810,19 @@ impl RustRuleEngine {
     ) -> Result<String> {
         let property_name = Self::extract_property_name_from_setter(method);
 
+        let resolved_value = match new_value {
+            Value::Expression(expr) => crate::expression::evaluate_expression(expr, facts)?,
+            _ => new_value.clone(),
+        };
+
         match object_value {
             Value::Object(ref mut obj) => {
-                obj.insert(property_name.clone(), new_value.clone());
+                obj.insert(property_name.clone(), resolved_value.clone());
                 facts.add_value(object_name, object_value)?;
                 Ok(format!(
                     "Set {} to {}",
                     property_name,
-                    new_value.to_string()
+                    resolved_value.to_string()
                 ))
             }
             _ => Err(RuleEngineError::EvaluationError {
@@ -1935,11 +1940,20 @@ impl RustRuleEngine {
 
         for (key, value) in params {
             let resolved_value = match value {
+                Value::Expression(expr) => {
+                    // Field reference / arithmetic expression - evaluate against facts.
+                    // If the field doesn't exist yet (e.g. it's a write target for an
+                    // action like `set(field, value)` rather than a value to read),
+                    // fall back to the literal path string, matching the legacy
+                    // Value::String fallback behavior below.
+                    crate::expression::evaluate_expression(expr, facts)
+                        .unwrap_or_else(|_| Value::String(expr.clone()))
+                }
                 Value::String(s) => {
                     // Check if string looks like a fact reference (contains dot)
                     if s.contains('.') {
-                        // Try to get the value from facts
-                        if let Some(fact_value) = facts.get_nested(s) {
+                        // Try an exact (flat) key first, then a nested object path
+                        if let Some(fact_value) = facts.get(s).or_else(|| facts.get_nested(s)) {
                             fact_value
                         } else {
                             // If not found, keep original string

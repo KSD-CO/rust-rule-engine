@@ -1,4 +1,4 @@
-# Rust Rule Engine v1.21.1 🦀⚡🚀
+# Rust Rule Engine v1.21.4 🦀⚡🚀
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
@@ -7,7 +7,9 @@
 
 A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
 
-**🆕 v1.21.0**: `TimeWindow::record()` — a continuously sliding single-window counter for streaming (`streaming` feature). Answers "how many X in the trailing N seconds, right now" for rate/threshold rules, without the fixed-bucket-rejection behavior of `add_event`. Zero breaking changes.
+**🆕 v1.21.4**: Fix — field references in actions (e.g. `User.firstNameAgain = User.firstName;`, `set(user.status, "approved")`) are now evaluated to their actual value instead of being treated as a literal string. See [CHANGELOG](CHANGELOG.md#1214---2026-08-13).
+
+**v1.21.0**: `TimeWindow::record()` — a continuously sliding single-window counter for streaming (`streaming` feature). Answers "how many X in the trailing N seconds, right now" for rate/threshold rules, without the fixed-bucket-rejection behavior of `add_event`. Zero breaking changes.
 
 **v1.20.3**: Custom function calls in RETE `when` conditions — register any function via `register_function()` and call it directly in GRL rules. Enables regex matching, external lookups, and complex predicates without hardcoding patterns. Zero breaking changes.
 

@@ -66,9 +66,10 @@ pub fn evaluate_expression(expr: &str, facts: &Facts) -> Result<Value> {
         return Ok(Value::Number(float_val));
     }
 
-    // Must be a field reference - get from facts
-    if let Some(value) = facts.get(expr) {
-        return Ok(value.clone());
+    // Must be a field reference - try an exact (flat) key first, then a nested
+    // object path (e.g. "User.firstName" inside a Value::Object fact named "User")
+    if let Some(value) = facts.get(expr).or_else(|| facts.get_nested(expr)) {
+        return Ok(value);
     }
 
     // Field not found - return error

@@ -2,6 +2,22 @@
 
 All notable changes to rust-rule-engine will be documented in this file.
 
+## [1.21.4] - 2026-08-13
+
+### Fixed - 🔗 Field references in actions were not evaluated
+
+A rule like `User.firstNameAgain = User.firstName;`, or a custom action taking a field reference as an argument (e.g. `set(user.status, "approved")`), did not read the field's actual value — the field path was stored and used as a literal string instead (#86).
+
+#### Root cause and fix
+
+- `parser/grl.rs`: a bare dotted identifier (`User.firstName`) now parses to `Value::Expression` instead of `Value::String`, marking it as something that needs runtime evaluation rather than a literal.
+- `expression.rs`: `evaluate_expression`'s field lookup now tries an exact (flat) key first, then falls back to a nested path lookup (`Facts::get_nested`) — so this works whether facts are stored as flat dotted keys (`facts.set("User.firstName", ...)`) or as nested `Value::Object`s (`facts.add_value("User", Value::Object({...}))`, the shape used throughout `examples/`).
+- `engine/engine.rs`: `resolve_action_parameters` (custom action arguments) and `handle_setter_method` (`$Object.setX(value)`) now evaluate `Value::Expression` arguments against facts. If the referenced field doesn't exist yet — e.g. it's a *write* target for a `set(field, value)`-style action rather than a value to read — resolution falls back to the literal path string, preserving that existing convention.
+
+#### Compatibility
+
+- No breaking changes to the public API. Parsing output for dotted field references changes type (`Value::String` → `Value::Expression`), which only matters to code pattern-matching on that internal `Value` variant directly.
+
 ## [1.21.1] - 2026-07-12
 
 ### Fixed - 🔇 `no_loop` skip message no longer prints unconditionally
