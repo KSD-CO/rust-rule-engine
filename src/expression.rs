@@ -120,8 +120,8 @@ fn apply_operator(left: &Value, op: &str, right: &Value) -> Result<Value> {
         return Ok(Value::String(concatenated));
     }
 
-    let left_num = left_num.unwrap();
-    let right_num = right_num.unwrap();
+    let left_num = left_num?;
+    let right_num = right_num?;
 
     let result = match op {
         "+" => left_num + right_num,
@@ -224,6 +224,33 @@ mod tests {
         assert_eq!(
             evaluate_expression("a + b * c", &facts).unwrap(),
             Value::Integer(20)
+        );
+    }
+
+    #[test]
+    fn non_numeric_operands_return_error_not_panic() {
+        let facts = Facts::new();
+        // Applying -, *, / or % to non-numeric operands must return an error
+        // rather than panicking on value_to_number().unwrap().
+        for expr in [
+            "\"x\" - \"y\"",
+            "\"x\" * \"y\"",
+            "\"x\" / \"y\"",
+            "\"x\" % \"y\"",
+        ] {
+            assert!(
+                evaluate_expression(expr, &facts).is_err(),
+                "expected Err (not panic) for {expr}"
+            );
+        }
+        // "+" still concatenates strings and arithmetic still works.
+        assert_eq!(
+            evaluate_expression("\"foo\" + \"bar\"", &facts).unwrap(),
+            Value::String("foobar".to_string())
+        );
+        assert_eq!(
+            evaluate_expression("2 * 3", &facts).unwrap(),
+            Value::Integer(6)
         );
     }
 }
