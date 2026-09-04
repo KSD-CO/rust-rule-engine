@@ -1,19 +1,20 @@
-# Rust Rule Engine 🦀
+# rust-rule-engine
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A production-ready Rust rule engine with GRL syntax, forward chaining, optional backward chaining, and optional stream processing.
+`rust-rule-engine` is a rule engine for Rust with GRL syntax, forward chaining, optional backward chaining, and optional stream processing.
 
-## Highlights
+It is designed for business rules, decision automation, expert systems, validation pipelines, and event-driven reasoning workloads.
 
-- Forward chaining with a simple native engine and RETE-UL execution
-- Backward chaining for goal-driven inference (`backward-chaining` feature)
-- Stream processing with time windows (`streaming` and `streaming-redis` features)
-- Custom functions, pattern matching, unification, and explanation support
-- Example suite covering getting started, RETE, performance, modules, and reasoning modes
+## Capabilities
+
+- Forward chaining with native execution and RETE-UL optimization
+- Goal-driven reasoning via the optional `backward-chaining` feature
+- Stream processing with time windows via `streaming` and `streaming-redis`
+- Custom functions, pattern matching, unification, and proof/explanation support
+- Example coverage for core usage, advanced rules, RETE, modules, and performance
 
 ## Installation
 
@@ -22,18 +23,18 @@ A production-ready Rust rule engine with GRL syntax, forward chaining, optional 
 rust-rule-engine = "1.21.6"
 ```
 
-Enable optional features as needed:
+With optional features:
 
 ```toml
 [dependencies]
 rust-rule-engine = { version = "1.21.6", features = ["backward-chaining"] }
 ```
 
-Available features:
+## Feature Flags
 
-- `backward-chaining` - goal-driven inference and proof-oriented querying
-- `streaming` - in-memory stream processing and time-window support
-- `streaming-redis` - Redis-backed streaming state
+- `backward-chaining` — enables goal-driven inference and query workflows
+- `streaming` — enables in-memory stream processing and time-window support
+- `streaming-redis` — enables Redis-backed streaming state
 
 ## Quick Start
 
@@ -64,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Examples
 
-Run a few common examples:
+Run common examples locally:
 
 ```bash
 cargo run --example grule_demo
@@ -73,7 +74,7 @@ cargo run --features backward-chaining --example simple_query_demo
 cargo run --features streaming --example streaming_with_rules_demo
 ```
 
-The repository includes organized example groups under `/examples`:
+Example groups are organized under `/examples`:
 
 - `01-getting-started`
 - `02-rete-engine`
@@ -85,7 +86,7 @@ The repository includes organized example groups under `/examples`:
 
 ## Documentation
 
-- [Crate documentation](https://docs.rs/rust-rule-engine)
+- [API documentation](https://docs.rs/rust-rule-engine)
 - [Project documentation index](docs/README.md)
 - [Getting started guides](docs/getting-started/)
 - [Core features](docs/core-features/)
@@ -94,8 +95,6 @@ The repository includes organized example groups under `/examples`:
 - [Changelog](CHANGELOG.md)
 
 ## Development
-
-Common local commands:
 
 ```bash
 make check
