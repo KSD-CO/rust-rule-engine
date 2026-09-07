@@ -1,37 +1,86 @@
-# Rust Rule Engine v1.21.4 🦀⚡🚀
+# Rust Rule Engine
 
 [![Crates.io](https://img.shields.io/crates/v/rust-rule-engine.svg)](https://crates.io/crates/rust-rule-engine)
 [![Documentation](https://docs.rs/rust-rule-engine/badge.svg)](https://docs.rs/rust-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/KSD-CO/rust-rule-engine/actions/workflows/rust.yml/badge.svg)](https://github.com/KSD-CO/rust-rule-engine/actions)
 
-A blazing-fast production-ready rule engine for Rust supporting **both Forward and Backward Chaining**. Features RETE-UL algorithm with **Alpha Memory Indexing** and **Beta Memory Indexing**, parallel execution, goal-driven reasoning, and GRL (Grule Rule Language) syntax.
+A production-ready rule engine for Rust with **forward chaining**, **backward chaining**, and **stream processing**, using the RETE-UL algorithm with alpha/beta memory indexing and the GRL (Grule Rule Language) syntax.
 
-**🆕 v1.21.4**: Fix — field references in actions (e.g. `User.firstNameAgain = User.firstName;`, `set(user.status, "approved")`) are now evaluated to their actual value instead of being treated as a literal string. See [CHANGELOG](CHANGELOG.md#1214---2026-08-13).
-
-**v1.21.0**: `TimeWindow::record()` — a continuously sliding single-window counter for streaming (`streaming` feature). Answers "how many X in the trailing N seconds, right now" for rate/threshold rules, without the fixed-bucket-rejection behavior of `add_event`. Zero breaking changes.
-
-**v1.20.3**: Custom function calls in RETE `when` conditions — register any function via `register_function()` and call it directly in GRL rules. Enables regex matching, external lookups, and complex predicates without hardcoding patterns. Zero breaking changes.
-
-**v1.20.0**: Performance optimization — 2-683x speedup via zero-copy string ops and optimized rule iteration.
-
-🔗 **[GitHub](https://github.com/KSD-CO/rust-rule-engine)** | **[Documentation](https://docs.rs/rust-rule-engine)** | **[Crates.io](https://crates.io/crates/rust-rule-engine)**
+🔗 [Documentation](https://docs.rs/rust-rule-engine) · [Crates.io](https://crates.io/crates/rust-rule-engine) · [Changelog](CHANGELOG.md) · [Examples](examples/README.md)
 
 ---
 
-## 🎯 What's New in v1.21.0
+## Features
 
-### 🔄 `TimeWindow::record()` — Continuously Sliding Single-Window Counter
+| Mode | Description | Use cases |
+|------|-------------|-----------|
+| **Forward Chaining** | Data-driven: facts change → matching rules fire. Native engine for small rule sets, RETE-UL for 100–10,000+ rules with O(1) indexing, plus parallel execution. | Business rules, validation, reactive systems |
+| **Backward Chaining** | Goal-driven: given a goal, search facts/rules to prove it. Unification, DFS/BFS/iterative-deepening search, aggregation (`COUNT`/`SUM`/`AVG`/`MIN`/`MAX`), negation, disjunction, nested queries, and automatic query optimization (10–100x speedup). | Expert systems, diagnostics, planning, decision support |
+| **Stream Processing** | Event-driven: sliding/tumbling/session time windows, multi-stream correlation, GRL stream syntax integrated with RETE working memory. | Fraud detection, IoT monitoring, real-time analytics, CEP |
 
-`TimeWindow`/`WindowManager` model a *history* of fixed, non-advancing windows — great for looking back at past windows, but `add_event` rejects any event once the window's fixed range is stale. Most rate/threshold rules need the opposite: one number that's always "count in the trailing N seconds, as of now." `record()` does that:
+Other highlights: proof-tree explanations (JSON/MD/HTML export), TMS-aware proof caching, custom function registration in `when` conditions, module system for organizing rules, and a minimal core dependency footprint (7 crates).
+
+## Installation
+
+```toml
+[dependencies]
+rust-rule-engine = "1.21"
+
+# Optional features
+# rust-rule-engine = { version = "1.21", features = ["backward-chaining", "streaming"] }
+```
+
+| Feature | Enables |
+|---------|---------|
+| `backward-chaining` | Goal-driven reasoning (`BackwardEngine`, GRL queries) |
+| `streaming` | Time-windowed stream processing (requires `tokio`) |
+| `streaming-redis` | Redis-backed streaming state |
+
+## Quick Start
+
+### Forward chaining
+
+```rust
+use rust_rule_engine::{RuleEngine, Facts, Value};
+
+let mut engine = RuleEngine::new();
+
+engine.add_rule_from_grl(r#"
+    rule "VIP Discount" {
+        when
+            Customer.TotalSpent > 10000
+        then
+            Customer.Discount = 0.15;
+    }
+"#)?;
+
+let mut facts = Facts::new();
+facts.set("Customer.TotalSpent", Value::Number(15000.0));
+engine.execute(&mut facts)?;
+// Customer.Discount == 0.15
+```
+
+### Backward chaining
+
+```rust
+use rust_rule_engine::backward::BackwardEngine;
+
+let mut engine = BackwardEngine::new(kb);
+
+let result = engine.query("Order.AutoApproved == true", &mut facts)?;
+if result.provable {
+    println!("Proof: {:?}", result.proof_trace);
+}
+```
+
+### Stream processing
 
 ```rust
 use rust_rule_engine::streaming::{TimeWindow, WindowType, StreamEvent};
 use std::time::Duration;
 
 let mut window = TimeWindow::new(WindowType::Sliding, Duration::from_secs(60), start_ms, 10_000);
-
-// On every incoming event — never rejects, evicts stale events automatically:
 window.record(StreamEvent::with_timestamp("login_failure", data, "auth", event_ts_ms));
 
 if window.count() >= 10 {
@@ -39,130 +88,6 @@ if window.count() >= 10 {
 }
 ```
 
----
-
-## 🎯 What's New in v1.20.3
-
-### Custom Function Calls in RETE `when` Conditions
-
-Register any Rust function and call it directly in GRL `when` clauses — enables full regex matching, external lookups, or any custom predicate:
-
-```rust
-engine.register_function("regex_match", |args, _| {
-    match (args.first(), args.get(1)) {
-        (Some(FactValue::String(text)), Some(FactValue::String(pattern))) =>
-            Ok(FactValue::Boolean(Regex::new(pattern)?.is_match(text))),
-        _ => Ok(FactValue::Boolean(false)),
-    }
-});
-```
-
-```grl
-rule "detect_vn_phone" salience 200 no-loop {
-  when
-    Fact.action == "" &&
-    regex_match(Fact.text, "0[35789]\d\d\d\d\d\d\d\d|\+84[35789]\d\d\d\d\d\d\d\d") == true
-  then
-    Fact.action = "block";
-    Fact.violation = "Vietnamese Phone Number";
-    Retract("detect_vn_phone");
-}
-```
-
-Function arguments are resolved from facts (field paths like `Fact.text`) or treated as string/numeric literals. Multiple functions can be composed in a single `when` clause.
-
----
-
-## 🎯 What's New in v1.20.0 ⚡
-
-### ⚡ Performance Optimization & Memory Efficiency
-
-**Massive performance improvements** with zero breaking changes!
-
-**Key Optimizations:**
-- ✅ **Zero-Copy String Operations**: `Value::as_string_ref()` eliminates cloning in `Contains`/`StartsWith`/`EndsWith` operators (**2x faster**)
-- ✅ **Optimized Rule Iteration**: Index-based access replaces `get_rules().clone()` (**41-683x faster**)  
-- ✅ **Memory-Efficient Facts**: `Facts::with_value()` callback API reduces allocations by 40%
-- ✅ **RETE Performance**: `FactValue::as_str()` with `Cow<str>` optimizes comparison and hashing (**6x faster**)
-
-**Real Performance Impact:**
-```rust
-// Before v1.20.0 - Cloning overhead
-let rules = kb.get_rules(); // Clones entire Vec<Rule>
-let count = rules.len();    // 14.2ms for 1K calls
-
-// After v1.20.0 - Direct access  
-let count = kb.rule_count(); // 20.8µs for 1K calls (683x faster!)
-```
-naive_date.and_hms_opt(0, 0, 0).unwrap()  // 💥 PANIC!
-
-// v1.19.3 - Proper error handling
-naive_date.and_hms_opt(0, 0, 0).ok_or_else(|| 
-    RuleEngineError::ParseError {
-        message: format!("Invalid time for date: {}", naive_date)
-    }
-)?  // ✅ Returns Result
-```
-
-**Files improved:**
-- `src/parser/grl_no_regex.rs` - 9 critical unwraps fixed
-- `src/parser/grl.rs` - 7 critical unwraps fixed
-
-**Quality metrics:**
-- ✅ 436 tests passing (100% pass rate maintained)
-- ✅ Zero clippy warnings
-- ✅ Zero breaking changes
-- ✅ Better UX with descriptive error messages
-
-**Patterns fixed:**
-1. Date parsing: `.and_hms_opt().unwrap()` → proper `Result` propagation
-2. String find: `contains() + find().unwrap()` → `if let Some(pos) = find()`
-3. Iterators: `.unwrap()` → `.expect()` with invariant docs
-4. Char access: Safe handling of empty strings
-5. Prefix stripping: Proper error on missing prefix
-
-This release makes the parser **production-ready** for handling untrusted or malformed GRL input without panicking.
-
----
-
-## 🎯 Reasoning Modes
-
-### 🔄 Forward Chaining (Data-Driven)
-**"When facts change, fire matching rules"**
-
-- **Native Engine** - Simple pattern matching for small rule sets
-- **RETE-UL** - Optimized network for 100-10,000 rules with O(1) indexing
-- **Parallel Execution** - Multi-threaded rule evaluation
-
-**Use Cases:** Business rules, validation, reactive systems, decision automation
-
-### 🎯 Backward Chaining (Goal-Driven)
-**"Given a goal, find facts/rules to prove it"**
-
-- **Unification** - Pattern matching with variable bindings
-- **Search Strategies** - DFS, BFS, Iterative Deepening
-- **Aggregation** - COUNT, SUM, AVG, MIN, MAX
-- **Negation** - NOT queries with closed-world assumption
-- **Explanation** - Proof trees with JSON/MD/HTML export
-- **Disjunction** - OR patterns for alternative paths
-- **Nested Queries** - Subqueries with shared variables
-- **Query Optimization** - Automatic goal reordering for 10-100x speedup
-
-**Use Cases:** Expert systems, diagnostics, planning, decision support, AI reasoning
-
-### 🌊 Stream Processing (Event-Driven) 🆕
-**"Process real-time event streams with time-based windows"**
-
-- **GRL Stream Syntax** - Declarative stream pattern definitions
-- **StreamAlphaNode** - RETE-integrated event filtering & windowing
-- **Time Windows** - Sliding (continuous), tumbling (non-overlapping), and **session (gap-based)** 🆕
-- **`TimeWindow::record()`** 🆕 - continuously sliding single-window counter, for "count in the trailing N seconds" rate/threshold rules driven from plain Rust (no GRL stream syntax needed)
-- **Multi-Stream Correlation** - Join events from different streams
-- **WorkingMemory Integration** - Stream events become facts for rule evaluation
-
-**Use Cases:** Real-time fraud detection, IoT monitoring, financial analytics, security alerts, CEP
-
-**Example:**
 ```grl
 rule "Fraud Alert" {
     when
@@ -175,618 +100,38 @@ rule "Fraud Alert" {
 }
 ```
 
----
+More runnable examples are in [`examples/`](examples/README.md), grouped by topic (getting started, RETE engine, advanced features, performance, backward chaining, module system).
 
-## 🚀 Quick Start
+## Documentation
 
-### Forward Chaining Example
-```rust
-use rust_rule_engine::{RuleEngine, Facts, Value};
+| Section | Description |
+|---------|-------------|
+| [Quick Start](docs/getting-started/QUICK_START.md) | Get running in 5 minutes |
+| [Installation](docs/getting-started/INSTALLATION.md) | Setup guide |
+| [Concepts](docs/getting-started/CONCEPTS.md) | Core concepts |
+| [GRL Syntax](docs/core-features/GRL_SYNTAX.md) | Rule language reference |
+| [Features Overview](docs/core-features/FEATURES.md) | All engine capabilities |
+| [RETE Optimization](docs/advanced-features/RETE_OPTIMIZATION.md) | Indexing & memory internals |
+| [Streaming & CEP](docs/advanced-features/STREAMING.md) | Stream processing guide |
+| [API Reference](docs/api-reference/API_REFERENCE.md) | Full public API |
+| [GRL Query Syntax](docs/api-reference/GRL_QUERY_SYNTAX.md) | Backward chaining queries |
+| [Backward Chaining Quick Start](docs/BACKWARD_CHAINING_QUICK_START.md) | Goal-driven reasoning |
+| [Troubleshooting](docs/guides/TROUBLESHOOTING.md) | Common issues |
 
-let mut engine = RuleEngine::new();
+**[Full documentation index →](docs/README.md)**
 
-// Define rule in GRL
-engine.add_rule_from_grl(r#"
-    rule "VIP Discount" {
-        when
-            Customer.TotalSpent > 10000
-        then
-            Customer.Discount = 0.15;
-    }
-"#)?;
+## What's New
 
-// Add facts and execute
-let mut facts = Facts::new();
-facts.set("Customer.TotalSpent", Value::Number(15000.0));
-engine.execute(&mut facts)?;
+See [CHANGELOG.md](CHANGELOG.md) for the complete version history. Latest: **v1.21.7** — fixed CodeQL security alerts (cleartext-logging false positives, workflow token permissions) and reorganized this README.
 
-// Result: Customer.Discount = 0.15 ✓
-```
+## Contributing
 
-### Backward Chaining Example
-```rust
-use rust_rule_engine::backward::BackwardEngine;
+Issues and pull requests are welcome at [KSD-CO/rust-rule-engine](https://github.com/KSD-CO/rust-rule-engine). Before submitting a PR, please run:
 
-let mut engine = BackwardEngine::new(kb);
-
-// Query: "Can this order be auto-approved?"
-let result = engine.query(
-    "Order.AutoApproved == true",
-    &mut facts
-)?;
-
-if result.provable {
-    println!("Order can be auto-approved!");
-    println!("Proof: {:?}", result.proof_trace);
-}
-```
-
-### Stream Processing Example 🆕
-```rust
-use rust_rule_engine::parser::grl::stream_syntax::parse_stream_pattern;
-use rust_rule_engine::rete::stream_alpha_node::{StreamAlphaNode, WindowSpec};
-use rust_rule_engine::rete::working_memory::WorkingMemory;
-
-// Parse GRL stream pattern
-let grl = r#"login: LoginEvent from stream("logins") over window(5 min, sliding)"#;
-let (_, pattern) = parse_stream_pattern(grl)?;
-
-// Create stream processor
-let mut node = StreamAlphaNode::new(
-    &pattern.source.stream_name,
-    pattern.event_type,
-    pattern.source.window.as_ref().map(|w| WindowSpec {
-        duration: w.duration,
-        window_type: w.window_type.clone(),
-    }),
-);
-
-// Process events in real-time
-let mut wm = WorkingMemory::new();
-for event in event_stream {
-    if node.process_event(&event) {
-        // Event passed filters and is in window
-        wm.insert_from_stream("logins".to_string(), event);
-        // Now available for rule evaluation!
-    }
-}
-
-// Run: cargo run --example streaming_fraud_detection --features streaming
-```
-
----
-
-## ✨ Previous Releases
-
-### v1.19.2 - Documentation Release
-- **📚 Complete API Documentation**: All public APIs now have comprehensive documentation
-- **🔍 Missing Docs Lint**: Enabled `#![warn(missing_docs)]` to ensure API documentation quality
-- **📖 Enhanced RuleEngineBuilder Docs**: Detailed documentation with examples for builder pattern
-- **✨ Zero Breaking Changes**: Pure documentation improvement with no API changes
-
-### v1.19.0 - Array Membership & String Methods
-
-#### 🎯 Array Membership Operator (`in`)
-
-Concise syntax for checking if a value exists in an array!
-
-```rust
-// OLD WAY - Verbose with multiple OR conditions
-rule "SkipDependencies" {
-    when
-        Path.name == "node_modules" ||
-        Path.name == "__pycache__" ||
-        Path.name == ".pytest_cache"
-    then
-        Path.action = "skip";
-}
-
-// NEW WAY - Clean and maintainable ✨
-rule "SkipDependencies" {
-    when
-        Path.name in ["node_modules", "__pycache__", ".pytest_cache"]
-    then
-        Path.action = "skip";
-}
-```
-
-**Features:**
-- ✅ Array literals: `["value1", "value2", 123, true]`
-- ✅ Mixed types: strings, numbers, booleans
-- ✅ Works with RETE and backward chaining
-- ✅ Example: `cargo run --example in_operator_demo`
-
-### 🔤 String Methods Fixed (`startsWith`, `endsWith`)
-
-Previously missing from GRL parser, now fully supported!
-
-```rust
-rule "AdminEmail" {
-    when
-        User.email startsWith "admin@"
-    then
-        User.role = "administrator";
-}
-
-rule "ImageFile" {
-    when
-        File.name endsWith ".jpg" ||
-        File.name endsWith ".png"
-    then
-        File.type = "image";
-}
-```
-
-**All String Operators:**
-- ✅ `startsWith` - Check prefix
-- ✅ `endsWith` - Check suffix  
-- ✅ `contains` - Substring search
-- ✅ `matches` - Wildcard patterns (`*` and `?`)
-- ✅ Example: `cargo run --example string_methods_demo`
-
----
-
-## ✨ Previous Release: v1.17.0
-
-### 🚀 Proof Graph Caching with TMS Integration
-
-**Global cache for proven facts** with dependency tracking and automatic invalidation for backward chaining!
-
-#### Key Features
-
-**1. Proof Caching**
-- Cache proven facts with their justifications (rule + premises)
-- O(1) lookup by fact key (predicate + arguments)
-- Multiple justifications per fact (different ways to prove)
-- Thread-safe concurrent access with Arc<Mutex<>>
-
-**2. Dependency Tracking**
-- Forward edges: Track which rules used a fact as premise
-- Reverse edges: Track which facts a fact depends on
-- Automatic dependency graph construction during proof
-
-**3. TMS-Aware Invalidation**
-- Integrates with RETE's IncrementalEngine insert_logical
-- When premise retracted → cascading invalidation through dependents
-- Recursive propagation through entire dependency chain
-- Statistics tracking (hits, misses, invalidations, justifications)
-
-**4. Search Integration**
-- Seamlessly integrated into DepthFirstSearch and BreadthFirstSearch
-- Cache lookup before condition evaluation (early return on hit)
-- Automatic cache updates via inserter closure
-
-
-#### Usage Example
-
-```rust
-use rust_rule_engine::backward::{BackwardEngine, DepthFirstSearch};
-use rust_rule_engine::rete::IncrementalEngine;
-
-// Create engines
-let mut rete_engine = IncrementalEngine::new();
-let kb = /* load rules */;
-let mut backward_engine = BackwardEngine::new(kb);
-
-// Create search with ProofGraph enabled
-let search = DepthFirstSearch::new_with_engine(
-    backward_engine.kb().clone(),
-    Arc::new(Mutex::new(rete_engine)),
-);
-
-// First query builds cache
-let result1 = backward_engine.query_with_search(
-    "eligible(?x)",
-    &mut facts,
-    Box::new(search.clone()),
-)?;
-
-// Subsequent queries use cache 
-let result2 = backward_engine.query_with_search(
-    "eligible(?x)",
-    &mut facts,
-    Box::new(search),
-)?;
-```
-
-#### Dependency Tracking Example
-
-```rust
-// Given rules: A → B → C (chain dependency)
-let result_c = engine.query("C", &mut facts)?;  // Proves A, B, C
-
-// Retract A (premise)
-facts.set("A", FactValue::Bool(false));
-
-// Automatic cascading invalidation:
-// A invalidated → B invalidated → C invalidated
-// Total: 3 invalidations propagated through dependency graph
-```
-
-#### Multiple Justifications Example
-
-```rust
-// Same fact proven 3 different ways:
-// Rule 1: HighSpender → eligible
-// Rule 2: LoyalCustomer → eligible  
-// Rule 3: Subscription → eligible
-
-let result = engine.query("eligible(?x)", &mut facts)?;
-
-// ProofGraph stores all 3 justifications
-// If one premise fails, others still valid!
-```
-
-**Try it yourself:**
 ```bash
-# Run comprehensive demo with 5 scenarios
-cargo run --example proof_graph_cache_demo --features backward-chaining
-
-# Run integration tests
-cargo test proof_graph --features backward-chaining
+make check   # fmt, clippy, and tests
 ```
 
-**New Files:**
-- `src/backward/proof_graph.rs` (520 lines) - Core ProofGraph implementation
-- `tests/proof_graph_integration_test.rs` - 6 comprehensive tests
-- `examples/09-backward-chaining/proof_graph_cache_demo.rs` - Interactive demo
+## License
 
-**Features:**
-- ✅ Global proof caching with O(1) lookup
-- ✅ Dependency tracking (forward + reverse edges)
-- ✅ TMS-aware cascading invalidation
-- ✅ Multiple justifications per fact
-- ✅ Thread-safe concurrent access
-- ✅ Statistics tracking (hits/misses/invalidations)
-- ✅ Zero overhead when cache miss
-- ✅ Automatic integration with DFS/BFS search
-
----
-
-## ✨ What's New in v1.18.28 🎉
-
-### 🔧 Dependency Updates & Bug Fixes
-
-**Critical Unicode Bug Fix** - Upgraded to rexile 0.5.3 with complete Unicode support!
-
-#### Changes
-
-**1. Rexile Upgrade (0.4.10 → 0.5.3)**
-- ✅ **CRITICAL FIX**: Unicode char boundary panic resolved
-- ✅ GRL files with Unicode symbols (→, ∑, ∫, emojis, CJK) now work perfectly
-- ✅ No performance regression - benchmarks stable
-- ⚠️ **Skipped 0.5.1 & 0.5.2** due to critical Unicode bugs
-
-**2. Nom Parser Upgrade (7.x → 8.0)**
-- ✅ Removed deprecated `tuple` combinator
-- ✅ Updated to modern nom 8.0 API with `Parser` trait
-- ✅ Changed from `parser(input)?` to `parser.parse(input)?`
-- ✅ All stream syntax parsing updated
-
-**3. Criterion Benchmark Updates**
-- ✅ Replaced deprecated `criterion::black_box` with `std::hint::black_box`
-- ✅ Updated all 6 benchmark files
-- ✅ Modern Rust stdlib usage (no external deps for black_box)
-
-#### Verification
-
-**All Systems Green:**
-- ✅ **152/152 tests passing** (100% pass rate)
-- ✅ **All 29 examples working** (including Unicode-heavy examples)
-- ✅ **All benchmarks passing** with stable performance
-- ✅ **Zero regressions** detected
-
-**Unicode Test Cases:**
-```rust
-// These now work perfectly in v1.18.28:
-// Rule: Amount < 2M + COD → Auto approve  ✅
-// Mathematical: ∑ ∫ ∂ → ← ↔              ✅
-// Emoji: 🚀 🎉 ✅ ❌                      ✅
-// CJK: 规则 (Chinese characters)          ✅
-```
-
-#### Performance
-
-**No regression from previous version:**
-- Alpha Linear 1K: ~18.0µs (stable)
-- Alpha Indexed 1K: ~147ns (stable)
-- Speedup: ~122x (maintained)
-
-**Recommendation:** ✅ **Safe to upgrade** - Critical Unicode fixes with zero breaking changes!
-
----
-
-## ✨ What's New in v1.18.27 🎉
-
-### ⚡ Performance Upgrade - Rexile 0.4.10
-
-**Major performance improvements** - Upgraded to `rexile 0.4.10` with significant optimizations.
-
-**Performance Gains:**
-- 🚀 **Alpha Linear 10K**: 13.8% faster (7.95ms → 6.85ms)
-- 🚀 **Alpha Linear 50K**: 25% faster (validated with stable benchmarks)
-- 🚀 **Beta Nested Loop 1K**: 9.8% faster (119ms → 108ms)
-- 🚀 **Token Pooling 100K**: 7.7% faster (3.28ms → 3.02ms)
-- ⚡ **Beta Indexing**: Maintains exceptional 180-815x speedup over linear scan
-
-**What Changed:**
-- Expression evaluation optimized for small-to-medium workloads (1K-10K items)
-- Improved memory access patterns for indexed lookups
-- Enhanced token pooling efficiency
-- Better linear scanning performance
-
-**Benchmarking:**
-- Use `./bench_stable.sh` for reliable performance measurements
-- See `REXILE_0.4.10_PERFORMANCE_COMPARISON.md` for detailed analysis
-- See `BENCHMARK_VARIANCE_ANALYSIS.md` for stability testing methodology
-
-**Verdict:** ✅ **Strongly recommended upgrade** - Real performance improvements across all common workloads with no significant regressions.
-
----
-
-## ✨ What's New in v1.18.26 🎉
-
-### 🔄 Migrated from `regex` to `rexile` crate
-
-**Lighter regex implementation** - Replaced `regex` crate with `rexile` for pattern matching.
-
-**Why `rexile`?**
-- 🪶 **Lighter weight** - Smaller binary footprint
-- 🎯 **Simpler API** - Direct `&str` access from captures
-- ✅ **Full compatibility** - All 551 tests pass, all examples work
-
-**API Changes (internal):**
-```rust
-// Before (regex)
-use regex::Regex;
-let re = Regex::new(r"pattern").unwrap();
-let value = caps.get(1).unwrap().as_str();
-
-// After (rexile)
-use rexile::Pattern;
-let re = Pattern::new(r"pattern").unwrap();
-let value = &caps[1];  // Direct &str access!
-```
-
-**Final Core Dependencies:** Only 7 essential crates
-```
-chrono, log, nom, rexile, serde, serde_json, thiserror
-```
-
----
-
-## ✨ What's New in v1.16.1
-
-### 🧹 Minimal Dependencies - Pure Stdlib
-
-**Removed 5 external dependencies** - replaced with Rust stdlib or removed dead code:
-
-**Replaced with stdlib:**
-- ❌ `num_cpus` → ✅ `std::thread::available_parallelism()` (Rust 1.59+)
-- ❌ `once_cell` → ✅ `std::sync::OnceLock` (Rust 1.70+)
-- ❌ `fastrand` → ✅ `std::collections::hash_map::RandomState`
-
-**Removed unused:**
-- ❌ `petgraph` - Declared but never used (zero code references)
-- ❌ `futures` - Declared but never used (tokio is sufficient)
-
-**Benefits:**
-- 📦 **5 fewer crates** - down from 12 to 7 core dependencies (41% reduction!)
-- 🛡️ **More reliable** - 100% stdlib for threading, lazy init, randomization
-- ⚡ **Zero performance regression** - all benchmarks unchanged
-- 🔧 **Modern Rust** - using latest stdlib features
-
-**Final Core Dependencies:** Only 7 essential crates
-```
-chrono, log, nom, rexile, serde, serde_json, thiserror
-```
-
-**Optional dependencies** (by feature):
-- `tokio` - Async runtime for streaming
-- `redis` - State backend for streaming-redis
-
-**Code changes:**
-- Thread detection: `num_cpus::get()` → `std::thread::available_parallelism()`
-- Lazy patterns (20 patterns): `once_cell::Lazy` → `std::sync::OnceLock`
-- Random generation: `fastrand` → `RandomState::new().build_hasher()`
-- Fixed flaky test in session window eviction
-
-**Testing:**
-- ✅ All 428+ tests passing
-- ✅ All 14+ examples working
-- ✅ All features validated (streaming, backward-chaining, etc.)
-
----
-
-## ✨ What's New in v1.16.0
-
-### 🪟 Session Windows for Stream Processing
-
-Complete implementation of **session-based windowing** for real-time event streams! Session windows dynamically group events based on **inactivity gaps** rather than fixed time boundaries.
-
-**What are Session Windows?**
-
-Unlike sliding or tumbling windows, session windows adapt to natural event patterns:
-
-```
-Events: A(t=0), B(t=1), C(t=2), [gap 10s], D(t=12), E(t=13)
-Timeout: 5 seconds
-
-Result:
-  Session 1: [A, B, C]  - ends when gap > 5s
-  Session 2: [D, E]     - starts after gap > 5s
-```
-
-**GRL Syntax:**
-```grl
-rule "UserSessionAnalysis" {
-    when
-        activity: UserAction from stream("user-activity")
-            over window(5 min, session)
-    then
-        AnalyzeSession(activity);
-}
-```
-
-**Rust API:**
-```rust
-use rust_rule_engine::rete::stream_alpha_node::{StreamAlphaNode, WindowSpec};
-use rust_rule_engine::streaming::window::WindowType;
-use std::time::Duration;
-
-let window = WindowSpec {
-    duration: Duration::from_secs(60),
-    window_type: WindowType::Session {
-        timeout: Duration::from_secs(5),  // Gap threshold
-    },
-};
-
-let mut node = StreamAlphaNode::new("user-events", None, Some(window));
-```
-
-**Perfect for:**
-- 📊 **User Session Analytics** - Track natural user behavior sessions
-- 🛒 **Cart Abandonment** - Detect when users don't complete checkout
-- 🔒 **Fraud Detection** - Identify unusual session patterns
-- 📡 **IoT Sensor Grouping** - Group burst events from sensors
-
-**Features:**
-- ✅ Automatic session boundary detection based on inactivity
-- ✅ Dynamic session sizes (adapts to activity patterns)
-- ✅ O(1) event processing with minimal overhead
-- ✅ Full integration with RETE network
-- ✅ 7 comprehensive tests (all passing)
-- ✅ Interactive demo: `cargo run --example session_window_demo --features streaming`
-
----
-
-## ✨ What's New in v1.15.1
-
-### 🧹 Codebase Cleanup
-
-Major cleanup and optimization of the project structure for better maintainability and developer experience!
-
-**🔧 Dependencies Optimized (-75% dev-deps)**
-- Removed 9 unused dev-dependencies (axum, tower, reqwest, tracing, etc.)
-- Eliminated duplicate dependencies (serde, chrono already in main deps)
-- Kept only essentials: criterion, tokio, serde_yaml
-- Faster build times and smaller binary size
-
-**Benefits:**
-- ⚡ Faster compilation and CI runs
-- 📚 Easier onboarding with clear example structure
-- 🧹 Less code to maintain (-76% examples)
-- ✅ Production-ready with all tests passing
-
----
-
-## ✨ What's New in v1.15.0
-
-### ➕ Array Append Operator (`+=`)
-
-Added support for the `+=` operator to append values to arrays in GRL actions! This is particularly useful for building recommendation lists, accumulating results, and managing collections.
-
-**GRL Syntax:**
-```grl
-rule "Product Recommendation" salience 100 no-loop {
-    when
-        ShoppingCart.items contains "Laptop" &&
-        !(Recommendation.items contains "Mouse")
-    then
-        Recommendation.items += "Mouse";          // Append to array
-        Recommendation.items += "USB-C Hub";      // Multiple appends
-        Log("Added recommendations");
-}
-```
-
-**Rust Usage:**
-```rust
-use rust_rule_engine::rete::{IncrementalEngine, TypedFacts, FactValue};
-use rust_rule_engine::rete::grl_loader::GrlReteLoader;
-
-let mut engine = IncrementalEngine::new();
-GrlReteLoader::load_from_file("rules.grl", &mut engine)?;
-
-let mut facts = TypedFacts::new();
-facts.set("ShoppingCart.items", FactValue::Array(vec![
-    FactValue::String("Laptop".to_string())
-]));
-facts.set("Recommendation.items", FactValue::Array(vec![]));
-
-engine.insert_typed_facts("ShoppingCart", facts.clone());
-engine.fire_all(&mut facts, 10);
-
-// Result: Recommendation.items = ["Mouse", "USB-C Hub"] ✓
-```
-
-**Integration with Rule Mining:**
-
-The `+=` operator works seamlessly with [rust-rule-miner](https://github.com/yourusername/rust-rule-miner) for automatic rule generation:
-
-```rust
-// Mine association rules from historical data
-let rules = miner.mine_association_rules()?;
-
-// Export to GRL with += syntax
-let grl = GrlExporter::to_grl(&rules);
-// Generates: Recommendation.items += "Phone Case";
-
-// Load and execute in RETE engine
-GrlReteLoader::load_from_string(&grl, &mut engine)?;
-```
-
-**Supported Everywhere:**
-- ✅ Forward chaining (RETE engine)
-- ✅ Backward chaining (goal-driven reasoning)
-- ✅ Parallel execution
-- ✅ All action execution contexts
-
----
-
-
-
-## 📚 Documentation
-
-Comprehensive documentation organized by topic:
-
-### 🚀 [Getting Started](docs/getting-started/)
-- **[Quick Start](docs/getting-started/QUICK_START.md)** - Get up and running in 5 minutes
-- **[Installation](docs/getting-started/INSTALLATION.md)** - Installation and setup guide
-- **[Basic Concepts](docs/getting-started/CONCEPTS.md)** - Core concepts explained
-- **[First Rules](docs/getting-started/FIRST_RULES.md)** - Write your first rules
-
-### 🎯 [Core Features](docs/core-features/)
-- **[GRL Syntax](docs/core-features/GRL_SYNTAX.md)** - Grule Rule Language reference
-- **[Features Overview](docs/core-features/FEATURES.md)** - All engine capabilities
-
-### ⚡ [Advanced Features](docs/advanced-features/)
-- **[RETE Optimization](docs/advanced-features/RETE_OPTIMIZATION.md)** - 1,235x join speedup & memory optimizations (v1.13.0+)
-- **[RETE Benchmarks](docs/advanced-features/RETE_OPTIMIZATION_BENCHMARKS.md)** - Real performance data & analysis (v1.13.0+)
-- **[Streaming & CEP](docs/advanced-features/STREAMING.md)** - Complex Event Processing
-- **[Streaming Architecture](docs/advanced-features/STREAMING_ARCHITECTURE.md)** - Deep dive into streaming
-- **[Plugins](docs/advanced-features/PLUGINS.md)** - Custom plugins and extensions
-- **[Performance](docs/advanced-features/PERFORMANCE.md)** - Optimization techniques
-- **[Redis State](docs/advanced-features/REDIS_STATE_BACKEND.md)** - Distributed state management
-
-### 📖 [API Reference](docs/api-reference/)
-- **[API Reference](docs/api-reference/API_REFERENCE.md)** - Complete public API
-- **[GRL Query Syntax](docs/api-reference/GRL_QUERY_SYNTAX.md)** - Backward chaining queries (v1.11.0+)
-- **[Parser Cheat Sheet](docs/api-reference/PARSER_CHEAT_SHEET.md)** - Quick syntax reference
-
-### 📝 [Guides](docs/guides/)
-- **[Backward Chaining Quick Start](docs/BACKWARD_CHAINING_QUICK_START.md)** - Goal-driven reasoning
-- **[RETE Integration](docs/guides/BACKWARD_CHAINING_RETE_INTEGRATION.md)** - Combine forward + backward
-- **[Module Management](docs/guides/MODULE_PARSING_GUIDE.md)** - Organize rules into modules
-- **[Troubleshooting](docs/guides/TROUBLESHOOTING.md)** - Common issues and solutions
-
-### 💡 [Examples](docs/examples/)
-- **[AI Integration](docs/examples/AI_INTEGRATION.md)** - Combine with ML models
-
-**[📚 Full Documentation Index →](docs/README.md)**
-
-
----
-
-## 📜 Older Releases
-
-See [CHANGELOG.md](CHANGELOG.md) for full version history (v0.1.0 - v0.19.0).
+Licensed under the [MIT License](LICENSE).

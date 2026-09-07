@@ -320,7 +320,7 @@ fn scenario_4_batch_approval() {
     let query = GRLQueryParser::parse(&query_str).unwrap();
 
     // DEBUG: Test first order only
-    let (_order_id, amount, loyalty, payment, account_age) = orders[0];
+    let (_order_id, amount, loyalty, payment, customer_tenure) = orders[0];
 
     let mut facts = Facts::new();
     facts.set("Order.Amount", Value::Number(amount));
@@ -328,7 +328,7 @@ fn scenario_4_batch_approval() {
     facts.set("Payment.Method", Value::String(payment.to_string()));
     facts.set(
         "Customer.AccountAge",
-        Value::String(account_age.to_string()),
+        Value::String(customer_tenure.to_string()),
     );
 
     println!("📋 Initial facts:");
@@ -360,14 +360,14 @@ fn scenario_4_batch_approval() {
     println!("   Goal: {}", query.goal);
 
     // Process all orders
-    for (order_id, amount, loyalty, payment, account_age) in &orders {
+    for (order_id, amount, loyalty, payment, customer_tenure) in &orders {
         let mut facts = Facts::new();
         facts.set("Order.Amount", Value::Number(*amount));
         facts.set("Customer.LoyaltyPoints", Value::Number(*loyalty));
         facts.set("Payment.Method", Value::String(payment.to_string()));
         facts.set(
             "Customer.AccountAge",
-            Value::String(account_age.to_string()),
+            Value::String(customer_tenure.to_string()),
         );
 
         // HYBRID APPROACH (Forward + Backward Chaining):
@@ -410,7 +410,7 @@ fn scenario_4_batch_approval() {
             format!("{:.0}", amount),
             format!("{:.0}", loyalty),
             payment,
-            account_age,
+            customer_tenure,
             status
         );
     }

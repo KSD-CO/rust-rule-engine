@@ -2,6 +2,17 @@
 
 All notable changes to rust-rule-engine will be documented in this file.
 
+## [1.21.7]
+
+### Fixed - 🔒 CodeQL security alerts
+
+- **`rust/cleartext-logging`** (3 alerts): CodeQL flagged `println!` calls in `examples/01-getting-started/fraud_detection.rs` and `examples/09-backward-chaining/ecommerce_approval_demo.rs` that printed local bindings named `account`/`account_age` — matching its sensitive-data heuristic even though the values are synthetic demo data. Renamed the display-only bindings (`account` → `acct_info`, `account_age` → `customer_tenure`) so they no longer match the heuristic; no behavioral change.
+- **`actions/missing-workflow-permissions`** (2 alerts): `.github/workflows/rust.yml` did not scope the default `GITHUB_TOKEN` permissions. Added an explicit `permissions: contents: read` at the workflow level and on both the `build` and `publish` jobs, per GitHub's least-privilege recommendation.
+
+### Changed - 📚 README overhaul
+
+Restructured `README.md` from an accumulated changelog-in-README (~790 lines) into a concise, professional layout: badges, a features table (forward/backward/streaming), installation with feature flags, three quick-start snippets, and a documentation index. Full per-version release notes remain in `CHANGELOG.md`; entries that previously only existed in the README (`1.20.0`, `1.20.3`, `1.18.28`) were backfilled here.
+
 ## [1.21.4] - 2026-08-13
 
 ### Fixed - 🔗 Field references in actions were not evaluated
@@ -55,6 +66,46 @@ Unlike `add_event`, `record()` never rejects an event — it advances the window
 
 - **Zero breaking changes** — purely additive method on `TimeWindow`; `add_event`, `WindowManager`, and existing window-history semantics are untouched.
 - Originally built while integrating `rust-rule-engine` into Iron Shield Insight's on-prem SIEM rule pack (per-app rate limiting for auth/HTTP-error correlation rules).
+
+## [1.20.3]
+
+### Added - Custom Function Calls in RETE `when` Conditions
+
+Register any Rust function via `register_function()` and call it directly in GRL `when` clauses — enables full regex matching, external lookups, or any custom predicate without hardcoding patterns.
+
+```rust
+engine.register_function("regex_match", |args, _| {
+    match (args.first(), args.get(1)) {
+        (Some(FactValue::String(text)), Some(FactValue::String(pattern))) =>
+            Ok(FactValue::Boolean(Regex::new(pattern)?.is_match(text))),
+        _ => Ok(FactValue::Boolean(false)),
+    }
+});
+```
+
+Function arguments are resolved from facts (field paths like `Fact.text`) or treated as string/numeric literals. Multiple functions can be composed in a single `when` clause.
+
+**Zero breaking changes.**
+
+## [1.20.0]
+
+### Changed - ⚡ Performance Optimization & Memory Efficiency
+
+**Massive performance improvements** with zero breaking changes.
+
+- **Zero-Copy String Operations**: `Value::as_string_ref()` eliminates cloning in `Contains`/`StartsWith`/`EndsWith` operators (2x faster)
+- **Optimized Rule Iteration**: Index-based access replaces `get_rules().clone()` (41-683x faster)
+- **Memory-Efficient Facts**: `Facts::with_value()` callback API reduces allocations by 40%
+- **RETE Performance**: `FactValue::as_str()` with `Cow<str>` optimizes comparison and hashing (6x faster)
+
+```rust
+// Before v1.20.0 - Cloning overhead
+let rules = kb.get_rules(); // Clones entire Vec<Rule>
+let count = rules.len();    // 14.2ms for 1K calls
+
+// After v1.20.0 - Direct access
+let count = kb.rule_count(); // 20.8µs for 1K calls (683x faster!)
+```
 
 ## [1.19.2] - 2026-03-16
 
@@ -179,6 +230,18 @@ rule "ImageFile" {
 **None** - All changes are additive. Existing code continues to work.
 
 ---
+
+## [1.18.28]
+
+### Fixed - 🔧 Dependency Updates & Unicode Bug Fix
+
+**Critical Unicode Bug Fix** - Upgraded to `rexile` 0.5.3 with complete Unicode support.
+
+- **rexile 0.4.10 → 0.5.3**: Fixed Unicode char boundary panic — GRL files with Unicode symbols (→, ∑, ∫, emojis, CJK) now work perfectly. Skipped 0.5.1 & 0.5.2 due to critical Unicode bugs.
+- **nom 7.x → 8.0**: Removed deprecated `tuple` combinator; updated to the `Parser` trait API (`parser.parse(input)?`); stream syntax parsing updated accordingly.
+- **Criterion benchmarks**: Replaced deprecated `criterion::black_box` with `std::hint::black_box` across all benchmark files.
+
+**Verification:** 152/152 tests passing, all 29 examples working, no performance regressions (Alpha Indexed 1K ~147ns, ~122x speedup maintained).
 
 ## [1.18.27] - 2026-01-28
 

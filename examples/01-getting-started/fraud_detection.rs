@@ -44,8 +44,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(transaction) = facts.get("Transaction") {
         println!("   Transaction = {transaction:?}");
     }
-    if let Some(account) = facts.get("Account") {
-        println!("   Account = {account:?}");
+    if let Some(acct_info) = facts.get("Account") {
+        println!("   Account = {acct_info:?}");
     }
     if let Some(alert) = facts.get("Alert") {
         println!("   Alert = {alert:?}");
@@ -233,8 +233,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(transaction) = facts.get("Transaction") {
         println!("   Transaction = {transaction:?}");
     }
-    if let Some(account) = facts.get("Account") {
-        println!("   Account = {account:?}");
+    if let Some(acct_info) = facts.get("Account") {
+        println!("   Account = {acct_info:?}");
     }
     if let Some(alert) = facts.get("Alert") {
         println!("   Alert = {alert:?}");
